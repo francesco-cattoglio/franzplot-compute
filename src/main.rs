@@ -5,17 +5,28 @@ mod compute_block;
 fn main() {
     let device_manager = device_manager::DeviceManager::new();
 
+    let curve_quality = 1;
     let first_descriptor = compute_block::IntervalBlockDescriptor {
         begin: 0.0,
         end: 3.1415,
-        quality: 4,
-        name: "u".to_string(),
+        quality: curve_quality,
+        name: "k".to_string(),
     };
+    //let second_descriptor = compute_block::CurveBlockDescriptor {
+    //    interval_input_idx: 0,
+    //    x_function: "sin(k)".to_string(),
+    //    y_function: "cos(k)".to_string(),
+    //    z_function: "a+b".to_string(),
+    //};
     let second_descriptor = compute_block::CurveBlockDescriptor {
         interval_input_idx: 0,
-        x_function: "sin(u)".to_string(),
-        y_function: "cos(u)".to_string(),
-        z_function: "0.25".to_string(),
+        x_function: "a".to_string(),
+        y_function: "b".to_string(),
+        z_function: "a+b".to_string(),
+    };
+
+    let all_variables = compute_chain::Context {
+        var_names: vec!["a".to_string(), "b".to_string()],
     };
 
     use compute_chain::BlockDescriptor;
@@ -23,7 +34,7 @@ fn main() {
         vec![BlockDescriptor::Interval(first_descriptor), BlockDescriptor::Curve(second_descriptor)].into();
 
     dbg!(&all_descriptors);
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors).unwrap();
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
 
     chain.run_chain(&device_manager.device, &device_manager.queue);
     println!("Hello, world!");
@@ -50,7 +61,7 @@ fn main() {
     device_manager.queue.submit(&[compute_queue]);
 
     let buffer_future = staging_buffer.map_read(0,
-            (std::mem::size_of::<f32>() * 4 * 64) as wgpu::BufferAddress);
+            (std::mem::size_of::<f32>() * 4 * 16 * curve_quality as usize) as wgpu::BufferAddress);
 
     // Poll the device in a blocking manner so that our future resolves.
     // In an actual application, `device.poll(...)` should
@@ -65,6 +76,8 @@ fn main() {
         let result: Vec<f32> = slice
             .chunks_exact(4)
             .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
+            .skip(0)
+            .step_by(1)
             .collect();
 
         // With the current interface, we have to make sure all mapped views are

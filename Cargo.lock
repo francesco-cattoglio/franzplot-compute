@@ -177,6 +177,7 @@ dependencies = [
  "downcast-rs",
  "futures",
  "shaderc",
+ "ultraviolet",
  "wgpu",
 ]
 
@@ -746,6 +747,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ultraviolet"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "432f35260aff6ee992f3027a1166eaebd7c6ebc0844188b0e545f7fa2121daf7"
+dependencies = [
+ "wide",
+]
+
+[[package]]
 name = "unicode-xid"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -876,6 +886,15 @@ checksum = "f3474b5ce2ed628e158c2fe4387a469b2ee119604556aa2debd10d830cedc3bc"
 dependencies = [
  "bitflags",
  "peek-poke",
+]
+
+[[package]]
+name = "wide"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5825a3b8b18b67af1c24165f8ae1feb8f691222736d14099c3483effed2ea729"
+dependencies = [
+ "bytemuck",
 ]
 
 [[package]]

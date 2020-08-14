@@ -3,9 +3,13 @@ use crate::compute_chain;
 use downcast_rs::{impl_downcast, Downcast};
 
 use std::rc::*;
+use ultraviolet::Vec3u;
+
+const LOCAL_SIZE_X: u32 = 16;
+const LOCAL_SIZE_Y: u32 = 16;
 
 pub trait ComputeBlock : Downcast {
-    fn encode(&self, encoder: &mut wgpu::CommandEncoder);
+    fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder);
     fn get_buffer(&self) -> &wgpu::Buffer;
 }
 impl_downcast!(ComputeBlock);
@@ -15,7 +19,7 @@ pub struct IntervalBlock {
     out_buffer: wgpu::Buffer,
     buffer_size: wgpu::BufferAddress,
     name: String,
-    num_vertices: usize,
+    out_sizes: Vec3u,
 }
 
 #[derive(Debug)]
@@ -28,13 +32,14 @@ pub struct IntervalBlockDescriptor {
 
 impl IntervalBlock {
     pub fn new(_compute_chain: &compute_chain::ComputeChain, device: &wgpu::Device, descriptor: &IntervalBlockDescriptor) -> Self {
-        let num_vertices = 16 * descriptor.quality as usize;
-        let mut interval_points = Vec::with_capacity(num_vertices);
-        let delta = (descriptor.end - descriptor.begin) / (num_vertices - 1) as f32;
-        for i in 0..num_vertices {
+        let out_sizes = Vec3u::new(16 * descriptor.quality, 1, 1);
+        let mut interval_points = Vec::with_capacity(out_sizes.x as usize);
+        let delta = (descriptor.end - descriptor.begin) / (out_sizes.x - 1) as f32;
+        for i in 0..out_sizes.x {
             interval_points.push(descriptor.begin + i as f32 * delta);
         }
 
+        let buffer_size = (out_sizes.x * std::mem::size_of::<f32>() as u32) as wgpu::BufferAddress;
         let out_buffer = device.create_buffer_with_data(
             bytemuck::cast_slice(&interval_points),
             wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE,
@@ -42,15 +47,15 @@ impl IntervalBlock {
 
         Self {
             out_buffer,
-            num_vertices,
-            buffer_size: (num_vertices * std::mem::size_of::<f32>()) as wgpu::BufferAddress,
+            out_sizes,
+            buffer_size,
             name: descriptor.name.clone(),
         }
     }
 }
 
 impl ComputeBlock for IntervalBlock {
-    fn encode(&self, _encoder: &mut wgpu::CommandEncoder) {
+    fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
         // right now, do nothing
     }
     fn get_buffer(&self) -> &wgpu::Buffer {
@@ -74,15 +79,17 @@ pub struct CurveBlock {
     shader_module: wgpu::ShaderModule,
     compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
-    num_vertices: usize,
+    out_sizes: Vec3u,
 }
 
 impl CurveBlock {
     pub fn new(compute_chain: &compute_chain::ComputeChain, device: &wgpu::Device, descriptor: &CurveBlockDescriptor) -> Self {
         let interval_rc = compute_chain.blocks.get(&descriptor.interval_input_idx).expect("unable to find dependency").clone();
         let interval_input = interval_rc.downcast_rc::<IntervalBlock>().map_err(|_|"noped").unwrap();
-        let num_vertices = interval_input.num_vertices;
-        let input_buffer_size = interval_input.buffer_size as wgpu::BufferAddress;
+        // We are creating a curve from an interval, output vertex count is the same as the input
+        // one. Buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
+        let out_sizes = interval_input.out_sizes;
+        let input_buffer_size = interval_input.buffer_size;
         let output_buffer_size = input_buffer_size * 4;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
@@ -92,25 +99,28 @@ impl CurveBlock {
 
         let shader_source = format!(r##"
 #version 450
-layout(local_size_x = 16) in;
+layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
 
 layout(set = 0, binding = 0) buffer InputBuffer {{
-    float {}_buff[];
+    float {par}_buff[];
 }};
 
 layout(set = 0, binding = 1) buffer OutputBuffer {{
     vec4 out_buff[];
 }};
 
+{header}
+
 void main() {{
     uint index = gl_GlobalInvocationID.x;
-    float {} = {}_buff[index];
-    out_buff[index].x = {};
-    out_buff[index].y = {};
-    out_buff[index].z = {};
+    float {par} = {par}_buff[index];
+    out_buff[index].x = {fx};
+    out_buff[index].y = {fy};
+    out_buff[index].z = {fz};
     out_buff[index].w = 1;
 }}
-"##, "u", "u", "u", &descriptor.x_function, &descriptor.y_function, &descriptor.z_function);
+"##, header=&compute_chain.shader_header, par=&interval_input.name, dimx=LOCAL_SIZE_X, dimy=1, fx=&descriptor.x_function, fy=&descriptor.y_function, fz=&descriptor.z_function);
+println!("{}", &shader_source);
         let mut shader_compiler = shaderc::Compiler::new().unwrap();
         let comp_spirv = shader_compiler.compile_into_spirv(&shader_source, shaderc::ShaderKind::Compute, "shader.comp", "main", None).unwrap();
         let comp_data = wgpu::read_spirv(std::io::Cursor::new(comp_spirv.as_binary_u8())).unwrap();
@@ -159,7 +169,7 @@ void main() {{
         });
         let compute_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: &[&compute_bind_group_layout]
+                bind_group_layouts: &[&compute_bind_group_layout, &compute_chain.variables_bind_layout]
             });
         let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             layout: &compute_pipeline_layout,
@@ -167,14 +177,13 @@ void main() {{
                 entry_point: "main",
                 module: &shader_module,
             }
-
         });
 
         Self {
             compute_pipeline,
             compute_bind_group,
             out_buffer,
-            num_vertices,
+            out_sizes,
             buffer_size: output_buffer_size,
             interval_input,
             shader_module,
@@ -183,11 +192,12 @@ void main() {{
 }
 
 impl ComputeBlock for CurveBlock {
-    fn encode(&self, encoder: &mut wgpu::CommandEncoder) {
+    fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
             let mut compute_pass = encoder.begin_compute_pass();
             compute_pass.set_pipeline(&self.compute_pipeline);
             compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
-            compute_pass.dispatch((self.num_vertices/16) as u32, 1, 1);
+            compute_pass.set_bind_group(1, variables_bind_group, &[]);
+            compute_pass.dispatch((self.out_sizes.x/LOCAL_SIZE_X) as u32, 1, 1);
     }
 
     fn get_buffer(&self) -> &wgpu::Buffer {
