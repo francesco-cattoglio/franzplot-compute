@@ -33,8 +33,8 @@ fn main() {
 
     let all_variables = compute_chain::Context {
         globals: btreemap!{
-            "a".to_string() => 0.14,
-            "b".to_string() => 3.14,
+            "a".to_string() => 0.0,
+            "b".to_string() => 3.1415,
         },
     };
 
@@ -45,7 +45,7 @@ fn main() {
 
     chain.run_chain(&device_manager.device, &device_manager.queue);
     println!("Hello, world!");
-
+{
     let staging_buffer = device_manager.device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
         size: (std::mem::size_of::<f32>() * 4 * 64) as wgpu::BufferAddress,
@@ -93,5 +93,65 @@ fn main() {
 
         dbg!(result);
     }
+}
+    let new_variables = compute_chain::Context {
+        globals: btreemap!{
+            "a".to_string() => 0.5*3.1415,
+            "b".to_string() => 3.1415,
+        },
+    };
 
+    println!("updated variables:");
+    dbg!(&new_variables);
+    chain.update_globals(&device_manager.device, &device_manager.queue, &new_variables);
+    chain.run_chain(&device_manager.device, &device_manager.queue);
+{
+    let staging_buffer = device_manager.device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: (std::mem::size_of::<f32>() * 4 * 64) as wgpu::BufferAddress,
+        usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
+    });
+
+    let mut encoder =
+        device_manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        label: Some("Compute Encoder this time"),
+    });
+    encoder.copy_buffer_to_buffer(
+        chain.chain.get("2").unwrap().get_buffer(),
+        0,
+        &staging_buffer,
+        0,
+        (std::mem::size_of::<f32>() * 4 * 64) as wgpu::BufferAddress,
+    );
+
+    let compute_queue = encoder.finish();
+    device_manager.queue.submit(&[compute_queue]);
+
+    let buffer_future = staging_buffer.map_read(0,
+            (std::mem::size_of::<f32>() * 4 * 16 * curve_quality as usize) as wgpu::BufferAddress);
+
+    // Poll the device in a blocking manner so that our future resolves.
+    // In an actual application, `device.poll(...)` should
+    // be called in an event loop or on another thread.
+    device_manager.device.poll(wgpu::Maintain::Wait);
+
+    use std::convert::TryInto;
+    use futures::executor::block_on;
+    let future_result = block_on(buffer_future);
+    if let Ok(ok_read_mapping) = future_result {
+        let slice = ok_read_mapping.as_slice();
+        let result: Vec<f32> = slice
+            .chunks_exact(4)
+            .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
+            .skip(0)
+            .step_by(1)
+            .collect();
+
+        // With the current interface, we have to make sure all mapped views are
+        // dropped before we unmap the buffer.
+        staging_buffer.unmap();
+
+        dbg!(result);
+    }
+}
 }

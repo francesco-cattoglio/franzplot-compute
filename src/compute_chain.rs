@@ -2,15 +2,19 @@ use crate::compute_block::*;
 use anyhow::{Result, anyhow};
 
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 
 pub struct ComputeChain {
     pub chain: BTreeMap<String, ComputeBlock>,
+    globals_buffer_size: wgpu::BufferAddress,
     globals_buffer: wgpu::Buffer,
     pub globals_bind_layout: wgpu::BindGroupLayout,
     pub globals_bind_group: wgpu::BindGroup,
     pub shader_header: String,
+    pub global_vars: BTreeSet<String>,
 }
 
+#[derive(Debug)]
 pub struct Context {
     pub globals: BTreeMap<String, f32>,
 }
@@ -18,10 +22,11 @@ pub struct Context {
 impl ComputeChain {
     fn new(device: &wgpu::Device, context: &Context) -> Self {
         let globals = &context.globals;
+        let global_vars: BTreeSet<String> = globals.keys().cloned().collect();
         let chain = BTreeMap::<String, ComputeBlock>::new();
-        let buffer_size = (globals.len() * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
 
         let values: Vec<f32> = globals.values().copied().collect();
+        let globals_buffer_size = (values.len() * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
         let globals_buffer = device.create_buffer_with_data(
             bytemuck::cast_slice(&values),
             wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::UNIFORM
@@ -46,7 +51,7 @@ impl ComputeChain {
                     binding: 0,
                     resource: wgpu::BindingResource::Buffer {
                         buffer: &globals_buffer,
-                        range: 0.. buffer_size,
+                        range: 0.. globals_buffer_size,
                     },
                 },
             ],
@@ -66,9 +71,11 @@ layout(set = 1, binding = 0) uniform Uniforms {
         Self {
             chain,
             shader_header,
+            global_vars,
             globals_bind_layout,
             globals_bind_group,
             globals_buffer,
+            globals_buffer_size,
         }
     }
 
@@ -84,7 +91,35 @@ layout(set = 1, binding = 0) uniform Uniforms {
         queue.submit(&[compute_queue]);
     }
 
-    pub fn insert(&mut self, id: &String, block: ComputeBlock) -> Result<()> {
+    pub fn update_globals(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, context: &Context) {
+        // need to check if the global_vars contains exactly the same global
+        // names as the context we passed to this function.
+        assert!(self.global_vars.iter().eq(context.globals.keys()));
+        // if this is true, then we need to move data into the globals buffer
+        let values: Vec<f32> = context.globals.values().copied().collect();
+        let staging_buffer = device.create_buffer_with_data(
+            bytemuck::cast_slice(&values),
+            wgpu::BufferUsage::COPY_SRC
+        );
+
+        let mut encoder =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Update globals encoder"),
+        });
+        encoder.copy_buffer_to_buffer(
+            &staging_buffer,
+            0,
+            &self.globals_buffer,
+            0,
+            self.globals_buffer_size,
+        );
+
+        let compute_queue = encoder.finish();
+        queue.submit(&[compute_queue]);
+
+    }
+
+    fn insert(&mut self, id: &String, block: ComputeBlock) -> Result<()> {
         if self.chain.contains_key(id) {
             Err(anyhow!("Tried to insert two blocks that had the same id"))
         } else {
