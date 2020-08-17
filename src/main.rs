@@ -1,37 +1,44 @@
+use maplit::btreemap;
+
 mod device_manager;
 mod compute_chain;
 mod compute_block;
 
 fn main() {
+    use compute_block::*;
     let device_manager = device_manager::DeviceManager::new();
 
     let curve_quality = 1;
-    let first_descriptor = compute_block::IntervalBlockDescriptor {
-        begin: 0.0,
-        end: 3.1415,
-        quality: curve_quality,
-        name: "k".to_string(),
+    let first_descriptor = BlockDescriptor {
+        id: "1".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "a".to_string(),
+            end: "b".to_string(),
+            quality: curve_quality,
+            name: "k".to_string(),
+        })
     };
-    //let second_descriptor = compute_block::CurveBlockDescriptor {
-    //    interval_input_idx: 0,
-    //    x_function: "sin(k)".to_string(),
-    //    y_function: "cos(k)".to_string(),
-    //    z_function: "a+b".to_string(),
-    //};
-    let second_descriptor = compute_block::CurveBlockDescriptor {
-        interval_input_idx: 0,
-        x_function: "a".to_string(),
-        y_function: "b".to_string(),
-        z_function: "a+b".to_string(),
+    let second_descriptor = BlockDescriptor {
+        id: "2".to_string(),
+        data: DescriptorData::Curve(CurveBlockDescriptor {
+            interval_input_id: "1".to_string(),
+            x_function: "sin(k)".to_string(),
+            y_function: "cos(k)".to_string(),
+            z_function: "k".to_string(),
+//            x_function: "a".to_string(),
+//            y_function: "b".to_string(),
+//            z_function: "a+b".to_string(),
+        })
     };
 
     let all_variables = compute_chain::Context {
-        var_names: vec!["a".to_string(), "b".to_string()],
+        globals: btreemap!{
+            "a".to_string() => 0.14,
+            "b".to_string() => 3.14,
+        },
     };
 
-    use compute_chain::BlockDescriptor;
-    let all_descriptors: Vec<BlockDescriptor> =
-        vec![BlockDescriptor::Interval(first_descriptor), BlockDescriptor::Curve(second_descriptor)].into();
+    let all_descriptors: Vec<BlockDescriptor> = vec![first_descriptor, second_descriptor].into();
 
     dbg!(&all_descriptors);
     let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
@@ -50,7 +57,7 @@ fn main() {
         label: Some("Compute Encoder this time"),
     });
     encoder.copy_buffer_to_buffer(
-        chain.blocks.get(&1).unwrap().get_buffer(),
+        chain.chain.get("2").unwrap().get_buffer(),
         0,
         &staging_buffer,
         0,
