@@ -3,7 +3,7 @@ use crate::compute_chain::ComputeChain;
 use ultraviolet::Vec3u;
 
 const LOCAL_SIZE_X: u32 = 16;
-const LOCAL_SIZE_Y: u32 = 16;
+const _LOCAL_SIZE_Y: u32 = 16;
 
 pub enum ComputeBlock {
     Interval(IntervalData),
@@ -54,11 +54,12 @@ impl IntervalBlockDescriptor {
 pub struct IntervalData {
     out_buffer: wgpu::Buffer,
     buffer_size: wgpu::BufferAddress,
-    shader_module: wgpu::ShaderModule,
     compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
     out_sizes: Vec3u,
     name: String,
+    #[allow(unused)]
+    shader_module: wgpu::ShaderModule,
 }
 
 impl IntervalData {
@@ -92,16 +93,18 @@ void main() {{
 
         let mut shader_compiler = shaderc::Compiler::new().unwrap();
         let comp_spirv = shader_compiler.compile_into_spirv(&shader_source, shaderc::ShaderKind::Compute, "shader.comp", "main", None).unwrap();
-        let comp_data = wgpu::read_spirv(std::io::Cursor::new(comp_spirv.as_binary_u8())).unwrap();
-        let shader_module = device.create_shader_module(&comp_data);
+        let comp_data = wgpu::util::make_spirv(comp_spirv.as_binary_u8());
+        let shader_module = device.create_shader_module(comp_data);
         let compute_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                bindings: &[
+                entries: &[
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
+                        count: None,
                         visibility: wgpu::ShaderStage::COMPUTE,
                         ty: wgpu::BindingType::StorageBuffer {
                             dynamic: false,
+                            min_binding_size: None,
                             readonly: false,
                         }
                     },
@@ -110,13 +113,12 @@ void main() {{
             });
         let compute_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &compute_bind_group_layout,
-            bindings: &[
-                wgpu::Binding {
+            entries: &[
+                wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &out_buffer,
-                        range: 0.. buffer_size,
-                    },
+                    resource: wgpu::BindingResource::Buffer (
+                        out_buffer.slice(..),
+                    ),
                 },
             ],
             label: Some("IntervalShaderBindGroup"),
@@ -124,10 +126,13 @@ void main() {{
 
         let compute_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: &[&compute_bind_group_layout, &compute_chain.globals_bind_layout]
+                bind_group_layouts: &[&compute_bind_group_layout, &compute_chain.globals_bind_layout],
+                label: None,
+                push_constant_ranges: &[],
             });
         let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            layout: &compute_pipeline_layout,
+            layout: Some(&compute_pipeline_layout),
+            label: None,
             compute_stage: wgpu::ProgrammableStageDescriptor {
                 entry_point: "main",
                 module: &shader_module,
@@ -170,11 +175,12 @@ impl CurveBlockDescriptor {
 
 pub struct CurveData {
     out_buffer: wgpu::Buffer,
-    buffer_size: wgpu::BufferAddress,
-    shader_module: wgpu::ShaderModule,
     compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
     out_sizes: Vec3u,
+    #[allow(unused)]
+    shader_module: wgpu::ShaderModule,
+    buffer_size: wgpu::BufferAddress,
 }
 
 impl CurveData {
@@ -193,6 +199,7 @@ impl CurveData {
         let output_buffer_size = input_buffer_size * 4;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
+            mapped_at_creation: true,
             size: output_buffer_size,
             usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE,
         });
@@ -223,23 +230,27 @@ void main() {{
         println!("debug info for curve shader: \n{}", shader_source);
         let mut shader_compiler = shaderc::Compiler::new().unwrap();
         let comp_spirv = shader_compiler.compile_into_spirv(&shader_source, shaderc::ShaderKind::Compute, "shader.comp", "main", None).unwrap();
-        let comp_data = wgpu::read_spirv(std::io::Cursor::new(comp_spirv.as_binary_u8())).unwrap();
-        let shader_module = device.create_shader_module(&comp_data);
+        let comp_data = wgpu::util::make_spirv(comp_spirv.as_binary_u8());
+        let shader_module = device.create_shader_module(comp_data);
         let compute_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                bindings: &[
+                entries: &[
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
+                        count: None,
                         visibility: wgpu::ShaderStage::COMPUTE,
                         ty: wgpu::BindingType::StorageBuffer {
+                            min_binding_size: None,
                             dynamic: false,
                             readonly: false,
                         }
                     },
                     wgpu::BindGroupLayoutEntry {
                         binding: 1,
+                        count: None,
                         visibility: wgpu::ShaderStage::COMPUTE,
                         ty: wgpu::BindingType::StorageBuffer {
+                            min_binding_size: None,
                             dynamic: false,
                             readonly: false,
                         }
@@ -249,30 +260,31 @@ void main() {{
             });
         let compute_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &compute_bind_group_layout,
-            bindings: &[
-                wgpu::Binding {
+            entries: &[
+                wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &interval_data.out_buffer,
-                        range: 0.. input_buffer_size,
-                    },
+                    resource: wgpu::BindingResource::Buffer (
+                        interval_data.out_buffer.slice(..),
+                    ),
                 },
-                wgpu::Binding {
+                wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &out_buffer,
-                        range: 0.. output_buffer_size,
-                    }
-                }
+                    resource: wgpu::BindingResource::Buffer (
+                        out_buffer.slice(..),
+                    ),
+                },
             ],
             label: Some("compute bind group"),
         });
         let compute_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                bind_group_layouts: &[&compute_bind_group_layout, &compute_chain.globals_bind_layout]
+                bind_group_layouts: &[&compute_bind_group_layout, &compute_chain.globals_bind_layout],
+                label: None,
+                push_constant_ranges: &[],
             });
         let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            layout: &compute_pipeline_layout,
+            layout: Some(&compute_pipeline_layout),
+            label: None,
             compute_stage: wgpu::ProgrammableStageDescriptor {
                 entry_point: "main",
                 module: &shader_module,

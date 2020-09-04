@@ -47,7 +47,7 @@ impl ComputeChain {
         let globals_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &globals_bind_layout,
             bindings: &[
-                wgpu::Binding {
+                wgpu::BindGroupEntry {
                     binding: 0,
                     resource: wgpu::BindingResource::Buffer {
                         buffer: &globals_buffer,
@@ -135,7 +135,7 @@ layout(set = 1, binding = 0) uniform Uniforms {
         for descriptor in descriptors.iter() {
             let block: ComputeBlock = match &descriptor.data {
                 DescriptorData::Curve(desc) => desc.to_block(&chain, device),
-                DescriptorData::Interval(desc) => ComputeBlock::Interval(IntervalData::new(&chain, device, desc)),
+                DescriptorData::Interval(desc) => desc.to_block(&chain, device),
             };
             chain.insert(&descriptor.id, block)?;
         }

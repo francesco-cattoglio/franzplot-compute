@@ -6,7 +6,7 @@ mod compute_block;
 
 fn main() {
     use compute_block::*;
-    let device_manager = device_manager::DeviceManager::new();
+    let device_manager = device_manager::Manager::new();
 
     let curve_quality = 1;
     let first_descriptor = BlockDescriptor {
