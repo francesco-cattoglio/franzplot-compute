@@ -4,6 +4,8 @@ use anyhow::{Result, anyhow};
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 
+use wgpu::util::DeviceExt;
+
 pub struct ComputeChain {
     pub chain: BTreeMap<String, ComputeBlock>,
     globals_buffer_size: wgpu::BufferAddress,
@@ -27,17 +29,20 @@ impl ComputeChain {
 
         let values: Vec<f32> = globals.values().copied().collect();
         let globals_buffer_size = (values.len() * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
-        let globals_buffer = device.create_buffer_with_data(
-            bytemuck::cast_slice(&values),
-            wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::UNIFORM
-        );
+        let globals_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&values),
+            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::UNIFORM
+        });
         let globals_bind_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                bindings: &[
+                entries: &[
                     wgpu::BindGroupLayoutEntry {
+                        count: None,
                         binding: 0,
                         visibility: wgpu::ShaderStage::COMPUTE,
                         ty: wgpu::BindingType::UniformBuffer {
+                            min_binding_size: None,
                             dynamic: false,
                         }
                     },
@@ -46,13 +51,12 @@ impl ComputeChain {
             });
         let globals_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &globals_bind_layout,
-            bindings: &[
+            entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer {
-                        buffer: &globals_buffer,
-                        range: 0.. globals_buffer_size,
-                    },
+                    resource: wgpu::BindingResource::Buffer (
+                        globals_buffer.slice(..),
+                    ),
                 },
             ],
             label: Some("variables bind group")
@@ -68,6 +72,7 @@ layout(set = 1, binding = 0) uniform Uniforms {
         shader_header.push_str(r##"};
 "##);
         println!("debug info for shader header: {}", &shader_header);
+
         Self {
             chain,
             shader_header,
@@ -88,7 +93,7 @@ layout(set = 1, binding = 0) uniform Uniforms {
             block.encode(&self.globals_bind_group, &mut encoder);
         }
         let compute_queue = encoder.finish();
-        queue.submit(&[compute_queue]);
+        queue.submit(std::iter::once(compute_queue));
     }
 
     pub fn update_globals(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, context: &Context) {
@@ -97,26 +102,28 @@ layout(set = 1, binding = 0) uniform Uniforms {
         assert!(self.global_vars.iter().eq(context.globals.keys()));
         // if this is true, then we need to move data into the globals buffer
         let values: Vec<f32> = context.globals.values().copied().collect();
-        let staging_buffer = device.create_buffer_with_data(
-            bytemuck::cast_slice(&values),
-            wgpu::BufferUsage::COPY_SRC
-        );
+        //let staging_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        //    label: None,
+        //    contents: bytemuck::cast_slice(&values),
+        //    usage: wgpu::BufferUsage::COPY_SRC
+        //}
+        //);
 
-        let mut encoder =
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Update globals encoder"),
-        });
-        encoder.copy_buffer_to_buffer(
-            &staging_buffer,
-            0,
-            &self.globals_buffer,
-            0,
-            self.globals_buffer_size,
-        );
+        //let mut encoder =
+        //    device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+        //    label: Some("Update globals encoder"),
+        //});
+        //encoder.copy_buffer_to_buffer(
+        //    &staging_buffer,
+        //    0,
+        //    &self.globals_buffer,
+        //    0,
+        //    self.globals_buffer_size,
+        //);
 
-        let compute_queue = encoder.finish();
-        queue.submit(&[compute_queue]);
-
+        //let compute_queue = encoder.finish();
+        //queue.submit(std::iter::once(compute_queue));
+        queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&values));
     }
 
     fn insert(&mut self, id: &String, block: ComputeBlock) -> Result<()> {

@@ -8,7 +8,7 @@ fn main() {
     use compute_block::*;
     let device_manager = device_manager::Manager::new();
 
-    let curve_quality = 1;
+    let curve_quality = 4;
     let first_descriptor = BlockDescriptor {
         id: "1".to_string(),
         data: DescriptorData::Interval(IntervalBlockDescriptor {
@@ -48,6 +48,7 @@ fn main() {
 {
     let staging_buffer = device_manager.device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
+        mapped_at_creation: false,
         size: (std::mem::size_of::<f32>() * 4 * 64) as wgpu::BufferAddress,
         usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
     });
@@ -61,26 +62,30 @@ fn main() {
         0,
         &staging_buffer,
         0,
-        (std::mem::size_of::<f32>() * 4 * 64) as wgpu::BufferAddress,
+        (std::mem::size_of::<f32>() * 4 * 16*curve_quality as usize) as wgpu::BufferAddress,
     );
 
     let compute_queue = encoder.finish();
-    device_manager.queue.submit(&[compute_queue]);
+    device_manager.queue.submit(std::iter::once(compute_queue));
 
-    let buffer_future = staging_buffer.map_read(0,
-            (std::mem::size_of::<f32>() * 4 * 16 * curve_quality as usize) as wgpu::BufferAddress);
+    let buffer_slice = staging_buffer.slice(..);
+    // Gets the future representing when `staging_buffer` can be read from
+    let buffer_future = buffer_slice.map_async(wgpu::MapMode::Read);
 
     // Poll the device in a blocking manner so that our future resolves.
     // In an actual application, `device.poll(...)` should
     // be called in an event loop or on another thread.
     device_manager.device.poll(wgpu::Maintain::Wait);
 
+    // Awaits until `buffer_future` can be read from
     use std::convert::TryInto;
     use futures::executor::block_on;
     let future_result = block_on(buffer_future);
-    if let Ok(ok_read_mapping) = future_result {
-        let slice = ok_read_mapping.as_slice();
-        let result: Vec<f32> = slice
+    if let Ok(()) = future_result {
+        // Gets contents of buffer
+        let data = buffer_slice.get_mapped_range();
+        // Since contents are got in bytes, this converts these bytes back to u32
+        let result: Vec<f32> = data
             .chunks_exact(4)
             .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
             .skip(0)
@@ -89,10 +94,19 @@ fn main() {
 
         // With the current interface, we have to make sure all mapped views are
         // dropped before we unmap the buffer.
-        staging_buffer.unmap();
+        drop(data);
+        staging_buffer.unmap(); // Unmaps buffer from memory
+                                // If you are familiar with C++ these 2 lines can be thought of similarly to:
+                                //   delete myPointer;
+                                //   myPointer = NULL;
+                                // It effectively frees the memory
 
-        dbg!(result);
+        // Returns data from buffer
+        dbg!(&result);
+    } else {
+        panic!("failed to run compute on gpu!")
     }
+
 }
     let new_variables = compute_chain::Context {
         globals: btreemap!{
@@ -108,6 +122,7 @@ fn main() {
 {
     let staging_buffer = device_manager.device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
+        mapped_at_creation: false,
         size: (std::mem::size_of::<f32>() * 4 * 64) as wgpu::BufferAddress,
         usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
     });
@@ -121,14 +136,15 @@ fn main() {
         0,
         &staging_buffer,
         0,
-        (std::mem::size_of::<f32>() * 4 * 64) as wgpu::BufferAddress,
+        (std::mem::size_of::<f32>() * 4 * 16*curve_quality as usize) as wgpu::BufferAddress,
     );
 
     let compute_queue = encoder.finish();
-    device_manager.queue.submit(&[compute_queue]);
+    device_manager.queue.submit(std::iter::once(compute_queue));
 
-    let buffer_future = staging_buffer.map_read(0,
-            (std::mem::size_of::<f32>() * 4 * 16 * curve_quality as usize) as wgpu::BufferAddress);
+    let buffer_slice = staging_buffer.slice(..);
+    // Gets the future representing when `staging_buffer` can be read from
+    let buffer_future = buffer_slice.map_async(wgpu::MapMode::Read);
 
     // Poll the device in a blocking manner so that our future resolves.
     // In an actual application, `device.poll(...)` should
@@ -138,9 +154,11 @@ fn main() {
     use std::convert::TryInto;
     use futures::executor::block_on;
     let future_result = block_on(buffer_future);
-    if let Ok(ok_read_mapping) = future_result {
-        let slice = ok_read_mapping.as_slice();
-        let result: Vec<f32> = slice
+    if let Ok(()) = future_result {
+        // Gets contents of buffer
+        let data = buffer_slice.get_mapped_range();
+        // Since contents are got in bytes, this converts these bytes back to u32
+        let result: Vec<f32> = data
             .chunks_exact(4)
             .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
             .skip(0)
@@ -149,9 +167,17 @@ fn main() {
 
         // With the current interface, we have to make sure all mapped views are
         // dropped before we unmap the buffer.
-        staging_buffer.unmap();
+        drop(data);
+        staging_buffer.unmap(); // Unmaps buffer from memory
+                                // If you are familiar with C++ these 2 lines can be thought of similarly to:
+                                //   delete myPointer;
+                                //   myPointer = NULL;
+                                // It effectively frees the memory
 
-        dbg!(result);
+        // Returns data from buffer
+        dbg!(&result);
+    } else {
+        panic!("failed to run compute on gpu!")
     }
 }
 }

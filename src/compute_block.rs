@@ -67,6 +67,7 @@ impl IntervalData {
         let out_sizes = Vec3u::new(16 * descriptor.quality, 1, 1);
         let buffer_size = (out_sizes.x * std::mem::size_of::<f32>() as u32) as wgpu::BufferAddress;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            mapped_at_creation: false,
             label: None,
             size: buffer_size,
             usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE,
@@ -199,10 +200,12 @@ impl CurveData {
         let output_buffer_size = input_buffer_size * 4;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
-            mapped_at_creation: true,
+            mapped_at_creation: false,
             size: output_buffer_size,
             usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE,
         });
+        dbg!(&input_buffer_size);
+        dbg!(&output_buffer_size);
 
         let shader_source = format!(r##"
 #version 450
