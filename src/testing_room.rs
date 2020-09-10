@@ -40,6 +40,53 @@ pub fn interval_curve_test() -> (Context, Vec<BlockDescriptor>) {
 
 }
 
+pub fn interval_surface_test() -> (Context, Vec<BlockDescriptor>) {
+    let all_variables = Context {
+        globals: btreemap!{
+            "a".to_string() => 0.0,
+            "b".to_string() => 1.0,
+        },
+    };
+
+    let curve_quality = 1;
+    let first_descriptor = BlockDescriptor {
+        id: "1".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "a".to_string(),
+            end: "b".to_string(),
+            quality: curve_quality,
+            name: "u".to_string(),
+        })
+    };
+    let second_descriptor = BlockDescriptor {
+        id: "2".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "a".to_string(),
+            end: "b".to_string(),
+            quality: curve_quality,
+            name: "v".to_string(),
+        })
+    };
+    let surface_descriptor = BlockDescriptor {
+        id: "3".to_string(),
+        data: DescriptorData::Surface(SurfaceBlockDescriptor {
+            interval_first_id: "1".to_string(),
+            interval_second_id: "2".to_string(),
+            x_function: "u".to_string(),
+            y_function: "0.25*sin(v*2*3.1451)".to_string(),
+            z_function: "v".to_string(),
+//            x_function: "a".to_string(),
+//            y_function: "b".to_string(),
+//            z_function: "a+b".to_string(),
+        })
+    };
+
+    let all_descriptors: Vec<BlockDescriptor> = vec![first_descriptor, second_descriptor, surface_descriptor].into();
+
+    (all_variables, all_descriptors)
+
+}
+
 use crate::device_manager;
 use crate::compute_chain;
 // maps a buffer, waits for it to be available, and copies its contents into a new Vec<f32>

@@ -254,7 +254,7 @@ impl SurfaceData {
         } else {
             panic!("internal error");
         }
-        let second_interval_block = compute_chain.chain.get(&descriptor.interval_first_id).expect("unable to find dependency for curve block").clone();
+        let second_interval_block = compute_chain.chain.get(&descriptor.interval_second_id).expect("unable to find dependency for curve block").clone();
         let second_interval_data: &IntervalData;
         if let ComputeBlock::Interval(data) = second_interval_block {
             second_interval_data = data;
@@ -264,12 +264,12 @@ impl SurfaceData {
         // We are creating a surface from 2 intervals, output vertex count is the product of the
         // two interval sizes. Buffer size is 4 times as much, because we are storing a Vec4
         let out_sizes = Vec3u { x: first_interval_data.out_sizes.x, y: second_interval_data.out_sizes.x, z: 1};
-        let output_buffer_size = std::mem::size_of::<ultraviolet::Vec3>() as u64 * out_sizes.x as u64 * out_sizes.y as u64;
+        let output_buffer_size = std::mem::size_of::<ultraviolet::Vec4>() as u64 * out_sizes.x as u64 * out_sizes.y as u64;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             mapped_at_creation: false,
             size: output_buffer_size as wgpu::BufferAddress,
-            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE,
+            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
         });
         dbg!(&output_buffer_size);
 
@@ -277,11 +277,11 @@ impl SurfaceData {
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
 
-layout(set = 0, binding = 0) buffer InputBuffer {{
+layout(set = 0, binding = 0) buffer InputBuffer1 {{
     float {par1}_buff[];
 }};
 
-layout(set = 0, binding = 0) buffer InputBuffer {{
+layout(set = 0, binding = 1) buffer InputBuffer2 {{
     float {par2}_buff[];
 }};
 
@@ -292,9 +292,11 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
 {header}
 
 void main() {{
-    uint index = gl_GlobalInvocationID.x;
-    float {par1} = {par1}_buff[index];
-    float {par2} = {par2}_buff[index];
+    uint par1_idx = gl_GlobalInvocationID.x;
+    uint par2_idx = gl_GlobalInvocationID.y;
+    uint index = gl_GlobalInvocationID.x + gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    float {par1} = {par1}_buff[par1_idx];
+    float {par2} = {par2}_buff[par2_idx];
     out_buff[index].x = {fx};
     out_buff[index].y = {fy};
     out_buff[index].z = {fz};
@@ -309,7 +311,7 @@ void main() {{
             buffer_slice: first_interval_data.out_buffer.slice(..)
         });
         bindings.push(CustomBindDescriptor {
-            position: 0,
+            position: 1,
             buffer_slice: second_interval_data.out_buffer.slice(..)
         });
         // add descriptor for output buffer
@@ -333,6 +335,6 @@ void main() {{
             compute_pass.set_pipeline(&self.compute_pipeline);
             compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
             compute_pass.set_bind_group(1, variables_bind_group, &[]);
-            compute_pass.dispatch((self.out_sizes.x/LOCAL_SIZE_X) as u32, 1, 1);
+            compute_pass.dispatch((self.out_sizes.x/LOCAL_SIZE_X) as u32, (self.out_sizes.y/LOCAL_SIZE_Y) as u32, 1);
     }
 }

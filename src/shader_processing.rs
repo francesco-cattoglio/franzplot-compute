@@ -38,6 +38,7 @@ pub fn compute_shader_from_glsl(
                     resource: wgpu::BindingResource::Buffer (buffer_slice),
                     });
         }
+        dbg!(&layout_entries);
         let compute_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &layout_entries,

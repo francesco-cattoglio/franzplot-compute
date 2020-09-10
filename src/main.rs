@@ -1,3 +1,4 @@
+use maplit::btreemap;
 use winit::dpi::PhysicalSize;
 use winit::{
     event::*,
@@ -5,6 +6,10 @@ use winit::{
     window::{Window, WindowBuilder},
 };
 
+mod camera;
+mod model;
+mod texture;
+mod renderer;
 mod device_manager;
 mod compute_chain;
 mod compute_block;
@@ -35,32 +40,83 @@ fn copy_buffer_as_f32(buffer: &wgpu::Buffer, device: &wgpu::Device) -> Vec<f32> 
     result
 }
 
-fn main() {
-    let device_manager = device_manager::Manager::new();
 
-    let (all_variables, all_descriptors) = testing_room::interval_curve_test();
+fn main() {
+    let event_loop = EventLoop::new();
+    let mut builder = winit::window::WindowBuilder::new();
+    builder = builder.with_title("test");
+    #[cfg(windows_OFF)] // TODO check for news regarding this
+    {
+        use winit::platform::windows::WindowBuilderExtWindows;
+        builder = builder.with_no_redirection_bitmap(true);
+    }
+    let window = builder.build(&event_loop).unwrap();
+
+    let mut device_manager = device_manager::Manager::new(&window);
+
+    let (all_variables, all_descriptors) = testing_room::interval_surface_test();
 
     dbg!(&all_descriptors);
     let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
-
     chain.run_chain(&device_manager.device, &device_manager.queue);
-    println!("Hello, world!");
-    let output_block = chain.chain.get("2").expect("could not find curve block");
+    let output_block = chain.chain.get("3").expect("could not find curve block");
     let out_data = copy_buffer_as_f32(output_block.get_buffer(), &device_manager.device);
     dbg!(out_data);
-    use maplit::btreemap;
-    let new_variables = compute_chain::Context {
-        globals: btreemap!{
-            "a".to_string() => 0.5*3.1415,
-            "b".to_string() => 3.1415,
-        },
-    };
+    let out_buffer_slice = output_block.get_buffer().slice(..);
+    let mut renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
 
-    println!("updated variables:");
-    dbg!(&new_variables);
-    chain.update_globals(&device_manager.queue, &new_variables);
-    chain.run_chain(&device_manager.device, &device_manager.queue);
-    let output_block = chain.chain.get("2").expect("could not find curve block");
-    let out_data = copy_buffer_as_f32(output_block.get_buffer(), &device_manager.device);
-    dbg!(out_data);
+    let mut elapsed_time = std::time::Duration::from_secs(0);
+    let mut old_instant = std::time::Instant::now();
+    event_loop.run(move |event, _, control_flow| {
+        let now = std::time::Instant::now();
+
+        let frame_duration = now.duration_since(old_instant);
+        if frame_duration.as_millis() > 0 {
+            //println!("frame time: {} ms", frame_duration.as_millis());
+            elapsed_time += frame_duration;
+        }
+        old_instant = now;
+        match event {
+        Event::WindowEvent {
+            ref event,
+            window_id,
+        } if window_id == window.id() => {
+                match event {
+                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                    WindowEvent::KeyboardInput { input, .. } => match input {
+                        KeyboardInput {
+                            state: ElementState::Pressed,
+                            virtual_keycode: Some(VirtualKeyCode::Escape),
+                            ..
+                        } => *control_flow = ControlFlow::Exit,
+                        _ => {}
+                    },
+                    WindowEvent::Resized(_physical_size) => {
+                    }
+                    _ => {}
+                }
+        }
+        Event::RedrawRequested(_) => {
+            // update variables and do the actual rendering
+        // now, update the variables and run the chain again
+        let new_variables = compute_chain::Context {
+            globals: btreemap!{
+                "a".to_string() => 0.0,
+                "b".to_string() => 0.15*elapsed_time.as_secs_f32(),
+            },
+        };
+        chain.update_globals(&device_manager.queue, &new_variables);
+        chain.run_chain(&device_manager.device, &device_manager.queue);
+            let mut frame = device_manager.swap_chain.get_current_frame()
+                .expect("could not get next frame");
+            renderer.render(&mut frame, &device_manager);
+        }
+        Event::MainEventsCleared => {
+            // RedrawRequested will only trigger once, unless we manually
+            // request it.
+            window.request_redraw();
+        }
+        _ => {}
+    }
+    });
 }
