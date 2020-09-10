@@ -96,33 +96,12 @@ layout(set = 1, binding = 0) uniform Uniforms {
         queue.submit(std::iter::once(compute_queue));
     }
 
-    pub fn update_globals(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, context: &Context) {
+    pub fn update_globals(&mut self, queue: &wgpu::Queue, context: &Context) {
         // need to check if the global_vars contains exactly the same global
         // names as the context we passed to this function.
         assert!(self.global_vars.iter().eq(context.globals.keys()));
         // if this is true, then we need to move data into the globals buffer
         let values: Vec<f32> = context.globals.values().copied().collect();
-        //let staging_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        //    label: None,
-        //    contents: bytemuck::cast_slice(&values),
-        //    usage: wgpu::BufferUsage::COPY_SRC
-        //}
-        //);
-
-        //let mut encoder =
-        //    device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-        //    label: Some("Update globals encoder"),
-        //});
-        //encoder.copy_buffer_to_buffer(
-        //    &staging_buffer,
-        //    0,
-        //    &self.globals_buffer,
-        //    0,
-        //    self.globals_buffer_size,
-        //);
-
-        //let compute_queue = encoder.finish();
-        //queue.submit(std::iter::once(compute_queue));
         queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&values));
     }
 
@@ -143,6 +122,7 @@ layout(set = 1, binding = 0) uniform Uniforms {
             let block: ComputeBlock = match &descriptor.data {
                 DescriptorData::Curve(desc) => desc.to_block(&chain, device),
                 DescriptorData::Interval(desc) => desc.to_block(&chain, device),
+                DescriptorData::Surface(desc) => desc.to_block(&chain, device),
             };
             chain.insert(&descriptor.id, block)?;
         }
