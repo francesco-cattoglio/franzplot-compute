@@ -37,7 +37,6 @@ pub fn interval_curve_test() -> (Context, Vec<BlockDescriptor>) {
     let all_descriptors: Vec<BlockDescriptor> = vec![first_descriptor, second_descriptor].into();
 
     (all_variables, all_descriptors)
-
 }
 
 pub fn interval_surface_test() -> (Context, Vec<BlockDescriptor>) {
@@ -115,7 +114,17 @@ fn copy_buffer_as_f32(buffer: &wgpu::Buffer, device: &wgpu::Device) -> Vec<f32> 
 
 #[test]
 fn test_curve_compute() {
-    let device_manager = device_manager::Manager::new();
+    let event_loop = winit::event_loop::EventLoop::new();
+    let mut builder = winit::window::WindowBuilder::new();
+    builder = builder.with_title("test");
+    #[cfg(windows_OFF)] // TODO check for news regarding this
+    {
+        use winit::platform::windows::WindowBuilderExtWindows;
+        builder = builder.with_no_redirection_bitmap(true);
+    }
+    let window = builder.build(&event_loop).unwrap();
+
+    let mut device_manager = device_manager::Manager::new(&window);
 
     let (all_variables, all_descriptors) = interval_curve_test();
 
@@ -139,6 +148,119 @@ fn test_curve_compute() {
     dbg!(&new_variables);
     chain.update_globals(&device_manager.queue, &new_variables);
     chain.run_chain(&device_manager.device, &device_manager.queue);
+    let output_block = chain.chain.get("2").expect("could not find curve block");
+    let out_data = copy_buffer_as_f32(output_block.get_buffer(), &device_manager.device);
+    dbg!(out_data);
+}
+
+pub fn simple_matrix_descriptors() -> (Context, Vec<BlockDescriptor>) {
+    let all_variables = Context {
+        globals: btreemap!{
+            "a".to_string() => 0.0,
+            "b".to_string() => 1.0,
+        },
+    };
+
+    let curve_quality = 1;
+    let first_descriptor = BlockDescriptor {
+        id: "1".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "a".to_string(),
+            end: "b".to_string(),
+            quality: curve_quality,
+            name: "u".to_string(),
+        })
+    };
+    let second_descriptor = BlockDescriptor {
+        id: "2".to_string(),
+        data: DescriptorData::Matrix(MatrixBlockDescriptor {
+            interval_id: None,
+        })
+    };
+
+    let all_descriptors: Vec<BlockDescriptor> = vec![first_descriptor, second_descriptor].into();
+
+    (all_variables, all_descriptors)
+}
+
+pub fn interval_matrix_descriptors() -> (Context, Vec<BlockDescriptor>) {
+    let all_variables = Context {
+        globals: btreemap!{
+            "a".to_string() => 0.0,
+            "b".to_string() => 1.0,
+        },
+    };
+
+    let curve_quality = 1;
+    let first_descriptor = BlockDescriptor {
+        id: "1".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "a".to_string(),
+            end: "b".to_string(),
+            quality: curve_quality,
+            name: "u".to_string(),
+        })
+    };
+    let second_descriptor = BlockDescriptor {
+        id: "2".to_string(),
+        data: DescriptorData::Matrix(MatrixBlockDescriptor {
+            interval_id: Some("1".to_string()),
+        })
+    };
+
+    let all_descriptors: Vec<BlockDescriptor> = vec![first_descriptor, second_descriptor].into();
+
+    (all_variables, all_descriptors)
+}
+
+#[test]
+fn test_simple_matrix() {
+    let event_loop = winit::event_loop::EventLoop::new();
+    let mut builder = winit::window::WindowBuilder::new();
+    builder = builder.with_title("test");
+    #[cfg(windows_OFF)] // TODO check for news regarding this
+    {
+        use winit::platform::windows::WindowBuilderExtWindows;
+        builder = builder.with_no_redirection_bitmap(true);
+    }
+    let window = builder.build(&event_loop).unwrap();
+
+    println!("abebe");
+    let device_manager = device_manager::Manager::new(&window);
+
+    let (all_variables, all_descriptors) = simple_matrix_descriptors();
+
+    dbg!(&all_descriptors);
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+
+    chain.run_chain(&device_manager.device, &device_manager.queue);
+    println!("Hello, world!");
+    let output_block = chain.chain.get("2").expect("could not find curve block");
+    let out_data = copy_buffer_as_f32(output_block.get_buffer(), &device_manager.device);
+    dbg!(out_data);
+}
+
+#[test]
+fn test_interval_matrix() {
+    let event_loop = winit::event_loop::EventLoop::new();
+    let mut builder = winit::window::WindowBuilder::new();
+    builder = builder.with_title("test");
+    #[cfg(windows_OFF)] // TODO check for news regarding this
+    {
+        use winit::platform::windows::WindowBuilderExtWindows;
+        builder = builder.with_no_redirection_bitmap(true);
+    }
+    let window = builder.build(&event_loop).unwrap();
+
+    let device_manager = device_manager::Manager::new(&window);
+
+    let (all_variables, all_descriptors) = interval_matrix_descriptors();
+
+    dbg!(&all_descriptors);
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+
+    chain.run_chain(&device_manager.device, &device_manager.queue);
+    println!("Hello, world!");
     let output_block = chain.chain.get("2").expect("could not find curve block");
     let out_data = copy_buffer_as_f32(output_block.get_buffer(), &device_manager.device);
     dbg!(out_data);

@@ -119,11 +119,7 @@ layout(set = 1, binding = 0) uniform Uniforms {
         // right now descriptors need to be in the "correct" order, so that all blocks that depend
         // on something are encountered after the blocks they depend on.
         for descriptor in descriptors.iter() {
-            let block: ComputeBlock = match &descriptor.data {
-                DescriptorData::Curve(desc) => desc.to_block(&chain, device),
-                DescriptorData::Interval(desc) => desc.to_block(&chain, device),
-                DescriptorData::Surface(desc) => desc.to_block(&chain, device),
-            };
+            let block = descriptor.data.to_block(&chain, &device);
             chain.insert(&descriptor.id, block)?;
         }
 
