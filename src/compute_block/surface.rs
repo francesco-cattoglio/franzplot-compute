@@ -1,0 +1,125 @@
+use crate::compute_chain::ComputeChain;
+use crate::shader_processing::*;
+use super::ComputeBlock;
+use ultraviolet::Vec3u;
+use super::IntervalData;
+
+const LOCAL_SIZE_X: u32 = 16;
+const LOCAL_SIZE_Y: u32 = 16;
+
+#[derive(Debug)]
+pub struct SurfaceBlockDescriptor {
+    pub interval_first_id: String,
+    pub interval_second_id: String,
+    pub x_function: String,
+    pub y_function: String,
+    pub z_function: String,
+}
+impl SurfaceBlockDescriptor {
+    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
+        ComputeBlock::Surface(SurfaceData::new(chain, device, &self))
+    }
+}
+
+pub struct SurfaceData {
+    pub out_buffer: wgpu::Buffer,
+    pub compute_pipeline: wgpu::ComputePipeline,
+    compute_bind_group: wgpu::BindGroup,
+    pub out_sizes: Vec3u,
+    #[allow(unused)]
+    buffer_size: wgpu::BufferAddress,
+}
+
+impl SurfaceData {
+    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &SurfaceBlockDescriptor) -> Self {
+        let first_interval_block = compute_chain.chain.get(&descriptor.interval_first_id).expect("unable to find dependency for curve block").clone();
+        let first_interval_data: &IntervalData;
+        if let ComputeBlock::Interval(data) = first_interval_block {
+            first_interval_data = data;
+        } else {
+            panic!("internal error");
+        }
+        let second_interval_block = compute_chain.chain.get(&descriptor.interval_second_id).expect("unable to find dependency for curve block").clone();
+        let second_interval_data: &IntervalData;
+        if let ComputeBlock::Interval(data) = second_interval_block {
+            second_interval_data = data;
+        } else {
+            panic!("internal error");
+        }
+        // We are creating a surface from 2 intervals, output vertex count is the product of the
+        // two interval sizes. Buffer size is 4 times as much, because we are storing a Vec4
+        let out_sizes = Vec3u { x: first_interval_data.out_sizes.x, y: second_interval_data.out_sizes.x, z: 1};
+        let output_buffer_size = std::mem::size_of::<ultraviolet::Vec4>() as u64 * out_sizes.x as u64 * out_sizes.y as u64;
+        let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            mapped_at_creation: false,
+            size: output_buffer_size as wgpu::BufferAddress,
+            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
+        });
+        dbg!(&output_buffer_size);
+
+        let shader_source = format!(r##"
+#version 450
+layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
+
+layout(set = 0, binding = 0) buffer InputBuffer1 {{
+    float {par1}_buff[];
+}};
+
+layout(set = 0, binding = 1) buffer InputBuffer2 {{
+    float {par2}_buff[];
+}};
+
+layout(set = 0, binding = 2) buffer OutputBuffer {{
+    vec4 out_buff[];
+}};
+
+{header}
+
+void main() {{
+    uint par1_idx = gl_GlobalInvocationID.x;
+    uint par2_idx = gl_GlobalInvocationID.y;
+    uint index = gl_GlobalInvocationID.x + gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    float {par1} = {par1}_buff[par1_idx];
+    float {par2} = {par2}_buff[par2_idx];
+    out_buff[index].x = {fx};
+    out_buff[index].y = {fy};
+    out_buff[index].z = {fz};
+    out_buff[index].w = 1;
+}}
+"##, header=&compute_chain.shader_header, par1=&first_interval_data.name, par2=&second_interval_data.name, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, fx=&descriptor.x_function, fy=&descriptor.y_function, fz=&descriptor.z_function);
+        println!("debug info for curve shader: \n{}", shader_source);
+        let mut bindings = Vec::<CustomBindDescriptor>::new();
+        // add descriptor for input buffers
+        bindings.push(CustomBindDescriptor {
+            position: 0,
+            buffer_slice: first_interval_data.out_buffer.slice(..)
+        });
+        bindings.push(CustomBindDescriptor {
+            position: 1,
+            buffer_slice: second_interval_data.out_buffer.slice(..)
+        });
+        // add descriptor for output buffer
+        bindings.push(CustomBindDescriptor {
+            position: 2,
+            buffer_slice: out_buffer.slice(..)
+        });
+        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"));
+
+        Self {
+            compute_pipeline,
+            compute_bind_group,
+            out_buffer,
+            out_sizes,
+            buffer_size: output_buffer_size,
+        }
+    }
+
+    pub fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
+            let mut compute_pass = encoder.begin_compute_pass();
+            compute_pass.set_pipeline(&self.compute_pipeline);
+            compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
+            compute_pass.set_bind_group(1, variables_bind_group, &[]);
+            compute_pass.dispatch((self.out_sizes.x/LOCAL_SIZE_X) as u32, (self.out_sizes.y/LOCAL_SIZE_Y) as u32, 1);
+    }
+}
