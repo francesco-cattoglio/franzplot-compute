@@ -1,11 +1,11 @@
 use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
 use super::ComputeBlock;
-use ultraviolet::Vec3u;
+use super::Dimensions;
 use super::IntervalData;
 
-const LOCAL_SIZE_X: u32 = 16;
-const LOCAL_SIZE_Y: u32 = 16;
+const LOCAL_SIZE_X: usize = 16;
+const LOCAL_SIZE_Y: usize = 16;
 
 #[derive(Debug)]
 pub struct SurfaceBlockDescriptor {
@@ -25,7 +25,7 @@ pub struct SurfaceData {
     pub out_buffer: wgpu::Buffer,
     pub compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
-    pub out_sizes: Vec3u,
+    pub out_dim: Dimensions,
     #[allow(unused)]
     buffer_size: wgpu::BufferAddress,
 }
@@ -48,8 +48,10 @@ impl SurfaceData {
         }
         // We are creating a surface from 2 intervals, output vertex count is the product of the
         // two interval sizes. Buffer size is 4 times as much, because we are storing a Vec4
-        let out_sizes = Vec3u { x: first_interval_data.out_sizes.x, y: second_interval_data.out_sizes.x, z: 1};
-        let output_buffer_size = std::mem::size_of::<ultraviolet::Vec4>() as u64 * out_sizes.x as u64 * out_sizes.y as u64;
+        let dim_1 = first_interval_data.out_dim.as_1d().unwrap();
+        let dim_2 = second_interval_data.out_dim.as_1d().unwrap();
+        let out_dim = Dimensions::D2(dim_1, dim_2);
+        let output_buffer_size = 0; //std::mem::size_of::<ultraviolet::Vec4>() as u64 * out_sizes.x as u64 * out_sizes.y as u64;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             mapped_at_creation: false,
@@ -110,7 +112,7 @@ void main() {{
             compute_pipeline,
             compute_bind_group,
             out_buffer,
-            out_sizes,
+            out_dim,
             buffer_size: output_buffer_size,
         }
     }
@@ -120,6 +122,7 @@ void main() {{
             compute_pass.set_pipeline(&self.compute_pipeline);
             compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
             compute_pass.set_bind_group(1, variables_bind_group, &[]);
-            compute_pass.dispatch((self.out_sizes.x/LOCAL_SIZE_X) as u32, (self.out_sizes.y/LOCAL_SIZE_Y) as u32, 1);
+            let (par_1, par_2) = self.out_dim.as_2d().unwrap();
+            compute_pass.dispatch((par_1.size/LOCAL_SIZE_X) as u32, (par_2.size/LOCAL_SIZE_Y) as u32, 1);
     }
 }

@@ -1,11 +1,8 @@
 use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
 use super::ComputeBlock;
-use ultraviolet::Vec3u;
+use super::Dimensions;
 use super::IntervalData;
-
-const LOCAL_SIZE_X: u32 = 16;
-const LOCAL_SIZE_Y: u32 = 16;
 
 #[derive(Debug)]
 pub struct CurveBlockDescriptor {
@@ -24,7 +21,7 @@ pub struct CurveData {
     pub out_buffer: wgpu::Buffer,
     pub compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
-    pub out_sizes: Vec3u,
+    pub out_dim: Dimensions,
     #[allow(unused)]
     buffer_size: wgpu::BufferAddress,
 }
@@ -40,21 +37,24 @@ impl CurveData {
         }
         // We are creating a curve from an interval, output vertex count is the same as the input
         // one. Buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
-        let out_sizes = interval_data.out_sizes;
-        let input_buffer_size = interval_data.buffer_size;
-        let output_buffer_size = input_buffer_size * 4;
+        let out_dim = interval_data.out_dim.clone();
+        let param = out_dim.as_1d().unwrap();
+        let n_points = param.size;
+        let output_buffer_size = (n_points * 4 * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             mapped_at_creation: false,
             size: output_buffer_size,
             usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::STORAGE,
         });
-        dbg!(&input_buffer_size);
         dbg!(&output_buffer_size);
 
+        // Optimization note: a curve, just line an interval, will always fit a single compute
+        // invocation, since the limit on the size of the work group (maxComputeWorkGroupInvocations)
+        // is at least 256 on every device.
         let shader_source = format!(r##"
 #version 450
-layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
+layout(local_size_x = {dimx}, local_size_y = 1) in;
 
 layout(set = 0, binding = 0) buffer InputBuffer {{
     float {par}_buff[];
@@ -74,7 +74,7 @@ void main() {{
     out_buff[index].z = {fz};
     out_buff[index].w = 1;
 }}
-"##, header=&compute_chain.shader_header, par=&interval_data.name, dimx=LOCAL_SIZE_X, dimy=1, fx=&descriptor.x_function, fy=&descriptor.y_function, fz=&descriptor.z_function);
+"##, header=&compute_chain.shader_header, par=&interval_data.name, dimx=n_points, fx=&descriptor.x_function, fy=&descriptor.y_function, fz=&descriptor.z_function);
         println!("debug info for curve shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -93,7 +93,7 @@ void main() {{
             compute_pipeline,
             compute_bind_group,
             out_buffer,
-            out_sizes,
+            out_dim,
             buffer_size: output_buffer_size,
         }
     }
@@ -103,7 +103,9 @@ void main() {{
             compute_pass.set_pipeline(&self.compute_pipeline);
             compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
             compute_pass.set_bind_group(1, variables_bind_group, &[]);
-            compute_pass.dispatch((self.out_sizes.x/LOCAL_SIZE_X) as u32, 1, 1);
+            // BEWARE: as described before, we wrote the size of the buffer inside the local shader
+            // dimensions, therefore the whole compute will always take just 1 dispatch
+            compute_pass.dispatch(1, 1, 1);
     }
 }
 

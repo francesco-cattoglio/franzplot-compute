@@ -1,9 +1,7 @@
 use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
 use super::ComputeBlock;
-use ultraviolet::Vec3u;
-
-const LOCAL_SIZE_X: u32 = 16;
+use super::Dimensions;
 
 #[derive(Debug)]
 pub struct MatrixBlockDescriptor {
@@ -22,7 +20,7 @@ pub struct MatrixData {
     pub buffer_size: wgpu::BufferAddress,
     compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
-    pub out_sizes: Vec3u,
+    pub out_dim: Dimensions,
 }
 
 impl MatrixData {
@@ -39,10 +37,10 @@ impl MatrixData {
             compute_pass.set_pipeline(&self.compute_pipeline);
             compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
             compute_pass.set_bind_group(1, variables_bind_group, &[]);
-            // depending on what kind of matrix we are producing, we need to dispatch one compute
-            // or as many computes as the interval is big
-            //compute_pass.dispatch(1 as u32, 1 as u32, 1);
-            compute_pass.dispatch((self.out_sizes.x/LOCAL_SIZE_X) as u32, 1 as u32, 1);
+            // regardless of this matrix being a simple or an interval one, this will be at most
+            // 256 elements, and this means that we can fit them into a single local group,
+            // an we will only need 1 dispatch operation
+            compute_pass.dispatch(1, 1, 1);
     }
 
     // TODO: maybe do not use the whole descriptor, but pass in the interval and the matrix strings
@@ -55,10 +53,10 @@ impl MatrixData {
         } else {
             panic!("");
         }
-        let out_sizes = interval_data.out_sizes;
-        // in order to keep the memory bandwidth as small as possible, we only pass in the first
-        // three rows of the transform matrix
-        let output_buffer_size = 16 * std::mem::size_of::<f32>() as u64 * out_sizes.x as u64;
+        let out_dim = interval_data.out_dim.clone();
+        let par = out_dim.as_1d().unwrap();
+        let n_evals = par.size;
+        let output_buffer_size = (16 * std::mem::size_of::<f32>() * n_evals) as wgpu::BufferAddress;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             mapped_at_creation: false,
@@ -92,7 +90,7 @@ void main() {{
     out_buff[index][2] = col_2;
     out_buff[index][3] = col_3;
 }}
-"##, header=&compute_chain.shader_header, par=&interval_data.name, dimx=LOCAL_SIZE_X);
+"##, header=&compute_chain.shader_header, par=&interval_data.name, dimx=n_evals);
         println!("debug info for matrix shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -111,24 +109,22 @@ void main() {{
             compute_pipeline,
             compute_bind_group,
             out_buffer,
-            out_sizes,
+            out_dim,
             buffer_size: output_buffer_size,
         }
     }
 
-    // TODO: maybe do not use the whole descriptor, but pass in only the matrix strings
     fn new_without_interval(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &MatrixBlockDescriptor) -> Self {
-        let out_sizes = ultraviolet::Vec3u{ x: 1, y:1, z:1 };
+        let out_dim = Dimensions::D0;
         // in order to keep the memory bandwidth as small as possible, we only pass in the first
         // three rows of the transform matrix
-        let output_buffer_size = 16 * std::mem::size_of::<f32>() as u64 * out_sizes.x as u64;
+        let output_buffer_size = 16 * std::mem::size_of::<f32>() as wgpu::BufferAddress;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
             mapped_at_creation: false,
             size: output_buffer_size,
             usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::STORAGE,
         });
-        println!("new matrix no interval");
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = 1, local_size_y = 1) in;
@@ -164,7 +160,7 @@ void main() {{
             compute_pipeline,
             compute_bind_group,
             out_buffer,
-            out_sizes,
+            out_dim,
             buffer_size: output_buffer_size,
         }
     }

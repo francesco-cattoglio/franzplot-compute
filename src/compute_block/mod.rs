@@ -1,4 +1,5 @@
-use ultraviolet::Vec3u;
+use anyhow::Result;
+pub use smol_str::SmolStr;
 
 pub mod curve;
 pub use curve::{CurveBlockDescriptor, CurveData};
@@ -21,6 +22,40 @@ pub enum ComputeBlock {
     Surface(SurfaceData),
     Transform(TransformData),
     Matrix(MatrixData),
+}
+
+#[derive(Clone)]
+pub struct Parameter {
+    name: SmolStr,
+    size: usize,
+}
+#[derive(Clone)]
+pub enum Dimensions {
+    D0,
+    D1(Parameter),
+    D2(Parameter, Parameter)
+}
+
+impl Dimensions {
+
+    pub fn as_0d(&self) -> Result<()> {
+        match self {
+            Self::D0 => Ok(()),
+            _ => Err(anyhow::anyhow!("error converting dimensions to 0D")),
+        }
+    }
+    pub fn as_1d(&self) -> Result<Parameter> {
+        match self {
+            Self::D1(dim) => Ok(dim.clone()),
+            _ => Err(anyhow::anyhow!("error converting dimensions to 1D")),
+        }
+    }
+    pub fn as_2d(&self) -> Result<(Parameter, Parameter)> {
+        match self {
+            Self::D2(dim1, dim2) => Ok((dim1.clone(), dim2.clone())),
+            _ => Err(anyhow::anyhow!("error converting dimensions to 2D")),
+        }
+    }
 }
 
 impl ComputeBlock {
