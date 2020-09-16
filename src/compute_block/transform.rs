@@ -127,11 +127,33 @@ impl TransformData {
             },
             (Dimensions::D2(geo_p1, geo_p2), Dimensions::D1(mat_param)) if geo_p1 == mat_param => {
                 out_dim = Dimensions::D2(geo_p1.clone(), geo_p2.clone());
-                unimplemented!();
+                out_buffer = out_dim.create_storage_buffer(elem_size, &device);
+                dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
+                let (pipeline, bind_group) = Self::transform_2d_same_param(
+                    &compute_chain,
+                    &device,
+                    geometry_buffer_slice,
+                    matrix_buffer_slice,
+                    out_buffer.slice(..),
+                    1
+                    );
+                compute_pipeline = pipeline;
+                compute_bind_group = bind_group;
             },
             (Dimensions::D2(geo_p1, geo_p2), Dimensions::D1(mat_param)) if geo_p2 == mat_param => {
                 out_dim = Dimensions::D2(geo_p1.clone(), geo_p2.clone());
-                unimplemented!();
+                out_buffer = out_dim.create_storage_buffer(elem_size, &device);
+                dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
+                let (pipeline, bind_group) = Self::transform_2d_same_param(
+                    &compute_chain,
+                    &device,
+                    geometry_buffer_slice,
+                    matrix_buffer_slice,
+                    out_buffer.slice(..),
+                    2
+                    );
+                compute_pipeline = pipeline;
+                compute_bind_group = bind_group;
             },
             (Dimensions::D2(geo_p1, geo_p2), Dimensions::D1(mat_param)) => {
                 panic!("We are applying a parametric transform to a surface");
@@ -252,7 +274,7 @@ void main() {{
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
 
 layout(set = 0, binding = 0) buffer InputBuffer {{
-    float in_buff[];
+    vec4 in_buff[];
 }};
 
 layout(set = 0, binding = 1) buffer InputBuffer {{
@@ -271,6 +293,53 @@ void main() {{
     out_buff[index] = in_matrix * in_buff[index];
 }}
 "##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
+        println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+        let mut bindings = Vec::<CustomBindDescriptor>::new();
+        // add descriptor for input buffer
+        bindings.push(CustomBindDescriptor {
+            position: 0,
+            buffer_slice: in_buff,
+        });
+        // add descriptor for matrix
+        bindings.push(CustomBindDescriptor {
+            position: 1,
+            buffer_slice: in_matrix,
+        });
+        bindings.push(CustomBindDescriptor {
+            position: 2,
+            buffer_slice: out_buff,
+        });
+        compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
+    }
+
+    fn transform_2d_same_param(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
+        which_param: u32) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+        let shader_source = format!(r##"
+#version 450
+layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
+
+layout(set = 0, binding = 0) buffer InputSurface {{
+    vec4 in_buff[];
+}};
+
+layout(set = 0, binding = 1) buffer InputMatrix {{
+    mat4 in_matrix[];
+}};
+
+layout(set = 0, binding = 2) buffer OutputBuffer {{
+    vec4 out_buff[];
+}};
+
+{header}
+
+void main() {{
+    uint index_1 = gl_GlobalInvocationID.x;
+    uint index_2 = gl_GlobalInvocationID.y;
+    // the only difference between the 1d->1d and the 2d->2d shader is the local_sizes and the indexing
+    uint index = gl_GlobalInvocationID.x + gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    out_buff[index] = in_matrix[index_{which_idx}] * in_buff[index];
+}}
+"##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, which_idx=which_param);
         println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
