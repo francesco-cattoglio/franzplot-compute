@@ -14,7 +14,7 @@ mod device_manager;
 mod compute_chain;
 mod compute_block;
 mod shader_processing;
-mod testing_room;
+mod tests;
 
 // maps a buffer, waits for it to be available, and copies its contents into a new Vec<f32>
 fn copy_buffer_as_f32(buffer: &wgpu::Buffer, device: &wgpu::Device) -> Vec<f32> {
@@ -54,7 +54,7 @@ fn main() {
 
     let mut device_manager = device_manager::Manager::new(&window);
 
-    let (all_variables, all_descriptors) = testing_room::interval_surface_test();
+    let (all_variables, all_descriptors) = tests::interval_surface_test();
 
     dbg!(&all_descriptors);
     let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();

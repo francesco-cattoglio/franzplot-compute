@@ -24,7 +24,7 @@ pub enum ComputeBlock {
     Matrix(MatrixData),
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct Parameter {
     name: SmolStr,
     size: usize,
@@ -37,7 +37,6 @@ pub enum Dimensions {
 }
 
 impl Dimensions {
-
     pub fn as_0d(&self) -> Result<()> {
         match self {
             Self::D0 => Ok(()),
@@ -55,6 +54,19 @@ impl Dimensions {
             Self::D2(dim1, dim2) => Ok((dim1.clone(), dim2.clone())),
             _ => Err(anyhow::anyhow!("error converting dimensions to 2D")),
         }
+    }
+    pub fn create_storage_buffer(&self, element_size: usize, device: &wgpu::Device) -> wgpu::Buffer {
+        let buff_size = match self {
+            Dimensions::D0 => element_size,
+            Dimensions::D1(param)=> element_size * param.size,
+            Dimensions::D2(par1, par2) => element_size * par1.size * par2.size,
+        };
+        device.create_buffer(&wgpu::BufferDescriptor {
+            label: None,
+            mapped_at_creation: false,
+            size: buff_size as wgpu::BufferAddress,
+            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
+        })
     }
 }
 
@@ -92,6 +104,7 @@ pub enum DescriptorData {
     Interval (IntervalBlockDescriptor),
     Surface (SurfaceBlockDescriptor),
     Matrix (MatrixBlockDescriptor),
+    Transform (TransformBlockDescriptor),
 }
 
 use crate::compute_chain::ComputeChain;
@@ -102,6 +115,7 @@ impl DescriptorData {
             DescriptorData::Interval(desc) => desc.to_block(&chain, device),
             DescriptorData::Surface(desc) => desc.to_block(&chain, device),
             DescriptorData::Matrix(desc) => desc.to_block(&chain, device),
+            DescriptorData::Transform(desc) => desc.to_block(&chain, device),
         }
     }
 }

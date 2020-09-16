@@ -26,8 +26,6 @@ pub struct SurfaceData {
     pub compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
     pub out_dim: Dimensions,
-    #[allow(unused)]
-    buffer_size: wgpu::BufferAddress,
 }
 
 impl SurfaceData {
@@ -51,14 +49,13 @@ impl SurfaceData {
         let dim_1 = first_interval_data.out_dim.as_1d().unwrap();
         let dim_2 = second_interval_data.out_dim.as_1d().unwrap();
         let out_dim = Dimensions::D2(dim_1, dim_2);
-        let output_buffer_size = 0; //std::mem::size_of::<ultraviolet::Vec4>() as u64 * out_sizes.x as u64 * out_sizes.y as u64;
-        let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            mapped_at_creation: false,
-            size: output_buffer_size as wgpu::BufferAddress,
-            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
-        });
-        dbg!(&output_buffer_size);
+        let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
+            //let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        //    label: None,
+        //    mapped_at_creation: false,
+        //    size: output_buffer_size as wgpu::BufferAddress,
+        //    usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
+        //});
 
         let shader_source = format!(r##"
 #version 450
@@ -113,7 +110,6 @@ void main() {{
             compute_bind_group,
             out_buffer,
             out_dim,
-            buffer_size: output_buffer_size,
         }
     }
 

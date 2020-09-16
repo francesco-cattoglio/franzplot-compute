@@ -225,7 +225,6 @@ fn test_simple_matrix() {
     }
     let window = builder.build(&event_loop).unwrap();
 
-    println!("abebe");
     let device_manager = device_manager::Manager::new(&window);
 
     let (all_variables, all_descriptors) = simple_matrix_descriptors();
@@ -242,18 +241,7 @@ fn test_simple_matrix() {
 
 #[test]
 fn test_interval_matrix() {
-    let event_loop = winit::event_loop::EventLoop::new();
-    let mut builder = winit::window::WindowBuilder::new();
-    builder = builder.with_title("test");
-    #[cfg(windows_OFF)] // TODO check for news regarding this
-    {
-        use winit::platform::windows::WindowBuilderExtWindows;
-        builder = builder.with_no_redirection_bitmap(true);
-    }
-    let window = builder.build(&event_loop).unwrap();
-
-    let device_manager = device_manager::Manager::new(&window);
-
+    let (window, device_manager) = setup_test();
     let (all_variables, all_descriptors) = interval_matrix_descriptors();
 
     dbg!(&all_descriptors);
@@ -264,4 +252,76 @@ fn test_interval_matrix() {
     let output_block = chain.chain.get("2").expect("could not find curve block");
     let out_data = copy_buffer_as_f32(output_block.get_buffer(), &device_manager.device);
     dbg!(out_data);
+}
+
+fn setup_test() -> (winit::window::Window, device_manager::Manager) {
+    let event_loop = winit::event_loop::EventLoop::new();
+    let mut builder = winit::window::WindowBuilder::new();
+    builder = builder.with_title("test");
+    #[cfg(windows_OFF)] // TODO check for news regarding this
+    {
+        use winit::platform::windows::WindowBuilderExtWindows;
+        builder = builder.with_no_redirection_bitmap(true);
+    }
+    let window = builder.build(&event_loop).unwrap();
+    let device_manager = device_manager::Manager::new(&window);
+
+    (window, device_manager)
+}
+
+#[test]
+fn simple_transform () {
+    let (window, device_manager) = setup_test();
+
+    // define descriptors for interval, curve, simple matrix and transform
+
+    let interval_desc = BlockDescriptor {
+        id: "1".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "0".to_string(),
+            end: "1".to_string(),
+            quality: 1,
+            name: "s".to_string(),
+        })
+    };
+    let curve_desc = BlockDescriptor {
+        id: "2".to_string(),
+        data: DescriptorData::Curve(CurveBlockDescriptor {
+            interval_input_id: "1".to_string(),
+            x_function: "s".to_string(),
+            y_function: "0.0".to_string(),
+            z_function: "0.0".to_string(),
+        })
+    };
+    let matrix_desc = BlockDescriptor {
+        id: "3".to_string(),
+        data: DescriptorData::Matrix(MatrixBlockDescriptor {
+            interval_id: None,
+        })
+    };
+    let transform_desc = BlockDescriptor {
+        id: "4".to_string(),
+        data: DescriptorData::Transform(TransformBlockDescriptor {
+            geometry_id: "2".to_string(),
+            matrix_id: "3".to_string(),
+        })
+    };
+
+    let all_variables = Context {
+        globals: btreemap!{
+            "pi".to_string() => 3.1415,
+        },
+    };
+    let all_descriptors: Vec<BlockDescriptor> = vec![interval_desc, curve_desc, matrix_desc, transform_desc].into();
+
+    dbg!(&all_descriptors);
+    println!("Running the chain");
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    chain.run_chain(&device_manager.device, &device_manager.queue);
+    let curve_block = chain.chain.get("2").expect("could not find curve block");
+    let curve_data = copy_buffer_as_f32(curve_block.get_buffer(), &device_manager.device);
+    dbg!(curve_data);
+    let transformed_block = chain.chain.get("4").expect("could not find curve block");
+    let transformed_data = copy_buffer_as_f32(transformed_block.get_buffer(), &device_manager.device);
+    dbg!(transformed_data);
 }

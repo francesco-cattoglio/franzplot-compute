@@ -137,8 +137,8 @@ layout(set = 0, binding = 0) buffer OutputBuffer {{
 
 void main() {{
     uint index = gl_GlobalInvocationID.x;
-    vec4 col_0 = vec4(1.0, 0.2, 0.1, 0.0);
-    vec4 col_1 = vec4(0.0, 1.0, 0.0, 0.0);
+    vec4 col_0 = vec4(0.0, 1.0, 0.0, 0.0);
+    vec4 col_1 = vec4(1.0, 0.0, 0.0, 0.0);
     vec4 col_2 = vec4(0.0, 0.0, 1.0, 0.0);
     vec4 col_3 = vec4(0.0, 0.0, 0.0, 1.0);
     out_buff[index][0] = col_0;
