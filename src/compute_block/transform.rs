@@ -18,14 +18,6 @@ impl TransformBlockDescriptor {
     }
 }
 
-enum TransformKind {
-    SameDim,
-    Dim01,
-    Dim12,
-    D1Multi,
-    D2Multi1,
-    D2Multi2,
-}
 pub struct TransformData {
     pub out_buffer: wgpu::Buffer,
     compute_pipeline: wgpu::ComputePipeline,
@@ -47,19 +39,19 @@ impl TransformData {
             ComputeBlock::Matrix(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             _ => panic!("internal error"),
         };
-        // now we need to do something different depending on the size of the matrices: if the
-        // matrix is a simple one, then we just need a shader that reads every vector in the
-        // input buffer and multiplies it by the matrix before outputting something.
-        // Otherwise, we will need to compute new sizes depending on the initial geometry size!
         let out_dim: Dimensions;
         let out_buffer: wgpu::Buffer;
         let compute_pipeline: wgpu::ComputePipeline;
         let compute_bind_group: wgpu::BindGroup;
         let dispatch_sizes: (usize, usize);
-        // TODO: make this into a match statement
-        // TODO: we need to handle the situation in which I am applying a transform in the same
-        // parameter name as the one being used in the curve or surface!
         let elem_size = 4 * std::mem::size_of::<f32>();
+        // This massive match statement handles the 9 different possible combinations
+        // of geometries and matrices being applied to them.
+        // Some of these cases are really simple (usually this is true when the matrix is a non-parametric one).
+        // While others can be quite convoluted. However this match statement should be easy to understand.
+        // One important detail, some of these arms have if conditions to check if the parameter
+        // used in the matrix is the same used in the geometry. Make sure to keep them in the
+        // correct order (i.e: they must be before the match with no if condition)
         match (geometry_dim, matrix_dim) {
             (Dimensions::D0, Dimensions::D0) => {
                 out_dim = Dimensions::D0;
@@ -155,7 +147,7 @@ impl TransformData {
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
             },
-            (Dimensions::D2(geo_p1, geo_p2), Dimensions::D1(mat_param)) => {
+            (Dimensions::D2(_geo_p1, _geo_p2), Dimensions::D1(_mat_param)) => {
                 panic!("We are applying a parametric transform to a surface");
             },
             (_, Dimensions::D2(_, _)) => {
@@ -176,8 +168,6 @@ impl TransformData {
             compute_pass.set_pipeline(&self.compute_pipeline);
             compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
             compute_pass.set_bind_group(1, variables_bind_group, &[]);
-            // BEWARE: as described before, we wrote the size of the buffer inside the local shader
-            // dimensions, therefore the whole compute will always take just 1 dispatch
             compute_pass.dispatch(self.dispatch_sizes.0 as u32, self.dispatch_sizes.1 as u32, 1);
     }
 
@@ -273,11 +263,11 @@ void main() {{
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
 
-layout(set = 0, binding = 0) buffer InputBuffer {{
+layout(set = 0, binding = 0) buffer InputSurface {{
     vec4 in_buff[];
 }};
 
-layout(set = 0, binding = 1) buffer InputBuffer {{
+layout(set = 0, binding = 1) buffer InputMatrix {{
     mat4 in_matrix;
 }};
 

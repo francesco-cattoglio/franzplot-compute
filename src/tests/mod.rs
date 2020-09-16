@@ -270,7 +270,7 @@ fn setup_test() -> (winit::window::Window, device_manager::Manager) {
 }
 
 #[test]
-fn simple_transform () {
+fn simple_curve_transform () {
     let (_window, device_manager) = setup_test();
 
     // define descriptors for interval, curve, simple matrix and transform
@@ -378,6 +378,139 @@ fn same_parameter_curve_transform () {
     let curve_block = chain.chain.get("2").expect("could not find curve block");
     let curve_data = copy_buffer_as_f32(curve_block.get_buffer(), &device_manager.device);
     dbg!(curve_data);
+    let transformed_block = chain.chain.get("4").expect("could not find curve block");
+    let transformed_data = copy_buffer_as_f32(transformed_block.get_buffer(), &device_manager.device);
+    dbg!(transformed_data);
+}
+
+#[test]
+fn transform_1d_2up () {
+    let (_window, device_manager) = setup_test();
+
+    // define descriptors for interval, curve, simple matrix and transform
+
+    let interval_s_desc = BlockDescriptor {
+        id: "@s".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "0".to_string(),
+            end: "1".to_string(),
+            quality: 1,
+            name: "s".to_string(),
+        })
+    };
+    let interval_t_desc = BlockDescriptor {
+        id: "@t".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "0".to_string(),
+            end: "1".to_string(),
+            quality: 1,
+            name: "t".to_string(),
+        })
+    };
+    let curve_desc = BlockDescriptor {
+        id: "2".to_string(),
+        data: DescriptorData::Curve(CurveBlockDescriptor {
+            interval_input_id: "@s".to_string(),
+            x_function: "s".to_string(),
+            y_function: "0.0".to_string(),
+            z_function: "0.0".to_string(),
+        })
+    };
+    let matrix_desc = BlockDescriptor {
+        id: "3".to_string(),
+        data: DescriptorData::Matrix(MatrixBlockDescriptor {
+            interval_id: Some("@t".to_string()),
+        })
+    };
+    let transform_desc = BlockDescriptor {
+        id: "4".to_string(),
+        data: DescriptorData::Transform(TransformBlockDescriptor {
+            geometry_id: "2".to_string(),
+            matrix_id: "3".to_string(),
+        })
+    };
+
+    let all_variables = Context {
+        globals: btreemap!{
+            "pi".to_string() => 3.1415,
+        },
+    };
+    let all_descriptors: Vec<BlockDescriptor> = vec![interval_s_desc, interval_t_desc, curve_desc, matrix_desc, transform_desc].into();
+
+    dbg!(&all_descriptors);
+    println!("Running the chain");
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    chain.run_chain(&device_manager.device, &device_manager.queue);
+    let curve_block = chain.chain.get("2").expect("could not find curve block");
+    let curve_data = copy_buffer_as_f32(curve_block.get_buffer(), &device_manager.device);
+    dbg!(curve_data);
+    let transformed_block = chain.chain.get("4").expect("could not find curve block");
+    let transformed_data = copy_buffer_as_f32(transformed_block.get_buffer(), &device_manager.device);
+    dbg!(transformed_data);
+}
+
+#[test]
+fn simple_surface_transform () {
+    let (_window, device_manager) = setup_test();
+
+    // define descriptors for interval, curve, simple matrix and transform
+
+    let interval_s_desc = BlockDescriptor {
+        id: "@s".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "0".to_string(),
+            end: "1".to_string(),
+            quality: 1,
+            name: "s".to_string(),
+        })
+    };
+    let interval_t_desc = BlockDescriptor {
+        id: "@t".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "0".to_string(),
+            end: "1".to_string(),
+            quality: 1,
+            name: "t".to_string(),
+        })
+    };
+    let surf_desc = BlockDescriptor {
+        id: "2".to_string(),
+        data: DescriptorData::Surface(SurfaceBlockDescriptor {
+            interval_first_id: "@s".to_string(),
+            interval_second_id: "@t".to_string(),
+            x_function: "s".to_string(),
+            y_function: "t".to_string(),
+            z_function: "0.0".to_string(),
+        })
+    };
+    let matrix_desc = BlockDescriptor {
+        id: "3".to_string(),
+        data: DescriptorData::Matrix(MatrixBlockDescriptor {
+            interval_id: None,
+        })
+    };
+    let transform_desc = BlockDescriptor {
+        id: "4".to_string(),
+        data: DescriptorData::Transform(TransformBlockDescriptor {
+            geometry_id: "2".to_string(),
+            matrix_id: "3".to_string(),
+        })
+    };
+
+    let all_variables = Context {
+        globals: btreemap!{
+            "pi".to_string() => 3.1415,
+        },
+    };
+    let all_descriptors: Vec<BlockDescriptor> = vec![interval_s_desc, interval_t_desc, surf_desc, matrix_desc, transform_desc].into();
+
+    dbg!(&all_descriptors);
+    println!("Running the chain");
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    chain.run_chain(&device_manager.device, &device_manager.queue);
+    let surf_block = chain.chain.get("2").expect("could not find curve block");
+    let surf_data = copy_buffer_as_f32(surf_block.get_buffer(), &device_manager.device);
+    dbg!(surf_data);
     let transformed_block = chain.chain.get("4").expect("could not find curve block");
     let transformed_data = copy_buffer_as_f32(transformed_block.get_buffer(), &device_manager.device);
     dbg!(transformed_data);
@@ -512,72 +645,6 @@ fn same_param2_surface_transform () {
     let surf_block = chain.chain.get("2").expect("could not find curve block");
     let surf_data = copy_buffer_as_f32(surf_block.get_buffer(), &device_manager.device);
     dbg!(surf_data);
-    let transformed_block = chain.chain.get("4").expect("could not find curve block");
-    let transformed_data = copy_buffer_as_f32(transformed_block.get_buffer(), &device_manager.device);
-    dbg!(transformed_data);
-}
-
-#[test]
-fn transform_1d_2up () {
-    let (_window, device_manager) = setup_test();
-
-    // define descriptors for interval, curve, simple matrix and transform
-
-    let interval_s_desc = BlockDescriptor {
-        id: "@s".to_string(),
-        data: DescriptorData::Interval(IntervalBlockDescriptor {
-            begin: "0".to_string(),
-            end: "1".to_string(),
-            quality: 1,
-            name: "s".to_string(),
-        })
-    };
-    let interval_t_desc = BlockDescriptor {
-        id: "@t".to_string(),
-        data: DescriptorData::Interval(IntervalBlockDescriptor {
-            begin: "0".to_string(),
-            end: "1".to_string(),
-            quality: 1,
-            name: "t".to_string(),
-        })
-    };
-    let curve_desc = BlockDescriptor {
-        id: "2".to_string(),
-        data: DescriptorData::Curve(CurveBlockDescriptor {
-            interval_input_id: "@s".to_string(),
-            x_function: "s".to_string(),
-            y_function: "0.0".to_string(),
-            z_function: "0.0".to_string(),
-        })
-    };
-    let matrix_desc = BlockDescriptor {
-        id: "3".to_string(),
-        data: DescriptorData::Matrix(MatrixBlockDescriptor {
-            interval_id: Some("@t".to_string()),
-        })
-    };
-    let transform_desc = BlockDescriptor {
-        id: "4".to_string(),
-        data: DescriptorData::Transform(TransformBlockDescriptor {
-            geometry_id: "2".to_string(),
-            matrix_id: "3".to_string(),
-        })
-    };
-
-    let all_variables = Context {
-        globals: btreemap!{
-            "pi".to_string() => 3.1415,
-        },
-    };
-    let all_descriptors: Vec<BlockDescriptor> = vec![interval_s_desc, interval_t_desc, curve_desc, matrix_desc, transform_desc].into();
-
-    dbg!(&all_descriptors);
-    println!("Running the chain");
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
-    chain.run_chain(&device_manager.device, &device_manager.queue);
-    let curve_block = chain.chain.get("2").expect("could not find curve block");
-    let curve_data = copy_buffer_as_f32(curve_block.get_buffer(), &device_manager.device);
-    dbg!(curve_data);
     let transformed_block = chain.chain.get("4").expect("could not find curve block");
     let transformed_data = copy_buffer_as_f32(transformed_block.get_buffer(), &device_manager.device);
     dbg!(transformed_data);
