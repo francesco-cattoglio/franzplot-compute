@@ -207,11 +207,11 @@ void main() {{
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
 
-layout(set = 0, binding = 0) buffer InputBuffer {{
-    float in_buff[];
+layout(set = 0, binding = 0) buffer InputCurve {{
+    vec4 in_buff[];
 }};
 
-layout(set = 0, binding = 1) buffer InputBuffer {{
+layout(set = 0, binding = 1) buffer InputMatrix {{
     mat4 in_matrix[];
 }};
 
@@ -296,11 +296,11 @@ void main() {{
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
 
-layout(set = 0, binding = 0) buffer InputBuffer {{
-    float in_buff[];
+layout(set = 0, binding = 0) buffer InputCurve {{
+    vec4 in_buff[];
 }};
 
-layout(set = 0, binding = 1) buffer InputBuffer {{
+layout(set = 0, binding = 1) buffer InputMatrix {{
     mat4 in_matrix[];
 }};
 
@@ -314,7 +314,7 @@ void main() {{
     // the output index should be the same as the common 2D -> 2D transform
     uint index = gl_GlobalInvocationID.x + gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
     // while the index used for accessing the inputs are the global invocation id for x and y
-    out_buff[index] = in_matrix[gl_GlobalInvocationID.y] * in_buff[glGlobalInvocationID.x];
+    out_buff[index] = in_matrix[gl_GlobalInvocationID.y] * in_buff[gl_GlobalInvocationID.x];
 }}
 "##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
         println!("debug info for 1d->1d transform shader: \n{}", shader_source);
