@@ -1,6 +1,9 @@
 use anyhow::Result;
 pub use smol_str::SmolStr;
 
+pub mod point;
+pub use point::{PointBlockDescriptor, PointData};
+
 pub mod curve;
 pub use curve::{CurveBlockDescriptor, CurveData};
 
@@ -17,6 +20,7 @@ pub mod matrix;
 pub use matrix::{MatrixData, MatrixBlockDescriptor};
 
 pub enum ComputeBlock {
+    Point(PointData),
     Interval(IntervalData),
     Curve(CurveData),
     Surface(SurfaceData),
@@ -73,6 +77,7 @@ impl Dimensions {
 impl ComputeBlock {
     pub fn get_buffer(&self) -> &wgpu::Buffer {
         match self {
+            Self::Point(data) => &data.out_buffer,
             Self::Interval(data) => &data.out_buffer,
             Self::Curve(data) => &data.out_buffer,
             Self::Surface(data) => &data.out_buffer,
@@ -83,6 +88,7 @@ impl ComputeBlock {
 
     pub fn encode(&self, globals_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
         match self {
+            Self::Point(data) => data.encode(globals_bind_group, encoder),
             Self::Interval(data) => data.encode(globals_bind_group, encoder),
             Self::Curve(data) => data.encode(globals_bind_group, encoder),
             Self::Surface(data) => data.encode(globals_bind_group, encoder),
@@ -100,6 +106,7 @@ pub struct BlockDescriptor {
 
 #[derive(Debug)]
 pub enum DescriptorData {
+    Point (PointBlockDescriptor),
     Curve (CurveBlockDescriptor),
     Interval (IntervalBlockDescriptor),
     Surface (SurfaceBlockDescriptor),
@@ -111,6 +118,7 @@ use crate::compute_chain::ComputeChain;
 impl DescriptorData {
     pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
         match &self {
+            DescriptorData::Point(desc) => desc.to_block(&chain, device),
             DescriptorData::Curve(desc) => desc.to_block(&chain, device),
             DescriptorData::Interval(desc) => desc.to_block(&chain, device),
             DescriptorData::Surface(desc) => desc.to_block(&chain, device),

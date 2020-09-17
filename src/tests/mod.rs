@@ -270,6 +270,111 @@ fn setup_test() -> (winit::window::Window, device_manager::Manager) {
 }
 
 #[test]
+fn simple_point_transform () {
+    let (_window, device_manager) = setup_test();
+
+    // define descriptors for pointinterval, curve, simple matrix and transform
+    let all_variables = Context {
+        globals: btreemap!{
+            "a".to_string() => 0.33333,
+            "pi".to_string() => 3.1415,
+        },
+    };
+
+    let point_desc = BlockDescriptor {
+        id: "1".to_string(),
+        data: DescriptorData::Point(PointBlockDescriptor {
+            fx: "a".to_string(),
+            fy: "0".to_string(),
+            fz: "1".to_string(),
+        })
+    };
+    let matrix_desc = BlockDescriptor {
+        id: "2".to_string(),
+        data: DescriptorData::Matrix(MatrixBlockDescriptor {
+            interval_id: None,
+        })
+    };
+    let transform_desc = BlockDescriptor {
+        id: "3".to_string(),
+        data: DescriptorData::Transform(TransformBlockDescriptor {
+            geometry_id: "1".to_string(),
+            matrix_id: "2".to_string(),
+        })
+    };
+
+    let all_descriptors: Vec<BlockDescriptor> = vec![point_desc, matrix_desc, transform_desc].into();
+
+    dbg!(&all_descriptors);
+    println!("Running the chain");
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    chain.run_chain(&device_manager.device, &device_manager.queue);
+    let point_block = chain.chain.get("1").expect("could not find point block");
+    let point_data = copy_buffer_as_f32(point_block.get_buffer(), &device_manager.device);
+    dbg!(point_data);
+    let transformed_block = chain.chain.get("3").expect("could not find transformed block");
+    let transformed_data = copy_buffer_as_f32(transformed_block.get_buffer(), &device_manager.device);
+    dbg!(transformed_data);
+}
+
+#[test]
+fn interval_point_transform () {
+    let (_window, device_manager) = setup_test();
+
+    // define descriptors for pointinterval, curve, simple matrix and transform
+    let all_variables = Context {
+        globals: btreemap!{
+            "a".to_string() => 0.123456,
+            "pi".to_string() => 3.1415,
+        },
+    };
+
+    let point_desc = BlockDescriptor {
+        id: "1".to_string(),
+        data: DescriptorData::Point(PointBlockDescriptor {
+            fx: "a".to_string(),
+            fy: "0".to_string(),
+            fz: "-1".to_string(),
+        })
+    };
+    let interval_desc = BlockDescriptor {
+        id: "@s".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "0".to_string(),
+            end: "2".to_string(),
+            quality: 2,
+            name: "s".to_string(),
+        })
+    };
+    let matrix_desc = BlockDescriptor {
+        id: "2".to_string(),
+        data: DescriptorData::Matrix(MatrixBlockDescriptor {
+            interval_id: Some("@s".to_string()),
+        })
+    };
+    let transform_desc = BlockDescriptor {
+        id: "3".to_string(),
+        data: DescriptorData::Transform(TransformBlockDescriptor {
+            geometry_id: "1".to_string(),
+            matrix_id: "2".to_string(),
+        })
+    };
+
+    let all_descriptors: Vec<BlockDescriptor> = vec![point_desc, interval_desc, matrix_desc, transform_desc].into();
+
+    dbg!(&all_descriptors);
+    println!("Running the chain");
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    chain.run_chain(&device_manager.device, &device_manager.queue);
+    let point_block = chain.chain.get("1").expect("could not find point block");
+    let point_data = copy_buffer_as_f32(point_block.get_buffer(), &device_manager.device);
+    dbg!(point_data);
+    let transformed_block = chain.chain.get("3").expect("could not find transformed block");
+    let transformed_data = copy_buffer_as_f32(transformed_block.get_buffer(), &device_manager.device);
+    dbg!(transformed_data);
+}
+
+#[test]
 fn simple_curve_transform () {
     let (_window, device_manager) = setup_test();
 

@@ -31,6 +31,7 @@ impl TransformData {
         let geometry_block = compute_chain.chain.get(&descriptor.geometry_id).expect("could not find input geometry");
         let matrix_block = compute_chain.chain.get(&descriptor.matrix_id).expect("could not find input matrix");
         let (geometry_dim, geometry_buffer_slice) = match geometry_block {
+            ComputeBlock::Point(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             ComputeBlock::Curve(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             ComputeBlock::Surface(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             _ => panic!("Internal error"),
@@ -55,11 +56,31 @@ impl TransformData {
         match (geometry_dim, matrix_dim) {
             (Dimensions::D0, Dimensions::D0) => {
                 out_dim = Dimensions::D0;
-                unimplemented!();
+                out_buffer = out_dim.create_storage_buffer(elem_size, &device);
+                dispatch_sizes = (1, 1);
+                let (pipeline, bind_group) = Self::transform_0d_0d(
+                    &compute_chain,
+                    &device,
+                    geometry_buffer_slice,
+                    matrix_buffer_slice,
+                    out_buffer.slice(..),
+                    );
+                compute_pipeline = pipeline;
+                compute_bind_group = bind_group;
             },
             (Dimensions::D0, Dimensions::D1(mat_param)) => {
                 out_dim = Dimensions::D1(mat_param.clone());
-                unimplemented!();
+                out_buffer = out_dim.create_storage_buffer(elem_size, &device);
+                dispatch_sizes = (mat_param.size/LOCAL_SIZE_X, 1);
+                let (pipeline, bind_group) = Self::transform_0d_up1(
+                    &compute_chain,
+                    &device,
+                    geometry_buffer_slice,
+                    matrix_buffer_slice,
+                    out_buffer.slice(..),
+                    );
+                compute_pipeline = pipeline;
+                compute_bind_group = bind_group;
             },
             (Dimensions::D1(geo_param), Dimensions::D0) => {
                 out_dim = Dimensions::D1(geo_param.clone());
@@ -169,6 +190,94 @@ impl TransformData {
             compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
             compute_pass.set_bind_group(1, variables_bind_group, &[]);
             compute_pass.dispatch(self.dispatch_sizes.0 as u32, self.dispatch_sizes.1 as u32, 1);
+    }
+
+    fn transform_0d_0d(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+        let shader_source = format!(r##"
+#version 450
+layout(local_size_x = 1, local_size_y = 1) in;
+
+layout(set = 0, binding = 0) buffer InputPoint {{
+    vec4 in_buff;
+}};
+
+layout(set = 0, binding = 1) buffer InputMatrix {{
+    mat4 in_matrix;
+}};
+
+layout(set = 0, binding = 2) buffer OutputBuffer {{
+    vec4 out_buff;
+}};
+
+{header}
+
+void main() {{
+    out_buff = in_matrix * in_buff;
+}}
+"##, header=&compute_chain.shader_header);
+        println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+        let mut bindings = Vec::<CustomBindDescriptor>::new();
+        // add descriptor for input buffer
+        bindings.push(CustomBindDescriptor {
+            position: 0,
+            buffer_slice: in_buff,
+        });
+        // add descriptor for matrix
+        bindings.push(CustomBindDescriptor {
+            position: 1,
+            buffer_slice: in_matrix,
+        });
+        bindings.push(CustomBindDescriptor {
+            position: 2,
+            buffer_slice: out_buff,
+        });
+        compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
+    }
+
+    fn transform_0d_up1(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
+                     ) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+        let shader_source = format!(r##"
+#version 450
+layout(local_size_x = {dimx}, local_size_y = 1) in;
+
+layout(set = 0, binding = 0) buffer InputCurve {{
+    vec4 in_point;
+}};
+
+layout(set = 0, binding = 1) buffer InputMatrix {{
+    mat4 in_matrix[];
+}};
+
+layout(set = 0, binding = 2) buffer OutputBuffer {{
+    vec4 out_buff[];
+}};
+
+{header}
+
+void main() {{
+    // the output index should be the same as the common 2D -> 2D transform
+    uint index = gl_GlobalInvocationID.x;
+    // while the index used for accessing the inputs are the global invocation id for x and y
+    out_buff[index] = in_matrix[index] * in_point;
+}}
+"##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X);
+        println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+        let mut bindings = Vec::<CustomBindDescriptor>::new();
+        // add descriptor for input buffer
+        bindings.push(CustomBindDescriptor {
+            position: 0,
+            buffer_slice: in_buff,
+        });
+        // add descriptor for matrix
+        bindings.push(CustomBindDescriptor {
+            position: 1,
+            buffer_slice: in_matrix,
+        });
+        bindings.push(CustomBindDescriptor {
+            position: 2,
+            buffer_slice: out_buff,
+        });
+        compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
     }
 
     fn transform_1d_1d(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
@@ -302,6 +411,52 @@ void main() {{
         compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
     }
 
+    fn transform_1d_up2(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
+                     ) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+        let shader_source = format!(r##"
+#version 450
+layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
+
+layout(set = 0, binding = 0) buffer InputCurve {{
+    vec4 in_buff[];
+}};
+
+layout(set = 0, binding = 1) buffer InputMatrix {{
+    mat4 in_matrix[];
+}};
+
+layout(set = 0, binding = 2) buffer OutputBuffer {{
+    vec4 out_buff[];
+}};
+
+{header}
+
+void main() {{
+    // the output index should be the same as the common 2D -> 2D transform
+    uint index = gl_GlobalInvocationID.x + gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    // while the index used for accessing the inputs are the global invocation id for x and y
+    out_buff[index] = in_matrix[gl_GlobalInvocationID.y] * in_buff[gl_GlobalInvocationID.x];
+}}
+"##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
+        println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+        let mut bindings = Vec::<CustomBindDescriptor>::new();
+        // add descriptor for input buffer
+        bindings.push(CustomBindDescriptor {
+            position: 0,
+            buffer_slice: in_buff,
+        });
+        // add descriptor for matrix
+        bindings.push(CustomBindDescriptor {
+            position: 1,
+            buffer_slice: in_matrix,
+        });
+        bindings.push(CustomBindDescriptor {
+            position: 2,
+            buffer_slice: out_buff,
+        });
+        compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
+    }
+
     fn transform_2d_same_param(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
         which_param: u32) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
         let shader_source = format!(r##"
@@ -330,52 +485,6 @@ void main() {{
     out_buff[index] = in_matrix[index_{which_idx}] * in_buff[index];
 }}
 "##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, which_idx=which_param);
-        println!("debug info for 1d->1d transform shader: \n{}", shader_source);
-        let mut bindings = Vec::<CustomBindDescriptor>::new();
-        // add descriptor for input buffer
-        bindings.push(CustomBindDescriptor {
-            position: 0,
-            buffer_slice: in_buff,
-        });
-        // add descriptor for matrix
-        bindings.push(CustomBindDescriptor {
-            position: 1,
-            buffer_slice: in_matrix,
-        });
-        bindings.push(CustomBindDescriptor {
-            position: 2,
-            buffer_slice: out_buff,
-        });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
-    }
-
-    fn transform_1d_up2(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
-                     ) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
-        let shader_source = format!(r##"
-#version 450
-layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
-
-layout(set = 0, binding = 0) buffer InputCurve {{
-    vec4 in_buff[];
-}};
-
-layout(set = 0, binding = 1) buffer InputMatrix {{
-    mat4 in_matrix[];
-}};
-
-layout(set = 0, binding = 2) buffer OutputBuffer {{
-    vec4 out_buff[];
-}};
-
-{header}
-
-void main() {{
-    // the output index should be the same as the common 2D -> 2D transform
-    uint index = gl_GlobalInvocationID.x + gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
-    // while the index used for accessing the inputs are the global invocation id for x and y
-    out_buff[index] = in_matrix[gl_GlobalInvocationID.y] * in_buff[gl_GlobalInvocationID.x];
-}}
-"##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
         println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
