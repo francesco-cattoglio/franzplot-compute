@@ -1,17 +1,31 @@
 use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
+use smol_str::SmolStr;
 use super::ComputeBlock;
 use super::Dimensions;
 
 #[derive(Debug)]
 pub struct MatrixBlockDescriptor {
     pub interval_id: Option<String>,
+    pub m: [[SmolStr; 4]; 3], // matrix elements, row-major order
 }
 
 impl MatrixBlockDescriptor {
     pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
-        println!("executing matrix to_block");
         ComputeBlock::Matrix(MatrixData::new(chain, device, &self))
+    }
+}
+
+impl Default for MatrixBlockDescriptor {
+    fn default() -> Self {
+        Self {
+            interval_id: None,
+            m: [
+                ["1.0".into(),"0.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"1.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"0.0".into(),"1.0".into(),"0.0".into()]
+            ]
+        }
     }
 }
 
@@ -44,8 +58,8 @@ impl MatrixData {
     }
 
     // TODO: maybe do not use the whole descriptor, but pass in the interval and the matrix strings
-    fn new_with_interval(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &MatrixBlockDescriptor) -> Self {
-        let interval_id = descriptor.interval_id.as_ref().unwrap();
+    fn new_with_interval(compute_chain: &ComputeChain, device: &wgpu::Device, desc: &MatrixBlockDescriptor) -> Self {
+        let interval_id = desc.interval_id.as_ref().unwrap();
         let interval_block = compute_chain.chain.get(interval_id).expect("could not find the interval");
         let interval_data;
         if let ComputeBlock::Interval(data) = interval_block {
@@ -80,17 +94,22 @@ layout(set = 0, binding = 1) buffer OutputBuffer {{
 void main() {{
     uint index = gl_GlobalInvocationID.x;
     float {par} = {par}_buff[index];
-    vec4 col_0 = vec4(1.0, 0.0, 0.0, 0.0);
-    vec4 col_1 = vec4(0.0, 1.0, 0.0, 0.0);
-    vec4 col_2 = vec4(0.0, 0.0, 1.0, 0.0);
-    vec4 col_3 = vec4(0.0, 0.0, {par}, 1.0);
+    vec4 col_0 = vec4({_m00}, {_m10}, {_m20}, 0.0);
+    vec4 col_1 = vec4({_m01}, {_m11}, {_m21}, 0.0);
+    vec4 col_2 = vec4({_m02}, {_m12}, {_m22}, 0.0);
+    vec4 col_3 = vec4({_m03}, {_m13}, {_m23}, 1.0);
 
     out_buff[index][0] = col_0;
     out_buff[index][1] = col_1;
     out_buff[index][2] = col_2;
     out_buff[index][3] = col_3;
 }}
-"##, header=&compute_chain.shader_header, par=&interval_data.name, dimx=n_evals);
+"##, header=&compute_chain.shader_header, par=&interval_data.name, dimx=n_evals,
+    _m00=desc.m[0][0], _m10=desc.m[1][0], _m20=desc.m[2][0],
+    _m01=desc.m[0][1], _m11=desc.m[1][1], _m21=desc.m[2][1],
+    _m02=desc.m[0][2], _m12=desc.m[1][2], _m22=desc.m[2][2],
+    _m03=desc.m[0][3], _m13=desc.m[1][3], _m23=desc.m[2][3],
+);
         println!("debug info for matrix shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer

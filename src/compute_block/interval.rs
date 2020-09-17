@@ -2,9 +2,6 @@ use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
 use super::{ ComputeBlock, Dimensions, Parameter };
 
-const LOCAL_SIZE_X: usize = 16;
-const LOCAL_SIZE_Y: usize = 16;
-
 #[derive(Debug)]
 pub struct IntervalBlockDescriptor {
     pub begin: String,

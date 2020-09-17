@@ -14,6 +14,7 @@ mod device_manager;
 mod compute_chain;
 mod compute_block;
 mod shader_processing;
+#[cfg(test)]
 mod tests;
 
 // maps a buffer, waits for it to be available, and copies its contents into a new Vec<f32>
@@ -40,6 +41,53 @@ fn copy_buffer_as_f32(buffer: &wgpu::Buffer, device: &wgpu::Device) -> Vec<f32> 
     result
 }
 
+use compute_chain::Context;
+use compute_block::*;
+pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
+    let all_variables = Context {
+        globals: btreemap!{
+            "a".to_string() => 0.0,
+            "b".to_string() => 1.0,
+            "pi".to_string() => 3.1415,
+        },
+    };
+
+    let curve_quality = 1;
+    let first_descriptor = BlockDescriptor {
+        id: "1".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "a".to_string(),
+            end: "b".to_string(),
+            quality: curve_quality,
+            name: "u".to_string(),
+        })
+    };
+    let second_descriptor = BlockDescriptor {
+        id: "2".to_string(),
+        data: DescriptorData::Interval(IntervalBlockDescriptor {
+            begin: "a".to_string(),
+            end: "b".to_string(),
+            quality: curve_quality,
+            name: "v".to_string(),
+        })
+    };
+    let surface_descriptor = BlockDescriptor {
+        id: "3".to_string(),
+        data: DescriptorData::Surface(SurfaceBlockDescriptor {
+            interval_first_id: "1".to_string(),
+            interval_second_id: "2".to_string(),
+            x_function: "u".to_string(),
+            y_function: "0.25*sin(v*2*pi)".to_string(),
+            z_function: "v".to_string(),
+        })
+    };
+
+    let all_descriptors: Vec<BlockDescriptor> = vec![first_descriptor, second_descriptor, surface_descriptor].into();
+
+    (all_variables, all_descriptors)
+
+}
+
 
 fn main() {
     let event_loop = EventLoop::new();
@@ -54,7 +102,7 @@ fn main() {
 
     let mut device_manager = device_manager::Manager::new(&window);
 
-    let (all_variables, all_descriptors) = tests::interval_surface_test();
+    let (all_variables, all_descriptors) = surface_chain_descriptors();
 
     dbg!(&all_descriptors);
     let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
@@ -63,7 +111,7 @@ fn main() {
     let out_data = copy_buffer_as_f32(output_block.get_buffer(), &device_manager.device);
     dbg!(out_data);
     let out_buffer_slice = output_block.get_buffer().slice(..);
-    let mut renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
+    let renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
 
     let mut elapsed_time = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();

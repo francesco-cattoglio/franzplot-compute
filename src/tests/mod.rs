@@ -28,9 +28,6 @@ pub fn interval_curve_test() -> (Context, Vec<BlockDescriptor>) {
             x_function: "sin(k)".to_string(),
             y_function: "cos(k)".to_string(),
             z_function: "k".to_string(),
-//            x_function: "a".to_string(),
-//            y_function: "b".to_string(),
-//            z_function: "a+b".to_string(),
         })
     };
 
@@ -112,8 +109,7 @@ fn copy_buffer_as_f32(buffer: &wgpu::Buffer, device: &wgpu::Device) -> Vec<f32> 
     result
 }
 
-#[test]
-fn test_curve_compute() {
+fn setup_test() -> (winit::window::Window, device_manager::Manager) {
     let event_loop = winit::event_loop::EventLoop::new();
     let mut builder = winit::window::WindowBuilder::new();
     builder = builder.with_title("test");
@@ -123,8 +119,15 @@ fn test_curve_compute() {
         builder = builder.with_no_redirection_bitmap(true);
     }
     let window = builder.build(&event_loop).unwrap();
+    let device_manager = device_manager::Manager::new(&window);
 
-    let mut device_manager = device_manager::Manager::new(&window);
+    (window, device_manager)
+}
+
+
+#[test]
+fn test_curve_compute() {
+    let (_window, device_manager) = setup_test();
 
     let (all_variables, all_descriptors) = interval_curve_test();
 
@@ -171,11 +174,12 @@ pub fn simple_matrix_descriptors() -> (Context, Vec<BlockDescriptor>) {
             name: "u".to_string(),
         })
     };
+
+    let mut matrix_block = MatrixBlockDescriptor { ..Default::default() };
+    matrix_block.m[0][0] = "3".into();
     let second_descriptor = BlockDescriptor {
         id: "2".to_string(),
-        data: DescriptorData::Matrix(MatrixBlockDescriptor {
-            interval_id: None,
-        })
+        data: DescriptorData::Matrix(matrix_block)
     };
 
     let all_descriptors: Vec<BlockDescriptor> = vec![first_descriptor, second_descriptor].into();
@@ -193,7 +197,7 @@ pub fn interval_matrix_descriptors() -> (Context, Vec<BlockDescriptor>) {
 
     let curve_quality = 1;
     let first_descriptor = BlockDescriptor {
-        id: "1".to_string(),
+        id: "@u".to_string(),
         data: DescriptorData::Interval(IntervalBlockDescriptor {
             begin: "a".to_string(),
             end: "b".to_string(),
@@ -204,7 +208,12 @@ pub fn interval_matrix_descriptors() -> (Context, Vec<BlockDescriptor>) {
     let second_descriptor = BlockDescriptor {
         id: "2".to_string(),
         data: DescriptorData::Matrix(MatrixBlockDescriptor {
-            interval_id: Some("1".to_string()),
+            interval_id: Some("@u".to_string()),
+            m: [
+                ["1.0".into(),"0.0".into(),"0.0".into(),"u".into()],
+                ["0.0".into(),"1.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"0.0".into(),"1.0".into(),"0.0".into()]
+            ]
         })
     };
 
@@ -215,17 +224,7 @@ pub fn interval_matrix_descriptors() -> (Context, Vec<BlockDescriptor>) {
 
 #[test]
 fn test_simple_matrix() {
-    let event_loop = winit::event_loop::EventLoop::new();
-    let mut builder = winit::window::WindowBuilder::new();
-    builder = builder.with_title("test");
-    #[cfg(windows_OFF)] // TODO check for news regarding this
-    {
-        use winit::platform::windows::WindowBuilderExtWindows;
-        builder = builder.with_no_redirection_bitmap(true);
-    }
-    let window = builder.build(&event_loop).unwrap();
-
-    let device_manager = device_manager::Manager::new(&window);
+    let (_window, device_manager) = setup_test();
 
     let (all_variables, all_descriptors) = simple_matrix_descriptors();
 
@@ -241,7 +240,7 @@ fn test_simple_matrix() {
 
 #[test]
 fn test_interval_matrix() {
-    let (window, device_manager) = setup_test();
+    let (_window, device_manager) = setup_test();
     let (all_variables, all_descriptors) = interval_matrix_descriptors();
 
     dbg!(&all_descriptors);
@@ -252,21 +251,6 @@ fn test_interval_matrix() {
     let output_block = chain.chain.get("2").expect("could not find curve block");
     let out_data = copy_buffer_as_f32(output_block.get_buffer(), &device_manager.device);
     dbg!(out_data);
-}
-
-fn setup_test() -> (winit::window::Window, device_manager::Manager) {
-    let event_loop = winit::event_loop::EventLoop::new();
-    let mut builder = winit::window::WindowBuilder::new();
-    builder = builder.with_title("test");
-    #[cfg(windows_OFF)] // TODO check for news regarding this
-    {
-        use winit::platform::windows::WindowBuilderExtWindows;
-        builder = builder.with_no_redirection_bitmap(true);
-    }
-    let window = builder.build(&event_loop).unwrap();
-    let device_manager = device_manager::Manager::new(&window);
-
-    (window, device_manager)
 }
 
 #[test]
@@ -293,6 +277,11 @@ fn simple_point_transform () {
         id: "2".to_string(),
         data: DescriptorData::Matrix(MatrixBlockDescriptor {
             interval_id: None,
+            m: [
+                ["0.0".into(),"1.0".into(),"0.0".into(),"0.0".into()],
+                ["1.0".into(),"0.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"0.0".into(),"1.0".into(),"0.0".into()]
+            ]
         })
     };
     let transform_desc = BlockDescriptor {
@@ -350,6 +339,11 @@ fn interval_point_transform () {
         id: "2".to_string(),
         data: DescriptorData::Matrix(MatrixBlockDescriptor {
             interval_id: Some("@s".to_string()),
+            m: [
+                ["1.0".into(),"0.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"1.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"0.0".into(),"1.0".into(),"s".into()]
+            ]
         })
     };
     let transform_desc = BlockDescriptor {
@@ -402,6 +396,11 @@ fn simple_curve_transform () {
         id: "3".to_string(),
         data: DescriptorData::Matrix(MatrixBlockDescriptor {
             interval_id: None,
+            m: [
+                ["1.0".into(),"0.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"1.0".into(),"0.0".into(),"-3.".into()],
+                ["0.0".into(),"0.0".into(),"1.0".into(),"0.0".into()]
+            ]
         })
     };
     let transform_desc = BlockDescriptor {
@@ -459,6 +458,11 @@ fn same_parameter_curve_transform () {
         id: "3".to_string(),
         data: DescriptorData::Matrix(MatrixBlockDescriptor {
             interval_id: Some("1".to_string()),
+            m: [
+                ["1.0".into(),"0.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"1.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"0.0".into(),"1.0".into(),"0.0".into()]
+            ]
         })
     };
     let transform_desc = BlockDescriptor {
@@ -525,6 +529,11 @@ fn transform_1d_2up () {
         id: "3".to_string(),
         data: DescriptorData::Matrix(MatrixBlockDescriptor {
             interval_id: Some("@t".to_string()),
+            m: [
+                ["1.0".into(),"0.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"t".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"0.0".into(),"1.0".into(),"0.0".into()]
+            ]
         })
     };
     let transform_desc = BlockDescriptor {
@@ -592,6 +601,11 @@ fn simple_surface_transform () {
         id: "3".to_string(),
         data: DescriptorData::Matrix(MatrixBlockDescriptor {
             interval_id: None,
+            m: [
+                ["1.0".into(),"0.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"1.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"0.0".into(),"1.0".into(),"0.0".into()]
+            ]
         })
     };
     let transform_desc = BlockDescriptor {
@@ -659,6 +673,11 @@ fn same_param1_surface_transform () {
         id: "3".to_string(),
         data: DescriptorData::Matrix(MatrixBlockDescriptor {
             interval_id: Some("@s".to_string()),
+            m: [
+                ["1.0".into(),"0.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"1.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"0.0".into(),"1.0".into(),"0.0".into()]
+            ]
         })
     };
     let transform_desc = BlockDescriptor {
@@ -726,6 +745,11 @@ fn same_param2_surface_transform () {
         id: "3".to_string(),
         data: DescriptorData::Matrix(MatrixBlockDescriptor {
             interval_id: Some("@t".to_string()),
+            m: [
+                ["1.0".into(),"0.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"1.0".into(),"0.0".into(),"0.0".into()],
+                ["0.0".into(),"0.0".into(),"1.0".into(),"0.0".into()]
+            ]
         })
     };
     let transform_desc = BlockDescriptor {
