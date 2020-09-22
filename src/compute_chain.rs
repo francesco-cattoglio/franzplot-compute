@@ -71,7 +71,7 @@ layout(set = 1, binding = 0) uniform Uniforms {
         }
         shader_header.push_str(r##"};
 "##);
-        println!("debug info for shader header: {}", &shader_header);
+        //println!("debug info for shader header: {}", &shader_header);
 
         Self {
             chain,

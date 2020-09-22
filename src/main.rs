@@ -48,12 +48,13 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
     let all_variables = Context {
         globals: btreemap!{
             "a".to_string() => 0.0,
-            "b".to_string() => 1.0,
+            "b".to_string() => 2.0,
+            "t".to_string() => 0.0,
             "pi".to_string() => 3.1415,
         },
     };
 
-    let curve_quality = 8;
+    let curve_quality = 2;
     let first_descriptor = BlockDescriptor {
         id: "1".to_string(),
         data: DescriptorData::Interval(IntervalBlockDescriptor {
@@ -78,7 +79,7 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
             interval_first_id: "1".to_string(),
             interval_second_id: "2".to_string(),
             x_function: "u".to_string(),
-            y_function: "0.25*sin(v*2*pi)".to_string(),
+            y_function: "0.1*cos(2*pi*(v-0.2*u + 0.5*t))".to_string(),
             z_function: "v".to_string(),
         })
     };
@@ -110,8 +111,9 @@ fn main() {
     chain.run_chain(&device_manager.device, &device_manager.queue);
     let output_block = chain.chain.get("3").expect("could not find curve block");
 
-    let out_buffer_slice = output_block.get_buffer().slice(..);
-    let renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
+    let out_buffer = output_block.get_buffer();
+    // let renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
+    let renderer = rendering::SurfaceRenderer::new(&device_manager, &output_block.get_dimensions(), out_buffer);
 
     let mut elapsed_time = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
@@ -150,7 +152,8 @@ fn main() {
         let new_variables = compute_chain::Context {
             globals: btreemap!{
                 "a".to_string() => 0.0,
-                "b".to_string() => 0.15*elapsed_time.as_secs_f32(),
+                "b".to_string() => 2.0,
+                "t".to_string() => elapsed_time.as_secs_f32(),
                 "pi".to_string() => 3.1415,
             },
         };
@@ -158,7 +161,11 @@ fn main() {
         chain.run_chain(&device_manager.device, &device_manager.queue);
             let mut frame = device_manager.swap_chain.get_current_frame()
                 .expect("could not get next frame");
-            renderer.render(&mut frame, &device_manager);
+
+            let surface_block = chain.chain.get("3").expect("could not find curve block");
+            let surface_buffer = surface_block.get_buffer();
+            renderer.model.update_vertex_buffer(&device_manager, surface_buffer);
+            renderer.render(&device_manager, &mut frame);
         }
         Event::MainEventsCleared => {
             // RedrawRequested will only trigger once, unless we manually

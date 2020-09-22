@@ -110,10 +110,11 @@ impl Uniforms {
 // - or a shader that computes normals on the fly (can be tricky, just imagine
 // the issues for normal computation for a parametrix sphere or for z=sqrt(x + y))
 
-struct SurfaceRenderer {
+pub struct SurfaceRenderer {
     pipeline: wgpu::RenderPipeline,
-    model: SurfaceMesh,
+    pub model: SurfaceMesh,
     texture: texture::Texture,
+    texture_bind_group: wgpu::BindGroup,
     camera_uniform_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     depth_texture: texture::Texture,
@@ -146,8 +147,8 @@ impl SurfaceRenderer {
             });
 
         let camera = Camera {
-            eye: (-3.2, 1.6, 1.5).into(),
-            target: (0.0, 0.0, 0.0).into(),
+            eye: (-1.0, 1.0, 1.4).into(),
+            target: (1.0, 0.0, 1.0).into(),
             up: (0.0, 1.0, 0.0).into(),
             aspect: manager.sc_desc.width as f32 / manager.sc_desc.height as f32,
             fov_y: 45.0,
@@ -175,16 +176,6 @@ impl SurfaceRenderer {
                             min_binding_size: None,
                         },
                     },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        count: None,
-                        visibility: wgpu::ShaderStage::VERTEX,
-                        ty: wgpu::BindingType::StorageBuffer {
-                            dynamic: false,
-                            min_binding_size: None,
-                            readonly: false,
-                        },
-                    },
                 ],
                 label: Some("camera bind group layout"),
             });
@@ -201,6 +192,20 @@ impl SurfaceRenderer {
         use anyhow::Context;
         let path = std::path::Path::new("/home/franz/rust/franzplot-compute/resources/cube-diffuse.jpg");
         let diffuse_texture = texture::Texture::load(&manager.device, &manager.queue, path, "cube-diffuse").context("failed to load texture").unwrap();
+        let texture_bind_group = manager.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+                },
+            ],
+            label: Some("all_materials")
+        });
 
         let render_pipeline_layout =
             manager.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -276,26 +281,72 @@ impl SurfaceRenderer {
             clear_color,
             model,
             texture: diffuse_texture,
+            texture_bind_group,
             depth_texture,
             camera_uniform_buffer,
             camera_bind_group,
             pipeline,
         }
     }
+
+    pub fn render(&self, manager: &device_manager::Manager, frame: &mut wgpu::SwapChainFrame) {
+        // run the render pipeline
+        let mut encoder =
+            manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Render Encoder"),
+        });
+
+        {
+            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                color_attachments: &[
+                    wgpu::RenderPassColorAttachmentDescriptor {
+                        attachment: &frame.output.view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(self.clear_color),
+                        store: true,
+                        },
+                    }
+                ],
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
+                    attachment: &self.depth_texture.view,
+                    depth_ops: Some(wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(1.0),
+                        store: false,
+                    }),
+                    stencil_ops: None,
+                }),
+            });
+
+            // actual render call
+            render_pass.set_pipeline(&self.pipeline);
+            render_pass.set_vertex_buffer(0, self.model.vertex_buffer.slice(..));
+            render_pass.set_index_buffer(self.model.index_buffer.slice(..));
+            render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
+            render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+            render_pass.draw_indexed(0..self.model.num_elements, 0, 0..1);
+        }
+        let render_queue = encoder.finish();
+        manager.queue.submit(std::iter::once(render_queue));
+    }
 }
 
-struct SurfaceMesh {
+pub struct SurfaceMesh {
     pub name: String,
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
+    dimensions: Dimensions,
     pub num_elements: u32,
 }
 
 impl SurfaceMesh {
 
-    pub fn new(device: &wgpu::Device, dimensions: &Dimensions, computed_positions: &wgpu::Buffer) -> Self {
+    pub fn new(device: &wgpu::Device, in_dimensions: &Dimensions, computed_positions: &wgpu::Buffer) -> Self {
         // The index buffer is the easy part
+        let dimensions = in_dimensions.clone();
         let (param_1, param_2) = dimensions.as_2d().unwrap();
+        dbg!(&param_1);
+        dbg!(&param_2);
         let index_vector = create_grid_buffer_index(param_1.size, param_2.size, true);
         let index_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
@@ -309,14 +360,14 @@ impl SurfaceMesh {
         // buffer returned from the compute shader, elaborate it and put it inside the vertex
         // buffer.
         let computed_copy = super::copy_buffer_as_f32(computed_positions, device);
-        let vertex_vector: Vec<SurfaceVertex>;
+        let mut vertex_vector = Vec::<SurfaceVertex>::new();
         for j in 0..param_2.size {
             for i in 0..param_1.size {
-                let idx = i + param_1.size * j;
+                let idx = (i + param_1.size * j)*4;
                 vertex_vector.push(SurfaceVertex {
                     normal: [0.0, 0.0, 1.0],
                     position: [computed_copy[idx], computed_copy[idx+1], computed_copy[idx+2]],
-                    uv_coords: [i as f32 / param_1.size as f32, j as f32 / param_2.size as f32]
+                    uv_coords: [i as f32 / (param_1.size-1) as f32, j as f32 / (param_2.size-1) as f32]
                 });
             }
         }
@@ -324,15 +375,34 @@ impl SurfaceMesh {
             &wgpu::util::BufferInitDescriptor {
                 label: None,
                 contents: bytemuck::cast_slice(&vertex_vector),
-                usage: wgpu::BufferUsage::VERTEX,
+                usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
             });
 
 
         Self {
             name: "Surface".to_string(),
+            dimensions,
             index_buffer,
             vertex_buffer,
-            num_elements: (param_1.size * param_2.size) as u32,
+            num_elements: index_vector.len() as u32,
         }
+    }
+
+    pub fn update_vertex_buffer(&self, manager: &device_manager::Manager, computed_positions: &wgpu::Buffer) {
+        let computed_copy = super::copy_buffer_as_f32(computed_positions, &manager.device);
+        let mut vertex_vector = Vec::<SurfaceVertex>::new();
+        let (param_1, param_2) = self.dimensions.as_2d().unwrap();
+        vertex_vector.reserve(param_1.size * param_2.size);
+        for j in 0..param_2.size {
+            for i in 0..param_1.size {
+                let idx = (i + param_1.size * j)*4;
+                vertex_vector.push(SurfaceVertex {
+                    normal: [0.0, 0.0, 1.0],
+                    position: [computed_copy[idx], computed_copy[idx+1], computed_copy[idx+2]],
+                    uv_coords: [i as f32 / (param_1.size-1) as f32, j as f32 / (param_2.size-1) as f32]
+                });
+            }
+        }
+        manager.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&vertex_vector));
     }
 }

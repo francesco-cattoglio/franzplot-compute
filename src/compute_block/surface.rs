@@ -78,7 +78,7 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
 void main() {{
     uint par1_idx = gl_GlobalInvocationID.x;
     uint par2_idx = gl_GlobalInvocationID.y;
-    uint index = gl_GlobalInvocationID.x + gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    uint index = gl_GlobalInvocationID.x + gl_NumWorkGroups.x * gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
     float {par1} = {par1}_buff[par1_idx];
     float {par2} = {par2}_buff[par2_idx];
     out_buff[index].x = {fx};
@@ -87,7 +87,7 @@ void main() {{
     out_buff[index].w = 1;
 }}
 "##, header=&compute_chain.shader_header, par1=&first_interval_data.name, par2=&second_interval_data.name, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, fx=&descriptor.x_function, fy=&descriptor.y_function, fz=&descriptor.z_function);
-        println!("debug info for curve shader: \n{}", shader_source);
+        //println!("debug info for curve shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffers
         bindings.push(CustomBindDescriptor {

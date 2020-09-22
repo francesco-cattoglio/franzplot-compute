@@ -28,12 +28,12 @@ pub enum ComputeBlock {
     Matrix(MatrixData),
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Parameter {
     pub name: SmolStr,
     pub size: usize,
 }
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Dimensions {
     D0,
     D1(Parameter),
@@ -83,6 +83,17 @@ impl ComputeBlock {
             Self::Surface(data) => &data.out_buffer,
             Self::Transform(data) => &data.out_buffer,
             Self::Matrix(data) => &data.out_buffer,
+        }
+    }
+
+    pub fn get_dimensions(&self) -> &Dimensions {
+        match self {
+            Self::Point(data) => &data.out_dim,
+            Self::Interval(data) => &data.out_dim,
+            Self::Curve(data) => &data.out_dim,
+            Self::Surface(data) => &data.out_dim,
+            Self::Transform(data) => &data.out_dim,
+            Self::Matrix(data) => &data.out_dim,
         }
     }
 

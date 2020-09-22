@@ -61,7 +61,7 @@ void main() {{
 }}
 "##, globals_header=&compute_chain.shader_header, interval_begin=&descriptor.begin, interval_end=&descriptor.end, num_points=n_evals, dimx=n_evals
 );
-        println!("debug info for interval shader: \n{}", &shader_source);
+        //println!("debug info for interval shader: \n{}", &shader_source);
 
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for output buffer
