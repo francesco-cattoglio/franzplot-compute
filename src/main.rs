@@ -1,15 +1,11 @@
 use maplit::btreemap;
-use winit::dpi::PhysicalSize;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
-    window::{Window, WindowBuilder},
 };
 
 mod camera;
-//mod model;
 mod texture;
-//mod renderer;
 mod rendering;
 mod device_manager;
 mod compute_chain;
@@ -50,7 +46,7 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
             "a".to_string() => 0.0,
             "b".to_string() => 2.0,
             "t".to_string() => 0.0,
-            "pi".to_string() => 3.1415,
+            "pi".to_string() => std::f32::consts::PI,
         },
     };
 
@@ -84,7 +80,7 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
         })
     };
 
-    let all_descriptors: Vec<BlockDescriptor> = vec![first_descriptor, second_descriptor, surface_descriptor].into();
+    let all_descriptors: Vec<BlockDescriptor> = vec![first_descriptor, second_descriptor, surface_descriptor];
 
     (all_variables, all_descriptors)
 
@@ -154,7 +150,7 @@ fn main() {
                 "a".to_string() => 0.0,
                 "b".to_string() => 2.0,
                 "t".to_string() => elapsed_time.as_secs_f32(),
-                "pi".to_string() => 3.1415,
+                "pi".to_string() => std::f32::consts::PI,
             },
         };
         chain.update_globals(&device_manager.queue, &new_variables);

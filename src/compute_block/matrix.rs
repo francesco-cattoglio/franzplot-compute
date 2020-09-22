@@ -39,7 +39,7 @@ pub struct MatrixData {
 
 impl MatrixData {
     pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &MatrixBlockDescriptor) -> Self {
-        if let Some(_) = &descriptor.interval_id {
+        if descriptor.interval_id.is_some() {
             Self::new_with_interval(compute_chain, device, descriptor)
         } else {
             Self::new_without_interval(compute_chain, device, descriptor)
@@ -51,13 +51,9 @@ impl MatrixData {
             compute_pass.set_pipeline(&self.compute_pipeline);
             compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
             compute_pass.set_bind_group(1, variables_bind_group, &[]);
-            // regardless of this matrix being a simple or an interval one, this will be at most
-            // 256 elements, and this means that we can fit them into a single local group,
-            // an we will only need 1 dispatch operation
             compute_pass.dispatch(1, 1, 1);
     }
 
-    // TODO: maybe do not use the whole descriptor, but pass in the interval and the matrix strings
     fn new_with_interval(compute_chain: &ComputeChain, device: &wgpu::Device, desc: &MatrixBlockDescriptor) -> Self {
         let interval_id = desc.interval_id.as_ref().unwrap();
         let interval_block = compute_chain.chain.get(interval_id).expect("could not find the interval");
@@ -133,10 +129,8 @@ void main() {{
         }
     }
 
-    fn new_without_interval(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &MatrixBlockDescriptor) -> Self {
+    fn new_without_interval(compute_chain: &ComputeChain, device: &wgpu::Device, desc: &MatrixBlockDescriptor) -> Self {
         let out_dim = Dimensions::D0;
-        // in order to keep the memory bandwidth as small as possible, we only pass in the first
-        // three rows of the transform matrix
         let output_buffer_size = 16 * std::mem::size_of::<f32>() as wgpu::BufferAddress;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
@@ -156,17 +150,23 @@ layout(set = 0, binding = 0) buffer OutputBuffer {{
 
 void main() {{
     uint index = gl_GlobalInvocationID.x;
-    vec4 col_0 = vec4(0.0, 1.0, 0.0, 0.0);
-    vec4 col_1 = vec4(1.0, 0.0, 0.0, 0.0);
-    vec4 col_2 = vec4(0.0, 0.0, 1.0, 0.0);
-    vec4 col_3 = vec4(0.0, 0.0, 0.0, 1.0);
+    vec4 col_0 = vec4({_m00}, {_m10}, {_m20}, 0.0);
+    vec4 col_1 = vec4({_m01}, {_m11}, {_m21}, 0.0);
+    vec4 col_2 = vec4({_m02}, {_m12}, {_m22}, 0.0);
+    vec4 col_3 = vec4({_m03}, {_m13}, {_m23}, 1.0);
+
     out_buff[index][0] = col_0;
     out_buff[index][1] = col_1;
     out_buff[index][2] = col_2;
     out_buff[index][3] = col_3;
 }}
-"##, header=&compute_chain.shader_header);
-        println!("debug info for matrix shader: \n{}", shader_source);
+"##, header=&compute_chain.shader_header,
+    _m00=desc.m[0][0], _m10=desc.m[1][0], _m20=desc.m[2][0],
+    _m01=desc.m[0][1], _m11=desc.m[1][1], _m21=desc.m[2][1],
+    _m02=desc.m[0][2], _m12=desc.m[1][2], _m22=desc.m[2][2],
+    _m03=desc.m[0][3], _m13=desc.m[1][3], _m23=desc.m[2][3],
+);
+        //println!("debug info for matrix shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for output buffer
         bindings.push(CustomBindDescriptor {

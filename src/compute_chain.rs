@@ -105,11 +105,11 @@ layout(set = 1, binding = 0) uniform Uniforms {
         queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&values));
     }
 
-    fn insert(&mut self, id: &String, block: ComputeBlock) -> Result<()> {
-        if self.chain.contains_key(id) {
+    fn insert(&mut self, id: String, block: ComputeBlock) -> Result<()> {
+        if self.chain.contains_key(&id) {
             Err(anyhow!("Tried to insert two blocks that had the same id"))
         } else {
-            self.chain.insert(id.clone(), block);
+            self.chain.insert(id, block);
             Ok(())
         }
     }
@@ -120,10 +120,10 @@ layout(set = 1, binding = 0) uniform Uniforms {
         // on something are encountered after the blocks they depend on.
         for descriptor in descriptors.iter() {
             let block = descriptor.data.to_block(&chain, &device);
-            chain.insert(&descriptor.id, block)?;
+            chain.insert(descriptor.id.clone(), block)?;
         }
 
-        return Ok(chain);
+        Ok(chain)
     }
 }
 

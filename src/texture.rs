@@ -1,8 +1,6 @@
 use image::GenericImageView;
 use anyhow::Result;
 
-use wgpu::util::DeviceExt;
-
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
@@ -119,7 +117,7 @@ impl Texture {
             compare: None,
         });
 
-        return Ok(Texture{sampler, texture, view: texture_view});
+        Ok(Texture{sampler, texture, view: texture_view})
     }
 
 }

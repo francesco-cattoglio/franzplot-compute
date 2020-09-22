@@ -28,7 +28,7 @@ pub struct CurveData {
 
 impl CurveData {
     pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &CurveBlockDescriptor) -> Self {
-        let interval_block = compute_chain.chain.get(&descriptor.interval_input_id).expect("unable to find dependency for curve block").clone();
+        let interval_block = compute_chain.chain.get(&descriptor.interval_input_id).expect("unable to find dependency for curve block");
         let interval_data: &IntervalData;
         if let ComputeBlock::Interval(data) = interval_block {
             interval_data = data;
