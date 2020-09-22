@@ -7,9 +7,10 @@ use winit::{
 };
 
 mod camera;
-mod model;
+//mod model;
 mod texture;
-mod renderer;
+//mod renderer;
+mod rendering;
 mod device_manager;
 mod compute_chain;
 mod compute_block;
@@ -52,7 +53,7 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
         },
     };
 
-    let curve_quality = 1;
+    let curve_quality = 8;
     let first_descriptor = BlockDescriptor {
         id: "1".to_string(),
         data: DescriptorData::Interval(IntervalBlockDescriptor {
@@ -108,8 +109,7 @@ fn main() {
     let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
     chain.run_chain(&device_manager.device, &device_manager.queue);
     let output_block = chain.chain.get("3").expect("could not find curve block");
-    let out_data = copy_buffer_as_f32(output_block.get_buffer(), &device_manager.device);
-    dbg!(out_data);
+
     let out_buffer_slice = output_block.get_buffer().slice(..);
     let renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
 
@@ -120,7 +120,7 @@ fn main() {
 
         let frame_duration = now.duration_since(old_instant);
         if frame_duration.as_millis() > 0 {
-            //println!("frame time: {} ms", frame_duration.as_millis());
+            println!("frame time: {} ms", frame_duration.as_millis());
             elapsed_time += frame_duration;
         }
         old_instant = now;
@@ -151,6 +151,7 @@ fn main() {
             globals: btreemap!{
                 "a".to_string() => 0.0,
                 "b".to_string() => 0.15*elapsed_time.as_secs_f32(),
+                "pi".to_string() => 3.1415,
             },
         };
         chain.update_globals(&device_manager.queue, &new_variables);

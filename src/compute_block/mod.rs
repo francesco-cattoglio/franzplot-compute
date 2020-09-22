@@ -30,8 +30,8 @@ pub enum ComputeBlock {
 
 #[derive(Clone, PartialEq)]
 pub struct Parameter {
-    name: SmolStr,
-    size: usize,
+    pub name: SmolStr,
+    pub size: usize,
 }
 #[derive(Clone)]
 pub enum Dimensions {

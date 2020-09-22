@@ -81,7 +81,7 @@ impl Model {
 
         for mat in obj_materials {
             let texture_filename = mat.diffuse_texture;
-            let (diffuse_texture, command) = texture::Texture::load(device, containing_folder.join(&texture_filename), &texture_filename).context("failed to load texture")?;
+            let diffuse_texture = texture::Texture::load(device, containing_folder.join(&texture_filename), &texture_filename).context("failed to load texture")?;
 
             let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                 layout: bindgroup_layout,

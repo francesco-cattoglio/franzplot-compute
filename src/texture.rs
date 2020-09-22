@@ -12,9 +12,9 @@ pub struct Texture {
 impl Texture {
     pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
-    pub fn load<P: AsRef<std::path::Path>>(device: &wgpu::Device, path: P, label: &str) -> anyhow::Result<(Self, wgpu::CommandBuffer)> {
+    pub fn load<P: AsRef<std::path::Path>>(device: &wgpu::Device, queue: &wgpu::Queue, path: P, label: &str) -> anyhow::Result<Self> {
         let img = image::open(path)?;
-        Self::from_image(device, &img, Some(label))
+        Self::from_image(device, queue, &img, Some(label))
     }
 
     pub fn create_depth_texture(device: &wgpu::Device, swapchain_desc: &wgpu::SwapChainDescriptor, label: &str) -> Self {
@@ -61,12 +61,12 @@ impl Texture {
         }
     }
 
-    pub fn from_bytes(device: &wgpu::Device, bytes: &[u8], label: &str) -> Result<(Self, wgpu::CommandBuffer)> {
+    pub fn from_bytes(device: &wgpu::Device, queue: &wgpu::Queue, bytes: &[u8], label: &str) -> Result<Self> {
         let img = image::load_from_memory(bytes).unwrap();
-        Self::from_image(device, &img, Some(label))
+        Self::from_image(device, queue, &img, Some(label))
     }
 
-    pub fn from_image(device: &wgpu::Device, img: &image::DynamicImage, tex_label: Option<&str>) -> Result<(Self, wgpu::CommandBuffer)> {
+    pub fn from_image(device: &wgpu::Device, queue: &wgpu::Queue, img: &image::DynamicImage, tex_label: Option<&str>) -> Result<Self> {
         let diffuse_rgba = img.to_rgba();
         let image_size = img.dimensions();
 
@@ -86,35 +86,23 @@ impl Texture {
             label: tex_label,
         });
 
-        let texture_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&diffuse_rgba),
-            usage: wgpu::BufferUsage::COPY_SRC,
-        });
-
-        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor{
-            label: Some("texture_buffer_copy_encoder")
-        });
-
-        encoder.copy_buffer_to_texture(
-            wgpu::BufferCopyView{
-                buffer: &texture_buffer,
-                layout: wgpu::TextureDataLayout{
-                    offset: 0,
-                    bytes_per_row: 4 * image_size.0,
-                    rows_per_image: image_size.1
-                }
-            },
-            wgpu::TextureCopyView{
+        queue.write_texture(
+            // Tells wgpu where to copy the pixel data
+            wgpu::TextureCopyView {
                 texture: &texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
-            wsize
+            // The actual pixel data
+            bytemuck::cast_slice(&diffuse_rgba),
+            // The layout of the texture
+            wgpu::TextureDataLayout {
+                offset: 0,
+                bytes_per_row: 4 * image_size.0,
+                rows_per_image: image_size.1,
+            },
+            wsize,
         );
-
-        let command_buffer = encoder.finish();
 
         let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
@@ -131,7 +119,7 @@ impl Texture {
             compare: None,
         });
 
-        return Ok((Texture{sampler, texture, view: texture_view}, command_buffer));
+        return Ok(Texture{sampler, texture, view: texture_view});
     }
 
 }
