@@ -50,12 +50,16 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
         },
     };
 
-    let curve_quality = 1;
+    let curve_quality = 16;
     let first_descriptor = BlockDescriptor {
         id: "1".to_string(),
         data: DescriptorData::Interval(IntervalBlockDescriptor {
-            begin: "-pi/2".to_string(),
-            end: "pi/2".to_string(),
+            // wave-y mat
+            begin: "-2".to_string(),
+            end: "2".to_string(),
+            // sphere
+            //begin: "-pi/2".to_string(),
+            //end: "pi/2".to_string(),
             quality: curve_quality,
             name: "u".to_string(),
         })
@@ -63,8 +67,12 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
     let second_descriptor = BlockDescriptor {
         id: "2".to_string(),
         data: DescriptorData::Interval(IntervalBlockDescriptor {
-            begin: "0".to_string(),
-            end: "0.8*pi".to_string(),
+            // wave-y mat
+            begin: "-2".to_string(),
+            end: "2".to_string(),
+            // sphere
+            //begin: "0".to_string(),
+            //end: "2*pi".to_string(),
             quality: curve_quality,
             name: "v".to_string(),
         })
@@ -74,9 +82,14 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
         data: DescriptorData::Surface(SurfaceBlockDescriptor {
             interval_first_id: "1".to_string(),
             interval_second_id: "2".to_string(),
-            x_function: "2*sin(u)".to_string(),
-            y_function: "2*cos(u)*cos(v)".to_string(),
-            z_function: "2*cos(u)*sin(v)".to_string(),
+            // wave-y mat
+            x_function: "u".to_string(),
+            y_function: "0.65*sin(t + 2*u) - 0.45*cos(0.7*t - 1.3*v)".to_string(),
+            z_function: "v".to_string(),
+            // sphere
+            // x_function: "2*cos(u)*sin(v)".to_string(),
+            // y_function: "2*sin(u)".to_string(),
+            // z_function: "2*cos(u)*cos(v)".to_string(),
         })
     };
 
@@ -118,7 +131,7 @@ fn main() {
 
         let frame_duration = now.duration_since(old_instant);
         if frame_duration.as_millis() > 0 {
-            //println!("frame time: {} ms", frame_duration.as_millis());
+            println!("frame time: {} ms", frame_duration.as_millis());
             elapsed_time += frame_duration;
         }
         old_instant = now;
@@ -159,8 +172,7 @@ fn main() {
                 .expect("could not get next frame");
 
             let surface_block = chain.chain.get("3").expect("could not find curve block");
-            let surface_buffer = surface_block.get_buffer();
-//            renderer.model.update_vertex_buffer(&device_manager, surface_buffer);
+            renderer.model.update(&device_manager);
             renderer.render(&device_manager, &mut frame);
         }
         Event::MainEventsCleared => {
