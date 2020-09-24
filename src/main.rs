@@ -50,12 +50,12 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
         },
     };
 
-    let curve_quality = 2;
+    let curve_quality = 1;
     let first_descriptor = BlockDescriptor {
         id: "1".to_string(),
         data: DescriptorData::Interval(IntervalBlockDescriptor {
-            begin: "a".to_string(),
-            end: "b".to_string(),
+            begin: "-pi/2".to_string(),
+            end: "pi/2".to_string(),
             quality: curve_quality,
             name: "u".to_string(),
         })
@@ -63,8 +63,8 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
     let second_descriptor = BlockDescriptor {
         id: "2".to_string(),
         data: DescriptorData::Interval(IntervalBlockDescriptor {
-            begin: "a".to_string(),
-            end: "b".to_string(),
+            begin: "0".to_string(),
+            end: "0.8*pi".to_string(),
             quality: curve_quality,
             name: "v".to_string(),
         })
@@ -74,9 +74,9 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
         data: DescriptorData::Surface(SurfaceBlockDescriptor {
             interval_first_id: "1".to_string(),
             interval_second_id: "2".to_string(),
-            x_function: "u".to_string(),
-            y_function: "0.1*cos(2*pi*(v-0.2*u + 0.5*t))".to_string(),
-            z_function: "v".to_string(),
+            x_function: "2*sin(u)".to_string(),
+            y_function: "2*cos(u)*cos(v)".to_string(),
+            z_function: "2*cos(u)*sin(v)".to_string(),
         })
     };
 
@@ -110,6 +110,7 @@ fn main() {
     let out_buffer = output_block.get_buffer();
     // let renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
     let renderer = rendering::SurfaceRenderer::new(&device_manager, &output_block.get_dimensions(), out_buffer);
+    renderer.model.update_vertex_buffer(&device_manager, out_buffer);
 
     let mut elapsed_time = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
@@ -118,7 +119,7 @@ fn main() {
 
         let frame_duration = now.duration_since(old_instant);
         if frame_duration.as_millis() > 0 {
-            println!("frame time: {} ms", frame_duration.as_millis());
+            //println!("frame time: {} ms", frame_duration.as_millis());
             elapsed_time += frame_duration;
         }
         old_instant = now;
@@ -160,7 +161,7 @@ fn main() {
 
             let surface_block = chain.chain.get("3").expect("could not find curve block");
             let surface_buffer = surface_block.get_buffer();
-            renderer.model.update_vertex_buffer(&device_manager, surface_buffer);
+//            renderer.model.update_vertex_buffer(&device_manager, surface_buffer);
             renderer.render(&device_manager, &mut frame);
         }
         Event::MainEventsCleared => {
