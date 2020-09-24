@@ -42,13 +42,10 @@ void main() {
         y_tangent = (-0.5*in_buff[idx-x_size] + 0.5*in_buff[idx+x_size]).xyz;
     }
 
-    //out_buff[idx*3] = in_buff[idx];
-    //out_buff[idx*3+1] = vec4(x_tangent, 0.0);
-    //out_buff[idx*3+2] = vec4(y_tangent, 0.0);
     vec3 crossed = cross(y_tangent, x_tangent);
     float len = length(crossed);
     vec3 normal = (len > 1e-4) ? 1.0/len*crossed : vec3(0.0, 0.0, 0.0);
-    out_buff[idx*2] = in_buff[idx];
-    out_buff[idx*2+1] = vec4(normal.xyz, 0.0);
-    //out_buff[idx*2+1] = in_buff[idx];
+    out_buff[idx*3] = in_buff[idx];
+    out_buff[idx*3+1] = vec4(normal.xyz, 0.0);
+    out_buff[idx*3+2] = vec4(i/(x_size-1.0), j/(y_size-1.0), 0.0, 0.0);
 }

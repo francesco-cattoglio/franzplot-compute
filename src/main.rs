@@ -107,10 +107,9 @@ fn main() {
     chain.run_chain(&device_manager.device, &device_manager.queue);
     let output_block = chain.chain.get("3").expect("could not find curve block");
 
-    let out_buffer = output_block.get_buffer();
     // let renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
-    let renderer = rendering::SurfaceRenderer::new(&device_manager, &output_block.get_dimensions(), out_buffer);
-    renderer.model.update_vertex_buffer(&device_manager, out_buffer);
+    let renderer = rendering::SurfaceRenderer::new(&device_manager, output_block);
+    renderer.model.update(&device_manager);
 
     let mut elapsed_time = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();

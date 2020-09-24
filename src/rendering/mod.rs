@@ -1,108 +1,43 @@
 use super::camera::Camera;
 use super::texture;
 use super::device_manager;
+use crate::compute_block::ComputeBlock;
 use wgpu::util::DeviceExt;
 use crate::compute_block::Dimensions;
 
-pub fn create_grid_buffer_index(x_size: usize, y_size: usize, flag_pattern: bool) -> Vec<u32> {
-    // the grid has indices growing first along x, then along y
-    let mut index_buffer = Vec::<u32>::new();
-    let num_triangles_x = x_size - 1;
-    let num_triangles_y = y_size - 1;
-    for j in 0..num_triangles_y {
-        for i in 0..num_triangles_x {
-            // process every quad element of the grid by producing 2 triangles
-            let bot_left_idx =  ( i  +   j   * x_size) as u32;
-            let bot_right_idx = (i+1 +   j   * x_size) as u32;
-            let top_left_idx =  ( i  + (j+1) * x_size) as u32;
-            let top_right_idx = (i+1 + (j+1) * x_size) as u32;
-
-            if (i+j)%2==1 && flag_pattern {
-                // triangulate the quad using the other pattern
-                index_buffer.push(bot_left_idx);
-                index_buffer.push(bot_right_idx);
-                index_buffer.push(top_left_idx);
-
-                index_buffer.push(top_right_idx);
-                index_buffer.push(top_left_idx);
-                index_buffer.push(bot_right_idx);
-            } else {
-                // triangulate the quad using the "standard" pattern
-                index_buffer.push(bot_left_idx);
-                index_buffer.push(bot_right_idx);
-                index_buffer.push(top_right_idx);
-
-                index_buffer.push(top_right_idx);
-                index_buffer.push(top_left_idx);
-                index_buffer.push(bot_left_idx);
-            }
-        }
-    }
-
-    index_buffer
-}
+mod surface_mesh;
+use surface_mesh::SurfaceMesh;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-pub struct SurfaceVertex {
-    position: [f32; 3],
-    uv_coords: [f32; 2],
-    normal: [f32; 3],
-}
-
-unsafe impl bytemuck::Pod for SurfaceVertex {}
-unsafe impl bytemuck::Zeroable for SurfaceVertex {}
-
-impl SurfaceVertex {
-    fn description<'a>() -> wgpu::VertexBufferDescriptor<'a> {
-        wgpu::VertexBufferDescriptor {
-            stride: std::mem::size_of::<SurfaceVertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::InputStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttributeDescriptor {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float3
-                },
-                wgpu::VertexAttributeDescriptor {
-                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float2
-                },
-                wgpu::VertexAttributeDescriptor {
-                    offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Float3
-                },
-            ],
-        }
-    }
-}
-
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-pub struct SurfaceVertNorm {
+pub struct Vertex {
     position: [f32; 4],
     normal: [f32; 4],
+    uv_coords: [f32; 4],
 }
 
-unsafe impl bytemuck::Pod for SurfaceVertNorm {}
-unsafe impl bytemuck::Zeroable for SurfaceVertNorm {}
+unsafe impl bytemuck::Pod for Vertex {}
+unsafe impl bytemuck::Zeroable for Vertex {}
 
-impl SurfaceVertNorm {
+impl Vertex {
     fn description<'a>() -> wgpu::VertexBufferDescriptor<'a> {
         wgpu::VertexBufferDescriptor {
-            stride: std::mem::size_of::<SurfaceVertNorm>() as wgpu::BufferAddress,
+            stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
             step_mode: wgpu::InputStepMode::Vertex,
             attributes: &[
                 wgpu::VertexAttributeDescriptor {
                     offset: 0,
                     shader_location: 0,
-                    format: wgpu::VertexFormat::Float4
+                    format: wgpu::VertexFormat::Float3
                 },
                 wgpu::VertexAttributeDescriptor {
                     offset: std::mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
                     shader_location: 1,
+                    format: wgpu::VertexFormat::Float4
+                },
+                wgpu::VertexAttributeDescriptor {
+                    offset: std::mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
+                    shader_location: 2,
                     format: wgpu::VertexFormat::Float4
                 },
             ],
@@ -143,7 +78,7 @@ impl Uniforms {
 
 pub struct SurfaceRenderer {
     pipeline: wgpu::RenderPipeline,
-    pub model: SurfaceMesh,
+    pub model: surface_mesh::SurfaceMesh,
     texture: texture::Texture,
     texture_bind_group: wgpu::BindGroup,
     camera_uniform_buffer: wgpu::Buffer,
@@ -153,7 +88,7 @@ pub struct SurfaceRenderer {
 }
 
 impl SurfaceRenderer {
-    pub fn new(manager: &device_manager::Manager, dimensions: &Dimensions, computed_positions: &wgpu::Buffer) -> Self {
+    pub fn new(manager: &device_manager::Manager, computed_surface: &ComputeBlock) -> Self {
         let texture_bind_group_layout =
             manager.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &[
@@ -298,7 +233,7 @@ impl SurfaceRenderer {
             alpha_to_coverage_enabled: false,
             vertex_state: wgpu::VertexStateDescriptor {
                 index_format: wgpu::IndexFormat::Uint32,
-                vertex_buffers: &[SurfaceVertex::description()],
+                vertex_buffers: &[Vertex::description()],
             },
         });
 
@@ -306,7 +241,7 @@ impl SurfaceRenderer {
 
         let clear_color = wgpu::Color::BLACK;
 
-        let model = SurfaceMesh::new(&manager.device, dimensions, computed_positions);
+        let model = SurfaceMesh::new(&manager.device, computed_surface);
 
         Self {
             clear_color,
@@ -362,115 +297,3 @@ impl SurfaceRenderer {
     }
 }
 
-pub struct SurfaceMesh {
-    pub name: String,
-    pub vertex_buffer: wgpu::Buffer,
-    pub index_buffer: wgpu::Buffer,
-    dimensions: Dimensions,
-    pub num_elements: u32,
-}
-
-impl SurfaceMesh {
-
-    pub fn new(device: &wgpu::Device, in_dimensions: &Dimensions, computed_positions: &wgpu::Buffer) -> Self {
-        // The index buffer is the easy part
-        let dimensions = in_dimensions.clone();
-        let (param_1, param_2) = dimensions.as_2d().unwrap();
-        dbg!(&param_1);
-        dbg!(&param_2);
-        let index_vector = create_grid_buffer_index(param_1.size, param_2.size, true);
-        let index_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: None,
-                contents: bytemuck::cast_slice(&index_vector),
-                usage: wgpu::BufferUsage::INDEX,
-            });
-
-        // the vertex part however is a bit more tricky, if we want to interleave informations like
-        // vector coordinates or computing the normals we need to fetch the data inside the
-        // buffer returned from the compute shader, elaborate it and put it inside the vertex
-        // buffer.
-        let computed_copy = super::copy_buffer_as_f32(computed_positions, device);
-        let mut vertex_vector = Vec::<SurfaceVertex>::new();
-        for j in 0..param_2.size {
-            for i in 0..param_1.size {
-                let idx = (i + param_1.size * j)*4;
-                vertex_vector.push(SurfaceVertex {
-                    normal: [0.0, 0.0, 1.0],
-                    position: [computed_copy[idx], computed_copy[idx+1], computed_copy[idx+2]],
-                    uv_coords: [i as f32 / (param_1.size-1) as f32, j as f32 / (param_2.size-1) as f32]
-                });
-            }
-        }
-        let vertex_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: None,
-                contents: bytemuck::cast_slice(&vertex_vector),
-                usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
-            });
-
-
-        Self {
-            name: "Surface".to_string(),
-            dimensions,
-            index_buffer,
-            vertex_buffer,
-            num_elements: index_vector.len() as u32,
-        }
-    }
-
-    pub fn update_vertex_buffer(&self, manager: &device_manager::Manager, computed_positions: &wgpu::Buffer) {
-        let input_copy = super::copy_buffer_as_f32(&computed_positions, &manager.device);
-        println!("input copy: {:?}", input_copy);
-
-        let shader_source = include_str!("surface_normals.comp");
-        let mut bindings = Vec::<CustomBindDescriptor>::new();
-        // add descriptor for input buffers
-        bindings.push(CustomBindDescriptor {
-            position: 0,
-            buffer_slice: computed_positions.slice(..)
-        });
-        let vert_norm_buff = manager.device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            mapped_at_creation: false,
-            size: 16*16*4*2*std::mem::size_of::<f32>() as wgpu::BufferAddress,
-            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
-        });
-        use crate::shader_processing::*;
-        // add descriptor for output buffer
-        bindings.push(CustomBindDescriptor {
-            position: 1,
-            buffer_slice: vert_norm_buff.slice(..)
-        });
-        let (compute_pipeline, compute_bind_group) = compute_shader_no_globals(shader_source, &bindings, &manager.device, Some("Interval"));
-        let mut encoder =
-            manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Compute Encoder this time"),
-        });
-        {
-            let mut compute_pass = encoder.begin_compute_pass();
-            compute_pass.set_pipeline(&compute_pipeline);
-            compute_pass.set_bind_group(0, &compute_bind_group, &[]);
-            compute_pass.dispatch(1, 1, 1);
-        }
-        let compute_queue = encoder.finish();
-        manager.queue.submit(std::iter::once(compute_queue));
-        manager.device.poll(wgpu::Maintain::Wait);
-        let computed_copy = super::copy_buffer_as_f32(&vert_norm_buff, &manager.device);
-        println!("computed copy: {:?}", computed_copy);
-        //let mut vertex_vector = Vec::<SurfaceVertex>::new();
-        //let (param_1, param_2) = self.dimensions.as_2d().unwrap();
-        //vertex_vector.reserve(param_1.size * param_2.size);
-        //for j in 0..param_2.size {
-        //    for i in 0..param_1.size {
-        //        let idx = (i + param_1.size * j)*4;
-        //        vertex_vector.push(SurfaceVertex {
-        //            normal: [0.0, 0.0, 1.0],
-        //            position: [computed_copy[idx], computed_copy[idx+1], computed_copy[idx+2]],
-        //            uv_coords: [i as f32 / (param_1.size-1) as f32, j as f32 / (param_2.size-1) as f32]
-        //        });
-        //    }
-        //}
-        //manager.queue.write_buffer(&self.vertex_buffer, 0, bytemuck::cast_slice(&vertex_vector));
-    }
-}
