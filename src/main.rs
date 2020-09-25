@@ -50,7 +50,7 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
         },
     };
 
-    let curve_quality = 16;
+    let curve_quality = 1;
     let first_descriptor = BlockDescriptor {
         id: "1".to_string(),
         data: DescriptorData::Interval(IntervalBlockDescriptor {
@@ -92,8 +92,14 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
             // z_function: "2*cos(u)*cos(v)".to_string(),
         })
     };
+    let renderer_descriptor = BlockDescriptor {
+        id: "renderer".to_string(),
+        data: DescriptorData::SurfaceRenderer(SurfaceRendererBlockDescriptor {
+            surface_id: "3".to_string(),
+        })
+    };
 
-    let all_descriptors: Vec<BlockDescriptor> = vec![first_descriptor, second_descriptor, surface_descriptor];
+    let all_descriptors: Vec<BlockDescriptor> = vec![first_descriptor, second_descriptor, surface_descriptor, renderer_descriptor];
 
     (all_variables, all_descriptors)
 
@@ -118,11 +124,15 @@ fn main() {
     dbg!(&all_descriptors);
     let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
     chain.run_chain(&device_manager.device, &device_manager.queue);
-    let output_block = chain.chain.get("3").expect("could not find curve block");
+    let output_surface = chain.chain.get("3").expect("could not find curve block");
+    let output_renderer = chain.chain.get("renderer").expect("could not find curve block");
+
+    let out_buff = output_renderer.get_buffer();
+    let out_vect = copy_buffer_as_f32(out_buff, &device_manager.device);
+    //println!("out vect contains {:?}", out_vect);
 
     // let renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
-    let renderer = rendering::SurfaceRenderer::new(&device_manager, output_block);
-    renderer.model.update(&device_manager);
+    let renderer = rendering::SurfaceRenderer::new(&device_manager, output_renderer);
 
     let mut elapsed_time = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
@@ -131,7 +141,7 @@ fn main() {
 
         let frame_duration = now.duration_since(old_instant);
         if frame_duration.as_millis() > 0 {
-            println!("frame time: {} ms", frame_duration.as_millis());
+            //println!("frame time: {} ms", frame_duration.as_millis());
             elapsed_time += frame_duration;
         }
         old_instant = now;
@@ -172,7 +182,6 @@ fn main() {
                 .expect("could not get next frame");
 
             let surface_block = chain.chain.get("3").expect("could not find curve block");
-            renderer.model.update(&device_manager);
             renderer.render(&device_manager, &mut frame);
         }
         Event::MainEventsCleared => {
