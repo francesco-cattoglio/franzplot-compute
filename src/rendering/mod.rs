@@ -3,10 +3,9 @@ use super::texture;
 use super::device_manager;
 use crate::compute_block::ComputeBlock;
 use wgpu::util::DeviceExt;
-use crate::compute_block::Dimensions;
 
-mod surface_mesh;
-use surface_mesh::SurfaceMesh;
+//mod compute_block_processing;
+//use surface_mesh::SurfaceMesh;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
@@ -137,7 +136,6 @@ fn create_grid_buffer_index(x_size: usize, y_size: usize, flag_pattern: bool) ->
 }
 
 struct BareRenderable {
-    index_buffer: wgpu::Buffer,
     render_bundle: wgpu::RenderBundle,
 }
 
@@ -160,6 +158,8 @@ impl BareRenderable {
                     depth_stencil_format: Some(texture::Texture::DEPTH_FORMAT),
                     sample_count: 1,
                 });
+                // since resources are internally refcounted, we don't need to store our index
+                // buffer anywhere else
                 render_bundle_encoder.set_pipeline(pipeline);
                 render_bundle_encoder.set_vertex_buffer(0, data.vertex_buffer.slice(..));
                 render_bundle_encoder.set_index_buffer(index_buffer.slice(..));
@@ -171,7 +171,6 @@ impl BareRenderable {
                 });
 
                 Some(Self {
-                    index_buffer,
                     render_bundle,
                 })
             },
