@@ -4,8 +4,7 @@ use super::device_manager;
 use crate::compute_block::ComputeBlock;
 use wgpu::util::DeviceExt;
 
-//mod compute_block_processing;
-//use surface_mesh::SurfaceMesh;
+mod compute_block_processing;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
@@ -87,8 +86,7 @@ impl Uniforms {
 
 pub struct SurfaceRenderer {
     pipeline: wgpu::RenderPipeline,
-    //pub model: surface_mesh::SurfaceMesh,
-    renderable: BareRenderable,
+    renderables: Vec<wgpu::RenderBundle>,
     texture: texture::Texture,
     texture_bind_group: wgpu::BindGroup,
     camera_uniform_buffer: wgpu::Buffer,
@@ -97,113 +95,49 @@ pub struct SurfaceRenderer {
     clear_color: wgpu::Color,
 }
 
-fn create_grid_buffer_index(x_size: usize, y_size: usize, flag_pattern: bool) -> Vec<u32> {
-    // the grid has indices growing first along x, then along y
-    let mut index_buffer = Vec::<u32>::new();
-    let num_triangles_x = x_size - 1;
-    let num_triangles_y = y_size - 1;
-    for j in 0..num_triangles_y {
-        for i in 0..num_triangles_x {
-            // process every quad element of the grid by producing 2 triangles
-            let bot_left_idx =  ( i  +   j   * x_size) as u32;
-            let bot_right_idx = (i+1 +   j   * x_size) as u32;
-            let top_left_idx =  ( i  + (j+1) * x_size) as u32;
-            let top_right_idx = (i+1 + (j+1) * x_size) as u32;
-
-            if (i+j)%2==1 && flag_pattern {
-                // triangulate the quad using the "flag" pattern
-                index_buffer.push(bot_left_idx);
-                index_buffer.push(bot_right_idx);
-                index_buffer.push(top_left_idx);
-
-                index_buffer.push(top_right_idx);
-                index_buffer.push(top_left_idx);
-                index_buffer.push(bot_right_idx);
-            } else {
-                // triangulate the quad using the "standard" pattern
-                index_buffer.push(bot_left_idx);
-                index_buffer.push(bot_right_idx);
-                index_buffer.push(top_right_idx);
-
-                index_buffer.push(top_right_idx);
-                index_buffer.push(top_left_idx);
-                index_buffer.push(bot_left_idx);
-            }
-        }
-    }
-
-    index_buffer
-}
-
-struct BareRenderable {
-    render_bundle: wgpu::RenderBundle,
-}
-
-impl BareRenderable {
-    fn new(manager: &device_manager::Manager, compute_block: &ComputeBlock, camera_bind_group: &wgpu::BindGroup, pipeline: &wgpu::RenderPipeline, texture_bind_group: &wgpu::BindGroup) -> Option<Self> {
-        match compute_block {
-            ComputeBlock::SurfaceRenderer(data) => {
-                let (param_1, param_2) = data.out_dim.as_2d().unwrap();
-                let index_vector = create_grid_buffer_index(param_1.size, param_2.size, true);
-                let index_buffer = manager.device.create_buffer_init(
-                    &wgpu::util::BufferInitDescriptor {
-                        label: None,
-                        contents: bytemuck::cast_slice(&index_vector),
-                        usage: wgpu::BufferUsage::INDEX,
-                    });
-
-                let mut render_bundle_encoder = manager.device.create_render_bundle_encoder(&wgpu::RenderBundleEncoderDescriptor{
-                    label: Some("render bundle encoder for surface"),
-                    color_formats: &[manager.sc_desc.format],
-                    depth_stencil_format: Some(texture::Texture::DEPTH_FORMAT),
-                    sample_count: 1,
-                });
-                // since resources are internally refcounted, we don't need to store our index
-                // buffer anywhere else
-                render_bundle_encoder.set_pipeline(pipeline);
-                render_bundle_encoder.set_vertex_buffer(0, data.vertex_buffer.slice(..));
-                render_bundle_encoder.set_index_buffer(index_buffer.slice(..));
-                render_bundle_encoder.set_bind_group(0, texture_bind_group, &[]);
-                render_bundle_encoder.set_bind_group(1, camera_bind_group, &[]);
-                render_bundle_encoder.draw_indexed(0..index_vector.len() as u32, 0, 0..1);
-                let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor{
-                    label: Some("render bundle for surface"),
-                });
-
-                Some(Self {
-                    render_bundle,
-                })
+const TEXTURE_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
+wgpu::BindGroupLayoutDescriptor {
+    entries: &[
+        wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            count: None,
+            visibility: wgpu::ShaderStage::FRAGMENT,
+            ty: wgpu::BindingType::SampledTexture {
+                multisampled: false,
+                component_type: wgpu::TextureComponentType::Float,
+                dimension: wgpu::TextureViewDimension::D2,
             },
-            _ => None,
-        }
-
-    }
-}
-
-impl SurfaceRenderer {
-    pub fn new(manager: &device_manager::Manager, computed_surface: &ComputeBlock) -> Self {
-        let texture_bind_group_layout =
-            manager.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        },
+        wgpu::BindGroupLayoutEntry {
+            binding: 1,
+            count: None,
+            visibility: wgpu::ShaderStage::FRAGMENT,
+            ty: wgpu::BindingType::Sampler { comparison: false },
+        },
+    ],
+    label: Some("texture bind group layout"),
+};
+const CAMERA_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
+wgpu::BindGroupLayoutDescriptor {
                 entries: &[
                     wgpu::BindGroupLayoutEntry {
                         binding: 0,
                         count: None,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::SampledTexture {
-                            multisampled: false,
-                            component_type: wgpu::TextureComponentType::Float,
-                            dimension: wgpu::TextureViewDimension::D2,
+                        visibility: wgpu::ShaderStage::VERTEX,
+                        ty: wgpu::BindingType::UniformBuffer {
+                            dynamic: false,
+                            min_binding_size: None,
                         },
                     },
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 1,
-                        count: None,
-                        visibility: wgpu::ShaderStage::FRAGMENT,
-                        ty: wgpu::BindingType::Sampler { comparison: false },
-                    },
                 ],
-                label: Some("texture bind group layout"),
-            });
+                label: Some("camera bind group layout"),
+            };
+
+
+impl SurfaceRenderer {
+    pub fn new(manager: &device_manager::Manager, computed_surface: &ComputeBlock) -> Self {
+        let texture_bind_group_layout =
+            manager.device.create_bind_group_layout(&TEXTURE_LAYOUT_DESCRIPTOR);
 
         let camera = Camera {
             eye: (3.5, 3.5, 3.5).into(),
@@ -224,20 +158,7 @@ impl SurfaceRenderer {
             usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
         });
         let camera_bind_layout =
-            manager.device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        count: None,
-                        visibility: wgpu::ShaderStage::VERTEX,
-                        ty: wgpu::BindingType::UniformBuffer {
-                            dynamic: false,
-                            min_binding_size: None,
-                        },
-                    },
-                ],
-                label: Some("camera bind group layout"),
-            });
+            manager.device.create_bind_group_layout(&CAMERA_LAYOUT_DESCRIPTOR);
         let camera_bind_group = manager.device.create_bind_group(&wgpu::BindGroupDescriptor{
             layout: &camera_bind_layout,
             entries: &[
@@ -334,12 +255,11 @@ impl SurfaceRenderer {
 
         let clear_color = wgpu::Color::BLACK;
 
-        //let model = SurfaceMesh::new(&manager.device, computed_surface);
-        let renderable = BareRenderable::new(&manager, computed_surface, &camera_bind_group, &pipeline, &texture_bind_group).unwrap();
+        let renderables = Vec::<wgpu::RenderBundle>::new();
 
         Self {
             clear_color,
-            renderable,
+            renderables,
             texture: diffuse_texture,
             texture_bind_group,
             depth_texture,
