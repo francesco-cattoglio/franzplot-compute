@@ -1,5 +1,7 @@
 use winit::window::Window;
 
+use crate::rendering::SWAPCHAIN_FORMAT;
+
 pub struct Manager {
     pub instance: wgpu::Instance,
     pub device: wgpu::Device,
@@ -41,7 +43,7 @@ impl Manager {
 
         let sc_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8UnormSrgb,
+            format: SWAPCHAIN_FORMAT,
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,

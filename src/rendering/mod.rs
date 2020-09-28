@@ -1,7 +1,7 @@
 use super::camera::Camera;
 use super::texture;
 use super::device_manager;
-use crate::compute_block::ComputeBlock;
+use crate::compute_chain::ComputeChain;
 use wgpu::util::DeviceExt;
 
 mod compute_block_processing;
@@ -95,7 +95,7 @@ pub struct SurfaceRenderer {
     clear_color: wgpu::Color,
 }
 
-const TEXTURE_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
+pub const TEXTURE_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
 wgpu::BindGroupLayoutDescriptor {
     entries: &[
         wgpu::BindGroupLayoutEntry {
@@ -117,7 +117,7 @@ wgpu::BindGroupLayoutDescriptor {
     ],
     label: Some("texture bind group layout"),
 };
-const CAMERA_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
+pub const CAMERA_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
 wgpu::BindGroupLayoutDescriptor {
                 entries: &[
                     wgpu::BindGroupLayoutEntry {
@@ -134,8 +134,11 @@ wgpu::BindGroupLayoutDescriptor {
             };
 
 
+pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+pub const SWAPCHAIN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
+
 impl SurfaceRenderer {
-    pub fn new(manager: &device_manager::Manager, computed_surface: &ComputeBlock) -> Self {
+    pub fn new(manager: &device_manager::Manager) -> Self {
         let texture_bind_group_layout =
             manager.device.create_bind_group_layout(&TEXTURE_LAYOUT_DESCRIPTOR);
 
@@ -226,13 +229,13 @@ impl SurfaceRenderer {
             }),
             primitive_topology: wgpu::PrimitiveTopology::TriangleList,
             color_states: &[wgpu::ColorStateDescriptor{
-                format: manager.sc_desc.format,
+                format: SWAPCHAIN_FORMAT,
                 color_blend: wgpu::BlendDescriptor::REPLACE,
                 alpha_blend: wgpu::BlendDescriptor::REPLACE,
                 write_mask: wgpu::ColorWrite::ALL
             }],
             depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
-                format: texture::Texture::DEPTH_FORMAT,
+                format: DEPTH_FORMAT,
                 depth_write_enabled: true,
                 depth_compare: wgpu::CompareFunction::Less,
                 stencil: wgpu::StencilStateDescriptor {
@@ -266,6 +269,15 @@ impl SurfaceRenderer {
             camera_uniform_buffer,
             camera_bind_group,
             pipeline,
+        }
+    }
+
+    pub fn update_renderables (&mut self, manager: &device_manager::Manager, chain: &ComputeChain,) {
+        for compute_block in chain.chain.values() {
+            let maybe_renderable = compute_block_processing::block_to_renderable(manager, compute_block, &self.camera_bind_group, &self.pipeline, &self.texture_bind_group);
+            if let Some(renderable) = maybe_renderable {
+                self.renderables.push(renderable);
+            }
         }
     }
 
@@ -305,7 +317,7 @@ impl SurfaceRenderer {
             //render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
             //render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
             //render_pass.draw_indexed(0..self.model.num_elements, 0, 0..1);
-            render_pass.execute_bundles(std::iter::once(&self.renderable.render_bundle));
+            render_pass.execute_bundles(self.renderables.iter());
         }
         let render_queue = encoder.finish();
         manager.queue.submit(std::iter::once(render_queue));

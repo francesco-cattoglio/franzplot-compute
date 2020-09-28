@@ -1,5 +1,4 @@
 use crate::compute_chain::ComputeChain;
-use crate::shader_processing::*;
 use crate::rendering::{Vertex, GLSL_VERTEX_STRUCT};
 use super::ComputeBlock;
 use super::SurfaceData;

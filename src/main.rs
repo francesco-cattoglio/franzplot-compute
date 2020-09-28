@@ -55,8 +55,8 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
         id: "1".to_string(),
         data: DescriptorData::Interval(IntervalBlockDescriptor {
             // wave-y mat
-            begin: "-2".to_string(),
-            end: "2".to_string(),
+            begin: "-pi/2".to_string(),
+            end: "pi/2".to_string(),
             // sphere
             //begin: "-pi/2".to_string(),
             //end: "pi/2".to_string(),
@@ -77,7 +77,7 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
             name: "v".to_string(),
         })
     };
-    let surface_descriptor = BlockDescriptor {
+    let wavy_surface_descriptor = BlockDescriptor {
         id: "3".to_string(),
         data: DescriptorData::Surface(SurfaceBlockDescriptor {
             interval_first_id: "1".to_string(),
@@ -92,14 +92,30 @@ pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
             // z_function: "2*cos(u)*cos(v)".to_string(),
         })
     };
-    let renderer_descriptor = BlockDescriptor {
-        id: "renderer".to_string(),
+    let sphere_surface_descriptor = BlockDescriptor {
+        id: "4".to_string(),
+        data: DescriptorData::Surface(SurfaceBlockDescriptor {
+            interval_first_id: "1".to_string(),
+            interval_second_id: "2".to_string(),
+            x_function: "cos(u)*sin(v)".to_string(),
+            y_function: "sin(u)+1.0+0.65*sin(t) - 0.45*cos(0.7*t)".to_string(),
+            z_function: "cos(u)*cos(v)".to_string(),
+        })
+    };
+    let wavy_renderer_descriptor = BlockDescriptor {
+        id: "renderer1".to_string(),
         data: DescriptorData::SurfaceRenderer(SurfaceRendererBlockDescriptor {
             surface_id: "3".to_string(),
         })
     };
+    let sphere_renderer_descriptor = BlockDescriptor {
+        id: "renderer2".to_string(),
+        data: DescriptorData::SurfaceRenderer(SurfaceRendererBlockDescriptor {
+            surface_id: "4".to_string(),
+        })
+    };
 
-    let all_descriptors: Vec<BlockDescriptor> = vec![first_descriptor, second_descriptor, surface_descriptor, renderer_descriptor];
+    let all_descriptors = vec![first_descriptor, second_descriptor, wavy_surface_descriptor, sphere_surface_descriptor, sphere_renderer_descriptor, wavy_renderer_descriptor];
 
     (all_variables, all_descriptors)
 
@@ -124,15 +140,14 @@ fn main() {
     dbg!(&all_descriptors);
     let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
     chain.run_chain(&device_manager.device, &device_manager.queue);
-    let output_surface = chain.chain.get("3").expect("could not find curve block");
-    let output_renderer = chain.chain.get("renderer").expect("could not find curve block");
 
-    let out_buff = output_renderer.get_buffer();
-    let out_vect = copy_buffer_as_f32(out_buff, &device_manager.device);
-    //println!("out vect contains {:?}", out_vect);
+    //let dbg_buff = chain.chain.get("").expect("wrong block name for dbg printout").output_renderer.get_buffer();
+    //let dbg_vect = copy_buffer_as_f32(out_buff, &device_manager.device);
+    //println!("debugged buffer contains {:?}", dbg_vect);
 
     // let renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
-    let renderer = rendering::SurfaceRenderer::new(&device_manager, output_renderer);
+    let mut renderer = rendering::SurfaceRenderer::new(&device_manager);
+    renderer.update_renderables(&device_manager, &chain);
 
     let mut elapsed_time = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
@@ -167,21 +182,20 @@ fn main() {
         }
         Event::RedrawRequested(_) => {
             // update variables and do the actual rendering
-        // now, update the variables and run the chain again
-        let new_variables = compute_chain::Context {
-            globals: btreemap!{
-                "a".to_string() => 0.0,
-                "b".to_string() => 2.0,
-                "t".to_string() => elapsed_time.as_secs_f32(),
-                "pi".to_string() => std::f32::consts::PI,
-            },
-        };
-        chain.update_globals(&device_manager.queue, &new_variables);
-        chain.run_chain(&device_manager.device, &device_manager.queue);
+            // now, update the variables and run the chain again
+            let new_variables = compute_chain::Context {
+                globals: btreemap!{
+                    "a".to_string() => 0.0,
+                    "b".to_string() => 2.0,
+                    "t".to_string() => elapsed_time.as_secs_f32(),
+                    "pi".to_string() => std::f32::consts::PI,
+                },
+            };
+            chain.update_globals(&device_manager.queue, &new_variables);
+            chain.run_chain(&device_manager.device, &device_manager.queue);
             let mut frame = device_manager.swap_chain.get_current_frame()
                 .expect("could not get next frame");
 
-            let surface_block = chain.chain.get("3").expect("could not find curve block");
             renderer.render(&device_manager, &mut frame);
         }
         Event::MainEventsCleared => {

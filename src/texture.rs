@@ -1,6 +1,8 @@
 use image::GenericImageView;
 use anyhow::Result;
 
+use crate::rendering::DEPTH_FORMAT;
+
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
@@ -8,7 +10,6 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 
     pub fn load<P: AsRef<std::path::Path>>(device: &wgpu::Device, queue: &wgpu::Queue, path: P, label: &str) -> anyhow::Result<Self> {
         let img = image::open(path)?;
@@ -26,7 +27,7 @@ impl Texture {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             size,
-            format: Self::DEPTH_FORMAT,
+            format: DEPTH_FORMAT,
             mip_level_count: 1,
             label: Some(label),
             usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT
