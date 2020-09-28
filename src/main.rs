@@ -3,6 +3,7 @@ use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
 };
+use serde::{Deserialize, Serialize};
 
 mod camera;
 mod texture;
@@ -38,91 +39,46 @@ fn copy_buffer_as_f32(buffer: &wgpu::Buffer, device: &wgpu::Device) -> Vec<f32> 
     result
 }
 
-use compute_chain::Context;
-use compute_block::*;
-pub fn surface_chain_descriptors() -> (Context, Vec<BlockDescriptor>) {
-    let all_variables = Context {
-        globals: btreemap!{
-            "a".to_string() => 0.0,
-            "b".to_string() => 2.0,
-            "t".to_string() => 0.0,
-            "pi".to_string() => std::f32::consts::PI,
-        },
-    };
-
-    let curve_quality = 1;
-    let first_descriptor = BlockDescriptor {
-        id: "1".to_string(),
-        data: DescriptorData::Interval(IntervalBlockDescriptor {
-            // wave-y mat
-            begin: "-pi/2".to_string(),
-            end: "pi/2".to_string(),
-            // sphere
-            //begin: "-pi/2".to_string(),
-            //end: "pi/2".to_string(),
-            quality: curve_quality,
-            name: "u".to_string(),
-        })
-    };
-    let second_descriptor = BlockDescriptor {
-        id: "2".to_string(),
-        data: DescriptorData::Interval(IntervalBlockDescriptor {
-            // wave-y mat
-            begin: "-2".to_string(),
-            end: "2".to_string(),
-            // sphere
-            //begin: "0".to_string(),
-            //end: "2*pi".to_string(),
-            quality: curve_quality,
-            name: "v".to_string(),
-        })
-    };
-    let wavy_surface_descriptor = BlockDescriptor {
-        id: "3".to_string(),
-        data: DescriptorData::Surface(SurfaceBlockDescriptor {
-            interval_first_id: "1".to_string(),
-            interval_second_id: "2".to_string(),
-            // wave-y mat
-            x_function: "u".to_string(),
-            y_function: "0.65*sin(t + 2*u) - 0.45*cos(0.7*t - 1.3*v)".to_string(),
-            z_function: "v".to_string(),
-            // sphere
-            // x_function: "2*cos(u)*sin(v)".to_string(),
-            // y_function: "2*sin(u)".to_string(),
-            // z_function: "2*cos(u)*cos(v)".to_string(),
-        })
-    };
-    let sphere_surface_descriptor = BlockDescriptor {
-        id: "4".to_string(),
-        data: DescriptorData::Surface(SurfaceBlockDescriptor {
-            interval_first_id: "1".to_string(),
-            interval_second_id: "2".to_string(),
-            x_function: "cos(u)*sin(v)".to_string(),
-            y_function: "sin(u)+1.0+0.65*sin(t) - 0.45*cos(0.7*t)".to_string(),
-            z_function: "cos(u)*cos(v)".to_string(),
-        })
-    };
-    let wavy_renderer_descriptor = BlockDescriptor {
-        id: "renderer1".to_string(),
-        data: DescriptorData::SurfaceRenderer(SurfaceRendererBlockDescriptor {
-            surface_id: "3".to_string(),
-        })
-    };
-    let sphere_renderer_descriptor = BlockDescriptor {
-        id: "renderer2".to_string(),
-        data: DescriptorData::SurfaceRenderer(SurfaceRendererBlockDescriptor {
-            surface_id: "4".to_string(),
-        })
-    };
-
-    let all_descriptors = vec![first_descriptor, second_descriptor, wavy_surface_descriptor, sphere_surface_descriptor, sphere_renderer_descriptor, wavy_renderer_descriptor];
-
-    (all_variables, all_descriptors)
-
+#[derive(Debug, Deserialize, Serialize)]
+struct SceneDescriptor {
+    context: compute_chain::Context,
+    descriptors: Vec<BlockDescriptor>,
 }
 
+use compute_block::*;
+use getopts::Options;
+use std::env;
 
+fn print_usage(program: &str, opts: Options) {
+    let brief = format!("Usage: {} [options]", program);
+    print!("{}", opts.usage(&brief));
+}
+
+use std::io::prelude::*;
 fn main() {
+    let args: Vec<String> = env::args().collect();
+    let program = args[0].clone();
+
+    let mut opts = Options::new();
+    opts.optopt("i", "", "set input file name", "NAME");
+    opts.optflag("h", "help", "print this help menu");
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m) => { m }
+        Err(f) => { panic!(f.to_string()) }
+    };
+    if matches.opt_present("h") {
+        print_usage(&program, opts);
+        return;
+    }
+
+    let input_file = match matches.opt_str("i") {
+        Some(input) => input,
+        None => {
+            print_usage(&program, opts);
+            return;
+        }
+    };
+
     let event_loop = EventLoop::new();
     let mut builder = winit::window::WindowBuilder::new();
     builder = builder.with_title("test");
@@ -135,10 +91,12 @@ fn main() {
 
     let mut device_manager = device_manager::Manager::new(&window);
 
-    let (all_variables, all_descriptors) = surface_chain_descriptors();
-
-    dbg!(&all_descriptors);
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    let mut json_contents = String::new();
+    let mut file = std::fs::File::open(&input_file).unwrap();
+    file.read_to_string(&mut json_contents).unwrap();
+    let json_scene: SceneDescriptor = serde_json::from_str(&json_contents).unwrap();
+    //dbg!(&all_descriptors);
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &json_scene.descriptors, &json_scene.context).unwrap();
     chain.run_chain(&device_manager.device, &device_manager.queue);
 
     //let dbg_buff = chain.chain.get("").expect("wrong block name for dbg printout").output_renderer.get_buffer();

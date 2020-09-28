@@ -3,8 +3,9 @@ use crate::shader_processing::*;
 use super::ComputeBlock;
 use super::Dimensions;
 use super::IntervalData;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct CurveBlockDescriptor {
     pub interval_input_id: String,
     pub x_function: String,
@@ -75,7 +76,7 @@ void main() {{
     out_buff[index].w = 1;
 }}
 "##, header=&compute_chain.shader_header, par=&interval_data.name, dimx=n_points, fx=&descriptor.x_function, fy=&descriptor.y_function, fz=&descriptor.z_function);
-        println!("debug info for curve shader: \n{}", shader_source);
+        //println!("debug info for curve shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {

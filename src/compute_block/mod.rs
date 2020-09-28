@@ -22,6 +22,8 @@ pub use transform::{TransformData, TransformBlockDescriptor};
 pub mod matrix;
 pub use matrix::{MatrixData, MatrixBlockDescriptor};
 
+use serde::{Deserialize, Serialize};
+
 pub enum ComputeBlock {
     Point(PointData),
     Interval(IntervalData),
@@ -117,13 +119,13 @@ impl ComputeBlock {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct BlockDescriptor {
     pub id: String,
     pub data: DescriptorData,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum DescriptorData {
     Point (PointBlockDescriptor),
     Curve (CurveBlockDescriptor),

@@ -3,11 +3,12 @@ use crate::shader_processing::*;
 use super::ComputeBlock;
 use super::Dimensions;
 use super::IntervalData;
+use serde::{Deserialize, Serialize};
 
 const LOCAL_SIZE_X: usize = 16;
 const LOCAL_SIZE_Y: usize = 16;
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SurfaceBlockDescriptor {
     pub interval_first_id: String,
     pub interval_second_id: String,

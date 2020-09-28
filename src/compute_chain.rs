@@ -1,5 +1,6 @@
 use crate::compute_block::*;
 use anyhow::{Result, anyhow};
+use serde::{Deserialize, Serialize};
 
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
@@ -16,7 +17,7 @@ pub struct ComputeChain {
     pub global_vars: BTreeSet<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Context {
     pub globals: BTreeMap<String, f32>,
 }
@@ -114,7 +115,7 @@ layout(set = 1, binding = 0) uniform Uniforms {
         }
     }
 
-    pub fn create_from_descriptors(device: &wgpu::Device, descriptors: Vec<BlockDescriptor>, globals: Context) -> Result<Self> {
+    pub fn create_from_descriptors(device: &wgpu::Device, descriptors: &Vec<BlockDescriptor>, globals: &Context) -> Result<Self> {
         let mut chain = Self::new(device, &globals);
         // right now descriptors need to be in the "correct" order, so that all blocks that depend
         // on something are encountered after the blocks they depend on.

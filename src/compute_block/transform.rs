@@ -2,11 +2,12 @@ use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
 use super::ComputeBlock;
 use super::Dimensions;
+use serde::{Deserialize, Serialize};
 
 const LOCAL_SIZE_X: usize = 16;
 const LOCAL_SIZE_Y: usize = 16;
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct TransformBlockDescriptor {
     pub geometry_id: String,
     pub matrix_id: String,
@@ -215,7 +216,7 @@ void main() {{
     out_buff = in_matrix * in_buff;
 }}
 "##, header=&compute_chain.shader_header);
-        println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -261,7 +262,7 @@ void main() {{
     out_buff[index] = in_matrix[index] * in_point;
 }}
 "##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X);
-        println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -304,7 +305,7 @@ void main() {{
     out_buff[index] = in_matrix * in_buff[index];
 }}
 "##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X);
-        println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -347,7 +348,7 @@ void main() {{
     out_buff[index] = in_matrix[index] * in_buff[index];
 }}
 "##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X);
-        println!("debug info for 1d multi 1d transform shader: \n{}", shader_source);
+        //println!("debug info for 1d multi 1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -392,7 +393,7 @@ void main() {{
     out_buff[index] = in_matrix * in_buff[index];
 }}
 "##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
-        println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -438,7 +439,7 @@ void main() {{
     out_buff[index] = in_matrix[gl_GlobalInvocationID.y] * in_buff[gl_GlobalInvocationID.x];
 }}
 "##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
-        println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -485,7 +486,7 @@ void main() {{
     out_buff[index] = in_matrix[index_{which_idx}] * in_buff[index];
 }}
 "##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, which_idx=which_param);
-        println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {

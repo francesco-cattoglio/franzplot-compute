@@ -3,11 +3,12 @@ use crate::rendering::{Vertex, GLSL_VERTEX_STRUCT};
 use super::ComputeBlock;
 use super::SurfaceData;
 use super::Dimensions;
+use serde::{Deserialize, Serialize};
 
 const LOCAL_SIZE_X: usize = 16;
 const LOCAL_SIZE_Y: usize = 16;
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct SurfaceRendererBlockDescriptor {
     pub surface_id: String,
 }
@@ -92,7 +93,7 @@ void main() {{
     out_buff[idx*3+2] = vec4(i/(x_size-1.0), j/(y_size-1.0), 0.0, 0.0);
 }}
 "##, vertex_struct=GLSL_VERTEX_STRUCT, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y,);
-        println!("debug info for surface rendering shader: \n{}", shader_source);
+        //println!("debug info for surface rendering shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffers
         bindings.push(CustomBindDescriptor {

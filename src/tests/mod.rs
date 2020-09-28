@@ -132,7 +132,7 @@ fn test_curve_compute() {
     let (all_variables, all_descriptors) = interval_curve_test();
 
     dbg!(&all_descriptors);
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &all_descriptors, &all_variables).unwrap();
 
     chain.run_chain(&device_manager.device, &device_manager.queue);
     println!("Hello, world!");
@@ -229,7 +229,7 @@ fn test_simple_matrix() {
     let (all_variables, all_descriptors) = simple_matrix_descriptors();
 
     dbg!(&all_descriptors);
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &all_descriptors, &all_variables).unwrap();
 
     chain.run_chain(&device_manager.device, &device_manager.queue);
     println!("Hello, world!");
@@ -244,7 +244,7 @@ fn test_interval_matrix() {
     let (all_variables, all_descriptors) = interval_matrix_descriptors();
 
     dbg!(&all_descriptors);
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &all_descriptors, &all_variables).unwrap();
 
     chain.run_chain(&device_manager.device, &device_manager.queue);
     println!("Hello, world!");
@@ -296,7 +296,7 @@ fn simple_point_transform () {
 
     dbg!(&all_descriptors);
     println!("Running the chain");
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &all_descriptors, &all_variables).unwrap();
     chain.run_chain(&device_manager.device, &device_manager.queue);
     let point_block = chain.chain.get("1").expect("could not find point block");
     let point_data = copy_buffer_as_f32(point_block.get_buffer(), &device_manager.device);
@@ -358,7 +358,7 @@ fn interval_point_transform () {
 
     dbg!(&all_descriptors);
     println!("Running the chain");
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &all_descriptors, &all_variables).unwrap();
     chain.run_chain(&device_manager.device, &device_manager.queue);
     let point_block = chain.chain.get("1").expect("could not find point block");
     let point_data = copy_buffer_as_f32(point_block.get_buffer(), &device_manager.device);
@@ -420,7 +420,7 @@ fn simple_curve_transform () {
 
     dbg!(&all_descriptors);
     println!("Running the chain");
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &all_descriptors, &all_variables).unwrap();
     chain.run_chain(&device_manager.device, &device_manager.queue);
     let curve_block = chain.chain.get("2").expect("could not find curve block");
     let curve_data = copy_buffer_as_f32(curve_block.get_buffer(), &device_manager.device);
@@ -482,7 +482,7 @@ fn same_parameter_curve_transform () {
 
     dbg!(&all_descriptors);
     println!("Running the chain");
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &all_descriptors, &all_variables).unwrap();
     chain.run_chain(&device_manager.device, &device_manager.queue);
     let curve_block = chain.chain.get("2").expect("could not find curve block");
     let curve_data = copy_buffer_as_f32(curve_block.get_buffer(), &device_manager.device);
@@ -553,7 +553,7 @@ fn transform_1d_2up () {
 
     dbg!(&all_descriptors);
     println!("Running the chain");
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &all_descriptors, &all_variables).unwrap();
     chain.run_chain(&device_manager.device, &device_manager.queue);
     let curve_block = chain.chain.get("2").expect("could not find curve block");
     let curve_data = copy_buffer_as_f32(curve_block.get_buffer(), &device_manager.device);
@@ -625,7 +625,7 @@ fn simple_surface_transform () {
 
     dbg!(&all_descriptors);
     println!("Running the chain");
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &all_descriptors, &all_variables).unwrap();
     chain.run_chain(&device_manager.device, &device_manager.queue);
     let surf_block = chain.chain.get("2").expect("could not find curve block");
     let surf_data = copy_buffer_as_f32(surf_block.get_buffer(), &device_manager.device);
@@ -697,7 +697,7 @@ fn same_param1_surface_transform () {
 
     dbg!(&all_descriptors);
     println!("Running the chain");
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &all_descriptors, &all_variables).unwrap();
     chain.run_chain(&device_manager.device, &device_manager.queue);
     let surf_block = chain.chain.get("2").expect("could not find curve block");
     let surf_data = copy_buffer_as_f32(surf_block.get_buffer(), &device_manager.device);
@@ -769,7 +769,7 @@ fn same_param2_surface_transform () {
 
     dbg!(&all_descriptors);
     println!("Running the chain");
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, all_descriptors, all_variables).unwrap();
+    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &all_descriptors, &all_variables).unwrap();
     chain.run_chain(&device_manager.device, &device_manager.queue);
     let surf_block = chain.chain.get("2").expect("could not find curve block");
     let surf_data = copy_buffer_as_f32(surf_block.get_buffer(), &device_manager.device);

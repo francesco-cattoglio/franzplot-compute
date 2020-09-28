@@ -3,8 +3,9 @@ use crate::shader_processing::*;
 use smol_str::SmolStr;
 use super::ComputeBlock;
 use super::Dimensions;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct MatrixBlockDescriptor {
     pub interval_id: Option<String>,
     pub m: [[SmolStr; 4]; 3], // matrix elements, row-major order
@@ -106,7 +107,7 @@ void main() {{
     _m02=desc.m[0][2], _m12=desc.m[1][2], _m22=desc.m[2][2],
     _m03=desc.m[0][3], _m13=desc.m[1][3], _m23=desc.m[2][3],
 );
-        println!("debug info for matrix shader: \n{}", shader_source);
+        //println!("debug info for matrix shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {

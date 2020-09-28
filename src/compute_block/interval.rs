@@ -1,8 +1,9 @@
 use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
 use super::{ ComputeBlock, Dimensions, Parameter };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct IntervalBlockDescriptor {
     pub begin: String,
     pub end: String,

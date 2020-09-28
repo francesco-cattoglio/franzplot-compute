@@ -2,8 +2,9 @@ use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
 use super::ComputeBlock;
 use super::Dimensions;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct PointBlockDescriptor {
     pub fx: String,
     pub fy: String,
@@ -42,7 +43,7 @@ void main() {{
     out_buff.w = 1;
 }}
 "##, header=&compute_chain.shader_header, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
-        println!("debug info for curve shader: \n{}", shader_source);
+        //println!("debug info for curve shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for output buffer
         bindings.push(CustomBindDescriptor {
