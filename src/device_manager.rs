@@ -61,4 +61,10 @@ impl Manager {
         }
     }
 
+    pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
+        self.sc_desc.width = size.width as u32;
+        self.sc_desc.height = size.height as u32;
+        self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
+    }
+
 }

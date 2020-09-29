@@ -23,9 +23,12 @@ getopts = "0.2"
 imgui = "0.4.0"
 imgui-wgpu = "0.9.0"
 wgpu-subscriber = "0.1"
+cxx = "0.4"
 
 [dependencies.imgui-winit-support]
 version = "0.4"
 default-features = false
 features = ["winit-22"]
 
+[build-dependencies]
+cxx-build = "0.4"

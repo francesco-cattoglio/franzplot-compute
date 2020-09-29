@@ -204,6 +204,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "codespan-reporting"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e0762455306b1ed42bc651ef6a2197aabda5e1d4a43c34d5eab5c1a3634e81d"
+dependencies = [
+ "termcolor",
+ "unicode-width",
+]
+
+[[package]]
 name = "color_quant"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -341,6 +351,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "cxx"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "44725f49a3c0031c78781e17d4bd640c7035bf7860d1bcfe7570a2f00600ee4d"
+dependencies = [
+ "cc",
+ "cxxbridge-flags",
+ "cxxbridge-macro",
+ "link-cplusplus",
+]
+
+[[package]]
+name = "cxx-build"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1fb93e9812ba2b9221d1606546286c622d30a9d1df097fc3ffd47c6f5bcee85"
+dependencies = [
+ "cc",
+ "codespan-reporting",
+ "proc-macro2 1.0.19",
+ "quote 1.0.7",
+ "syn 1.0.38",
+]
+
+[[package]]
+name = "cxxbridge-flags"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18dc7c8350b109b06dfa0b9b3b6c810e783545e0d8b121578ca1cdb1d5e992cc"
+
+[[package]]
+name = "cxxbridge-macro"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52031590816848329b70f0ebd40948758898cfc1de442084b1e6fac80760d544"
+dependencies = [
+ "proc-macro2 1.0.19",
+ "quote 1.0.7",
+ "syn 1.0.38",
+]
+
+[[package]]
 name = "d3d12"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -420,6 +472,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bytemuck",
+ "cxx",
+ "cxx-build",
  "futures",
  "getopts",
  "image",
@@ -922,6 +976,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5cc7ad3d82c845bdb5dde34ffdcc7a5fb4d2996e1e1ee0f19c33bc80e15196b9"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "link-cplusplus"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "372d61b8ffdc79aa85d5f679e16c9e34da2357796186e877001f21998ece1f99"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -1687,6 +1750,15 @@ dependencies = [
  "proc-macro2 1.0.19",
  "quote 1.0.7",
  "unicode-xid 0.2.1",
+]
+
+[[package]]
+name = "termcolor"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb6bfa289a4d7c5766392812c0a1f4c1ba45afa1ad47803c11e1f407d846d75f"
+dependencies = [
+ "winapi-util",
 ]
 
 [[package]]

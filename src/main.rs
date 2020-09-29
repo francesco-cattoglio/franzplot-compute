@@ -16,6 +16,7 @@ mod device_manager;
 mod compute_chain;
 mod compute_block;
 mod shader_processing;
+mod demo;
 #[cfg(test)]
 mod tests;
 
@@ -34,8 +35,14 @@ fn print_usage(program: &str, opts: Options) {
     print!("{}", opts.usage(&brief));
 }
 
+
 use std::io::prelude::*;
 fn main() {
+    //cpp stuff
+    unsafe{
+    let x = demo::ffi::make_demo("demo of cxx::bridge");
+    println!("this is a {}", demo::ffi::get_name(x.as_ref().unwrap()));
+    }
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
 
@@ -59,11 +66,13 @@ fn main() {
         }
     };
 
-    wgpu_subscriber::initialize_default_subscriber(None);
+    //wgpu_subscriber::initialize_default_subscriber(None);
 
     let event_loop = EventLoop::new();
     let mut builder = winit::window::WindowBuilder::new();
-    builder = builder.with_title("test");
+    builder = builder
+        .with_title("test")
+        .with_inner_size(winit::dpi::PhysicalSize::new(1280, 800));
     #[cfg(windows_OFF)] // TODO check for news regarding this
     {
         use winit::platform::windows::WindowBuilderExtWindows;
@@ -85,7 +94,7 @@ fn main() {
     );
     imgui.set_ini_filename(None);
 
-    let font_size = (13.0 * hidpi_factor) as f32;
+    let font_size = (12.0 * hidpi_factor) as f32;
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
     imgui.fonts().add_font(&[FontSource::DefaultFontData {
@@ -146,11 +155,18 @@ fn main() {
                         } => *control_flow = ControlFlow::Exit,
                         _ => {}
                     },
-                    WindowEvent::Resized(_physical_size) => {
+                    WindowEvent::Resized(physical_size) => {
+                        device_manager.resize(*physical_size);
                     }
                     _ => {}
                 }
-        }
+        },
+       Event::WindowEvent {
+            event: WindowEvent::ScaleFactorChanged { scale_factor, .. },
+            ..
+        } => {
+            hidpi_factor = scale_factor;
+        },
         Event::RedrawRequested(_) => {
             // update variables and do the actual rendering
             // now, update the variables and run the chain again
