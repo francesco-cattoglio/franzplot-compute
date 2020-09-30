@@ -1,4 +1,3 @@
-use maplit::btreemap;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
@@ -38,11 +37,6 @@ fn print_usage(program: &str, opts: Options) {
 
 use std::io::prelude::*;
 fn main() {
-    //cpp stuff
-    unsafe{
-    let x = demo::ffi::make_demo("demo of cxx::bridge");
-    println!("this is a {}", demo::ffi::get_name(x.as_ref().unwrap()));
-    }
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
 
@@ -58,13 +52,7 @@ fn main() {
         return;
     }
 
-    let input_file = match matches.opt_str("i") {
-        Some(input) => input,
-        None => {
-            print_usage(&program, opts);
-            return;
-        }
-    };
+    let input_file = matches.opt_str("i");
 
     //wgpu_subscriber::initialize_default_subscriber(None);
 
@@ -105,20 +93,29 @@ fn main() {
             ..Default::default()
         }),
     }]);
+    demo::ffi::init_imnodes();
 
     let mut renderer = Renderer::new(&mut imgui, &device_manager.device, &mut device_manager.queue, rendering::SWAPCHAIN_FORMAT);
     let mut last_frame = std::time::Instant::now();
-    let mut demo_open = true;
 
     let mut last_cursor = None;
 
-
-    let mut json_contents = String::new();
-    let mut file = std::fs::File::open(&input_file).unwrap();
-    file.read_to_string(&mut json_contents).unwrap();
-    let json_scene: SceneDescriptor = serde_json::from_str(&json_contents).unwrap();
+    let mut context = compute_chain::Context::default();
     //dbg!(&all_descriptors);
-    let mut chain = compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &json_scene.descriptors, &json_scene.context).unwrap();
+    let mut chain = match input_file {
+        Some(filename) => {
+            let mut json_contents = String::new();
+            let mut file = std::fs::File::open(&filename).unwrap();
+            file.read_to_string(&mut json_contents).unwrap();
+            let json_scene: SceneDescriptor = serde_json::from_str(&json_contents).unwrap();
+            context = json_scene.context;
+            compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &json_scene.descriptors, &context).unwrap()
+        }
+        None => {
+            print_usage(&program, opts);
+            compute_chain::ComputeChain::new(&device_manager.device, &context)
+        }
+    };
     chain.run_chain(&device_manager.device, &device_manager.queue);
 
     //let dbg_buff = chain.chain.get("").expect("wrong block name for dbg printout").output_renderer.get_buffer();
@@ -146,7 +143,9 @@ fn main() {
             window_id,
         } if window_id == window.id() => {
                 match event {
-                    WindowEvent::CloseRequested => *control_flow = ControlFlow::Exit,
+                    WindowEvent::CloseRequested => {
+                        *control_flow = ControlFlow::Exit
+                    },
                     WindowEvent::KeyboardInput { input, .. } => match input {
                         KeyboardInput {
                             state: ElementState::Pressed,
@@ -170,15 +169,10 @@ fn main() {
         Event::RedrawRequested(_) => {
             // update variables and do the actual rendering
             // now, update the variables and run the chain again
-            let new_variables = compute_chain::Context {
-                globals: btreemap!{
-                    "a".to_string() => 0.0,
-                    "b".to_string() => 2.0,
-                    "t".to_string() => elapsed_time.as_secs_f32(),
-                    "pi".to_string() => std::f32::consts::PI,
-                },
-            };
-            chain.update_globals(&device_manager.queue, &new_variables);
+            let time_var: &mut f32 = context.globals.get_mut(&"t".to_string()).unwrap();
+            *time_var = elapsed_time.as_secs_f32();
+
+            chain.update_globals(&device_manager.queue, &context);
             chain.run_chain(&device_manager.device, &device_manager.queue);
             let mut frame = device_manager.swap_chain.get_current_frame()
                 .expect("could not get next frame");
@@ -202,24 +196,7 @@ fn main() {
             let ui = imgui.frame();
 
             {
-                let window = imgui::Window::new(im_str!("Hello world"));
-                window
-                    .size([300.0, 100.0], Condition::FirstUseEver)
-                    .build(&ui, || {
-                        ui.text(im_str!("Hello world!"));
-                        ui.text(im_str!("This...is...imgui-rs on WGPU!"));
-                        ui.separator();
-                        let mouse_pos = ui.io().mouse_pos;
-                        ui.text(im_str!(
-                            "Mouse Position: ({:.1},{:.1})",
-                            mouse_pos[0],
-                            mouse_pos[1]
-                        ));
-                    });
-
-                demo::ffi::my_display_code();
-
-                ui.show_demo_window(&mut demo_open);
+                demo::ffi::show_node_graph();
             }
 
             let mut encoder: wgpu::CommandEncoder =

@@ -13,7 +13,9 @@ pub mod ffi{
         fn make_demo(appname: &str) -> UniquePtr<ThingC>;
         fn get_name(thing: &ThingC) -> &CxxString;
         fn do_thing(state: SharedThing);
-        fn my_display_code();
+        fn init_imnodes();
+        fn shutdown_imnodes();
+        fn show_node_graph();
     }
 
     extern "Rust" {

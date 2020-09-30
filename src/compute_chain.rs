@@ -1,3 +1,4 @@
+use maplit::btreemap;
 use crate::compute_block::*;
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
@@ -22,8 +23,19 @@ pub struct Context {
     pub globals: BTreeMap<String, f32>,
 }
 
+impl std::default::Default for Context {
+    fn default() -> Self {
+        Self {
+            globals: btreemap!{
+                "t".to_string() => 0.0,
+                "pi".to_string() => std::f32::consts::PI,
+            },
+        }
+    }
+}
+
 impl ComputeChain {
-    fn new(device: &wgpu::Device, context: &Context) -> Self {
+    pub fn new(device: &wgpu::Device, context: &Context) -> Self {
         let globals = &context.globals;
         let global_vars: BTreeSet<String> = globals.keys().cloned().collect();
         let chain = BTreeMap::<String, ComputeBlock>::new();
