@@ -217,13 +217,7 @@ fn main() {
                         ));
                     });
 
-                let window = imgui::Window::new(im_str!("Hello too"));
-                window
-                    .size([400.0, 200.0], Condition::FirstUseEver)
-                    .position([400.0, 200.0], Condition::FirstUseEver)
-                    .build(&ui, || {
-                        ui.text(im_str!("Frametime: {:?}", delta_s));
-                    });
+                demo::ffi::my_display_code();
 
                 ui.show_demo_window(&mut demo_open);
             }

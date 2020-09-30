@@ -13,6 +13,7 @@ pub mod ffi{
         fn make_demo(appname: &str) -> UniquePtr<ThingC>;
         fn get_name(thing: &ThingC) -> &CxxString;
         fn do_thing(state: SharedThing);
+        fn my_display_code();
     }
 
     extern "Rust" {
