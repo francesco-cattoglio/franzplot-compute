@@ -3,6 +3,6 @@
 #include <iostream>
 
 void TextAttribute::Render() {
-    std::cout << "printing test render function" << std::endl;
+    std::cout << "Rendering attribute with id " << this->id << std::endl;
     return;
 }

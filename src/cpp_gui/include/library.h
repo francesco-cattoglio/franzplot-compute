@@ -1,5 +1,6 @@
 #pragma once
 #include "rust/cxx.h"
+#include "attribute.h"
 #include <memory>
 #include <string>
 

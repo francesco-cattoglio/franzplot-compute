@@ -49,6 +49,9 @@ void show_node_graph() {
 
             imnodes::EndNode();
         }
+        auto test = new TextAttribute(15);
+        test->Render();
+        delete test;
         {
             imnodes::BeginNode(2);
 
