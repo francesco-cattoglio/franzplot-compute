@@ -1,7 +1,7 @@
-#include "demo.h"
-#include "franzplot-compute/src/demo.rs.h"
-#include "franzplot-compute/src/cpp_gui/imgui-1.75/imgui.h"
-#include "franzplot-compute/src/cpp_gui/imnodes-8ecdd3/imnodes.h"
+#include "library.h"
+#include "franzplot-compute/src/cpp_gui/mod.rs.h"
+#include <imgui.h>
+#include <imnodes.h>
 #include <iostream>
 
 namespace org {

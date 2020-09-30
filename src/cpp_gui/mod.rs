@@ -7,7 +7,7 @@ pub mod ffi{
     }
 
     extern "C" {
-        include!("demo.h");
+        include!("library.h");
 
         type ThingC;
         fn make_demo(appname: &str) -> UniquePtr<ThingC>;

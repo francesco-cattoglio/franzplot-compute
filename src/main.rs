@@ -15,7 +15,7 @@ mod device_manager;
 mod compute_chain;
 mod compute_block;
 mod shader_processing;
-mod demo;
+mod cpp_gui;
 #[cfg(test)]
 mod tests;
 
@@ -82,7 +82,7 @@ fn main() {
     );
     imgui.set_ini_filename(None);
 
-    let font_size = (12.0 * hidpi_factor) as f32;
+    let font_size = (11.0 * hidpi_factor) as f32;
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
     imgui.fonts().add_font(&[FontSource::DefaultFontData {
@@ -93,7 +93,7 @@ fn main() {
             ..Default::default()
         }),
     }]);
-    demo::ffi::init_imnodes();
+    cpp_gui::ffi::init_imnodes();
 
     let mut renderer = Renderer::new(&mut imgui, &device_manager.device, &mut device_manager.queue, rendering::SWAPCHAIN_FORMAT);
     let mut last_frame = std::time::Instant::now();
@@ -196,7 +196,7 @@ fn main() {
             let ui = imgui.frame();
 
             {
-                demo::ffi::show_node_graph();
+                cpp_gui::ffi::show_node_graph();
             }
 
             let mut encoder: wgpu::CommandEncoder =
