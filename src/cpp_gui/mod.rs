@@ -1,4 +1,4 @@
-#[cxx::bridge(namespace = org::example)]
+#[cxx::bridge(namespace = franzplot_gui)]
 pub mod ffi{
     struct SharedThing {
         z: i32,
