@@ -51,7 +51,9 @@ int Graph::NextId() {
 }
 
 void Graph::Test() {
+    AddNode(Node::TemplatedInterval(std::bind(&Graph::NextId, this)));
     AddNode(Node::TemplatedCurve(std::bind(&Graph::NextId, this)));
+    AddNode(Node::TemplatedMatrix(std::bind(&Graph::NextId, this)));
 }
 
 void Graph::AddNode(Node&& node) {

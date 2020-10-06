@@ -31,6 +31,8 @@ class Node {
         std::vector<std::shared_ptr<Attribute>> static_attributes;
 
         static Node TemplatedCurve(const std::function<int()> next_id);
+        static Node TemplatedInterval(const std::function<int()> next_id);
+        static Node TemplatedMatrix(const std::function<int()> next_id);
 
     private:
         NodeType type;

@@ -25,8 +25,6 @@ void init_imnodes() {
     imnodes::PushAttributeFlag(imnodes::AttributeFlags_EnableLinkDetachWithDragClick);
     globals.graph = new Graph();
     globals.graph->Test();
-    globals.graph->Test();
-    globals.graph->Test();
 }
 void shutdown_imnodes() {
     delete globals.graph;
