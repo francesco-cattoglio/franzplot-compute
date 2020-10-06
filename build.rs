@@ -9,12 +9,14 @@ fn main() {
     let cpp_files = vec![
         "src/cpp_gui/src/attribute.cpp",
         "src/cpp_gui/src/library.cpp",
+        "src/cpp_gui/src/graph.cpp",
         "src/cpp_gui/src/node.cpp",
     ];
 
     let include_files = vec![
         "src/cpp_gui/include/library.h",
         "src/cpp_gui/include/attribute.h",
+        "src/cpp_gui/include/graph.h",
         "src/cpp_gui/include/node.h",
         "src/cpp_gui/include/globals.h",
         "src/cpp_gui/imnodes-8ecdd3/imnodes.h",

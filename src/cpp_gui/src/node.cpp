@@ -6,7 +6,7 @@
 
 namespace franzplot_gui {
 
-Node::Node() : id(new_id()) {}
+Node::Node(int id) : id(id) {}
 
 Node::~Node() {}
 
@@ -30,14 +30,15 @@ void Node::Render() {
     imnodes::EndNode();
 }
 
-Node Node::TemplatedCurve() {
-    Node to_return = Node();
+Node Node::TemplatedCurve(const std::function<int()> next_id) {
+    Node to_return = Node(next_id());
     to_return.type = NodeType::Curve;
     to_return.name = "curve node";
-    to_return.in_attributes.push_back(std::make_shared<TextAttribute>(to_return.id, "fx"));
-    to_return.in_attributes.push_back(std::make_shared<TextAttribute>(to_return.id, "fy"));
-    to_return.in_attributes.push_back(std::make_shared<TextAttribute>(to_return.id, "fz"));
-    to_return.out_attributes.push_back(std::make_shared<OutputAttribute>(to_return.id));
+    to_return.in_attributes.push_back(std::make_shared<IntervalAttribute>(next_id(), to_return.id, "interval"));
+    to_return.static_attributes.push_back(std::make_shared<TextAttribute>(next_id(), to_return.id, "fx"));
+    to_return.static_attributes.push_back(std::make_shared<TextAttribute>(next_id(), to_return.id, "fy"));
+    to_return.static_attributes.push_back(std::make_shared<TextAttribute>(next_id(), to_return.id, "fz"));
+    to_return.out_attributes.push_back(std::make_shared<OutputAttribute>(next_id(), to_return.id));
 
     return to_return;
 }

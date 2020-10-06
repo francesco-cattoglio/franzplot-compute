@@ -8,6 +8,7 @@
 #include "attribute.h"
 #include "node.h"
 #include "globals.h"
+#include "graph.h"
 
 namespace franzplot_gui {
 
@@ -22,31 +23,15 @@ std::unique_ptr<ThingC> make_demo(rust::Str appname) {
 void init_imnodes() {
     imnodes::Initialize();
     imnodes::PushAttributeFlag(imnodes::AttributeFlags_EnableLinkDetachWithDragClick);
-    add_node(Node::TemplatedCurve());
-    add_node(Node::TemplatedCurve());
-    add_node(Node::TemplatedCurve());
+    globals.graph = new Graph();
+    globals.graph->Test();
+    globals.graph->Test();
+    globals.graph->Test();
 }
 void shutdown_imnodes() {
-    imnodes::Shutdown();
+    delete globals.graph;
     imnodes::PopAttributeFlag();
-}
-
-int new_id() {
-    return globals.next_id++;
-}
-
-void add_node(Node&& node) {
-    // we need to keep our attribute-to-node map up-to-date
-    for (auto& attribute : node.in_attributes)
-        globals.attr_node_map[attribute->id] = node.id;
-
-    for (auto& attribute : node.out_attributes)
-        globals.attr_node_map[attribute->id] = node.id;
-
-    for (auto& attribute : node.static_attributes)
-        globals.attr_node_map[attribute->id] = node.id;
-
-    globals.nodes.insert(std::make_pair(node.id, node));
+    imnodes::Shutdown();
 }
 
 void show_node_graph() {
@@ -54,34 +39,9 @@ void show_node_graph() {
     ImGui::SetNextWindowSize(ImVec2(650, 500), ImGuiCond_FirstUseEver);
     ImGui::Begin("simple node editor", nullptr, ImGuiWindowFlags_NoTitleBar);
 
-    imnodes::BeginNodeEditor();
-    // render all links
-    for (auto& entry : globals.links) {
-        int link_idx = entry.first;
-        auto attr_pair = entry.second;
-        imnodes::Link(link_idx, attr_pair.first, attr_pair.second);
-    }
+    globals.graph->Render();
 
-    for (auto& entry : globals.nodes) {
-        entry.second.Render();
-    }
-
-    imnodes::EndNodeEditor();
-
-    // event processing
-
-    int start_attr, end_attr;
-    if (imnodes::IsLinkCreated(&start_attr, &end_attr))
-    {
-        auto attr_pair = std::make_pair(start_attr, end_attr);
-        globals.links.insert(std::make_pair(new_id(), attr_pair));
-    }
     ImGui::End();
-
-    int link_id;
-    if (imnodes::IsLinkDestroyed(&link_id)) {
-        globals.links.erase(link_id);
-    }
 }
 
 const std::string &get_name(const ThingC &thing) { return thing.appname; }

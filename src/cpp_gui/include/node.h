@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <functional>
 
 #include "attribute.h"
 
@@ -19,7 +20,7 @@ enum class NodeType {
 
 class Node {
     public:
-        Node();
+        Node(int id);
         ~Node();
 
         void Render();
@@ -29,7 +30,7 @@ class Node {
         std::vector<std::shared_ptr<Attribute>> out_attributes;
         std::vector<std::shared_ptr<Attribute>> static_attributes;
 
-        static Node TemplatedCurve();
+        static Node TemplatedCurve(const std::function<int()> next_id);
 
     private:
         NodeType type;

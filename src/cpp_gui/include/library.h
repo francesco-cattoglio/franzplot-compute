@@ -19,7 +19,6 @@ public:
 
 struct SharedThing;
 
-int new_id();
 void add_node(Node&&);
 std::unique_ptr<ThingC> make_demo(rust::Str appname);
 const std::string &get_name(const ThingC &thing);

@@ -1,14 +1,12 @@
 #pragma once
 
-#include <imnodes.h>
-
 #include "library.h"
 
 namespace franzplot_gui {
 
 class Attribute {
     public:
-        Attribute(int node_id);
+        Attribute(int attribute_id, int node_id);
         virtual ~Attribute() {}
 
         virtual void Render() {};
@@ -20,7 +18,7 @@ class Attribute {
 
 class TextAttribute : public Attribute {
     public:
-        TextAttribute(int node_id, const std::string& label);
+        TextAttribute(int attribute_id, int node_id, const std::string& label);
 
         virtual ~TextAttribute() {}
 
@@ -34,13 +32,25 @@ class TextAttribute : public Attribute {
 
 class OutputAttribute : public Attribute {
     public:
-        OutputAttribute(int node_id);
+        OutputAttribute(int attribute_id, int node_id);
 
         virtual ~OutputAttribute() {}
 
         virtual void Render() override;
 
     private:
+};
+
+class IntervalAttribute : public Attribute {
+    public:
+        IntervalAttribute(int attribute_id, int node_id, const std::string& label);
+
+        virtual ~IntervalAttribute() {}
+
+        virtual void Render() override;
+
+    private:
+        const std::string label;
 };
 
 }
