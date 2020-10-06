@@ -38,14 +38,14 @@ Node Node::TemplatedCurve(const std::function<int()> next_id) {
     to_return.static_attributes.push_back(std::make_shared<Text>(next_id(), to_return.id, "fx", 75));
     to_return.static_attributes.push_back(std::make_shared<Text>(next_id(), to_return.id, "fy", 75));
     to_return.static_attributes.push_back(std::make_shared<Text>(next_id(), to_return.id, "fz", 75));
-    to_return.out_attributes.push_back(std::make_shared<Output>(next_id(), to_return.id));
+    to_return.out_attributes.push_back(std::make_shared<OutputGeometry>(next_id(), to_return.id));
 
     return to_return;
 }
 
 Node Node::TemplatedInterval(const std::function<int()> next_id) {
     Node to_return = Node(next_id());
-    to_return.type = NodeType::Curve;
+    to_return.type = NodeType::Interval;
     to_return.name = "Interval";
     to_return.static_attributes.push_back(std::make_shared<Text>(next_id(), to_return.id, "name", 35));
     to_return.static_attributes.push_back(std::make_shared<Text>(next_id(), to_return.id, "begin", 35));
@@ -55,15 +55,24 @@ Node Node::TemplatedInterval(const std::function<int()> next_id) {
     return to_return;
 }
 
+Node Node::TemplatedRendering(const std::function<int()> next_id) {
+    Node to_return = Node(next_id());
+    to_return.type = NodeType::Rendering;
+    to_return.name = "Rendering";
+    to_return.in_attributes.push_back(std::make_shared<InputGeometry>(next_id(), to_return.id));
+
+    return to_return;
+}
+
 Node Node::TemplatedMatrix(const std::function<int()> next_id) {
     Node to_return = Node(next_id());
-    to_return.type = NodeType::Curve;
+    to_return.type = NodeType::Matrix;
     to_return.name = "Matrix";
     to_return.in_attributes.push_back(std::make_shared<InputInterval>(next_id(), to_return.id, "interval"));
     to_return.static_attributes.push_back(std::make_shared<QuadText>(next_id(), to_return.id, ""));
     to_return.static_attributes.push_back(std::make_shared<QuadText>(next_id(), to_return.id, ""));
     to_return.static_attributes.push_back(std::make_shared<QuadText>(next_id(), to_return.id, ""));
-    to_return.out_attributes.push_back(std::make_shared<Output>(next_id(), to_return.id));
+    to_return.out_attributes.push_back(std::make_shared<OutputGeometry>(next_id(), to_return.id));
 
     return to_return;
 }

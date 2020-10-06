@@ -15,6 +15,7 @@ enum class NodeType {
     Surface,
     Transform,
     Matrix,
+    Rendering,
     Other
 };
 
@@ -33,6 +34,7 @@ class Node {
         static Node TemplatedCurve(const std::function<int()> next_id);
         static Node TemplatedInterval(const std::function<int()> next_id);
         static Node TemplatedMatrix(const std::function<int()> next_id);
+        static Node TemplatedRendering(const std::function<int()> next_id);
 
     private:
         NodeType type;

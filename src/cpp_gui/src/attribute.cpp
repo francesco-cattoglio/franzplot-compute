@@ -115,13 +115,27 @@ void OutputInterval::RenderContents() {
     return;
 }
 
-Output::Output(int attribute_id, int node_id)
+InputGeometry::InputGeometry(int attribute_id, int node_id)
     :
-        Attribute(attribute_id, node_id, AttributeKind::Out)
+        Attribute(attribute_id, node_id, AttributeKind::Out, imnodes::PinShape_TriangleFilled)
 {
 }
 
-void Output::RenderContents() {
+void InputGeometry::RenderContents() {
+    auto node_dimensions = imnodes::GetNodeDimensions(this->node_id);
+    const char label[] = "Geometry";
+    ImGui::Indent(node_dimensions.x - MAGIC_OFFSET -ImGui::CalcTextSize(label).x);
+    ImGui::Text(label);
+    return;
+}
+
+OutputGeometry::OutputGeometry(int attribute_id, int node_id)
+    :
+        Attribute(attribute_id, node_id, AttributeKind::Out, imnodes::PinShape_TriangleFilled)
+{
+}
+
+void OutputGeometry::RenderContents() {
     auto node_dimensions = imnodes::GetNodeDimensions(this->node_id);
     const char label[] = "Output";
     ImGui::Indent(node_dimensions.x - MAGIC_OFFSET -ImGui::CalcTextSize(label).x);

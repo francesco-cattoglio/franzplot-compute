@@ -74,5 +74,4 @@ void Graph::AddNode(Node&& node) {
     nodes.insert(std::make_pair(node.id, node));
 }
 
-
 }

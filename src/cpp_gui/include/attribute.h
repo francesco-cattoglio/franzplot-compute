@@ -39,9 +39,9 @@ class Text final : public Attribute {
 
     private:
         std::array<char, 256> buffer;
-        const int text_field_size;
         const std::string label;
         const std::string imgui_label;
+        const int text_field_size;
 };
 
 class QuadText final : public Attribute {
@@ -55,12 +55,12 @@ class QuadText final : public Attribute {
         std::array<char, 256> buffer_2;
         std::array<char, 256> buffer_3;
         std::array<char, 256> buffer_4;
-        const int text_field_size;
         const std::string label;
         const std::string imgui_label_1;
         const std::string imgui_label_2;
         const std::string imgui_label_3;
         const std::string imgui_label_4;
+        const int text_field_size;
 };
 
 class OutputInterval final : public Attribute {
@@ -72,9 +72,18 @@ class OutputInterval final : public Attribute {
     private:
 };
 
-class Output final : public Attribute {
+class OutputGeometry final : public Attribute {
     public:
-        Output(int attribute_id, int node_id);
+        OutputGeometry(int attribute_id, int node_id);
+
+        void RenderContents() override;
+
+    private:
+};
+
+class InputGeometry final : public Attribute {
+    public:
+        InputGeometry(int attribute_id, int node_id);
 
         void RenderContents() override;
 
