@@ -12,6 +12,10 @@ Attribute::Attribute(int attribute_id, int node_id, AttributeKind kind, imnodes:
 {
 }
 
+bool Attribute::IsCompatible(Attribute* other) {
+    return false;
+}
+
 void Attribute::Render() {
     switch (kind) {
         case AttributeKind::In:
@@ -44,7 +48,7 @@ void Attribute::Render() {
     }
 }
 
-TextAttribute::TextAttribute(int attribute_id, int node_id, const std::string& label, int text_field_size)
+Text::Text(int attribute_id, int node_id, const std::string& label, int text_field_size)
     :
         Attribute(attribute_id, node_id, AttributeKind::Static),
         label(label),
@@ -54,7 +58,7 @@ TextAttribute::TextAttribute(int attribute_id, int node_id, const std::string& l
     buffer.fill('\0');
 }
 
-void TextAttribute::RenderContents() {
+void Text::RenderContents() {
     ImGui::Text(this->label.c_str());
     ImGui::SameLine();
     ImGui::PushItemWidth(text_field_size);
@@ -64,7 +68,7 @@ void TextAttribute::RenderContents() {
     return;
 }
 
-QuadTextAttribute::QuadTextAttribute(int attribute_id, int node_id, const std::string& label, int text_field_size)
+QuadText::QuadText(int attribute_id, int node_id, const std::string& label, int text_field_size)
     :
         Attribute(attribute_id, node_id, AttributeKind::Static),
         label(label),
@@ -80,7 +84,7 @@ QuadTextAttribute::QuadTextAttribute(int attribute_id, int node_id, const std::s
     buffer_4.fill('\0');
 }
 
-void QuadTextAttribute::RenderContents() {
+void QuadText::RenderContents() {
     ImGui::Text(this->label.c_str());
     ImGui::SameLine();
     ImGui::PushItemWidth(text_field_size);
@@ -111,13 +115,13 @@ void OutputInterval::RenderContents() {
     return;
 }
 
-OutputAttribute::OutputAttribute(int attribute_id, int node_id)
+Output::Output(int attribute_id, int node_id)
     :
         Attribute(attribute_id, node_id, AttributeKind::Out)
 {
 }
 
-void OutputAttribute::RenderContents() {
+void Output::RenderContents() {
     auto node_dimensions = imnodes::GetNodeDimensions(this->node_id);
     const char label[] = "Output";
     ImGui::Indent(node_dimensions.x - MAGIC_OFFSET -ImGui::CalcTextSize(label).x);
@@ -125,14 +129,14 @@ void OutputAttribute::RenderContents() {
     return;
 }
 
-IntervalAttribute::IntervalAttribute(int attribute_id, int node_id, const std::string& label)
+InputInterval::InputInterval(int attribute_id, int node_id, const std::string& label)
     :
         Attribute(attribute_id, node_id, AttributeKind::In, imnodes::PinShape_QuadFilled),
         label(label)
 {
 }
 
-void IntervalAttribute::RenderContents() {
+void InputInterval::RenderContents() {
     ImGui::Text(this->label.c_str());
     return;
 }

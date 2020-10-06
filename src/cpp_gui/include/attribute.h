@@ -21,6 +21,7 @@ class Attribute {
 
         void Render();
 
+        virtual bool IsCompatible(Attribute* other);
         virtual void RenderContents() = 0;
 
         const int id;
@@ -30,13 +31,11 @@ class Attribute {
     protected:
 };
 
-class TextAttribute : public Attribute {
+class Text final : public Attribute {
     public:
-        TextAttribute(int attribute_id, int node_id, const std::string& label, int text_field_size = 75);
+        Text(int attribute_id, int node_id, const std::string& label, int text_field_size = 75);
 
-        virtual ~TextAttribute() {}
-
-        virtual void RenderContents() override;
+        void RenderContents() override;
 
     private:
         std::array<char, 256> buffer;
@@ -45,13 +44,11 @@ class TextAttribute : public Attribute {
         const std::string imgui_label;
 };
 
-class QuadTextAttribute : public Attribute {
+class QuadText final : public Attribute {
     public:
-        QuadTextAttribute(int attribute_id, int node_id, const std::string& label, int text_field_size = 35);
+        QuadText(int attribute_id, int node_id, const std::string& label, int text_field_size = 35);
 
-        virtual ~QuadTextAttribute() {}
-
-        virtual void RenderContents() override;
+        void RenderContents() override;
 
     private:
         std::array<char, 256> buffer_1;
@@ -66,35 +63,29 @@ class QuadTextAttribute : public Attribute {
         const std::string imgui_label_4;
 };
 
-class OutputInterval : public Attribute {
+class OutputInterval final : public Attribute {
     public:
         OutputInterval(int attribute_id, int node_id);
 
-        virtual ~OutputInterval() {}
-
-        virtual void RenderContents() override;
+        void RenderContents() override;
 
     private:
 };
 
-class OutputAttribute : public Attribute {
+class Output final : public Attribute {
     public:
-        OutputAttribute(int attribute_id, int node_id);
+        Output(int attribute_id, int node_id);
 
-        virtual ~OutputAttribute() {}
-
-        virtual void RenderContents() override;
+        void RenderContents() override;
 
     private:
 };
 
-class IntervalAttribute : public Attribute {
+class InputInterval final : public Attribute {
     public:
-        IntervalAttribute(int attribute_id, int node_id, const std::string& label);
+        InputInterval(int attribute_id, int node_id, const std::string& label);
 
-        virtual ~IntervalAttribute() {}
-
-        virtual void RenderContents() override;
+        void RenderContents() override;
 
     private:
         const std::string label;
