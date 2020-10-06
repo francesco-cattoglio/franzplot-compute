@@ -811,30 +811,30 @@ dependencies = [
 
 [[package]]
 name = "imgui"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9fdb2bcc7e498e78137ce28705ae836d69e36ee2eac89d0d926cfabfcf550570"
+checksum = "b1baf4d55b2c00e5dd54d8a3b840003a5dffa5561f132511bbb9002ce7c63518"
 dependencies = [
  "bitflags",
  "imgui-sys",
  "lazy_static",
- "parking_lot 0.10.2",
+ "parking_lot 0.11.0",
 ]
 
 [[package]]
 name = "imgui-sys"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72be9671d64dd0ed26bb708cd10060a431262ac90ae70cf7c5912feefe6849da"
+checksum = "06686645bdaa0e276ab93977da5bc6419c57ae4f4fb12cb14dd0e047dc46f894"
 dependencies = [
  "cc",
 ]
 
 [[package]]
 name = "imgui-wgpu"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb9049e36d56a0784a3d23baf897a4b7409bc023e6a390dcb9735fbfd162cc32"
+checksum = "1189b1e95187d9bca19c0194784f50f5c1b2e02fb7b4629babb39936ed185520"
 dependencies = [
  "bytemuck",
  "imgui",
@@ -845,9 +845,9 @@ dependencies = [
 
 [[package]]
 name = "imgui-winit-support"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f98171c35263e3eb0dfb66cb876e3efdb788d777c1b613c7d2592303d1276bb5"
+checksum = "3296de3dbdb90a5385477ed8322aa71a7b50034fc5e6e926795a23d0ba1471c0"
 dependencies = [
  "imgui",
  "winit",

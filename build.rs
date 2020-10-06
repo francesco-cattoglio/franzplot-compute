@@ -1,9 +1,9 @@
 fn main() {
     let imgui_files = vec![
-        "src/cpp_gui/imgui-1.75/imgui.cpp",
-        "src/cpp_gui/imgui-1.75/imgui_demo.cpp",
-        "src/cpp_gui/imgui-1.75/imgui_widgets.cpp",
-        "src/cpp_gui/imgui-1.75/imgui_draw.cpp",
+        "src/cpp_gui/imgui-1.78/imgui.cpp",
+        "src/cpp_gui/imgui-1.78/imgui_demo.cpp",
+        "src/cpp_gui/imgui-1.78/imgui_widgets.cpp",
+        "src/cpp_gui/imgui-1.78/imgui_draw.cpp",
         "src/cpp_gui/imnodes-8ecdd3/imnodes.cpp",
     ];
     let cpp_files = vec![
@@ -23,7 +23,7 @@ fn main() {
     cxx_build::bridge("src/cpp_gui/mod.rs")
         .files(&imgui_files)
         .files(&cpp_files)
-        .include("src/cpp_gui/imgui-1.75/")
+        .include("src/cpp_gui/imgui-1.78/")
         .include("src/cpp_gui/imnodes-8ecdd3/")
         .include("src/cpp_gui/include/")
         .flag("-std=c++14")
