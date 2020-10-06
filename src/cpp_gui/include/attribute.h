@@ -21,7 +21,7 @@ class Attribute {
 
         void Render();
 
-        virtual bool IsCompatible(Attribute* other);
+        virtual bool IsCompatible(Attribute& other);
         virtual void RenderContents() = 0;
 
         const int id;
@@ -85,6 +85,7 @@ class InputInterval final : public Attribute {
     public:
         InputInterval(int attribute_id, int node_id, const std::string& label);
 
+        bool IsCompatible(Attribute& rhs) override;
         void RenderContents() override;
 
     private:

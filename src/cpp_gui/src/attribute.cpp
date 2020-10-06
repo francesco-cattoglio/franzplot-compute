@@ -12,7 +12,7 @@ Attribute::Attribute(int attribute_id, int node_id, AttributeKind kind, imnodes:
 {
 }
 
-bool Attribute::IsCompatible(Attribute* other) {
+bool Attribute::IsCompatible(Attribute& /*other*/) {
     return false;
 }
 
@@ -139,6 +139,10 @@ InputInterval::InputInterval(int attribute_id, int node_id, const std::string& l
 void InputInterval::RenderContents() {
     ImGui::Text(this->label.c_str());
     return;
+}
+
+bool InputInterval::IsCompatible(Attribute& rhs) {
+    return typeid(rhs) == typeid(OutputInterval);
 }
 
 }

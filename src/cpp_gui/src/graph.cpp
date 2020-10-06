@@ -41,7 +41,10 @@ void Graph::Render() {
             in_attr = end_attr;
             out_attr = start_attr;
         }
-        this->input_to_output_links[in_attr] = out_attr;
+        // check if the output can be linked to this input.
+        // If the two are compatible, create a link
+        if (attributes[in_attr]->IsCompatible(*attributes[out_attr]))
+            this->input_to_output_links[in_attr] = out_attr;
     }
 
 }
@@ -51,6 +54,7 @@ int Graph::NextId() {
 }
 
 void Graph::Test() {
+    AddNode(Node::TemplatedInterval(std::bind(&Graph::NextId, this)));
     AddNode(Node::TemplatedInterval(std::bind(&Graph::NextId, this)));
     AddNode(Node::TemplatedCurve(std::bind(&Graph::NextId, this)));
     AddNode(Node::TemplatedMatrix(std::bind(&Graph::NextId, this)));
