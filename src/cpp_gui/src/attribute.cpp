@@ -101,6 +101,22 @@ void QuadText::RenderContents() {
 
 #define MAGIC_OFFSET 17
 
+InputInterval::InputInterval(int attribute_id, int node_id, const std::string& label)
+    :
+        Attribute(attribute_id, node_id, AttributeKind::In, imnodes::PinShape_QuadFilled),
+        label(label)
+{
+}
+
+bool InputInterval::IsCompatible(Attribute& rhs) {
+    return typeid(rhs) == typeid(OutputInterval);
+}
+
+void InputInterval::RenderContents() {
+    ImGui::Text(this->label.c_str());
+    return;
+}
+
 OutputInterval::OutputInterval(int attribute_id, int node_id)
     :
         Attribute(attribute_id, node_id, AttributeKind::Out, imnodes::PinShape_QuadFilled)
@@ -117,14 +133,16 @@ void OutputInterval::RenderContents() {
 
 InputGeometry::InputGeometry(int attribute_id, int node_id)
     :
-        Attribute(attribute_id, node_id, AttributeKind::Out, imnodes::PinShape_TriangleFilled)
+        Attribute(attribute_id, node_id, AttributeKind::In, imnodes::PinShape_TriangleFilled)
 {
 }
 
+bool InputGeometry::IsCompatible(Attribute& rhs) {
+    return typeid(rhs) == typeid(OutputGeometry);
+}
+
 void InputGeometry::RenderContents() {
-    auto node_dimensions = imnodes::GetNodeDimensions(this->node_id);
     const char label[] = "Geometry";
-    ImGui::Indent(node_dimensions.x - MAGIC_OFFSET -ImGui::CalcTextSize(label).x);
     ImGui::Text(label);
     return;
 }
@@ -143,20 +161,34 @@ void OutputGeometry::RenderContents() {
     return;
 }
 
-InputInterval::InputInterval(int attribute_id, int node_id, const std::string& label)
+InputMatrix::InputMatrix(int attribute_id, int node_id)
     :
-        Attribute(attribute_id, node_id, AttributeKind::In, imnodes::PinShape_QuadFilled),
-        label(label)
+        Attribute(attribute_id, node_id, AttributeKind::In)
 {
 }
 
-void InputInterval::RenderContents() {
-    ImGui::Text(this->label.c_str());
+bool InputMatrix::IsCompatible(Attribute& rhs) {
+    return typeid(rhs) == typeid(OutputMatrix);
+}
+
+void InputMatrix::RenderContents() {
+    const char label[] = "Matrix";
+    ImGui::Text(label);
     return;
 }
 
-bool InputInterval::IsCompatible(Attribute& rhs) {
-    return typeid(rhs) == typeid(OutputInterval);
+OutputMatrix::OutputMatrix(int attribute_id, int node_id)
+    :
+        Attribute(attribute_id, node_id, AttributeKind::Out)
+{
+}
+
+void OutputMatrix::RenderContents() {
+    auto node_dimensions = imnodes::GetNodeDimensions(this->node_id);
+    const char label[] = "Output";
+    ImGui::Indent(node_dimensions.x - MAGIC_OFFSET -ImGui::CalcTextSize(label).x);
+    ImGui::Text(label);
+    return;
 }
 
 }

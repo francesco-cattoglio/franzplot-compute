@@ -63,10 +63,31 @@ class QuadText final : public Attribute {
         const int text_field_size;
 };
 
+class InputInterval final : public Attribute {
+    public:
+        InputInterval(int attribute_id, int node_id, const std::string& label);
+
+        bool IsCompatible(Attribute& rhs) override;
+        void RenderContents() override;
+
+    private:
+        const std::string label;
+};
+
 class OutputInterval final : public Attribute {
     public:
         OutputInterval(int attribute_id, int node_id);
 
+        void RenderContents() override;
+
+    private:
+};
+
+class InputGeometry final : public Attribute {
+    public:
+        InputGeometry(int attribute_id, int node_id);
+
+        bool IsCompatible(Attribute& rhs) override;
         void RenderContents() override;
 
     private:
@@ -81,24 +102,25 @@ class OutputGeometry final : public Attribute {
     private:
 };
 
-class InputGeometry final : public Attribute {
+class InputMatrix final : public Attribute {
     public:
-        InputGeometry(int attribute_id, int node_id);
-
-        void RenderContents() override;
-
-    private:
-};
-
-class InputInterval final : public Attribute {
-    public:
-        InputInterval(int attribute_id, int node_id, const std::string& label);
+        InputMatrix(int attribute_id, int node_id);
 
         bool IsCompatible(Attribute& rhs) override;
         void RenderContents() override;
 
     private:
-        const std::string label;
 };
+
+class OutputMatrix final : public Attribute {
+    public:
+        OutputMatrix(int attribute_id, int node_id);
+
+        void RenderContents() override;
+
+    private:
+};
+
+
 
 }

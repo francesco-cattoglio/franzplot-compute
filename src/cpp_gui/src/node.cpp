@@ -72,7 +72,7 @@ Node Node::TemplatedMatrix(const std::function<int()> next_id) {
     to_return.static_attributes.push_back(std::make_shared<QuadText>(next_id(), to_return.id, ""));
     to_return.static_attributes.push_back(std::make_shared<QuadText>(next_id(), to_return.id, ""));
     to_return.static_attributes.push_back(std::make_shared<QuadText>(next_id(), to_return.id, ""));
-    to_return.out_attributes.push_back(std::make_shared<OutputGeometry>(next_id(), to_return.id));
+    to_return.out_attributes.push_back(std::make_shared<OutputMatrix>(next_id(), to_return.id));
 
     return to_return;
 }

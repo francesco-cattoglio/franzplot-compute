@@ -4,13 +4,13 @@ fn main() {
         "src/cpp_gui/imgui-1.78/imgui_demo.cpp",
         "src/cpp_gui/imgui-1.78/imgui_widgets.cpp",
         "src/cpp_gui/imgui-1.78/imgui_draw.cpp",
-        "src/cpp_gui/imnodes-8ecdd3/imnodes.cpp",
     ];
     let cpp_files = vec![
         "src/cpp_gui/src/attribute.cpp",
         "src/cpp_gui/src/library.cpp",
         "src/cpp_gui/src/graph.cpp",
         "src/cpp_gui/src/node.cpp",
+        "src/cpp_gui/imnodes-8ecdd3/imnodes.cpp",
     ];
 
     let include_files = vec![
