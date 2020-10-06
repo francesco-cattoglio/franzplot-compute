@@ -4,15 +4,25 @@
 
 namespace franzplot_gui {
 
+enum class AttributeKind {
+    In,
+    Out,
+    Static,
+    Unknown
+};
+
 class Attribute {
     public:
-        Attribute(int attribute_id, int node_id);
+        Attribute(int attribute_id, int node_id, AttributeKind kind);
         virtual ~Attribute() {}
 
-        virtual void Render() {};
+        void Render();
+
+        virtual void RenderContents() = 0;
 
         const int id;
         const int node_id;
+        const AttributeKind kind;
     protected:
 };
 
@@ -22,7 +32,7 @@ class TextAttribute : public Attribute {
 
         virtual ~TextAttribute() {}
 
-        virtual void Render() override;
+        virtual void RenderContents() override;
 
     private:
         std::array<char, 256> buffer;
@@ -36,7 +46,7 @@ class OutputAttribute : public Attribute {
 
         virtual ~OutputAttribute() {}
 
-        virtual void Render() override;
+        virtual void RenderContents() override;
 
     private:
 };
@@ -47,7 +57,7 @@ class IntervalAttribute : public Attribute {
 
         virtual ~IntervalAttribute() {}
 
-        virtual void Render() override;
+        virtual void RenderContents() override;
 
     private:
         const std::string label;

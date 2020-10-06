@@ -10,25 +10,20 @@ class Graph {
         void Test();
         void Render();
     private:
+        struct AttributeInfo {
+
+        };
+        void AddNode(Node&& node);
         int NextId();
         int next_id = 0;
         std::map<int, Node> nodes;
-        std::map<int, int> attr_node_map;
-        std::map<int, std::pair<int, int>> links;
+        std::map<int, std::shared_ptr<Attribute>> attributes;
+        // We need a data structure to store the links between our nodes,
+        // but for our specific use case, one input can have one and only one link attached to it.
+        // This means that we can just use the same ID for both a link and the attribute!
+        // By doing this management of the links becomes way easier, because a single map stores
+        // both the link and the two attribute IDs.
+        std::map<int, int> input_to_output_links;
 };
-//void add_node(Node&& node) {
-//    // we need to keep our attribute-to-node map up-to-date
-//    for (auto& attribute : node.in_attributes)
-//        globals.attr_node_map[attribute->id] = node.id;
-//
-//    for (auto& attribute : node.out_attributes)
-//        globals.attr_node_map[attribute->id] = node.id;
-//
-//    for (auto& attribute : node.static_attributes)
-//        globals.attr_node_map[attribute->id] = node.id;
-//
-//    globals.nodes.insert(std::make_pair(node.id, node));
-//}
-
 
 }
