@@ -46,6 +46,7 @@ Node Node::PrefabInterval(const std::function<int()> next_id) {
         std::make_shared<Text>(next_id(), to_return.id, "name", 35),
         std::make_shared<Text>(next_id(), to_return.id, "begin", 35),
         std::make_shared<Text>(next_id(), to_return.id, "end", 35),
+        std::make_shared<IntSlider>(next_id(), to_return.id, "quality", 1, 16),
     };
 
     return to_return;
@@ -87,4 +88,32 @@ Node Node::PrefabMatrix(const std::function<int()> next_id) {
     return to_return;
 }
 
+// helper function
+std::string ToString(NodeType type) {
+    switch (type) {
+        case NodeType::Curve:
+            return "Curve";
+
+        case NodeType::Interval:
+            return "Interval";
+
+        case NodeType::Surface:
+            return "Surface";
+
+        case NodeType::Matrix:
+            return "Matrix";
+
+        case NodeType::Transform:
+            return "Transform";
+
+        case NodeType::Rendering:
+            return "Rendering";
+
+        case NodeType::Other:
+            assert(0 && "unimplemented - case not handled");
+            return "Other";
+    }
+
+    assert(0 && "unreachable code reached");
+}
 } // namespace

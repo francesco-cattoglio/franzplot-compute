@@ -19,6 +19,8 @@ enum class NodeType {
     Other
 };
 
+std::string ToString(NodeType type);
+
 class Node {
     public:
         Node(int id, NodeType type);

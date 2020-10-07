@@ -70,11 +70,9 @@ void Graph::RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::s
     // if the node has ANY input, recurse
     for (auto& attribute_ptr : node.attributes) {
         if (attribute_ptr->kind == AttributeKind::Input) {
-            auto find_results = input_to_output_links.find(attribute_ptr->id);
-            if (find_results != input_to_output_links.end()) {
-                int linked_attribute_id = find_results->second;
-                int linked_node_id = attributes[linked_attribute_id]->node_id;
-                auto& node = nodes.at(linked_node_id);
+            auto maybe_node_id = FindLinkedNode(attribute_ptr->id);
+            if (maybe_node_id) {
+                auto& node = nodes.at(maybe_node_id.value());
                 RecurseToJson(node, visited_nodes, json);
             } else {
                 std::cout << "warning: unconnected node" << std::endl;
@@ -83,10 +81,45 @@ void Graph::RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::s
     }
 
     // after we are done with the recursion, store myself in the json string, provided this has not been done before
+    // this code is a bit monolithic because link information is stored inside the graph, not in the attributes,
+    // therefore we cannot just loop over all the attributes and call one of their member functions
     if (visited_nodes.count(node.id) == 0) {
-        json += ", " + node.name;
+        json += std::string() + "{\n"; // opens new node entry
+        json += std::string() + "\t\"id\": \"" + std::to_string(node.id) + "\",\n";
+        json += std::string() + "\t\"data\": {\n"; // opens the data section
+        json += std::string() + "\t\t\"" + ToString(node.type) + "\": {\n"; // opens the attribute section
+        for (auto& attribute : node.attributes) {
+            std::optional<int> maybe_node_id;
+            switch (attribute->kind) {
+                case AttributeKind::Input:
+                    maybe_node_id = FindLinkedNode(attribute->id);
+                    if (maybe_node_id) {
+                        json += std::string() + "\t\t\t\"" + attribute->label + "\": \"" + std::to_string(maybe_node_id.value()) + "\",\n";
+                    }
+                    break;
+                case AttributeKind::Output:
+                    // do nothing
+                    break;
+                case AttributeKind::Static:
+                    json += std::string() + "\t\t\t\"" + attribute->label + "\": " + static_cast<StaticAttribute&>(*attribute).ContentsToJson() + ",\n";
+                    break;
+            }
+        }
+        json += std::string() + "\t\t}\n"; // closes attribute
+        json += std::string() + "\t}\n"; // closes data
+        json += std::string() + "},\n"; // closes the new node entry
         // mark as visited!
         visited_nodes.insert(node.id);
+    }
+}
+
+std::optional<int> Graph::FindLinkedNode(int input_attribute_id) {
+    auto find_results = input_to_output_links.find(input_attribute_id);
+    if (find_results != input_to_output_links.end()) {
+        int linked_attribute_id = find_results->second;
+        return attributes[linked_attribute_id]->node_id;
+    } else {
+        return std::nullopt;
     }
 }
 

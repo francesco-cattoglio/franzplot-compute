@@ -28,7 +28,7 @@ fn main() {
         .include("src/cpp_gui/imgui-1.78/")
         .include("src/cpp_gui/imnodes-8ecdd3/")
         .include("src/cpp_gui/include/")
-        .flag("-std=c++14")
+        .flag("-std=c++17")
         .compile("cxxbridge-gui");
 
     for filename in imgui_files.iter() {

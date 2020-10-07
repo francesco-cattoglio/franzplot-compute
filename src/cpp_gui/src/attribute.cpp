@@ -90,6 +90,12 @@ void Text::RenderContents() {
     return;
 }
 
+std::string Text::ContentsToJson() {
+    std::string to_return;
+    to_return += std::string() + "\"" + buffer.data() + "\"";
+    return to_return;
+}
+
 MatrixRow::MatrixRow(int attribute_id, int node_id, const std::string& label, int text_field_size)
     :
         StaticAttribute(attribute_id, node_id, label),
@@ -119,6 +125,36 @@ void MatrixRow::RenderContents() {
     ImGui::InputText(imgui_label_4.c_str(), buffer_4.data(), buffer_4.size());
     ImGui::PopItemWidth();
     return;
+}
+
+std::string MatrixRow::ContentsToJson() {
+    std::string to_return;
+    to_return += std::string() + "[\"" + buffer_1.data()
+        + "\", \"" + buffer_2.data()
+        + "\", \"" + buffer_3.data()
+        + "\", \"" + buffer_4.data()
+        + "\"]";
+    return to_return;
+}
+
+IntSlider::IntSlider(int attribute_id, int node_id, const std::string& label, int min, int max)
+    :
+        StaticAttribute(attribute_id, node_id, label),
+        min(min),
+        max(max),
+        value(min)
+{}
+
+std::string IntSlider::ContentsToJson() {
+    return std::to_string(value);
+}
+
+void IntSlider::RenderContents() {
+    ImGui::Text(label.c_str());
+    ImGui::SameLine();
+    ImGui::PushItemWidth(45);
+    ImGui::SliderInt("", &value, min, max);
+    ImGui::PopItemWidth();
 }
 
 // helper functions

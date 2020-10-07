@@ -61,6 +61,7 @@ class StaticAttribute : public Attribute {
         virtual ~StaticAttribute() {}
 
         void Render() final;
+        virtual std::string ContentsToJson() = 0;
         virtual void RenderContents() = 0;
 };
 
@@ -82,10 +83,24 @@ class SimpleOutput final : public OutputAttribute {
     private:
 };
 
+class IntSlider final : public StaticAttribute {
+    public:
+        IntSlider(int attribute_id, int node_id, const std::string& label, int min, int max);
+
+        std::string ContentsToJson() override;
+        void RenderContents() override;
+
+    private:
+        int min;
+        int max;
+        int value;
+};
+
 class Text final : public StaticAttribute {
     public:
         Text(int attribute_id, int node_id, const std::string& label, int text_field_size = 75);
 
+        std::string ContentsToJson() override;
         void RenderContents() override;
 
     private:
@@ -98,6 +113,7 @@ class MatrixRow final : public StaticAttribute {
     public:
         MatrixRow(int attribute_id, int node_id, const std::string& label, int text_field_size = 35);
 
+        std::string ContentsToJson() override;
         void RenderContents() override;
 
     private:
