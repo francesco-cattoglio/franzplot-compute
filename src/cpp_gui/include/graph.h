@@ -1,5 +1,6 @@
 #pragma once
 
+#include <set>
 #include <map>
 
 #include "node.h"
@@ -11,10 +12,9 @@ class Graph {
 
         void Test();
         void Render();
+        std::string ToJson();
     private:
-        struct AttributeInfo {
-
-        };
+        void RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::string& json);
         void AddNode(Node&& node);
         int NextId();
         int next_id = 0;

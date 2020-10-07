@@ -1,10 +1,15 @@
 #include "graph.h"
 
+#include <iostream>
+#include <imgui.h>
 #include <imnodes.h>
 
 namespace franzplot_gui {
 
 void Graph::Render() {
+    bool test_button = ImGui::Button("gotest!");
+    if (test_button)
+        std::cout << "testing took place: " << this->ToJson() << std::endl;
 
     imnodes::BeginNodeEditor();
     // render all links
@@ -59,6 +64,43 @@ void Graph::Test() {
     AddNode(Node::PrefabMatrix(std::bind(&Graph::NextId, this)));
     AddNode(Node::PrefabRendering(std::bind(&Graph::NextId, this)));
     AddNode(Node::PrefabTransform(std::bind(&Graph::NextId, this)));
+}
+
+void Graph::RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::string& json) {
+    // if the node has ANY input, recurse
+    for (auto& attribute_ptr : node.attributes) {
+        if (attribute_ptr->kind == AttributeKind::Input) {
+            auto find_results = input_to_output_links.find(attribute_ptr->id);
+            if (find_results != input_to_output_links.end()) {
+                int linked_attribute_id = find_results->second;
+                int linked_node_id = attributes[linked_attribute_id]->node_id;
+                auto& node = nodes.at(linked_node_id);
+                RecurseToJson(node, visited_nodes, json);
+            } else {
+                std::cout << "warning: unconnected node" << std::endl;
+            }
+        }
+    }
+
+    // after we are done with the recursion, store myself in the json string, provided this has not been done before
+    if (visited_nodes.count(node.id) == 0) {
+        json += ", " + node.name;
+        // mark as visited!
+        visited_nodes.insert(node.id);
+    }
+}
+
+std::string Graph::ToJson() {
+    std::string to_return;
+    std::set<int> visited_nodes;
+    to_return += "{ descriptors: [\n";
+    for (auto& id_node_pair : nodes) {
+        if (id_node_pair.second.type == NodeType::Rendering)
+            RecurseToJson(id_node_pair.second, visited_nodes, to_return);
+    }
+    to_return += "]}"; // closes descriptors array
+
+    return to_return;
 }
 
 void Graph::AddNode(Node&& node) {

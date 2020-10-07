@@ -21,12 +21,12 @@ enum class NodeType {
 
 class Node {
     public:
-        Node(int id);
-        ~Node();
+        Node(int id, NodeType type);
 
         void Render();
 
         const int id;
+        const NodeType type;
         std::vector<std::shared_ptr<Attribute>> attributes;
 
         static Node PrefabCurve(const std::function<int()> next_id);
@@ -35,9 +35,8 @@ class Node {
         static Node PrefabRendering(const std::function<int()> next_id);
         static Node PrefabTransform(const std::function<int()> next_id);
 
-    private:
-        NodeType type;
         std::string name;
+    private:
 };
 
 }

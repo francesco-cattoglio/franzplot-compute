@@ -6,9 +6,10 @@
 
 namespace franzplot_gui {
 
-Node::Node(int id) : id(id) {}
-
-Node::~Node() {}
+Node::Node(int id, NodeType type)
+    :
+        id(id), type(type)
+{}
 
 void Node::Render() {
     imnodes::BeginNode(this->id);
@@ -24,9 +25,8 @@ void Node::Render() {
 }
 
 Node Node::PrefabCurve(const std::function<int()> next_id) {
-    Node to_return = Node(next_id());
-    to_return.type = NodeType::Curve;
-    to_return.name = "curve node";
+    Node to_return = Node(next_id(), NodeType::Curve);
+    to_return.name = "Curve node";
     to_return.attributes = {
         std::make_shared<SimpleInput>(next_id(), to_return.id, "interval", PinKind::Interval),
         std::make_shared<SimpleOutput>(next_id(), to_return.id, "geometry", PinKind::Geometry),
@@ -39,8 +39,7 @@ Node Node::PrefabCurve(const std::function<int()> next_id) {
 }
 
 Node Node::PrefabInterval(const std::function<int()> next_id) {
-    Node to_return = Node(next_id());
-    to_return.type = NodeType::Interval;
+    Node to_return = Node(next_id(), NodeType::Interval);
     to_return.name = "Interval";
     to_return.attributes = {
         std::make_shared<SimpleOutput>(next_id(), to_return.id, "interval", PinKind::Interval),
@@ -53,8 +52,7 @@ Node Node::PrefabInterval(const std::function<int()> next_id) {
 }
 
 Node Node::PrefabRendering(const std::function<int()> next_id) {
-    Node to_return = Node(next_id());
-    to_return.type = NodeType::Rendering;
+    Node to_return = Node(next_id(), NodeType::Rendering);
     to_return.name = "Rendering";
     to_return.attributes = {
         std::make_shared<SimpleInput>(next_id(), to_return.id, "geometry", PinKind::Geometry)
@@ -64,8 +62,7 @@ Node Node::PrefabRendering(const std::function<int()> next_id) {
 }
 
 Node Node::PrefabTransform(const std::function<int()> next_id) {
-    Node to_return = Node(next_id());
-    to_return.type = NodeType::Rendering;
+    Node to_return = Node(next_id(), NodeType::Transform);
     to_return.name = "Transform";
     to_return.attributes = {
         std::make_shared<SimpleOutput>(next_id(), to_return.id, "geometry", PinKind::Geometry),
@@ -77,8 +74,7 @@ Node Node::PrefabTransform(const std::function<int()> next_id) {
 }
 
 Node Node::PrefabMatrix(const std::function<int()> next_id) {
-    Node to_return = Node(next_id());
-    to_return.type = NodeType::Matrix;
+    Node to_return = Node(next_id(), NodeType::Matrix);
     to_return.name = "Matrix";
     to_return.attributes = {
         std::make_shared<SimpleOutput>(next_id(), to_return.id, "matrix", PinKind::Matrix),
