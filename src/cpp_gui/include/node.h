@@ -27,14 +27,12 @@ class Node {
         void Render();
 
         const int id;
-        std::vector<std::shared_ptr<Attribute>> in_attributes;
-        std::vector<std::shared_ptr<Attribute>> out_attributes;
-        std::vector<std::shared_ptr<Attribute>> static_attributes;
+        std::vector<std::shared_ptr<Attribute>> attributes;
 
-        static Node TemplatedCurve(const std::function<int()> next_id);
-        static Node TemplatedInterval(const std::function<int()> next_id);
-        static Node TemplatedMatrix(const std::function<int()> next_id);
-        static Node TemplatedRendering(const std::function<int()> next_id);
+        static Node PrefabCurve(const std::function<int()> next_id);
+        static Node PrefabInterval(const std::function<int()> next_id);
+        static Node PrefabMatrix(const std::function<int()> next_id);
+        static Node PrefabRendering(const std::function<int()> next_id);
 
     private:
         NodeType type;

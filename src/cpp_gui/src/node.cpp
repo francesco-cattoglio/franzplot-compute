@@ -17,62 +17,63 @@ void Node::Render() {
     ImGui::TextUnformatted(this->name.c_str());
     imnodes::EndNodeTitleBar();
 
-    for (auto& attribute: this->out_attributes) {
+    for (auto& attribute: attributes)
         attribute->Render();
-    }
-    for (auto& attribute: this->in_attributes) {
-        attribute->Render();
-    }
-    for (auto& attribute: this->static_attributes) {
-        attribute->Render();
-    }
 
     imnodes::EndNode();
 }
 
-Node Node::TemplatedCurve(const std::function<int()> next_id) {
+Node Node::PrefabCurve(const std::function<int()> next_id) {
     Node to_return = Node(next_id());
     to_return.type = NodeType::Curve;
     to_return.name = "curve node";
-    to_return.in_attributes.push_back(std::make_shared<SimpleInput>(next_id(), to_return.id, PinKind::Interval, "interval"));
-    to_return.static_attributes.push_back(std::make_shared<Text>(next_id(), to_return.id, "fx", 75));
-    to_return.static_attributes.push_back(std::make_shared<Text>(next_id(), to_return.id, "fy", 75));
-    to_return.static_attributes.push_back(std::make_shared<Text>(next_id(), to_return.id, "fz", 75));
-    to_return.out_attributes.push_back(std::make_shared<SimpleOutput>(next_id(), to_return.id, PinKind::Geometry, "geometry"));
+    to_return.attributes = {
+        std::make_shared<SimpleInput>(next_id(), to_return.id, PinKind::Interval, "interval"),
+        std::make_shared<SimpleOutput>(next_id(), to_return.id, PinKind::Geometry, "geometry"),
+        std::make_shared<Text>(next_id(), to_return.id, "fx", 75),
+        std::make_shared<Text>(next_id(), to_return.id, "fy", 75),
+        std::make_shared<Text>(next_id(), to_return.id, "fz", 75),
+    };
 
     return to_return;
 }
 
-Node Node::TemplatedInterval(const std::function<int()> next_id) {
+Node Node::PrefabInterval(const std::function<int()> next_id) {
     Node to_return = Node(next_id());
     to_return.type = NodeType::Interval;
     to_return.name = "Interval";
-    to_return.static_attributes.push_back(std::make_shared<Text>(next_id(), to_return.id, "name", 35));
-    to_return.static_attributes.push_back(std::make_shared<Text>(next_id(), to_return.id, "begin", 35));
-    to_return.static_attributes.push_back(std::make_shared<Text>(next_id(), to_return.id, "end", 35));
-    to_return.out_attributes.push_back(std::make_shared<SimpleOutput>(next_id(), to_return.id, PinKind::Interval, "interval"));
+    to_return.attributes = {
+        std::make_shared<SimpleOutput>(next_id(), to_return.id, PinKind::Interval, "interval"),
+        std::make_shared<Text>(next_id(), to_return.id, "name", 35),
+        std::make_shared<Text>(next_id(), to_return.id, "begin", 35),
+        std::make_shared<Text>(next_id(), to_return.id, "end", 35),
+    };
 
     return to_return;
 }
 
-Node Node::TemplatedRendering(const std::function<int()> next_id) {
+Node Node::PrefabRendering(const std::function<int()> next_id) {
     Node to_return = Node(next_id());
     to_return.type = NodeType::Rendering;
     to_return.name = "Rendering";
-    to_return.in_attributes.push_back(std::make_shared<SimpleInput>(next_id(), to_return.id, PinKind::Geometry, "geometry"));
+    to_return.attributes = {
+        std::make_shared<SimpleInput>(next_id(), to_return.id, PinKind::Geometry, "geometry")
+    };
 
     return to_return;
 }
 
-Node Node::TemplatedMatrix(const std::function<int()> next_id) {
+Node Node::PrefabMatrix(const std::function<int()> next_id) {
     Node to_return = Node(next_id());
     to_return.type = NodeType::Matrix;
     to_return.name = "Matrix";
-    to_return.in_attributes.push_back(std::make_shared<SimpleInput>(next_id(), to_return.id, PinKind::Interval, "interval"));
-    to_return.static_attributes.push_back(std::make_shared<QuadText>(next_id(), to_return.id, ""));
-    to_return.static_attributes.push_back(std::make_shared<QuadText>(next_id(), to_return.id, ""));
-    to_return.static_attributes.push_back(std::make_shared<QuadText>(next_id(), to_return.id, ""));
-    to_return.out_attributes.push_back(std::make_shared<SimpleOutput>(next_id(), to_return.id, PinKind::Matrix, "matrix"));
+    to_return.attributes = {
+        std::make_shared<SimpleOutput>(next_id(), to_return.id, PinKind::Matrix, "matrix"),
+        std::make_shared<SimpleInput>(next_id(), to_return.id, PinKind::Interval, "interval"),
+        std::make_shared<QuadText>(next_id(), to_return.id, ""),
+        std::make_shared<QuadText>(next_id(), to_return.id, ""),
+        std::make_shared<QuadText>(next_id(), to_return.id, ""),
+    };
 
     return to_return;
 }

@@ -53,22 +53,16 @@ int Graph::NextId() {
 }
 
 void Graph::Test() {
-    AddNode(Node::TemplatedInterval(std::bind(&Graph::NextId, this)));
-    AddNode(Node::TemplatedInterval(std::bind(&Graph::NextId, this)));
-    AddNode(Node::TemplatedCurve(std::bind(&Graph::NextId, this)));
-    AddNode(Node::TemplatedMatrix(std::bind(&Graph::NextId, this)));
-    AddNode(Node::TemplatedRendering(std::bind(&Graph::NextId, this)));
+    AddNode(Node::PrefabInterval(std::bind(&Graph::NextId, this)));
+    AddNode(Node::PrefabInterval(std::bind(&Graph::NextId, this)));
+    AddNode(Node::PrefabCurve(std::bind(&Graph::NextId, this)));
+    AddNode(Node::PrefabMatrix(std::bind(&Graph::NextId, this)));
+    AddNode(Node::PrefabRendering(std::bind(&Graph::NextId, this)));
 }
 
 void Graph::AddNode(Node&& node) {
     // we need to keep our attribute-to-node map up-to-date
-    for (std::shared_ptr<Attribute> attribute : node.in_attributes)
-        attributes[attribute->id] = attribute;
-
-    for (std::shared_ptr<Attribute> attribute : node.out_attributes)
-        attributes[attribute->id] = attribute;
-
-    for (std::shared_ptr<Attribute> attribute : node.static_attributes)
+    for (std::shared_ptr<Attribute> attribute : node.attributes)
         attributes[attribute->id] = attribute;
 
     nodes.insert(std::make_pair(node.id, node));
