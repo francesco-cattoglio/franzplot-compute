@@ -33,6 +33,7 @@ class Node {
         static Node PrefabInterval(const std::function<int()> next_id);
         static Node PrefabMatrix(const std::function<int()> next_id);
         static Node PrefabRendering(const std::function<int()> next_id);
+        static Node PrefabTransform(const std::function<int()> next_id);
 
     private:
         NodeType type;

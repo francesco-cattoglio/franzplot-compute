@@ -58,6 +58,7 @@ void Graph::Test() {
     AddNode(Node::PrefabCurve(std::bind(&Graph::NextId, this)));
     AddNode(Node::PrefabMatrix(std::bind(&Graph::NextId, this)));
     AddNode(Node::PrefabRendering(std::bind(&Graph::NextId, this)));
+    AddNode(Node::PrefabTransform(std::bind(&Graph::NextId, this)));
 }
 
 void Graph::AddNode(Node&& node) {

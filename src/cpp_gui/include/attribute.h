@@ -21,20 +21,21 @@ enum class PinKind {
 
 class Attribute {
     public:
-        Attribute(int attribute_id, int node_id, AttributeKind kind);
+        Attribute(int attribute_id, int node_id, const std::string& label, AttributeKind kind);
         virtual ~Attribute() {}
 
         virtual void Render() = 0;
 
         const int id;
         const int node_id;
+        const std::string label;
         const AttributeKind kind;
     protected:
 };
 
 class InputAttribute : public Attribute {
     public:
-        InputAttribute(int attribute_id, int node_id, PinKind pin_kind);
+        InputAttribute(int attribute_id, int node_id, const std::string& label, PinKind pin_kind);
         virtual ~InputAttribute() {}
 
         void Render() final;
@@ -45,7 +46,7 @@ class InputAttribute : public Attribute {
 
 class OutputAttribute : public Attribute {
     public:
-        OutputAttribute(int attribute_id, int node_id, PinKind pin_kind);
+        OutputAttribute(int attribute_id, int node_id, const std::string& label, PinKind pin_kind);
         virtual ~OutputAttribute() {}
 
         void Render() final;
@@ -56,7 +57,7 @@ class OutputAttribute : public Attribute {
 
 class StaticAttribute : public Attribute {
     public:
-        StaticAttribute(int attribute_id, int node_id);
+        StaticAttribute(int attribute_id, int node_id, const std::string& label);
         virtual ~StaticAttribute() {}
 
         void Render() final;
@@ -65,22 +66,20 @@ class StaticAttribute : public Attribute {
 
 class SimpleInput final : public InputAttribute {
     public:
-        SimpleInput(int attribute_id, int node_id, PinKind pin_kind, const std::string& label);
+        SimpleInput(int attribute_id, int node_id, const std::string& label, PinKind pin_kind);
 
         void RenderContents() override;
 
     private:
-        std::string label;
 };
 
 class SimpleOutput final : public OutputAttribute {
     public:
-        SimpleOutput(int attribute_id, int node_id, PinKind pin_kind, const std::string& label);
+        SimpleOutput(int attribute_id, int node_id, const std::string& label, PinKind pin_kind);
 
         void RenderContents() override;
 
     private:
-        std::string label;
 };
 
 class Text final : public StaticAttribute {
@@ -91,14 +90,13 @@ class Text final : public StaticAttribute {
 
     private:
         std::array<char, 256> buffer;
-        const std::string label;
         const std::string imgui_label;
         const int text_field_size;
 };
 
-class QuadText final : public StaticAttribute {
+class MatrixRow final : public StaticAttribute {
     public:
-        QuadText(int attribute_id, int node_id, const std::string& label, int text_field_size = 35);
+        MatrixRow(int attribute_id, int node_id, const std::string& label, int text_field_size = 35);
 
         void RenderContents() override;
 
@@ -107,7 +105,6 @@ class QuadText final : public StaticAttribute {
         std::array<char, 256> buffer_2;
         std::array<char, 256> buffer_3;
         std::array<char, 256> buffer_4;
-        const std::string label;
         const std::string imgui_label_1;
         const std::string imgui_label_2;
         const std::string imgui_label_3;

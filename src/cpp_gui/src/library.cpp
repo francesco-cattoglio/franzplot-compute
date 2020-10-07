@@ -35,7 +35,7 @@ void shutdown_imnodes() {
 void show_node_graph() {
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(650, 500), ImGuiCond_FirstUseEver);
-    ImGui::Begin("simple node editor", nullptr, ImGuiWindowFlags_NoTitleBar);
+    ImGui::Begin("simple node editor", nullptr);
 
     globals.graph->Render();
 

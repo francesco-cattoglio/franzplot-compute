@@ -7,13 +7,13 @@
 
 namespace franzplot_gui {
 
-Attribute::Attribute(int attribute_id, int node_id, AttributeKind kind)
-    : id(attribute_id), node_id(node_id), kind(kind)
+Attribute::Attribute(int attribute_id, int node_id, const std::string& label, AttributeKind kind)
+    : id(attribute_id), node_id(node_id), label(label), kind(kind)
 {}
 
-InputAttribute::InputAttribute(int attribute_id, int node_id, PinKind pin_kind)
+InputAttribute::InputAttribute(int attribute_id, int node_id, const std::string& label, PinKind pin_kind)
     :
-        Attribute(attribute_id, node_id, AttributeKind::Input),
+        Attribute(attribute_id, node_id, label, AttributeKind::Input),
         pin_kind(pin_kind)
 {}
 
@@ -24,9 +24,9 @@ void InputAttribute::Render() {
     imnodes::EndInputAttribute();
 }
 
-OutputAttribute::OutputAttribute(int attribute_id, int node_id, PinKind pin_kind)
+OutputAttribute::OutputAttribute(int attribute_id, int node_id, const std::string& label, PinKind pin_kind)
     :
-        Attribute(attribute_id, node_id, AttributeKind::Output),
+        Attribute(attribute_id, node_id, label, AttributeKind::Output),
         pin_kind(pin_kind)
 {}
 
@@ -36,9 +36,9 @@ void OutputAttribute::Render() {
     imnodes::EndOutputAttribute();
 }
 
-StaticAttribute::StaticAttribute(int attribute_id, int node_id)
+StaticAttribute::StaticAttribute(int attribute_id, int node_id, const std::string& label)
     :
-        Attribute(attribute_id, node_id, AttributeKind::Static)
+        Attribute(attribute_id, node_id, label, AttributeKind::Static)
 {}
 
 void StaticAttribute::Render() {
@@ -48,10 +48,9 @@ void StaticAttribute::Render() {
 }
 
 // final derived classes
-SimpleInput::SimpleInput(int attribute_id, int node_id, PinKind pin_kind, const std::string& label)
+SimpleInput::SimpleInput(int attribute_id, int node_id, const std::string& label, PinKind pin_kind)
     :
-        InputAttribute(attribute_id, node_id, pin_kind),
-        label(label)
+        InputAttribute(attribute_id, node_id, label, pin_kind)
 {}
 
 void SimpleInput::RenderContents() {
@@ -59,10 +58,9 @@ void SimpleInput::RenderContents() {
     return;
 }
 
-SimpleOutput::SimpleOutput(int attribute_id, int node_id, PinKind pin_kind, const std::string& label)
+SimpleOutput::SimpleOutput(int attribute_id, int node_id, const std::string& label, PinKind pin_kind)
     :
-        OutputAttribute(attribute_id, node_id, pin_kind),
-        label(label)
+        OutputAttribute(attribute_id, node_id, label, pin_kind)
 {}
 
 #define MAGIC_OFFSET 17
@@ -75,8 +73,7 @@ void SimpleOutput::RenderContents() {
 
 Text::Text(int attribute_id, int node_id, const std::string& label, int text_field_size)
     :
-        StaticAttribute(attribute_id, node_id),
-        label(label),
+        StaticAttribute(attribute_id, node_id, label),
         imgui_label("##" + std::to_string(this->id)),
         text_field_size(text_field_size)
 {
@@ -93,10 +90,9 @@ void Text::RenderContents() {
     return;
 }
 
-QuadText::QuadText(int attribute_id, int node_id, const std::string& label, int text_field_size)
+MatrixRow::MatrixRow(int attribute_id, int node_id, const std::string& label, int text_field_size)
     :
-        StaticAttribute(attribute_id, node_id),
-        label(label),
+        StaticAttribute(attribute_id, node_id, label),
         imgui_label_1("##" + std::to_string(this->id) + ":1"),
         imgui_label_2("##" + std::to_string(this->id) + ":2"),
         imgui_label_3("##" + std::to_string(this->id) + ":3"),
@@ -109,9 +105,10 @@ QuadText::QuadText(int attribute_id, int node_id, const std::string& label, int 
     buffer_4.fill('\0');
 }
 
-void QuadText::RenderContents() {
-    ImGui::Text(this->label.c_str());
-    ImGui::SameLine();
+void MatrixRow::RenderContents() {
+    // do not display the label for this attribute
+    // ImGui::Text(this->label.c_str());
+    // ImGui::SameLine();
     ImGui::PushItemWidth(text_field_size);
     ImGui::InputText(imgui_label_1.c_str(), buffer_1.data(), buffer_1.size());
     ImGui::SameLine();
