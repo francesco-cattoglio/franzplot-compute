@@ -7,50 +7,75 @@
 
 namespace franzplot_gui {
 
-Attribute::Attribute(int attribute_id, int node_id, AttributeKind kind, imnodes::PinShape shape)
-    : id(attribute_id), node_id(node_id), kind(kind), shape(shape)
-{
+Attribute::Attribute(int attribute_id, int node_id, AttributeKind kind)
+    : id(attribute_id), node_id(node_id), kind(kind)
+{}
+
+InputAttribute::InputAttribute(int attribute_id, int node_id, PinKind pin_kind)
+    :
+        Attribute(attribute_id, node_id, AttributeKind::Input),
+        pin_kind(pin_kind)
+{}
+
+// middle derived classes
+void InputAttribute::Render() {
+    imnodes::BeginInputAttribute(id, ToShape(pin_kind));
+    this->RenderContents(); // call actual rendering implemented in child class
+    imnodes::EndInputAttribute();
 }
 
-bool Attribute::IsCompatible(Attribute& /*other*/) {
-    return false;
+OutputAttribute::OutputAttribute(int attribute_id, int node_id, PinKind pin_kind)
+    :
+        Attribute(attribute_id, node_id, AttributeKind::Output),
+        pin_kind(pin_kind)
+{}
+
+void OutputAttribute::Render() {
+    imnodes::BeginOutputAttribute(id, ToShape(pin_kind));
+    this->RenderContents(); // call actual rendering implemented in child class
+    imnodes::EndOutputAttribute();
 }
 
-void Attribute::Render() {
-    switch (kind) {
-        case AttributeKind::In:
-            imnodes::BeginInputAttribute(this->id, shape);
-            break;
-        case AttributeKind::Out:
-            imnodes::BeginOutputAttribute(this->id, shape);
-            break;
-        case AttributeKind::Static:
-            imnodes::BeginStaticAttribute(this->id);
-            break;
-        case AttributeKind::Unknown:
-            assert(0);
-            break;
-    }
-    this->RenderContents();
-    switch (kind) {
-        case AttributeKind::In:
-            imnodes::EndInputAttribute();
-            break;
-        case AttributeKind::Out:
-            imnodes::EndOutputAttribute();
-            break;
-        case AttributeKind::Static:
-            imnodes::EndStaticAttribute();
-            break;
-        case AttributeKind::Unknown:
-            assert(0);
-            break;
-    }
+StaticAttribute::StaticAttribute(int attribute_id, int node_id)
+    :
+        Attribute(attribute_id, node_id, AttributeKind::Static)
+{}
+
+void StaticAttribute::Render() {
+    imnodes::BeginStaticAttribute(id);
+    this->RenderContents(); // call actual rendering implemented in child class
+    imnodes::EndStaticAttribute();
+}
+
+// final derived classes
+SimpleInput::SimpleInput(int attribute_id, int node_id, PinKind pin_kind, const std::string& label)
+    :
+        InputAttribute(attribute_id, node_id, pin_kind),
+        label(label)
+{}
+
+void SimpleInput::RenderContents() {
+    ImGui::Text(label.c_str());
+    return;
+}
+
+SimpleOutput::SimpleOutput(int attribute_id, int node_id, PinKind pin_kind, const std::string& label)
+    :
+        OutputAttribute(attribute_id, node_id, pin_kind),
+        label(label)
+{}
+
+#define MAGIC_OFFSET 17
+void SimpleOutput::RenderContents() {
+    auto node_dimensions = imnodes::GetNodeDimensions(this->node_id);
+    ImGui::Indent(node_dimensions.x - MAGIC_OFFSET - ImGui::CalcTextSize(label.c_str()).x);
+    ImGui::Text(label.c_str());
+    return;
 }
 
 Text::Text(int attribute_id, int node_id, const std::string& label, int text_field_size)
     :
-        Attribute(attribute_id, node_id, AttributeKind::Static),
+        StaticAttribute(attribute_id, node_id),
         label(label),
         imgui_label("##" + std::to_string(this->id)),
         text_field_size(text_field_size)
@@ -70,7 +95,7 @@ void Text::RenderContents() {
 
 QuadText::QuadText(int attribute_id, int node_id, const std::string& label, int text_field_size)
     :
-        Attribute(attribute_id, node_id, AttributeKind::Static),
+        StaticAttribute(attribute_id, node_id),
         label(label),
         imgui_label_1("##" + std::to_string(this->id) + ":1"),
         imgui_label_2("##" + std::to_string(this->id) + ":2"),
@@ -99,96 +124,24 @@ void QuadText::RenderContents() {
     return;
 }
 
-#define MAGIC_OFFSET 17
+// helper functions
+imnodes::PinShape ToShape(PinKind kind) {
+    switch (kind) {
+        case PinKind::Geometry:
+            return imnodes::PinShape_TriangleFilled;
 
-InputInterval::InputInterval(int attribute_id, int node_id, const std::string& label)
-    :
-        Attribute(attribute_id, node_id, AttributeKind::In, imnodes::PinShape_QuadFilled),
-        label(label)
-{
+        case PinKind::Interval:
+            return imnodes::PinShape_CircleFilled;
+
+        case PinKind::Matrix:
+            return imnodes::PinShape_QuadFilled;
+    }
+
+    assert(0 && "unreachable code reached");
 }
 
-bool InputInterval::IsCompatible(Attribute& rhs) {
-    return typeid(rhs) == typeid(OutputInterval);
-}
-
-void InputInterval::RenderContents() {
-    ImGui::Text(this->label.c_str());
-    return;
-}
-
-OutputInterval::OutputInterval(int attribute_id, int node_id)
-    :
-        Attribute(attribute_id, node_id, AttributeKind::Out, imnodes::PinShape_QuadFilled)
-{
-}
-
-void OutputInterval::RenderContents() {
-    auto node_dimensions = imnodes::GetNodeDimensions(this->node_id);
-    const char label[] = "Interval";
-    ImGui::Indent(node_dimensions.x - MAGIC_OFFSET -ImGui::CalcTextSize(label).x);
-    ImGui::Text(label);
-    return;
-}
-
-InputGeometry::InputGeometry(int attribute_id, int node_id)
-    :
-        Attribute(attribute_id, node_id, AttributeKind::In, imnodes::PinShape_TriangleFilled)
-{
-}
-
-bool InputGeometry::IsCompatible(Attribute& rhs) {
-    return typeid(rhs) == typeid(OutputGeometry);
-}
-
-void InputGeometry::RenderContents() {
-    const char label[] = "Geometry";
-    ImGui::Text(label);
-    return;
-}
-
-OutputGeometry::OutputGeometry(int attribute_id, int node_id)
-    :
-        Attribute(attribute_id, node_id, AttributeKind::Out, imnodes::PinShape_TriangleFilled)
-{
-}
-
-void OutputGeometry::RenderContents() {
-    auto node_dimensions = imnodes::GetNodeDimensions(this->node_id);
-    const char label[] = "Output";
-    ImGui::Indent(node_dimensions.x - MAGIC_OFFSET -ImGui::CalcTextSize(label).x);
-    ImGui::Text(label);
-    return;
-}
-
-InputMatrix::InputMatrix(int attribute_id, int node_id)
-    :
-        Attribute(attribute_id, node_id, AttributeKind::In)
-{
-}
-
-bool InputMatrix::IsCompatible(Attribute& rhs) {
-    return typeid(rhs) == typeid(OutputMatrix);
-}
-
-void InputMatrix::RenderContents() {
-    const char label[] = "Matrix";
-    ImGui::Text(label);
-    return;
-}
-
-OutputMatrix::OutputMatrix(int attribute_id, int node_id)
-    :
-        Attribute(attribute_id, node_id, AttributeKind::Out)
-{
-}
-
-void OutputMatrix::RenderContents() {
-    auto node_dimensions = imnodes::GetNodeDimensions(this->node_id);
-    const char label[] = "Output";
-    ImGui::Indent(node_dimensions.x - MAGIC_OFFSET -ImGui::CalcTextSize(label).x);
-    ImGui::Text(label);
-    return;
+bool IsCompatible(InputAttribute& input, OutputAttribute& output) {
+    return input.pin_kind == output.pin_kind;
 }
 
 }

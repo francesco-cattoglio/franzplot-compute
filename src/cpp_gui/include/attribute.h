@@ -8,30 +8,82 @@
 namespace franzplot_gui {
 
 enum class AttributeKind {
-    In,
-    Out,
-    Static,
-    Unknown
+    Input,
+    Output,
+    Static
+};
+
+enum class PinKind {
+    Interval,
+    Geometry,
+    Matrix
 };
 
 class Attribute {
     public:
-        Attribute(int attribute_id, int node_id, AttributeKind kind, imnodes::PinShape = imnodes::PinShape_CircleFilled);
+        Attribute(int attribute_id, int node_id, AttributeKind kind);
         virtual ~Attribute() {}
 
-        void Render();
-
-        virtual bool IsCompatible(Attribute& other);
-        virtual void RenderContents() = 0;
+        virtual void Render() = 0;
 
         const int id;
         const int node_id;
         const AttributeKind kind;
-        const imnodes::PinShape shape;
     protected:
 };
 
-class Text final : public Attribute {
+class InputAttribute : public Attribute {
+    public:
+        InputAttribute(int attribute_id, int node_id, PinKind pin_kind);
+        virtual ~InputAttribute() {}
+
+        void Render() final;
+        virtual void RenderContents() = 0;
+
+        const PinKind pin_kind;
+};
+
+class OutputAttribute : public Attribute {
+    public:
+        OutputAttribute(int attribute_id, int node_id, PinKind pin_kind);
+        virtual ~OutputAttribute() {}
+
+        void Render() final;
+        virtual void RenderContents() = 0;
+
+        const PinKind pin_kind;
+};
+
+class StaticAttribute : public Attribute {
+    public:
+        StaticAttribute(int attribute_id, int node_id);
+        virtual ~StaticAttribute() {}
+
+        void Render() final;
+        virtual void RenderContents() = 0;
+};
+
+class SimpleInput final : public InputAttribute {
+    public:
+        SimpleInput(int attribute_id, int node_id, PinKind pin_kind, const std::string& label);
+
+        void RenderContents() override;
+
+    private:
+        std::string label;
+};
+
+class SimpleOutput final : public OutputAttribute {
+    public:
+        SimpleOutput(int attribute_id, int node_id, PinKind pin_kind, const std::string& label);
+
+        void RenderContents() override;
+
+    private:
+        std::string label;
+};
+
+class Text final : public StaticAttribute {
     public:
         Text(int attribute_id, int node_id, const std::string& label, int text_field_size = 75);
 
@@ -44,7 +96,7 @@ class Text final : public Attribute {
         const int text_field_size;
 };
 
-class QuadText final : public Attribute {
+class QuadText final : public StaticAttribute {
     public:
         QuadText(int attribute_id, int node_id, const std::string& label, int text_field_size = 35);
 
@@ -63,64 +115,8 @@ class QuadText final : public Attribute {
         const int text_field_size;
 };
 
-class InputInterval final : public Attribute {
-    public:
-        InputInterval(int attribute_id, int node_id, const std::string& label);
-
-        bool IsCompatible(Attribute& rhs) override;
-        void RenderContents() override;
-
-    private:
-        const std::string label;
-};
-
-class OutputInterval final : public Attribute {
-    public:
-        OutputInterval(int attribute_id, int node_id);
-
-        void RenderContents() override;
-
-    private:
-};
-
-class InputGeometry final : public Attribute {
-    public:
-        InputGeometry(int attribute_id, int node_id);
-
-        bool IsCompatible(Attribute& rhs) override;
-        void RenderContents() override;
-
-    private:
-};
-
-class OutputGeometry final : public Attribute {
-    public:
-        OutputGeometry(int attribute_id, int node_id);
-
-        void RenderContents() override;
-
-    private:
-};
-
-class InputMatrix final : public Attribute {
-    public:
-        InputMatrix(int attribute_id, int node_id);
-
-        bool IsCompatible(Attribute& rhs) override;
-        void RenderContents() override;
-
-    private:
-};
-
-class OutputMatrix final : public Attribute {
-    public:
-        OutputMatrix(int attribute_id, int node_id);
-
-        void RenderContents() override;
-
-    private:
-};
-
-
+// some helper function definitions
+imnodes::PinShape ToShape(PinKind kind);
+bool IsCompatible(InputAttribute& input, OutputAttribute& output);
 
 }

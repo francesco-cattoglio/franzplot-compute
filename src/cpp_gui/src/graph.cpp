@@ -30,11 +30,10 @@ void Graph::Render() {
     }
 
     int start_attr, end_attr;
-    if (imnodes::IsLinkCreated(&start_attr, &end_attr))
-    {
+    if (imnodes::IsLinkCreated(&start_attr, &end_attr)) {
         // check which one of the two attributes is the input attribute and which is the output
         int in_attr, out_attr;
-        if (this->attributes[start_attr]->kind == AttributeKind::In) {
+        if (this->attributes[start_attr]->kind == AttributeKind::Input) {
             in_attr = start_attr;
             out_attr = end_attr;
         } else {
@@ -43,7 +42,7 @@ void Graph::Render() {
         }
         // check if the output can be linked to this input.
         // If the two are compatible, create a link
-        if (attributes[in_attr]->IsCompatible(*attributes[out_attr]))
+        if (IsCompatible(static_cast<InputAttribute&>(*attributes[in_attr]), static_cast<OutputAttribute&>(*attributes[out_attr])))
             this->input_to_output_links[in_attr] = out_attr;
     }
 
