@@ -35,4 +35,6 @@ void show_node_graph() {
     ImGui::End();
 }
 
+void do_something(SharedThing state) { print_r(*state.proxy); }
+
 } // namespace franzplot_gui

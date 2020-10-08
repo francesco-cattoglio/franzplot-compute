@@ -34,6 +34,10 @@ fn print_usage(program: &str, opts: Options) {
     print!("{}", opts.usage(&brief));
 }
 
+enum CustomEvent {
+    JsonScene(String),
+
+}
 
 use std::io::prelude::*;
 fn main() {
@@ -56,7 +60,7 @@ fn main() {
 
     //wgpu_subscriber::initialize_default_subscriber(None);
 
-    let event_loop = EventLoop::new();
+    let event_loop = EventLoop::<CustomEvent>::with_user_event();
     let mut builder = winit::window::WindowBuilder::new();
     builder = builder
         .with_title("test")
@@ -95,6 +99,10 @@ fn main() {
     }]);
     cpp_gui::ffi::init_imnodes();
 
+    cpp_gui::ffi::do_something(cpp_gui::ffi::SharedThing {
+        proxy: Box::new(cpp_gui::WrappedProxy(333)),
+    });
+
     let mut renderer = Renderer::new(&mut imgui, &device_manager.device, &mut device_manager.queue, rendering::SWAPCHAIN_FORMAT);
     let mut last_frame = std::time::Instant::now();
 
@@ -102,19 +110,15 @@ fn main() {
 
     let mut context = compute_chain::Context::default();
     //dbg!(&all_descriptors);
-    let mut chain = match input_file {
-        Some(filename) => {
-            let mut json_contents = String::new();
-            let mut file = std::fs::File::open(&filename).unwrap();
-            file.read_to_string(&mut json_contents).unwrap();
-            let json_scene: SceneDescriptor = serde_json::from_str(&json_contents).unwrap();
-            context = json_scene.context;
-            compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &device_manager.queue, &context, &json_scene.descriptors).unwrap()
-        }
-        None => {
-            print_usage(&program, opts);
-            compute_chain::ComputeChain::new(&device_manager.device)
-        }
+    let mut chain = compute_chain::ComputeChain::new(&device_manager.device);
+    if let Some(filename) = input_file {
+        let mut json_contents = String::new();
+        let mut file = std::fs::File::open(&filename).unwrap();
+        file.read_to_string(&mut json_contents).unwrap();
+        let json_scene: SceneDescriptor = serde_json::from_str(&json_contents).unwrap();
+        chain.set_scene(&device_manager.device, &device_manager.queue, &json_scene.context, &json_scene.descriptors).unwrap()
+    } else {
+        print_usage(&program, opts);
     };
     chain.run_chain(&device_manager.device, &device_manager.queue);
 
@@ -165,6 +169,14 @@ fn main() {
             ..
         } => {
             hidpi_factor = scale_factor;
+        },
+        Event::UserEvent(ref user_event) => {
+            match user_event {
+                CustomEvent::JsonScene(json_string) => {
+                    let json_scene: SceneDescriptor = serde_json::from_str(&json_string).unwrap();
+                    chain.set_scene(&device_manager.device, &device_manager.queue, &json_scene.context, &json_scene.descriptors).unwrap()
+                }
+            }
         },
         Event::RedrawRequested(_) => {
             // update variables and do the actual rendering

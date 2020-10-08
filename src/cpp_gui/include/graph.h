@@ -5,8 +5,11 @@
 
 #include "node.h"
 
+#include "rust/cxx.h"
+
 namespace franzplot_gui {
 
+struct SharedThing;
 class Graph {
     public:
 

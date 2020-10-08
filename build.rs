@@ -30,7 +30,8 @@ fn main() {
         .include("src/cpp_gui/include/")
         .flag("-std=c++17")
         .compile("cxxbridge-gui");
- 
+
+    // instruct the build system to re-run cxx if any cpp file changes,
     for filename in imgui_files.iter() {
         println!("cargo:rerun-if-changed={}", filename);
     }
