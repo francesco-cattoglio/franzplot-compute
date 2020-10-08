@@ -38,6 +38,21 @@ Node Node::PrefabCurve(const std::function<int()> next_id) {
     return to_return;
 }
 
+Node Node::PrefabSurface(const std::function<int()> next_id) {
+    Node to_return = Node(next_id(), NodeType::Surface);
+    to_return.name = "Surface node";
+    to_return.attributes = {
+        std::make_shared<SimpleOutput>(next_id(), to_return.id, "geometry", PinKind::Geometry),
+        std::make_shared<SimpleInput>(next_id(), to_return.id, "interval_first_id", PinKind::Interval),
+        std::make_shared<SimpleInput>(next_id(), to_return.id, "interval_second_id", PinKind::Interval),
+        std::make_shared<Text>(next_id(), to_return.id, "fx", 75),
+        std::make_shared<Text>(next_id(), to_return.id, "fy", 75),
+        std::make_shared<Text>(next_id(), to_return.id, "fz", 75),
+    };
+
+    return to_return;
+}
+
 Node Node::PrefabInterval(const std::function<int()> next_id) {
     Node to_return = Node(next_id(), NodeType::Interval);
     to_return.name = "Interval";
@@ -56,7 +71,7 @@ Node Node::PrefabRendering(const std::function<int()> next_id) {
     Node to_return = Node(next_id(), NodeType::Rendering);
     to_return.name = "Rendering";
     to_return.attributes = {
-        std::make_shared<SimpleInput>(next_id(), to_return.id, "geometry", PinKind::Geometry)
+        std::make_shared<SimpleInput>(next_id(), to_return.id, "surface_id", PinKind::Geometry)
     };
 
     return to_return;
@@ -107,7 +122,7 @@ std::string ToString(NodeType type) {
             return "Transform";
 
         case NodeType::Rendering:
-            return "Rendering";
+            return "SurfaceRenderer";
 
         case NodeType::Other:
             assert(0 && "unimplemented - case not handled");

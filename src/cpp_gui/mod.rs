@@ -9,7 +9,7 @@ pub mod ffi{
 
         fn init_imnodes();
         fn shutdown_imnodes();
-        fn show_node_graph();
+        fn show_node_graph(state: SharedThing);
         fn do_something(state: SharedThing);
 
     }
@@ -21,14 +21,16 @@ pub mod ffi{
     }
 }
 
-pub struct WrappedProxy(pub usize);
+//pub struct WrappedProxy(pub usize);
 fn print_r(r: &WrappedProxy) {
-    println!("called back with r={}", r.0);
+    println!("called back with r={:?}", r.0);
 }
-//pub struct WrappedProxy(winit::event_loop::EventLoopProxy<super::CustomEvent>);
+pub struct WrappedProxy(pub std::rc::Rc<winit::event_loop::EventLoopProxy<super::CustomEvent>>);
 
 fn process_json(proxy: &WrappedProxy, json: &cxx::CxxString) {
     let rust_str = json.to_str().expect("error validating the json string as UTF8");
-    println!("json on rust side: {}", rust_str);
+    println!("json on rust side: {}", &rust_str);
+    let proxy_rc = &proxy.0;
+    proxy_rc.send_event(super::CustomEvent::JsonScene(rust_str.to_string()));
 }
 

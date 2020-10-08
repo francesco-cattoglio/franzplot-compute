@@ -28,7 +28,7 @@ impl std::default::Default for Context {
     fn default() -> Self {
         Self {
             globals: btreemap!{
-                "t".to_string() => 0.0,
+//                "t".to_string() => 0.0,
                 "pi".to_string() => std::f32::consts::PI,
             },
         }
@@ -93,6 +93,7 @@ impl<'a> ComputeChain {
         self.compute_blocks.clear();
         self.shader_header.clear();
         self.global_vars.clear();
+        self.blocks_map.clear();
 
         // now re-process the context and the descriptors
         // update the stored names of the globals

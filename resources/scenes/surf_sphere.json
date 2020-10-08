@@ -36,9 +36,9 @@
                 "Surface": {
                     "interval_first_id": "1",
                     "interval_second_id": "2",
-                    "x_function": "u",
-                    "y_function": "0.65*sin(t + 2*u) - 0.45*cos(0.7*t - 1.3*v)",
-                    "z_function": "v"
+                    "fx": "u",
+                    "fy": "0.65*sin(t + 2*u) - 0.45*cos(0.7*t - 1.3*v)",
+                    "fz": "v"
                 }
             }
         },
@@ -48,9 +48,9 @@
                 "Surface": {
                     "interval_first_id": "1",
                     "interval_second_id": "2",
-                    "x_function": "cos(u)*sin(v)",
-                    "y_function": "sin(u)+1.0+0.65*sin(t) - 0.45*cos(0.7*t)",
-                    "z_function": "cos(u)*cos(v)"
+                    "fx": "cos(u)*sin(v)",
+                    "fy": "sin(u)+1.0+0.65*sin(t) - 0.45*cos(0.7*t)",
+                    "fz": "cos(u)*cos(v)"
                 }
             }
         },

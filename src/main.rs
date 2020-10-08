@@ -34,7 +34,7 @@ fn print_usage(program: &str, opts: Options) {
     print!("{}", opts.usage(&brief));
 }
 
-enum CustomEvent {
+pub enum CustomEvent {
     JsonScene(String),
 
 }
@@ -99,10 +99,7 @@ fn main() {
     }]);
     cpp_gui::ffi::init_imnodes();
 
-    cpp_gui::ffi::do_something(cpp_gui::ffi::SharedThing {
-        proxy: Box::new(cpp_gui::WrappedProxy(333)),
-    });
-
+    let shared_rc = std::rc::Rc::new(event_loop.create_proxy());
     let mut renderer = Renderer::new(&mut imgui, &device_manager.device, &mut device_manager.queue, rendering::SWAPCHAIN_FORMAT);
     let mut last_frame = std::time::Instant::now();
 
@@ -173,18 +170,20 @@ fn main() {
         Event::UserEvent(ref user_event) => {
             match user_event {
                 CustomEvent::JsonScene(json_string) => {
-                    let json_scene: SceneDescriptor = serde_json::from_str(&json_string).unwrap();
-                    chain.set_scene(&device_manager.device, &device_manager.queue, &json_scene.context, &json_scene.descriptors).unwrap()
+                    let json_scene: SceneDescriptor = serde_jsonrc::from_str(&json_string).unwrap();
+                    chain.set_scene(&device_manager.device, &device_manager.queue, &json_scene.context, &json_scene.descriptors).unwrap();
+                    scene_renderer.update_renderables(&device_manager, &chain);
                 }
             }
         },
         Event::RedrawRequested(_) => {
             // update variables and do the actual rendering
             // now, update the variables and run the chain again
-            let time_var: &mut f32 = context.globals.get_mut(&"t".to_string()).unwrap();
-            *time_var = elapsed_time.as_secs_f32();
+            //let time_var: &mut f32 = context.globals.get_mut(&"t".to_string()).unwrap();
+            //*time_var = elapsed_time.as_secs_f32();
 
-            chain.update_globals(&device_manager.queue, &context);
+            //// currently bugged due to "uneven" initialization of context
+            //chain.update_globals(&device_manager.queue, &context);
             chain.run_chain(&device_manager.device, &device_manager.queue);
             let mut frame = device_manager.swap_chain.get_current_frame()
                 .expect("could not get next frame");
@@ -210,7 +209,12 @@ fn main() {
             let ui = imgui.frame();
 
             {
-                cpp_gui::ffi::show_node_graph();
+                let shared = cpp_gui::ffi::SharedThing {
+                    proxy: Box::new(cpp_gui::WrappedProxy(
+                        shared_rc.clone())
+                            )
+                };
+                cpp_gui::ffi::show_node_graph(shared);
             }
 
             let mut encoder: wgpu::CommandEncoder =

@@ -14,7 +14,7 @@ class Graph {
     public:
 
         void Test();
-        void Render();
+        void Render(const SharedThing& state);
         std::string ToJson();
     private:
         std::optional<int> FindLinkedNode(int input_attribute_id);

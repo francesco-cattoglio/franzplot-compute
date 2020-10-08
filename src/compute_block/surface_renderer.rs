@@ -93,7 +93,7 @@ void main() {{
     out_buff[idx*3+2] = vec4(i/(x_size-1.0), j/(y_size-1.0), 0.0, 0.0);
 }}
 "##, vertex_struct=GLSL_VERTEX_STRUCT, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y,);
-        //println!("debug info for surface rendering shader: \n{}", shader_source);
+        println!("debug info for surface rendering shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffers
         bindings.push(CustomBindDescriptor {

@@ -32,6 +32,7 @@ class Node {
         std::vector<std::shared_ptr<Attribute>> attributes;
 
         static Node PrefabCurve(const std::function<int()> next_id);
+        static Node PrefabSurface(const std::function<int()> next_id);
         static Node PrefabInterval(const std::function<int()> next_id);
         static Node PrefabMatrix(const std::function<int()> next_id);
         static Node PrefabRendering(const std::function<int()> next_id);

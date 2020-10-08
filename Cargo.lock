@@ -484,6 +484,7 @@ dependencies = [
  "maplit",
  "serde",
  "serde_json",
+ "serde_jsonrc",
  "shaderc",
  "smol_str",
  "tobj",
@@ -1580,6 +1581,12 @@ dependencies = [
 
 [[package]]
 name = "ryu"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b96a9549dc8d48f2c283938303c4b5a77aa29bfbc5b54b084fb1630408899a8f"
+
+[[package]]
+name = "ryu"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
@@ -1632,7 +1639,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a230ea9107ca2220eea9d46de97eddcb04cd00e92d13dda78e478dd33fa82bd4"
 dependencies = [
  "itoa",
- "ryu",
+ "ryu 1.0.5",
+ "serde",
+]
+
+[[package]]
+name = "serde_jsonrc"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b591e90bcce7185aa4f8c775c504456586ae0f7df49a4087a1ee4179d402b8a8"
+dependencies = [
+ "itoa",
+ "ryu 0.2.8",
  "serde",
 ]
 

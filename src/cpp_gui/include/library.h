@@ -13,7 +13,7 @@ namespace franzplot_gui {
 struct SharedThing;
 void init_imnodes();
 void shutdown_imnodes();
-void show_node_graph();
+void show_node_graph(SharedThing thing);
 void do_something(SharedThing thing);
 
 } // namespace franzplot_gui

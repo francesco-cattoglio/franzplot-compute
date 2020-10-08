@@ -8,12 +8,12 @@
 
 namespace franzplot_gui {
 
-void Graph::Render() {
+void Graph::Render(const SharedThing& state) {
     bool test_button = ImGui::Button("gotest!");
     if (test_button) {
         std::string json_output = this->ToJson();
         std::cout << "testing took place: " << json_output << std::endl;
-//        process_json(*(thing.proxy), json_output);
+        process_json(*(state.proxy), json_output);
     }
 
     bool open_file_button = ImGui::Button("load from file");
@@ -70,10 +70,8 @@ int Graph::NextId() {
 void Graph::Test() {
     AddNode(Node::PrefabInterval(std::bind(&Graph::NextId, this)));
     AddNode(Node::PrefabInterval(std::bind(&Graph::NextId, this)));
-    AddNode(Node::PrefabCurve(std::bind(&Graph::NextId, this)));
-    AddNode(Node::PrefabMatrix(std::bind(&Graph::NextId, this)));
+    AddNode(Node::PrefabSurface(std::bind(&Graph::NextId, this)));
     AddNode(Node::PrefabRendering(std::bind(&Graph::NextId, this)));
-    AddNode(Node::PrefabTransform(std::bind(&Graph::NextId, this)));
 }
 
 void Graph::RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::string& json) {
@@ -136,7 +134,8 @@ std::optional<int> Graph::FindLinkedNode(int input_attribute_id) {
 std::string Graph::ToJson() {
     std::string to_return;
     std::set<int> visited_nodes;
-    to_return += "{ descriptors: [\n";
+
+    to_return += "{ \"context\": { \"globals\": { \"pi\": 3.1415927 } }, \"descriptors\": [\n";
     for (auto& id_node_pair : nodes) {
         if (id_node_pair.second.type == NodeType::Rendering)
             RecurseToJson(id_node_pair.second, visited_nodes, to_return);

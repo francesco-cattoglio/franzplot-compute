@@ -12,9 +12,9 @@ const LOCAL_SIZE_Y: usize = 16;
 pub struct SurfaceBlockDescriptor {
     pub interval_first_id: String,
     pub interval_second_id: String,
-    pub x_function: String,
-    pub y_function: String,
-    pub z_function: String,
+    pub fx: String,
+    pub fy: String,
+    pub fz: String,
 }
 impl SurfaceBlockDescriptor {
     pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
@@ -87,8 +87,8 @@ void main() {{
     out_buff[index].z = {fz};
     out_buff[index].w = 1;
 }}
-"##, header=&compute_chain.shader_header, par1=&first_interval_data.name, par2=&second_interval_data.name, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, fx=&descriptor.x_function, fy=&descriptor.y_function, fz=&descriptor.z_function);
-        //println!("debug info for curve shader: \n{}", shader_source);
+"##, header=&compute_chain.shader_header, par1=&first_interval_data.name, par2=&second_interval_data.name, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+        println!("debug info for curve shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffers
         bindings.push(CustomBindDescriptor {

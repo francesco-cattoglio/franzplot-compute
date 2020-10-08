@@ -25,12 +25,12 @@ void shutdown_imnodes() {
     imnodes::Shutdown();
 }
 
-void show_node_graph() {
+void show_node_graph(SharedThing state) {
     ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowSize(ImVec2(650, 500), ImGuiCond_FirstUseEver);
     ImGui::Begin("simple node editor", nullptr);
 
-    globals.graph->Render();
+    globals.graph->Render(state);
 
     ImGui::End();
 }
