@@ -1,5 +1,7 @@
 #include "graph.h"
 
+#include "franzplot-compute/src/cpp_gui/mod.rs.h"
+
 #include <iostream>
 #include <imgui.h>
 #include <imnodes.h>
@@ -8,8 +10,16 @@ namespace franzplot_gui {
 
 void Graph::Render() {
     bool test_button = ImGui::Button("gotest!");
-    if (test_button)
-        std::cout << "testing took place: " << this->ToJson() << std::endl;
+    if (test_button) {
+        std::string json_output = this->ToJson();
+        std::cout << "testing took place: " << json_output << std::endl;
+        process_json(json_output);
+    }
+
+    bool open_file_button = ImGui::Button("load from file");
+    if (open_file_button) {
+        std::cout << "loading a scene from file" << std::endl;
+    }
 
     imnodes::BeginNodeEditor();
     // render all links

@@ -57,7 +57,7 @@ impl MatrixData {
 
     fn new_with_interval(compute_chain: &ComputeChain, device: &wgpu::Device, desc: &MatrixBlockDescriptor) -> Self {
         let interval_id = desc.interval_id.as_ref().unwrap();
-        let interval_block = compute_chain.chain.get(interval_id).expect("could not find the interval");
+        let interval_block = compute_chain.get_block(interval_id).expect("could not find the interval");
         let interval_data;
         if let ComputeBlock::Interval(data) = interval_block {
             interval_data = data;

@@ -9,7 +9,8 @@ use std::collections::BTreeSet;
 use wgpu::util::DeviceExt;
 
 pub struct ComputeChain {
-    pub chain: BTreeMap<String, ComputeBlock>,
+    compute_blocks: Vec<ComputeBlock>,
+    blocks_map: BTreeMap<String, usize>,
     globals_buffer_size: wgpu::BufferAddress,
     globals_buffer: wgpu::Buffer,
     pub globals_bind_layout: wgpu::BindGroupLayout,
@@ -34,17 +35,16 @@ impl std::default::Default for Context {
     }
 }
 
-impl ComputeChain {
-    pub fn new(device: &wgpu::Device, context: &Context) -> Self {
-        let globals = &context.globals;
-        let global_vars: BTreeSet<String> = globals.keys().cloned().collect();
-        let chain = BTreeMap::<String, ComputeBlock>::new();
+const MAX_NUM_GLOBALS: usize = 32;
 
-        let values: Vec<f32> = globals.values().copied().collect();
-        let globals_buffer_size = (values.len() * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
-        let globals_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&values),
+impl<'a> ComputeChain {
+    pub fn new(device: &wgpu::Device) -> Self {
+
+        let globals_buffer_size = (MAX_NUM_GLOBALS * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
+        let globals_buffer = device.create_buffer(&wgpu::BufferDescriptor{
+            label: Some("globals buffer"),
+            mapped_at_creation: false,
+            size: globals_buffer_size,
             usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::UNIFORM
         });
         let globals_bind_layout =
@@ -60,7 +60,7 @@ impl ComputeChain {
                         }
                     },
                 ],
-                label: Some("Variables uniform layout")
+                label: Some("Globals uniform layout")
             });
         let globals_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &globals_bind_layout,
@@ -75,26 +75,45 @@ impl ComputeChain {
             label: Some("variables bind group")
         });
 
-        let mut shader_header = String::new();
-        shader_header.push_str(r##"
-layout(set = 1, binding = 0) uniform Uniforms {
-"##);
-        for var_name in globals.keys() {
-            shader_header.push_str(format!("\tfloat {};\n", var_name).as_str());
-        }
-        shader_header.push_str(r##"};
-"##);
-        //println!("debug info for shader header: {}", &shader_header);
-
         Self {
-            chain,
-            shader_header,
-            global_vars,
             globals_bind_layout,
             globals_bind_group,
             globals_buffer,
             globals_buffer_size,
+            compute_blocks: Vec::new(),
+            blocks_map: BTreeMap::new(),
+            global_vars: BTreeSet::new(),
+            shader_header: String::new(),
         }
+    }
+
+    pub fn set_scene(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, context: &Context, descriptors: &Vec<BlockDescriptor>) -> Result<()> {
+        assert!(context.globals.len() <= MAX_NUM_GLOBALS);
+        // cleanup previously stored context, shader_header and blocks
+        self.compute_blocks.clear();
+        self.shader_header.clear();
+        self.global_vars.clear();
+
+        // now re-process the context and the descriptors
+        // update the stored names of the globals
+        self.global_vars = context.globals.keys().cloned().collect();
+        // store a copy of the mapped values in our buffer
+        let values: Vec<f32> = context.globals.values().copied().collect();
+        queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&values));
+        // write the shader header that will be used in the creation of the compute pipeline shaders
+        self.shader_header.push_str("layout(set = 1, binding = 0) uniform Uniforms {\n");
+        for var_name in self.global_vars.iter() {
+            self.shader_header.push_str(format!("\tfloat {};\n", var_name).as_str());
+        }
+        self.shader_header.push_str("};\n");
+        //println!("debug info for shader header: {}", &shader_header);
+        // now turn the block descriptors into block and insert them into the map
+        for descriptor in descriptors.iter() {
+            let block = descriptor.data.to_block(&self, device);
+            self.insert(descriptor.id.clone(), block)?;
+        }
+
+        Ok(())
     }
 
     pub fn run_chain(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
@@ -102,7 +121,7 @@ layout(set = 1, binding = 0) uniform Uniforms {
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Compute Encoder this time"),
         });
-        for block in self.chain.values() {
+        for block in self.compute_blocks.iter() {
             block.encode(&self.globals_bind_group, &mut encoder);
         }
         let compute_queue = encoder.finish();
@@ -116,28 +135,37 @@ layout(set = 1, binding = 0) uniform Uniforms {
         // if this is true, then we need to move data into the globals buffer
         let values: Vec<f32> = context.globals.values().copied().collect();
         queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&values));
+
     }
 
     fn insert(&mut self, id: String, block: ComputeBlock) -> Result<()> {
-        if self.chain.contains_key(&id) {
+        if self.blocks_map.contains_key(&id) {
             Err(anyhow!("Tried to insert two blocks that had the same id"))
         } else {
-            self.chain.insert(id, block);
+            // append the block to the vector and map its index in the blocks_map
+            let idx = self.compute_blocks.len(); // the index at which we store is the size of the vec before pushing
+            self.blocks_map.insert(id, idx);
+            self.compute_blocks.push(block);
             Ok(())
         }
     }
 
-    pub fn create_from_descriptors(device: &wgpu::Device, descriptors: &Vec<BlockDescriptor>, globals: &Context) -> Result<Self> {
-        let mut chain = Self::new(device, &globals);
-        // right now descriptors need to be in the "correct" order, so that all blocks that depend
-        // on something are encountered after the blocks they depend on.
-        for descriptor in descriptors.iter() {
-            let block = descriptor.data.to_block(&chain, &device);
-            chain.insert(descriptor.id.clone(), block)?;
-        }
+    pub fn create_from_descriptors(device: &wgpu::Device, queue: &wgpu::Queue, context: &Context, descriptors: &Vec<BlockDescriptor>) -> Result<Self> {
+        let mut chain = Self::new(device);
+        chain.set_scene(device, queue, context, descriptors)?;
 
         Ok(chain)
     }
+
+    pub fn get_block(&'a self, id: &String) -> Option<&'a ComputeBlock> {
+        let idx = self.blocks_map.get(id)?;
+        self.compute_blocks.get(*idx)
+    }
+
+    pub fn blocks_iterator(&'a self) -> std::slice::Iter<ComputeBlock> {
+        self.compute_blocks.iter()
+    }
+
 }
 
 

@@ -1,31 +1,21 @@
 #[cxx::bridge(namespace = franzplot_gui)]
 pub mod ffi{
-    struct SharedThing {
-        z: i32,
-        y: Box<ThingR>,
-        x: UniquePtr<ThingC>,
-    }
 
     extern "C" {
         include!("library.h");
 
-        type ThingC;
-        fn make_demo(appname: &str) -> UniquePtr<ThingC>;
-        fn get_name(thing: &ThingC) -> &CxxString;
-        fn do_thing(state: SharedThing);
         fn init_imnodes();
         fn shutdown_imnodes();
         fn show_node_graph();
     }
 
     extern "Rust" {
-        type ThingR;
-        fn print_r(r: &ThingR);
+        fn process_json(json: &CxxString);
     }
 }
-pub struct ThingR(usize);
 
-pub fn print_r(r: &ThingR) {
-    println!("called back with r={}", r.0);
+fn process_json(json: &cxx::CxxString) {
+    let rust_str = json.to_str().expect("error validating the json string as UTF8");
+    println!("json on rust side: {}", rust_str);
 }
 

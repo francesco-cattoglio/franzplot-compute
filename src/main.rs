@@ -109,11 +109,11 @@ fn main() {
             file.read_to_string(&mut json_contents).unwrap();
             let json_scene: SceneDescriptor = serde_json::from_str(&json_contents).unwrap();
             context = json_scene.context;
-            compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &json_scene.descriptors, &context).unwrap()
+            compute_chain::ComputeChain::create_from_descriptors(&device_manager.device, &device_manager.queue, &context, &json_scene.descriptors).unwrap()
         }
         None => {
             print_usage(&program, opts);
-            compute_chain::ComputeChain::new(&device_manager.device, &context)
+            compute_chain::ComputeChain::new(&device_manager.device)
         }
     };
     chain.run_chain(&device_manager.device, &device_manager.queue);

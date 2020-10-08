@@ -273,7 +273,7 @@ impl SurfaceRenderer {
     }
 
     pub fn update_renderables (&mut self, manager: &device_manager::Manager, chain: &ComputeChain,) {
-        for compute_block in chain.chain.values() {
+        for compute_block in chain.blocks_iterator() {
             let maybe_renderable = compute_block_processing::block_to_renderable(manager, compute_block, &self.camera_bind_group, &self.pipeline, &self.texture_bind_group);
             if let Some(renderable) = maybe_renderable {
                 self.renderables.push(renderable);

@@ -29,8 +29,8 @@ pub struct TransformData {
 
 impl TransformData {
     pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &TransformBlockDescriptor) -> Self {
-        let geometry_block = compute_chain.chain.get(&descriptor.geometry_id).expect("could not find input geometry");
-        let matrix_block = compute_chain.chain.get(&descriptor.matrix_id).expect("could not find input matrix");
+        let geometry_block = compute_chain.get_block(&descriptor.geometry_id).expect("could not find input geometry");
+        let matrix_block = compute_chain.get_block(&descriptor.matrix_id).expect("could not find input matrix");
         let (geometry_dim, geometry_buffer_slice) = match geometry_block {
             ComputeBlock::Point(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             ComputeBlock::Curve(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),

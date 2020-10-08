@@ -27,7 +27,7 @@ pub struct SurfaceRendererData {
 impl SurfaceRendererData {
     pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &SurfaceRendererBlockDescriptor) -> Self {
 
-        let surface_block = compute_chain.chain.get(&descriptor.surface_id).expect("unable to find dependency for surface renderer block");
+        let surface_block = compute_chain.get_block(&descriptor.surface_id).expect("unable to find dependency for surface renderer block");
         let surface_data: &SurfaceData;
         if let ComputeBlock::Surface(data) = surface_block {
             surface_data = data;
