@@ -2,23 +2,26 @@
 pub mod ffi{
 
     extern "C" {
+        // library initialization functions
         include!("library.h");
-
-        type GuiInstance;
         fn init_imnodes();
-        fn init_2(boxed_proxy: Box<RustEventProxy>) -> UniquePtr<GuiInstance>;
         fn shutdown_imnodes();
-        //fn show_node_graph(state: SharedThing);
-        //fn do_something(state: SharedThing);
 
-        fn test_boxed_proxy(self: &mut GuiInstance);
+        // Gui class that manages and draws everything on screen
+        include!("gui.h");
+        type Gui;
+        fn create_gui_instance(boxed_proxy: Box<RustEventProxy>) -> UniquePtr<Gui>;
+        fn Render(self: &mut Gui);
+        fn test_boxed_proxy(self: &mut Gui);
     }
 
     extern "Rust" {
+        // All rust functions that we need to interact with the loop event proxy
         type RustEventProxy;
         fn process_json(proxy: &RustEventProxy, json: &CxxString);
         fn print_proxy(boxed: &RustEventProxy, message: &CxxString);
     }
+
 }
 
 type RustEventProxy = winit::event_loop::EventLoopProxy<super::CustomEvent>;

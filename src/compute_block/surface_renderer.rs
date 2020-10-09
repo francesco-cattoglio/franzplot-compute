@@ -87,6 +87,8 @@ void main() {{
 
     vec3 crossed = cross(y_tangent, x_tangent);
     float len = length(crossed);
+    // TODO: we need a better criteria to decide when to zero out the normal
+    // this can produce artifacts in very simple cases like x=r, y=sin(s), z=s
     vec3 normal = (len > 1e-4) ? 1.0/len*crossed : vec3(0.0, 0.0, 0.0);
     out_buff[idx*3] = in_buff[idx];
     out_buff[idx*3+1] = vec4(normal.xyz, 0.0);

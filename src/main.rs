@@ -99,9 +99,8 @@ fn main() {
         }),
     }]);
     cpp_gui::ffi::init_imnodes();
-    let mut gui_unique_ptr = cpp_gui::ffi::init_2(Box::new(event_loop.create_proxy()));
+    let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance(Box::new(event_loop.create_proxy()));
 
-    let shared_rc = std::rc::Rc::new(event_loop.create_proxy());
     let mut renderer = Renderer::new(&mut imgui, &device_manager.device, &mut device_manager.queue, rendering::SWAPCHAIN_FORMAT);
     let mut last_frame = std::time::Instant::now();
 
@@ -187,7 +186,7 @@ fn main() {
             //let time_var: &mut f32 = context.globals.get_mut(&"t".to_string()).unwrap();
             //*time_var = elapsed_time.as_secs_f32();
 
-            //// currently bugged due to "uneven" initialization of context
+            //// TODO: currently bugged due to "uneven" initialization of context
             //chain.update_globals(&device_manager.queue, &context);
             chain.run_chain(&device_manager.device, &device_manager.queue);
             let mut frame = device_manager.swap_chain.get_current_frame()
@@ -201,21 +200,13 @@ fn main() {
             imgui.io_mut().update_delta_time(now - last_frame);
             last_frame = now;
 
-            //let frame = match device_manager.swap_chain.get_current_frame() {
-            //    Ok(frame) => frame,
-            //    Err(e) => {
-            //        eprintln!("dropped frame: {:?}", e);
-            //        return;
-            //    }
-            //};
             platform
                 .prepare_frame(imgui.io_mut(), &window)
                 .expect("Failed to prepare frame");
             let ui = imgui.frame();
-
             {
-                //cpp_gui::ffi::show_node_graph();
                 gui_unique_ptr.test_boxed_proxy();
+                gui_unique_ptr.Render();
             }
 
             let mut encoder: wgpu::CommandEncoder =

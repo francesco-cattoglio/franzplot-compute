@@ -8,12 +8,12 @@
 
 namespace franzplot_gui {
 
-void Graph::Render() {
+void Graph::Render(RustEventProxy& proxy) {
     bool test_button = ImGui::Button("gotest!");
     if (test_button) {
         std::string json_output = this->ToJson();
         std::cout << "testing took place: " << json_output << std::endl;
-//        process_json(*(state.proxy), json_output);
+        process_json(proxy, json_output);
     }
 
     bool open_file_button = ImGui::Button("load from file");

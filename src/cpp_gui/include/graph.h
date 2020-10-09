@@ -9,11 +9,11 @@
 
 namespace franzplot_gui {
 
+struct RustEventProxy;
 class Graph {
     public:
-
         void Test();
-        void Render();
+        void Render(RustEventProxy& proxy);
         std::string ToJson();
     private:
         std::optional<int> FindLinkedNode(int input_attribute_id);
