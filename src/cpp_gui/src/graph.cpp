@@ -8,18 +8,7 @@
 
 namespace franzplot_gui {
 
-void Graph::Render(RustEventProxy& proxy) {
-    bool test_button = ImGui::Button("gotest!");
-    if (test_button) {
-        std::string json_output = this->ToJson();
-        std::cout << "testing took place: " << json_output << std::endl;
-        process_json(proxy, json_output);
-    }
-
-    bool open_file_button = ImGui::Button("load from file");
-    if (open_file_button) {
-        std::cout << "loading a scene from file" << std::endl;
-    }
+void Graph::Render() {
 
     imnodes::BeginNodeEditor();
     // render all links
@@ -131,16 +120,16 @@ std::optional<int> Graph::FindLinkedNode(int input_attribute_id) {
     }
 }
 
-std::string Graph::ToJson() {
+std::string Graph::ToJsonDescriptors() {
     std::string to_return;
     std::set<int> visited_nodes;
 
-    to_return += "{ \"context\": { \"globals\": { \"pi\": 3.1415927 } }, \"descriptors\": [\n";
+    to_return += "\"descriptors\": [\n";
     for (auto& id_node_pair : nodes) {
         if (id_node_pair.second.type == NodeType::Rendering)
             RecurseToJson(id_node_pair.second, visited_nodes, to_return);
     }
-    to_return += "]}"; // closes descriptors array
+    to_return += "]\n"; // closes descriptors array
 
     return to_return;
 }

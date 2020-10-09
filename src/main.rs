@@ -37,7 +37,8 @@ fn print_usage(program: &str, opts: Options) {
 pub enum CustomEvent {
     JsonScene(String),
     TestMessage(String),
-
+    UpdateGlobals(Vec<(String, f32)>),
+    SetGlobals(std::collections::BTreeMap<String, f32>),
 }
 
 use std::io::prelude::*;
@@ -178,6 +179,12 @@ fn main() {
                 CustomEvent::TestMessage(string) => {
                     println!("the event loop received the following message: {}", string);
                 }
+                CustomEvent::UpdateGlobals(list) => {
+                    chain.update_globals(&device_manager.queue, list);
+                }
+                CustomEvent::SetGlobals(map) => {
+                    chain.set_globals(&device_manager.queue, map);
+                }
             }
         },
         Event::RedrawRequested(_) => {
@@ -204,10 +211,7 @@ fn main() {
                 .prepare_frame(imgui.io_mut(), &window)
                 .expect("Failed to prepare frame");
             let ui = imgui.frame();
-            {
-                gui_unique_ptr.test_boxed_proxy();
-                gui_unique_ptr.Render();
-            }
+            gui_unique_ptr.Render();
 
             let mut encoder: wgpu::CommandEncoder =
                 device_manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });

@@ -2,6 +2,8 @@
 
 #include "rust/cxx.h"
 
+#include <array>
+
 #include "graph.h"
 
 namespace franzplot_gui {
@@ -18,6 +20,10 @@ class Gui {
         void Render();
 
     private:
+        std::array<char, 32> new_globals_name;
+        std::vector<std::array<char, 32>> globals_names;
+        std::vector<float> globals_values;
+
         Graph graph;
         rust::Box<RustEventProxy> boxed_proxy;
 };

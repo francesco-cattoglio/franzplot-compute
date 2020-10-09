@@ -13,8 +13,8 @@ struct RustEventProxy;
 class Graph {
     public:
         void Test();
-        void Render(RustEventProxy& proxy);
-        std::string ToJson();
+        void Render();
+        std::string ToJsonDescriptors();
     private:
         std::optional<int> FindLinkedNode(int input_attribute_id);
         void RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::string& json);
