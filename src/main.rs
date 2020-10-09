@@ -36,6 +36,7 @@ fn print_usage(program: &str, opts: Options) {
 
 pub enum CustomEvent {
     JsonScene(String),
+    TestMessage(String),
 
 }
 
@@ -98,6 +99,7 @@ fn main() {
         }),
     }]);
     cpp_gui::ffi::init_imnodes();
+    cpp_gui::ffi::init_2(Box::new(event_loop.create_proxy()));
 
     let shared_rc = std::rc::Rc::new(event_loop.create_proxy());
     let mut renderer = Renderer::new(&mut imgui, &device_manager.device, &mut device_manager.queue, rendering::SWAPCHAIN_FORMAT);
@@ -173,6 +175,9 @@ fn main() {
                     let json_scene: SceneDescriptor = serde_jsonrc::from_str(&json_string).unwrap();
                     chain.set_scene(&device_manager.device, &device_manager.queue, &json_scene.context, &json_scene.descriptors).unwrap();
                     scene_renderer.update_renderables(&device_manager, &chain);
+                }
+                CustomEvent::TestMessage(string) => {
+                    println!("the event loop received the following message: {}", string);
                 }
             }
         },

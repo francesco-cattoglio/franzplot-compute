@@ -13,6 +13,14 @@
 
 namespace franzplot_gui {
 
+std::unique_ptr<GuiInstance> init_2(rust::Box<RustProxy> boxed_proxy){
+    return std::make_unique<GuiInstance>(boxed_proxy);
+}
+
+void GuiInstance::test_boxed_proxy() {
+    print_proxy(*boxed_proxy, std::string("Sigs need to match!"));
+}
+
 void init_imnodes() {
     imnodes::Initialize();
     imnodes::PushAttributeFlag(imnodes::AttributeFlags_EnableLinkDetachWithDragClick);
