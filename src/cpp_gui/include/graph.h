@@ -9,12 +9,11 @@
 
 namespace franzplot_gui {
 
-struct SharedThing;
 class Graph {
     public:
 
         void Test();
-        void Render(const SharedThing& state);
+        void Render();
         std::string ToJson();
     private:
         std::optional<int> FindLinkedNode(int input_attribute_id);

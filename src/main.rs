@@ -99,7 +99,7 @@ fn main() {
         }),
     }]);
     cpp_gui::ffi::init_imnodes();
-    cpp_gui::ffi::init_2(Box::new(event_loop.create_proxy()));
+    let mut gui_unique_ptr = cpp_gui::ffi::init_2(Box::new(event_loop.create_proxy()));
 
     let shared_rc = std::rc::Rc::new(event_loop.create_proxy());
     let mut renderer = Renderer::new(&mut imgui, &device_manager.device, &mut device_manager.queue, rendering::SWAPCHAIN_FORMAT);
@@ -214,12 +214,8 @@ fn main() {
             let ui = imgui.frame();
 
             {
-                let shared = cpp_gui::ffi::SharedThing {
-                    proxy: Box::new(cpp_gui::WrappedProxy(
-                        shared_rc.clone())
-                            )
-                };
-                cpp_gui::ffi::show_node_graph(shared);
+                //cpp_gui::ffi::show_node_graph();
+                gui_unique_ptr.test_boxed_proxy();
             }
 
             let mut encoder: wgpu::CommandEncoder =
