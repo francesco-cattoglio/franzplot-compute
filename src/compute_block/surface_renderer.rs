@@ -108,13 +108,34 @@ void main() {{
         y_tangent = (-0.5*in_buff[idx-x_size] + 0.5*in_buff[idx+x_size]).xyz;
     }}
 
-    vec3 crossed = cross(y_tangent, x_tangent);
-    float len = length(crossed);
-    // TODO: we need a better criteria to decide when to zero out the normal
-    // this can produce artifacts in very simple cases like x=r, y=sin(s), z=s
-    vec3 normal = (len > 1e-4) ? 1.0/len*crossed : vec3(0.0, 0.0, 0.0);
+    /* TODO: investigate the best criterion for deciding when to zero out the normal vector.
+     * If we get it wrong, we might produce artifacts (black spots) even in very simple cases,
+     * e.g: sin(x) or a planar surface which has been subdivided a lot
+     * First criterion: normalize the two tangents (or zero them out if they are very short)
+     * we zero them out in two slightly different ways but according to RenderDoc
+     * the disassembly is almost identical.
+     */
+
+    // float x_len = length(x_tangent);
+    // x_tangent *= (x_len > 1e-6) ? 1.0/x_len : 0.0;
+    // float y_len = length(y_tangent);
+    // y_tangent = (y_len > 1e-6) ? 1.0/y_len*y_tangent : vec3(0.0, 0.0, 0.0);
+    // vec3 crossed = cross(y_tangent, x_tangent);
+    // float len = length(crossed);
+    // vec3 normal = (len > 1e-3) ? 1.0/len*crossed : vec3(0.0, 0.0, 0.0);
+
+    /* Second criterion measure the length of the two tangents, cross them, check if the
+     * length of the cross is far smaller then the product of the two lengths.
+     */
+
+    vec3 normal = cross(y_tangent, x_tangent);
+    float len_x = length(x_tangent);
+    float len_y = length(y_tangent);
+    float len_n = length(normal);
+    normal = (len_n > 1e-3 * len_x * len_y) ? 1.0/len_n*normal : vec3(0.0, 0.0, 0.0);
+
     out_buff[idx*3] = in_buff[idx];
-    out_buff[idx*3+1] = vec4(normal.xyz, 0.0);
+    out_buff[idx*3+1] = vec4(normal, 0.0);
     out_buff[idx*3+2] = vec4(i/(x_size-1.0), j/(y_size-1.0), 0.0, 0.0);
 }}
 "##, vertex_struct=GLSL_VERTEX_STRUCT, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y,);
