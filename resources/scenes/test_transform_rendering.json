@@ -1,0 +1,71 @@
+{
+"context": {
+        "globals": {
+                "pi": 3.1415
+        }
+},
+"descriptors": [
+{
+        "id": "0",
+        "data": {
+                "Interval": {
+                        "name": "r",
+                        "begin": "-1.0",
+                        "end": "1.0",
+                        "quality": 2
+                }
+        }
+},
+{
+        "id": "12",
+        "data": {
+                "Curve": {
+                        "interval": "0",
+                        "fx": "r",
+                        "fy": "0",
+                        "fz": "0"
+                }
+        }
+},
+{
+        "id": "6",
+        "data": {
+                "Interval": {
+                        "name": "s",
+                        "begin": "-1",
+                        "end": "1.0",
+                        "quality": 1
+                }
+        }
+},
+{
+        "id": "18",
+        "data": {
+                "Matrix": {
+                        "interval": "6",
+                        "row_1": ["1.0", "0.0", "0.0", "0.0"],
+                        "row_2": ["0.0", "1.0", "0.0", "0.0"],
+                        "row_3": ["0.0", "0.0", "1.0", "s"]
+                }
+        }
+},
+{
+        "id": "24",
+        "data": {
+                "Transform": {
+                        "geometry": "12",
+                        "matrix": "18"
+                }
+        }
+},
+{
+        "id": "28",
+        "data": {
+                "SurfaceRenderer": {
+                        "surface": "24"
+                }
+        }
+}
+]
+}
+

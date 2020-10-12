@@ -389,7 +389,9 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
 
 void main() {{
     // the only difference between the 1d->1d and the 2d->2d shader is the local_sizes and the indexing
-    uint index = gl_GlobalInvocationID.x + gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    uint par1_idx = gl_GlobalInvocationID.x;
+    uint par2_idx = gl_GlobalInvocationID.y;
+    uint index = gl_GlobalInvocationID.x + gl_NumWorkGroups.x * gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
     out_buff[index] = in_matrix * in_buff[index];
 }}
 "##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
@@ -434,9 +436,11 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
 
 void main() {{
     // the output index should be the same as the common 2D -> 2D transform
-    uint index = gl_GlobalInvocationID.x + gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    uint par1_idx = gl_GlobalInvocationID.x;
+    uint par2_idx = gl_GlobalInvocationID.y;
+    uint index = gl_GlobalInvocationID.x + gl_NumWorkGroups.x * gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
     // while the index used for accessing the inputs are the global invocation id for x and y
-    out_buff[index] = in_matrix[gl_GlobalInvocationID.y] * in_buff[gl_GlobalInvocationID.x];
+    out_buff[index] = in_matrix[par2_idx] * in_buff[par1_idx];
 }}
 "##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
