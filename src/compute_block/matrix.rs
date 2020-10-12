@@ -7,8 +7,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MatrixBlockDescriptor {
-    pub interval_id: Option<String>,
-    pub m: [[SmolStr; 4]; 3], // matrix elements, row-major order
+    pub interval: Option<String>,
+    pub row_1: [SmolStr; 4], // matrix elements, row-major order
+    pub row_2: [SmolStr; 4], // matrix elements, row-major order
+    pub row_3: [SmolStr; 4], // matrix elements, row-major order
 }
 
 impl MatrixBlockDescriptor {
@@ -20,12 +22,10 @@ impl MatrixBlockDescriptor {
 impl Default for MatrixBlockDescriptor {
     fn default() -> Self {
         Self {
-            interval_id: None,
-            m: [
-                ["1.0".into(),"0.0".into(),"0.0".into(),"0.0".into()],
-                ["0.0".into(),"1.0".into(),"0.0".into(),"0.0".into()],
-                ["0.0".into(),"0.0".into(),"1.0".into(),"0.0".into()]
-            ]
+            interval: None,
+            row_1: ["1.0".into(),"0.0".into(),"0.0".into(),"0.0".into()],
+            row_2: ["0.0".into(),"1.0".into(),"0.0".into(),"0.0".into()],
+            row_3: ["0.0".into(),"0.0".into(),"1.0".into(),"0.0".into()]
         }
     }
 }
@@ -40,7 +40,8 @@ pub struct MatrixData {
 
 impl MatrixData {
     pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &MatrixBlockDescriptor) -> Self {
-        if descriptor.interval_id.is_some() {
+        println!("{:?}", descriptor);
+        if descriptor.interval.is_some() {
             Self::new_with_interval(compute_chain, device, descriptor)
         } else {
             Self::new_without_interval(compute_chain, device, descriptor)
@@ -56,8 +57,8 @@ impl MatrixData {
     }
 
     fn new_with_interval(compute_chain: &ComputeChain, device: &wgpu::Device, desc: &MatrixBlockDescriptor) -> Self {
-        let interval_id = desc.interval_id.as_ref().unwrap();
-        let interval_block = compute_chain.get_block(interval_id).expect("could not find the interval");
+        let interval = desc.interval.as_ref().unwrap();
+        let interval_block = compute_chain.get_block(interval).expect("could not find the interval");
         let interval_data;
         if let ComputeBlock::Interval(data) = interval_block {
             interval_data = data;
@@ -102,10 +103,10 @@ void main() {{
     out_buff[index][3] = col_3;
 }}
 "##, header=&compute_chain.shader_header, par=&interval_data.name, dimx=n_evals,
-    _m00=desc.m[0][0], _m10=desc.m[1][0], _m20=desc.m[2][0],
-    _m01=desc.m[0][1], _m11=desc.m[1][1], _m21=desc.m[2][1],
-    _m02=desc.m[0][2], _m12=desc.m[1][2], _m22=desc.m[2][2],
-    _m03=desc.m[0][3], _m13=desc.m[1][3], _m23=desc.m[2][3],
+    _m00=desc.row_1[0], _m10=desc.row_2[0], _m20=desc.row_3[0],
+    _m01=desc.row_1[1], _m11=desc.row_2[1], _m21=desc.row_3[1],
+    _m02=desc.row_1[2], _m12=desc.row_2[2], _m22=desc.row_3[2],
+    _m03=desc.row_1[3], _m13=desc.row_2[3], _m23=desc.row_3[3],
 );
         //println!("debug info for matrix shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
@@ -162,10 +163,10 @@ void main() {{
     out_buff[index][3] = col_3;
 }}
 "##, header=&compute_chain.shader_header,
-    _m00=desc.m[0][0], _m10=desc.m[1][0], _m20=desc.m[2][0],
-    _m01=desc.m[0][1], _m11=desc.m[1][1], _m21=desc.m[2][1],
-    _m02=desc.m[0][2], _m12=desc.m[1][2], _m22=desc.m[2][2],
-    _m03=desc.m[0][3], _m13=desc.m[1][3], _m23=desc.m[2][3],
+    _m00=desc.row_1[0], _m10=desc.row_2[0], _m20=desc.row_3[0],
+    _m01=desc.row_1[1], _m11=desc.row_2[1], _m21=desc.row_3[1],
+    _m02=desc.row_1[2], _m12=desc.row_2[2], _m22=desc.row_3[2],
+    _m03=desc.row_1[3], _m13=desc.row_2[3], _m23=desc.row_3[3],
 );
         //println!("debug info for matrix shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();

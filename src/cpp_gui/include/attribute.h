@@ -103,8 +103,9 @@ class Text final : public StaticAttribute {
         std::string ContentsToJson() override;
         void RenderContents() override;
 
+        std::string buffer;
+
     private:
-        std::array<char, 256> buffer;
         const std::string imgui_label;
         const int text_field_size;
 };
@@ -116,15 +117,10 @@ class MatrixRow final : public StaticAttribute {
         std::string ContentsToJson() override;
         void RenderContents() override;
 
+        std::array<std::string, 4> buffer;
+
     private:
-        std::array<char, 256> buffer_1;
-        std::array<char, 256> buffer_2;
-        std::array<char, 256> buffer_3;
-        std::array<char, 256> buffer_4;
-        const std::string imgui_label_1;
-        const std::string imgui_label_2;
-        const std::string imgui_label_3;
-        const std::string imgui_label_4;
+        const std::array<const std::string, 4> imgui_label;
         const int text_field_size;
 };
 

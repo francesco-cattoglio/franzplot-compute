@@ -59,7 +59,9 @@ int Graph::NextId() {
 void Graph::Test() {
     AddNode(Node::PrefabInterval(std::bind(&Graph::NextId, this)));
     AddNode(Node::PrefabInterval(std::bind(&Graph::NextId, this)));
-    AddNode(Node::PrefabSurface(std::bind(&Graph::NextId, this)));
+    AddNode(Node::PrefabCurve(std::bind(&Graph::NextId, this)));
+    AddNode(Node::PrefabMatrix(std::bind(&Graph::NextId, this)));
+    AddNode(Node::PrefabTransform(std::bind(&Graph::NextId, this)));
     AddNode(Node::PrefabRendering(std::bind(&Graph::NextId, this)));
 }
 

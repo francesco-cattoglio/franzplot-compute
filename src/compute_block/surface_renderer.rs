@@ -10,7 +10,7 @@ const LOCAL_SIZE_Y: usize = 16;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SurfaceRendererBlockDescriptor {
-    pub surface_id: String,
+    pub surface: String,
 }
 impl SurfaceRendererBlockDescriptor {
     pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
@@ -27,16 +27,39 @@ pub struct SurfaceRendererData {
 impl SurfaceRendererData {
     pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &SurfaceRendererBlockDescriptor) -> Self {
 
-        let surface_block = compute_chain.get_block(&descriptor.surface_id).expect("unable to find dependency for surface renderer block");
-        let surface_data: &SurfaceData;
-        if let ComputeBlock::Surface(data) = surface_block {
-            surface_data = data;
-        } else {
-            panic!("internal error");
+        let input_block = compute_chain.get_block(&descriptor.surface).expect("unable to find dependency for surface renderer block");
+        match input_block {
+            ComputeBlock::Point(point_data) => {
+                Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim)
+            }
+            ComputeBlock::Curve(curve_data) => {
+                Self::setup_1d_geometry(device, &curve_data.out_buffer, &curve_data.out_dim)
+            }
+            ComputeBlock::Surface(surface_data) => {
+                Self::setup_2d_geometry(device, &surface_data.out_buffer, &surface_data.out_dim)
+            }
+            ComputeBlock::Transform(transformed_data) => {
+                let buffer = &transformed_data.out_buffer;
+                let dimensions = &transformed_data.out_dim;
+                match dimensions {
+                    Dimensions::D0 => Self::setup_0d_geometry(device, buffer, dimensions),
+                    Dimensions::D1(_) => Self::setup_1d_geometry(device, buffer, dimensions),
+                    Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions),
+                }
+            }
+            _ => unimplemented!("case not handled")
         }
-        let computed_surface = &surface_data.out_buffer;
-        let dimensions = surface_data.out_dim.clone();
+    }
 
+    fn setup_0d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Self {
+        unimplemented!("point rendering not implemented yet")
+    }
+
+    fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Self {
+        unimplemented!("curve rendering not implemented yet")
+    }
+
+    fn setup_2d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Self {
         let vertex_buffer = dimensions.create_storage_buffer(std::mem::size_of::<Vertex>(), device);
         let shader_source = format!(r##"
 #version 450
@@ -100,7 +123,7 @@ void main() {{
         // add descriptor for input buffers
         bindings.push(CustomBindDescriptor {
             position: 0,
-            buffer_slice: computed_surface.slice(..)
+            buffer_slice: data_buffer.slice(..)
         });
         use crate::shader_processing::*;
         // add descriptor for output buffer
@@ -113,9 +136,10 @@ void main() {{
         Self {
             compute_pipeline,
             compute_bind_group,
-            out_dim: dimensions,
+            out_dim: dimensions.clone(),
             vertex_buffer,
         }
+
     }
 
     pub fn encode(&self, encoder: &mut wgpu::CommandEncoder) {

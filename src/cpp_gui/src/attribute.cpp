@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include <imgui.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 namespace franzplot_gui {
 
@@ -76,15 +77,13 @@ Text::Text(int attribute_id, int node_id, const std::string& label, int text_fie
         StaticAttribute(attribute_id, node_id, label),
         imgui_label("##" + std::to_string(this->id)),
         text_field_size(text_field_size)
-{
-    buffer.fill('\0');
-}
+{}
 
 void Text::RenderContents() {
     ImGui::Text(this->label.c_str());
     ImGui::SameLine();
     ImGui::PushItemWidth(text_field_size);
-    ImGui::InputText(this->imgui_label.c_str(), this->buffer.data(), this->buffer.size());
+    ImGui::InputText(imgui_label.c_str(), &buffer);
     ImGui::SameLine(); ImGui::Dummy(ImVec2(1, 1)); // this leaves just a tiny bit of empty space after the input text widget
     ImGui::PopItemWidth();
     return;
@@ -92,47 +91,44 @@ void Text::RenderContents() {
 
 std::string Text::ContentsToJson() {
     std::string to_return;
-    to_return += std::string() + "\"" + buffer.data() + "\"";
+    to_return += std::string() + "\"" + buffer + "\"";
     return to_return;
 }
 
 MatrixRow::MatrixRow(int attribute_id, int node_id, const std::string& label, int text_field_size)
     :
         StaticAttribute(attribute_id, node_id, label),
-        imgui_label_1("##" + std::to_string(this->id) + ":1"),
-        imgui_label_2("##" + std::to_string(this->id) + ":2"),
-        imgui_label_3("##" + std::to_string(this->id) + ":3"),
-        imgui_label_4("##" + std::to_string(this->id) + ":4"),
+        imgui_label( {
+                "##" + std::to_string(this->id) + ":1",
+                "##" + std::to_string(this->id) + ":2",
+                "##" + std::to_string(this->id) + ":3",
+                "##" + std::to_string(this->id) + ":4"
+                }),
         text_field_size(text_field_size)
-{
-    buffer_1.fill('\0');
-    buffer_2.fill('\0');
-    buffer_3.fill('\0');
-    buffer_4.fill('\0');
-}
+{}
 
 void MatrixRow::RenderContents() {
     // do not display the label for this attribute
     // ImGui::Text(this->label.c_str());
     // ImGui::SameLine();
     ImGui::PushItemWidth(text_field_size);
-    ImGui::InputText(imgui_label_1.c_str(), buffer_1.data(), buffer_1.size());
-    ImGui::SameLine();
-    ImGui::InputText(imgui_label_2.c_str(), buffer_2.data(), buffer_2.size());
-    ImGui::SameLine();
-    ImGui::InputText(imgui_label_3.c_str(), buffer_3.data(), buffer_3.size());
-    ImGui::SameLine();
-    ImGui::InputText(imgui_label_4.c_str(), buffer_4.data(), buffer_4.size());
+    assert(buffer.size() == imgui_label.size());
+    for (size_t i = 0; i < buffer.size(); i++) {
+        ImGui::InputText(imgui_label[i].c_str(), &buffer[i]);
+        ImGui::SameLine();
+    }
+    ImGui::TextUnformatted(""); // burns the last SameLine command and adds just a tiny bit of space, which is nice
     ImGui::PopItemWidth();
     return;
 }
 
 std::string MatrixRow::ContentsToJson() {
     std::string to_return;
-    to_return += std::string() + "[\"" + buffer_1.data()
-        + "\", \"" + buffer_2.data()
-        + "\", \"" + buffer_3.data()
-        + "\", \"" + buffer_4.data()
+    to_return += std::string()
+        + "[\"" + buffer[0]
+        + "\", \"" + buffer[1]
+        + "\", \"" + buffer[2]
+        + "\", \"" + buffer[3]
         + "\"]";
     return to_return;
 }

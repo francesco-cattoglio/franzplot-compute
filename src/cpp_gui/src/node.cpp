@@ -43,8 +43,8 @@ Node Node::PrefabSurface(const std::function<int()> next_id) {
     to_return.name = "Surface node";
     to_return.attributes = {
         std::make_shared<SimpleOutput>(next_id(), to_return.id, "geometry", PinKind::Geometry),
-        std::make_shared<SimpleInput>(next_id(), to_return.id, "interval_first_id", PinKind::Interval),
-        std::make_shared<SimpleInput>(next_id(), to_return.id, "interval_second_id", PinKind::Interval),
+        std::make_shared<SimpleInput>(next_id(), to_return.id, "interval_first", PinKind::Interval),
+        std::make_shared<SimpleInput>(next_id(), to_return.id, "interval_second", PinKind::Interval),
         std::make_shared<Text>(next_id(), to_return.id, "fx", 75),
         std::make_shared<Text>(next_id(), to_return.id, "fy", 75),
         std::make_shared<Text>(next_id(), to_return.id, "fz", 75),
@@ -56,11 +56,15 @@ Node Node::PrefabSurface(const std::function<int()> next_id) {
 Node Node::PrefabInterval(const std::function<int()> next_id) {
     Node to_return = Node(next_id(), NodeType::Interval);
     to_return.name = "Interval";
+    auto begin = std::make_shared<Text>(next_id(), to_return.id, "begin", 35);
+    auto end = std::make_shared<Text>(next_id(), to_return.id, "end", 35);
+    begin->buffer = "0.0";
+    end->buffer = "1.0";
     to_return.attributes = {
         std::make_shared<SimpleOutput>(next_id(), to_return.id, "interval", PinKind::Interval),
         std::make_shared<Text>(next_id(), to_return.id, "name", 35),
-        std::make_shared<Text>(next_id(), to_return.id, "begin", 35),
-        std::make_shared<Text>(next_id(), to_return.id, "end", 35),
+        begin,
+        end,
         std::make_shared<IntSlider>(next_id(), to_return.id, "quality", 1, 16),
     };
 
@@ -71,7 +75,7 @@ Node Node::PrefabRendering(const std::function<int()> next_id) {
     Node to_return = Node(next_id(), NodeType::Rendering);
     to_return.name = "Rendering";
     to_return.attributes = {
-        std::make_shared<SimpleInput>(next_id(), to_return.id, "surface_id", PinKind::Geometry)
+        std::make_shared<SimpleInput>(next_id(), to_return.id, "surface", PinKind::Geometry)
     };
 
     return to_return;
@@ -92,12 +96,18 @@ Node Node::PrefabTransform(const std::function<int()> next_id) {
 Node Node::PrefabMatrix(const std::function<int()> next_id) {
     Node to_return = Node(next_id(), NodeType::Matrix);
     to_return.name = "Matrix";
+    auto row_1 = std::make_shared<MatrixRow>(next_id(), to_return.id, "row_1");
+    auto row_2 = std::make_shared<MatrixRow>(next_id(), to_return.id, "row_2");
+    auto row_3 = std::make_shared<MatrixRow>(next_id(), to_return.id, "row_3");
+    row_1->buffer = { "1.0", "0.0", "0.0", "0.0" };
+    row_2->buffer = { "0.0", "1.0", "0.0", "0.0" };
+    row_3->buffer = { "0.0", "0.0", "1.0", "0.0" };
     to_return.attributes = {
         std::make_shared<SimpleOutput>(next_id(), to_return.id, "matrix", PinKind::Matrix),
         std::make_shared<SimpleInput>(next_id(), to_return.id, "interval", PinKind::Interval),
-        std::make_shared<MatrixRow>(next_id(), to_return.id, "row_1"),
-        std::make_shared<MatrixRow>(next_id(), to_return.id, "row_2"),
-        std::make_shared<MatrixRow>(next_id(), to_return.id, "row_3"),
+        row_1,
+        row_2,
+        row_3,
     };
 
     return to_return;

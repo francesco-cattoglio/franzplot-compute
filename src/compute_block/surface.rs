@@ -10,8 +10,8 @@ const LOCAL_SIZE_Y: usize = 16;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SurfaceBlockDescriptor {
-    pub interval_first_id: String,
-    pub interval_second_id: String,
+    pub interval_first: String,
+    pub interval_second: String,
     pub fx: String,
     pub fy: String,
     pub fz: String,
@@ -31,14 +31,14 @@ pub struct SurfaceData {
 
 impl SurfaceData {
     pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &SurfaceBlockDescriptor) -> Self {
-        let first_interval_block = compute_chain.get_block(&descriptor.interval_first_id).expect("unable to find first dependency for curve block");
+        let first_interval_block = compute_chain.get_block(&descriptor.interval_first).expect("unable to find first dependency for curve block");
         let first_interval_data: &IntervalData;
         if let ComputeBlock::Interval(data) = first_interval_block {
             first_interval_data = data;
         } else {
             panic!("internal error");
         }
-        let second_interval_block = compute_chain.get_block(&descriptor.interval_second_id).expect("unable to find second dependency for curve block");
+        let second_interval_block = compute_chain.get_block(&descriptor.interval_second).expect("unable to find second dependency for curve block");
         let second_interval_data: &IntervalData;
         if let ComputeBlock::Interval(data) = second_interval_block {
             second_interval_data = data;

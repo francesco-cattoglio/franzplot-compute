@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CurveBlockDescriptor {
-    pub interval_input_id: String,
-    pub x_function: String,
-    pub y_function: String,
-    pub z_function: String,
+    pub interval: String,
+    pub fx: String,
+    pub fy: String,
+    pub fz: String,
 }
 impl CurveBlockDescriptor {
     pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
@@ -29,7 +29,7 @@ pub struct CurveData {
 
 impl CurveData {
     pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &CurveBlockDescriptor) -> Self {
-        let interval_block = compute_chain.get_block(&descriptor.interval_input_id).expect("unable to find dependency for curve block");
+        let interval_block = compute_chain.get_block(&descriptor.interval).expect("unable to find dependency for curve block");
         let interval_data: &IntervalData;
         if let ComputeBlock::Interval(data) = interval_block {
             interval_data = data;
@@ -75,7 +75,7 @@ void main() {{
     out_buff[index].z = {fz};
     out_buff[index].w = 1;
 }}
-"##, header=&compute_chain.shader_header, par=&interval_data.name, dimx=n_points, fx=&descriptor.x_function, fy=&descriptor.y_function, fz=&descriptor.z_function);
+"##, header=&compute_chain.shader_header, par=&interval_data.name, dimx=n_points, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
         //println!("debug info for curve shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
