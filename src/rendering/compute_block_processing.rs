@@ -1,6 +1,22 @@
 use crate::compute_block::*;
 use crate::device_manager::Manager;
 
+fn create_lines_buffer_index(device: &wgpu::Device, x_size: usize) -> (wgpu::Buffer, usize) {
+    let mut index_vector = Vec::<u32>::new();
+    for i in 0 .. x_size {
+        index_vector.push(i as u32);
+    }
+
+    use wgpu::util::DeviceExt;
+    let index_buffer = device.create_buffer_init(
+        &wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&index_vector),
+            usage: wgpu::BufferUsage::INDEX,
+    });
+    (index_buffer, index_vector.len())
+}
+
 fn create_grid_buffer_index(device: &wgpu::Device, x_size: usize, y_size: usize, flag_pattern: bool) -> (wgpu::Buffer, usize) {
     // the grid has indices growing first along x, then along y
     let mut index_vector = Vec::<u32>::new();
@@ -46,19 +62,29 @@ fn create_grid_buffer_index(device: &wgpu::Device, x_size: usize, y_size: usize,
     (index_buffer, index_vector.len())
 }
 
-pub fn block_to_renderable(manager: &Manager, compute_block: &ComputeBlock, camera_bind_group: &wgpu::BindGroup, pipeline: &wgpu::RenderPipeline, texture_bind_group: &wgpu::BindGroup) -> Option<wgpu::RenderBundle> {
+pub fn block_to_renderable(manager: &Manager, compute_block: &ComputeBlock, camera_bind_group: &wgpu::BindGroup, pipeline_1d: &wgpu::RenderPipeline, pipeline_2d: &wgpu::RenderPipeline, texture_bind_group: &wgpu::BindGroup) -> Option<wgpu::RenderBundle> {
         match compute_block {
             ComputeBlock::SurfaceRenderer(data) => {
-                let (param_1, param_2) = data.out_dim.as_2d().unwrap();
-                let (index_buffer, indices_count) = create_grid_buffer_index(&manager.device, param_1.size, param_2.size, true);
-
                 let mut render_bundle_encoder = manager.device.create_render_bundle_encoder(&wgpu::RenderBundleEncoderDescriptor{
                     label: Some("render bundle encoder for surface"),
                     color_formats: &[super::SWAPCHAIN_FORMAT],
                     depth_stencil_format: Some(super::DEPTH_FORMAT),
                     sample_count: 1,
                 });
-                render_bundle_encoder.set_pipeline(pipeline);
+                let (index_buffer, indices_count) = match &data.out_dim {
+                    Dimensions::D0 =>  {
+                        unimplemented!()
+                    }
+                    Dimensions::D1(param_1) => {
+                        render_bundle_encoder.set_pipeline(pipeline_1d);
+                        create_lines_buffer_index(&manager.device, param_1.size)
+                    }
+                    Dimensions::D2(param_1, param_2) => {
+                        render_bundle_encoder.set_pipeline(pipeline_2d);
+                        create_grid_buffer_index(&manager.device, param_1.size, param_2.size, true)
+                    }
+                };//create_grid_buffer_index(&manager.device, param_1.size, param_2.size, true);
+
                 render_bundle_encoder.set_vertex_buffer(0, data.vertex_buffer.slice(..));
                 render_bundle_encoder.set_index_buffer(index_buffer.slice(..));
                 render_bundle_encoder.set_bind_group(0, texture_bind_group, &[]);

@@ -21,8 +21,8 @@
         "data": {
                 "Curve": {
                         "interval": "0",
-                        "fx": "r",
-                        "fy": "0",
+                        "fx": "sin(r)",
+                        "fy": "cos(r)",
                         "fz": "0"
                 }
         }

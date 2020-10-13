@@ -56,7 +56,62 @@ impl SurfaceRendererData {
     }
 
     fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Self {
-        unimplemented!("curve rendering not implemented yet")
+        let vertex_buffer = dimensions.create_storage_buffer(std::mem::size_of::<Vertex>(), device);
+        let size = dimensions.as_1d().unwrap().size;
+        let shader_source = format!(r##"
+#version 450
+layout(local_size_x = {dimx}, local_size_y = 1) in;
+
+{vertex_struct}
+
+layout(set = 0, binding = 0) buffer InputVertices {{
+    vec4 in_buff[];
+}};
+
+layout(set = 0, binding = 1) buffer OutputData {{
+    vec4 out_buff[];
+}};
+
+
+void main() {{
+    // this shader prepares the data for surface rendering.
+    // output data will have the following format:
+    // for each vertex, we have a vec4 representing the position,
+    // then a vec4 representing the normal,
+    // then a vec2 for the uv_coords.
+
+    uint x_size = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+
+    uint idx = gl_GlobalInvocationID.x;
+
+    vec3 normal = vec3(0.0, 0.0, 0.0);
+
+    out_buff[idx*3] = in_buff[idx];
+    out_buff[idx*3+1] = vec4(normal, 0.0);
+    out_buff[idx*3+2] = vec4(idx/(x_size-1.0), 0.5, 0.0, 0.0);
+}}
+"##, vertex_struct=GLSL_VERTEX_STRUCT, dimx=size,);
+        println!("debug info for curve rendering shader: \n{}", shader_source);
+        let mut bindings = Vec::<CustomBindDescriptor>::new();
+        // add descriptor for input buffers
+        bindings.push(CustomBindDescriptor {
+            position: 0,
+            buffer_slice: data_buffer.slice(..)
+        });
+        use crate::shader_processing::*;
+        // add descriptor for output buffer
+        bindings.push(CustomBindDescriptor {
+            position: 1,
+            buffer_slice: vertex_buffer.slice(..)
+        });
+        let (compute_pipeline, compute_bind_group) = compute_shader_no_globals(&shader_source, &bindings, &device, Some("Curve Normals"));
+
+        Self {
+            compute_pipeline,
+            compute_bind_group,
+            out_dim: dimensions.clone(),
+            vertex_buffer,
+        }
     }
 
     fn setup_2d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Self {
@@ -167,7 +222,18 @@ void main() {{
         let mut compute_pass = encoder.begin_compute_pass();
         compute_pass.set_pipeline(&self.compute_pipeline);
         compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
-        let (par_1, par_2) = self.out_dim.as_2d().unwrap();
-        compute_pass.dispatch((par_1.size/LOCAL_SIZE_X) as u32, (par_2.size/LOCAL_SIZE_Y) as u32, 1);
+        match &self.out_dim {
+            Dimensions::D0 => {
+                unimplemented!();
+            }
+            Dimensions::D1(param_1) => {
+                // BEWARE: as described before, we wrote the size of the buffer inside the local shader
+                // dimensions, therefore the whole compute will always take just 1 dispatch
+                compute_pass.dispatch(1, 1, 1);
+            }
+            Dimensions::D2(par_1, par_2) => {
+                compute_pass.dispatch((par_1.size/LOCAL_SIZE_X) as u32, (par_2.size/LOCAL_SIZE_Y) as u32, 1);
+            }
+        }
     }
 }

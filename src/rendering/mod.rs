@@ -36,7 +36,7 @@ impl Vertex {
                 wgpu::VertexAttributeDescriptor {
                     offset: 0,
                     shader_location: 0,
-                    format: wgpu::VertexFormat::Float3
+                    format: wgpu::VertexFormat::Float4
                 },
                 wgpu::VertexAttributeDescriptor {
                     offset: std::mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
@@ -85,7 +85,8 @@ impl Uniforms {
 // the issues for normal computation for a parametrix sphere or for z=sqrt(x + y))
 
 pub struct SurfaceRenderer {
-    pipeline: wgpu::RenderPipeline,
+    pipeline_1d: wgpu::RenderPipeline,
+    pipeline_2d: wgpu::RenderPipeline,
     renderables: Vec<wgpu::RenderBundle>,
     texture: texture::Texture,
     texture_bind_group: wgpu::BindGroup,
@@ -167,7 +168,7 @@ impl SurfaceRenderer {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer (camera_uniform_buffer.slice(..)),
+                    resource: wgpu::BindingResource::Buffer(camera_uniform_buffer.slice(..)),
                 },
             ],
             label: Some("Camera bind group"),
@@ -197,6 +198,88 @@ impl SurfaceRenderer {
                 bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_layout]
             });
 
+        let pipeline_1d = Self::create_1d_pipeline(&manager.device, &render_pipeline_layout);
+        let pipeline_2d = Self::create_2d_pipeline(&manager.device, &render_pipeline_layout);
+        let depth_texture = texture::Texture::create_depth_texture(&manager.device, &manager.sc_desc, "depth_texture");
+
+        let clear_color = wgpu::Color::BLACK;
+
+        let renderables = Vec::<wgpu::RenderBundle>::new();
+
+        Self {
+            clear_color,
+            renderables,
+            texture: diffuse_texture,
+            texture_bind_group,
+            depth_texture,
+            camera_uniform_buffer,
+            camera_bind_group,
+            pipeline_1d,
+            pipeline_2d,
+        }
+    }
+
+    fn create_1d_pipeline(device: &wgpu::Device, render_pipeline_layout: &wgpu::PipelineLayout) -> wgpu::RenderPipeline {
+        // shader compiling
+        let mut shader_compiler = shaderc::Compiler::new().unwrap();
+        let vert_src = include_str!("curve_shader.vert");
+        let frag_src = include_str!("curve_shader.frag");
+        let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "curve_shader.vert", "main", None).unwrap();
+        let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "curve_shader.frag", "main", None).unwrap();
+        let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
+        let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
+        let vert_module = device.create_shader_module(vert_data);
+        let frag_module = device.create_shader_module(frag_data);
+
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
+            layout: Some(render_pipeline_layout),
+            label: None,
+            vertex_stage: wgpu::ProgrammableStageDescriptor {
+                module: &vert_module,
+                entry_point: "main",
+            },
+            fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+                module: &frag_module,
+                entry_point: "main",
+            }),
+            rasterization_state: Some(wgpu::RasterizationStateDescriptor {
+                front_face: wgpu::FrontFace::Ccw,
+                clamp_depth: false,
+                cull_mode: wgpu::CullMode::None,
+                depth_bias: 0,
+                depth_bias_slope_scale: 0.0,
+                depth_bias_clamp: 0.0,
+            }),
+            primitive_topology: wgpu::PrimitiveTopology::LineStrip,
+            color_states: &[wgpu::ColorStateDescriptor{
+                format: SWAPCHAIN_FORMAT,
+                color_blend: wgpu::BlendDescriptor::REPLACE,
+                alpha_blend: wgpu::BlendDescriptor::REPLACE,
+                write_mask: wgpu::ColorWrite::ALL
+            }],
+            depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
+                format: DEPTH_FORMAT,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilStateDescriptor {
+                    front: wgpu::StencilStateFaceDescriptor::IGNORE,
+                    back: wgpu::StencilStateFaceDescriptor::IGNORE,
+                    read_mask: 0,
+                    write_mask: 0,
+                }
+            }),
+            sample_count: 1,
+            sample_mask: !0,
+            alpha_to_coverage_enabled: false,
+            vertex_state: wgpu::VertexStateDescriptor {
+                index_format: wgpu::IndexFormat::Uint32,
+                vertex_buffers: &[Vertex::description()],
+            },
+        })
+
+    }
+
+    fn create_2d_pipeline(device: &wgpu::Device, render_pipeline_layout: &wgpu::PipelineLayout) -> wgpu::RenderPipeline {
         // shader compiling
         let mut shader_compiler = shaderc::Compiler::new().unwrap();
         let vert_src = include_str!("surface_shader.vert");
@@ -205,10 +288,10 @@ impl SurfaceRenderer {
         let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "surface_shader.frag", "main", None).unwrap();
         let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
         let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
-        let vert_module = manager.device.create_shader_module(vert_data);
-        let frag_module = manager.device.create_shader_module(frag_data);
+        let vert_module = device.create_shader_module(vert_data);
+        let frag_module = device.create_shader_module(frag_data);
 
-        let pipeline = manager.device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
+        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
             layout: Some(&render_pipeline_layout),
             label: None,
             vertex_stage: wgpu::ProgrammableStageDescriptor {
@@ -252,30 +335,14 @@ impl SurfaceRenderer {
                 index_format: wgpu::IndexFormat::Uint32,
                 vertex_buffers: &[Vertex::description()],
             },
-        });
+        })
 
-        let depth_texture = texture::Texture::create_depth_texture(&manager.device, &manager.sc_desc, "depth_texture");
-
-        let clear_color = wgpu::Color::BLACK;
-
-        let renderables = Vec::<wgpu::RenderBundle>::new();
-
-        Self {
-            clear_color,
-            renderables,
-            texture: diffuse_texture,
-            texture_bind_group,
-            depth_texture,
-            camera_uniform_buffer,
-            camera_bind_group,
-            pipeline,
-        }
     }
 
     pub fn update_renderables (&mut self, manager: &device_manager::Manager, chain: &ComputeChain,) {
         self.renderables.clear();
         for compute_block in chain.blocks_iterator() {
-            let maybe_renderable = compute_block_processing::block_to_renderable(manager, compute_block, &self.camera_bind_group, &self.pipeline, &self.texture_bind_group);
+            let maybe_renderable = compute_block_processing::block_to_renderable(manager, compute_block, &self.camera_bind_group, &self.pipeline_1d, &self.pipeline_2d, &self.texture_bind_group);
             if let Some(renderable) = maybe_renderable {
                 self.renderables.push(renderable);
             }
