@@ -18,9 +18,12 @@ class Graph {
     private:
         std::optional<int> FindLinkedNode(int input_attribute_id);
         void RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::string& json);
-        void AddNode(Node&& node);
+        void AddNode(Node&& node, const ImVec2& position);
+        void RemoveNode(int id);
         int NextId();
         int next_id = 0;
+        int last_hovered_node = -1;
+        int last_hovered_link = -1;
         std::map<int, Node> nodes;
         std::map<int, std::shared_ptr<Attribute>> attributes;
         // We need a data structure to store the links between our nodes,

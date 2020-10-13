@@ -11,6 +11,7 @@ namespace franzplot_gui {
 void Graph::Render() {
 
     imnodes::BeginNodeEditor();
+
     // render all links
     for (auto& entry : this->input_to_output_links) {
         int link_id = entry.first;
@@ -26,6 +27,80 @@ void Graph::Render() {
     imnodes::EndNodeEditor();
 
     // event processing
+    ImVec2 mouse_delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Right, 4.0);
+    const bool right_click_popup =
+        ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) &&
+        !ImGui::IsAnyItemHovered() &&
+        ImGui::IsMouseReleased(ImGuiMouseButton_Right) &&
+        mouse_delta.x == 0 && mouse_delta.y == 0; // exact comparison is fine due to GetMouseDragDelta threshold
+
+    int hovered_id = -1;
+    if (right_click_popup) {
+        if (imnodes::IsNodeHovered(&hovered_id)) { // handle right-click on nodes
+            last_hovered_node = hovered_id;
+            ImGui::OpenPopup("Node Menu");
+        } else if (imnodes::IsLinkHovered(&hovered_id)) { // handle right-click on links
+            // handle right-click on nodes
+            last_hovered_link = hovered_id;
+            ImGui::OpenPopup("Link Menu");
+        } else {
+            // handle creation of new nodes
+            ImGui::OpenPopup("Add node");
+        }
+    }
+    // handle creation of new nodes
+    if (ImGui::BeginPopup("Node Menu")) {
+        if (ImGui::MenuItem("Delete Node")) {
+            this->RemoveNode(last_hovered_node);
+            last_hovered_node = -1;
+        }
+        ImGui::EndPopup();
+    }
+
+    if (ImGui::BeginPopup("Link Menu")) {
+        if (ImGui::MenuItem("Delete link")) {
+            this->input_to_output_links.erase(last_hovered_link);
+            last_hovered_link = -1;
+        }
+        ImGui::EndPopup();
+    }
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(8.f, 8.f));
+    if (ImGui::BeginPopup("Add node")) {
+        const ImVec2 click_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
+
+        if (ImGui::MenuItem("Interval")) {
+            AddNode(Node::PrefabInterval(std::bind(&Graph::NextId, this)), click_pos);
+        }
+
+        if (ImGui::BeginMenu("Geometries")) {
+            if (ImGui::MenuItem("Curve")) {
+                AddNode(Node::PrefabCurve(std::bind(&Graph::NextId, this)), click_pos);
+            }
+            if (ImGui::MenuItem("Surface")) {
+                AddNode(Node::PrefabSurface(std::bind(&Graph::NextId, this)), click_pos);
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Transformations")) {
+            if (ImGui::MenuItem("Matrix")) {
+                AddNode(Node::PrefabMatrix(std::bind(&Graph::NextId, this)), click_pos);
+            }
+            if (ImGui::MenuItem("Transform")) {
+                AddNode(Node::PrefabTransform(std::bind(&Graph::NextId, this)), click_pos);
+            }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::MenuItem("Rendering")) {
+            AddNode(Node::PrefabRendering(std::bind(&Graph::NextId, this)), click_pos);
+        }
+
+        ImGui::EndPopup();
+    }
+    ImGui::PopStyleVar();
+
 
     // check if a link was destroyed;
     int link_id;
@@ -57,12 +132,8 @@ int Graph::NextId() {
 }
 
 void Graph::Test() {
-    AddNode(Node::PrefabInterval(std::bind(&Graph::NextId, this)));
-    AddNode(Node::PrefabInterval(std::bind(&Graph::NextId, this)));
-    AddNode(Node::PrefabCurve(std::bind(&Graph::NextId, this)));
-    AddNode(Node::PrefabMatrix(std::bind(&Graph::NextId, this)));
-    AddNode(Node::PrefabTransform(std::bind(&Graph::NextId, this)));
-    AddNode(Node::PrefabRendering(std::bind(&Graph::NextId, this)));
+    AddNode(Node::PrefabInterval(std::bind(&Graph::NextId, this)), {10.0, 10.0});
+    AddNode(Node::PrefabRendering(std::bind(&Graph::NextId, this)), {200.0, 10.0});
 }
 
 void Graph::RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::string& json) {
@@ -136,12 +207,34 @@ std::string Graph::ToJsonDescriptors() {
     return to_return;
 }
 
-void Graph::AddNode(Node&& node) {
-    // we need to keep our attribute-to-node map up-to-date
+void Graph::AddNode(Node&& node, const ImVec2& position) {
+    // add all the node attributes to our attribute map.
+    // those are shared pointers so copying is OK
     for (std::shared_ptr<Attribute> attribute : node.attributes)
-        attributes[attribute->id] = attribute;
+        this->attributes[attribute->id] = attribute;
 
+    imnodes::SetNodeScreenSpacePos(node.id, position);
     nodes.insert(std::make_pair(node.id, node));
+}
+
+void Graph::RemoveNode(int node_id) {
+    // remove all the attributes of the node from our attribute map,
+    // and remember to remove all incoming AND outgoing links as well. To achieve this we currently
+    // have to go over all the existing links, because we do not have a output_to_input_links,
+    // though we might get one in the future
+    for (std::shared_ptr<Attribute> attribute : nodes.at(node_id).attributes) {
+        int attribute_id = attribute->id; // temporary store this attribute id
+        this->attributes.erase(attribute_id);
+        for (auto it = input_to_output_links.begin(); it != input_to_output_links.end(); ) {
+            if (it->first == attribute_id || it->second == attribute_id) {
+                it = input_to_output_links.erase(it);
+            } else {
+                ++it;
+            }
+        }
+    }
+
+    nodes.erase(node_id);
 }
 
 }
