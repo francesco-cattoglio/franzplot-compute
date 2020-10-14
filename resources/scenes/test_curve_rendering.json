@@ -1,0 +1,40 @@
+{
+"context": {
+        "globals": {
+                "pi": 3.1415
+        }
+},
+"descriptors": [
+{
+        "id": "0",
+        "data": {
+                "Interval": {
+                        "name": "r",
+                        "begin": "0.0",
+                        "end": "2*pi",
+                        "quality": 1
+                }
+        }
+},
+{
+        "id": "8",
+        "data": {
+                "Curve": {
+                        "interval": "0",
+                        "fx": "sin(r)",
+                        "fy": "cos(r)",
+                        "fz": "1"
+                }
+        }
+},
+{
+        "id": "6",
+        "data": {
+                "SurfaceRenderer": {
+                        "surface": "8"
+                }
+        }
+}
+]
+}
+

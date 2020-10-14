@@ -1,0 +1,79 @@
+{
+"context": {
+        "globals": {
+                "t": 7.310000
+        }
+},
+"descriptors": [
+{
+        "id": "0",
+        "data": {
+                "Interval": {
+                        "name": "r",
+                        "begin": "0.0",
+                        "end": "pi",
+                        "quality": 4
+                }
+        }
+},
+{
+        "id": "14",
+        "data": {
+                "Curve": {
+                        "interval": "0",
+                        "fx": "r",
+                        "fy": "sin(r+t)",
+                        "fz": "0"
+                }
+        }
+},
+{
+        "id": "6",
+        "data": {
+                "SurfaceRenderer": {
+                        "surface": "14"
+                }
+        }
+},
+{
+        "id": "8",
+        "data": {
+                "Interval": {
+                        "name": "s",
+                        "begin": "-pi",
+                        "end": "pi",
+                        "quality": 4
+                }
+        }
+},
+{
+        "id": "22",
+        "data": {
+                "Matrix": {
+                        "interval": "8",
+                        "row_1": ["1.0", "0.0", "0.0", "0.0"],
+                        "row_2": ["0.0", "1.0", "0.0", "sin(s)"],
+                        "row_3": ["0.0", "0.0", "1.0", "s"]
+                }
+        }
+},
+{
+        "id": "28",
+        "data": {
+                "Transform": {
+                        "geometry": "14",
+                        "matrix": "22"
+                }
+        }
+},
+{
+        "id": "32",
+        "data": {
+                "SurfaceRenderer": {
+                        "surface": "28"
+                }
+        }
+}
+]
+}
+
