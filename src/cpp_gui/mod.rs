@@ -12,6 +12,7 @@ pub mod ffi{
         type Gui;
         fn create_gui_instance(boxed_proxy: Box<RustEventProxy>) -> UniquePtr<Gui>;
         fn Render(self: &mut Gui);
+        fn MarkError(self: &mut Gui, node_id: i32, message: &str);
         fn test_boxed_proxy(self: &mut Gui);
     }
 

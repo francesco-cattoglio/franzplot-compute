@@ -72,6 +72,13 @@ void Gui::Render() {
     ImGui::End();
 }
 
+void Gui::MarkError(int id, rust::Str rust_message) {
+    std::string message(rust_message);
+    Node* maybe_node = graph.GetNode(id);
+    if (maybe_node)
+        maybe_node->SetError(message);
+}
+
 std::unique_ptr<Gui> create_gui_instance(rust::Box<RustEventProxy> boxed_proxy){
     return std::make_unique<Gui>(boxed_proxy);
 }

@@ -91,16 +91,22 @@ fn main() {
     let font_size = (11.0 * hidpi_factor) as f32;
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
-    imgui.fonts().add_font(&[FontSource::DefaultFontData {
-        config: Some(imgui::FontConfig {
-            oversample_h: 1,
-            pixel_snap_h: true,
-            size_pixels: font_size,
-            ..Default::default()
-        }),
+    //imgui.fonts().add_font(&[FontSource::DefaultFontData {
+    //    config: Some(imgui::FontConfig {
+    //        oversample_h: 1,
+    //        pixel_snap_h: true,
+    //        size_pixels: font_size,
+    //        ..Default::default()
+    //    }),
+    //}]);
+    imgui.fonts().add_font(&[FontSource::TtfData {
+        data: include_bytes!("../resources/NotoMono-Regular.ttf"),
+        size_pixels: font_size,
+        config: None,
     }]);
     cpp_gui::ffi::init_imnodes();
     let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance(Box::new(event_loop.create_proxy()));
+    gui_unique_ptr.MarkError(6, "rendering error");
 
     let mut renderer = Renderer::new(&mut imgui, &device_manager.device, &mut device_manager.queue, rendering::SWAPCHAIN_FORMAT);
     let mut last_frame = std::time::Instant::now();

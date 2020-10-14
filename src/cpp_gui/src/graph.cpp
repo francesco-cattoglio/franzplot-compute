@@ -5,10 +5,12 @@
 #include <iostream>
 #include <imgui.h>
 #include <imnodes.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 namespace franzplot_gui {
 
 void Graph::Render() {
+    using namespace ImGui;
 
     imnodes::BeginNodeEditor();
 
@@ -48,13 +50,28 @@ void Graph::Render() {
             ImGui::OpenPopup("Add node");
         }
     }
-    // handle creation of new nodes
+    // handle right click on nodes
+    bool workaround_open_node = false;
     if (ImGui::BeginPopup("Node Menu")) {
         if (ImGui::MenuItem("Delete Node")) {
             this->RemoveNode(last_hovered_node);
             last_hovered_node = -1;
         }
+        if (ImGui::MenuItem("Rename Node")) {
+            workaround_open_node = true;
+        }
         ImGui::EndPopup();
+    }
+
+    std::string new_name;
+    if (workaround_open_node)
+        OpenPopup("Edit Node Name");
+    if (BeginPopup("Edit Node Name")) {
+        if (InputText("new name", &new_name, ImGuiInputTextFlags_EnterReturnsTrue)) {
+            this->nodes.at(last_hovered_node).name = new_name;
+            CloseCurrentPopup();
+        }
+        EndPopup();
     }
 
     if (ImGui::BeginPopup("Link Menu")) {
@@ -235,6 +252,14 @@ void Graph::RemoveNode(int node_id) {
     }
 
     nodes.erase(node_id);
+}
+
+Node* Graph::GetNode(int id) {
+    auto it = nodes.find(id);
+    if (it == nodes.end())
+        return nullptr;
+    else
+        return &(it->second);
 }
 
 }

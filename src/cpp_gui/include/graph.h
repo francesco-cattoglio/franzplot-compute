@@ -15,6 +15,7 @@ class Graph {
         void Test();
         void Render();
         std::string ToJsonDescriptors();
+        Node* GetNode(int id);
     private:
         std::optional<int> FindLinkedNode(int input_attribute_id);
         void RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::string& json);

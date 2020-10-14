@@ -1,6 +1,8 @@
 #include "node.h"
 
+#include <imgui.h>
 #include <imnodes.h>
+#include <misc/cpp/imgui_stdlib.h>
 
 #include "library.h"
 
@@ -12,16 +14,28 @@ Node::Node(int id, NodeType type)
 {}
 
 void Node::Render() {
+    using namespace ImGui;
+
     imnodes::BeginNode(this->id);
 
     imnodes::BeginNodeTitleBar();
     ImGui::TextUnformatted(this->name.c_str());
+    if (error_message.size() != 0) {
+        SameLine();
+        TextUnformatted("⚠");
+        if (IsItemHovered())
+            SetTooltip(this->error_message.c_str());
+    }
     imnodes::EndNodeTitleBar();
 
     for (auto& attribute: attributes)
         attribute->Render();
 
     imnodes::EndNode();
+}
+
+void Node::SetError(std::string error_message) {
+    this->error_message = error_message;
 }
 
 Node Node::PrefabCurve(const std::function<int()> next_id) {

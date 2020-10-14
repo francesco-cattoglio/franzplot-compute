@@ -26,6 +26,7 @@ class Node {
         Node(int id, NodeType type);
 
         void Render();
+        void SetError(std::string message);
 
         const int id;
         const NodeType type;
@@ -40,6 +41,7 @@ class Node {
 
         std::string name;
     private:
+        std::string error_message;
 };
 
 }
