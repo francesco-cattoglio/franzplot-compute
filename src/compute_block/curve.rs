@@ -2,6 +2,7 @@ use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
 use super::ComputeBlock;
 use super::Dimensions;
+use super::BlockCreationError;
 use super::IntervalData;
 use serde::{Deserialize, Serialize};
 
@@ -13,8 +14,8 @@ pub struct CurveBlockDescriptor {
     pub fz: String,
 }
 impl CurveBlockDescriptor {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
-        ComputeBlock::Curve(CurveData::new(chain, device, &self))
+    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
+        Ok(ComputeBlock::Curve(CurveData::new(chain, device, &self)))
     }
 }
 

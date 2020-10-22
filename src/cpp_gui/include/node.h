@@ -19,6 +19,12 @@ enum class NodeType {
     Other
 };
 
+enum class NodeStatus {
+    Ok,
+    Warning,
+    Error
+};
+
 std::string ToString(NodeType type);
 
 class Node {
@@ -26,7 +32,7 @@ class Node {
         Node(int id, NodeType type);
 
         void Render();
-        void SetError(std::string message);
+        void SetStatus(NodeStatus status, const std::string& message);
 
         const int id;
         const NodeType type;
@@ -41,7 +47,8 @@ class Node {
 
         std::string name;
     private:
-        std::string error_message;
+        NodeStatus status;
+        std::string status_string;
 };
 
 }

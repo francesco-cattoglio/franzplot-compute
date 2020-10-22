@@ -72,11 +72,24 @@ void Gui::Render() {
     ImGui::End();
 }
 
+void Gui::MarkClean(int id) {
+    Node* maybe_node = graph.GetNode(id);
+    if (maybe_node)
+        maybe_node->SetStatus(NodeStatus::Ok, "Ok");
+}
+
 void Gui::MarkError(int id, rust::Str rust_message) {
     std::string message(rust_message);
     Node* maybe_node = graph.GetNode(id);
     if (maybe_node)
-        maybe_node->SetError(message);
+        maybe_node->SetStatus(NodeStatus::Error, message);
+}
+
+void Gui::MarkWarning(int id, rust::Str rust_message) {
+    std::string message(rust_message);
+    Node* maybe_node = graph.GetNode(id);
+    if (maybe_node)
+        maybe_node->SetStatus(NodeStatus::Warning, message);
 }
 
 std::unique_ptr<Gui> create_gui_instance(rust::Box<RustEventProxy> boxed_proxy){

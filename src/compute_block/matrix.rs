@@ -2,6 +2,7 @@ use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
 use smol_str::SmolStr;
 use super::ComputeBlock;
+use super::BlockCreationError;
 use super::Dimensions;
 use serde::{Deserialize, Serialize};
 
@@ -14,8 +15,8 @@ pub struct MatrixBlockDescriptor {
 }
 
 impl MatrixBlockDescriptor {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
-        ComputeBlock::Matrix(MatrixData::new(chain, device, &self))
+    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
+        Ok(ComputeBlock::Matrix(MatrixData::new(chain, device, &self)))
     }
 }
 

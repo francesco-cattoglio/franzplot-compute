@@ -116,13 +116,18 @@ impl<'a> ComputeChain {
         self.global_vars.clear();
         self.blocks_map.clear();
 
-        // now re-process the context and the descriptors
+        // now re-process the context
         self.set_globals(queue, &context.globals);
 
-        // now turn the block descriptors into block and insert them into the map
+        // and turn the block descriptors into block and insert them into the map
         for descriptor in descriptors.iter() {
-            let block = descriptor.data.to_block(&self, device);
-            self.insert(descriptor.id.clone(), block)?;
+            match descriptor.data.to_block(&self, device) {
+                Ok(block) => self.insert(descriptor.id.clone(), block)?,
+                Err(error) => match error {
+                    BlockCreationError::Warning(message) => println!("insert failed with the following message: {}", message),
+                    BlockCreationError::Error(message) => panic!(message),
+                }
+            }
         }
 
         Ok(())

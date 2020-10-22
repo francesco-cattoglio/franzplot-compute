@@ -1,7 +1,6 @@
 use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
-use super::ComputeBlock;
-use super::Dimensions;
+use super::{ComputeBlock, BlockCreationError, Dimensions};
 use serde::{Deserialize, Serialize};
 
 const LOCAL_SIZE_X: usize = 16;
@@ -14,8 +13,8 @@ pub struct TransformBlockDescriptor {
 }
 
 impl TransformBlockDescriptor {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
-        ComputeBlock::Transform(TransformData::new(chain, device, &self))
+    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
+        Ok(ComputeBlock::Transform(TransformData::new(chain, device, &self)))
     }
 }
 

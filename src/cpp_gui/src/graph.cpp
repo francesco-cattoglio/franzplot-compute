@@ -182,6 +182,8 @@ void Graph::RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::s
                     maybe_node_id = FindLinkedNode(attribute->id);
                     if (maybe_node_id) {
                         json += std::string() + "\t\t\t\"" + attribute->label + "\": \"" + std::to_string(maybe_node_id.value()) + "\",\n";
+                    } else {
+                        json += std::string() + "\t\t\t\"" + attribute->label + "\": \"\",\n";
                     }
                     break;
                 case AttributeKind::Output:

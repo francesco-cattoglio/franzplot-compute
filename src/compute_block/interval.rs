@@ -1,6 +1,6 @@
 use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
-use super::{ ComputeBlock, Dimensions, Parameter };
+use super::{ ComputeBlock, BlockCreationError, Dimensions, Parameter };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -11,9 +11,9 @@ pub struct IntervalBlockDescriptor {
     pub name: String,
 }
 impl IntervalBlockDescriptor {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
+    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
         assert!(self.quality <= 16);
-        ComputeBlock::Interval(IntervalData::new(chain, device, &self))
+        Ok(ComputeBlock::Interval(IntervalData::new(chain, device, &self)))
     }
 }
 

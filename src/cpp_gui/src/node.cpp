@@ -19,18 +19,28 @@ void Node::Render() {
     imnodes::BeginNode(this->id);
 
     imnodes::BeginNodeTitleBar();
-    ImGui::TextUnformatted(this->name.c_str());
-    if (error_message.size() != 0) {
-        SameLine();
-        ImGui::PushStyleColor(ImGuiCol_Text, {1.0, 0.8, 0.0, 1.0});
-        ImGui::Text("⚠");
-        ImGui::PopStyleColor();
-        SameLine();
-        ImGui::PushStyleColor(ImGuiCol_Text, {1.0, 0.8, 0.0, 1.0});
-        ImGui::Text("⊗");
-        ImGui::PopStyleColor();
-        if (IsItemHovered())
-            SetTooltip(this->error_message.c_str());
+    TextUnformatted(this->name.c_str());
+    switch (status) {
+        case NodeStatus::Ok:
+            break;
+
+        case NodeStatus::Error:
+            SameLine();
+            PushStyleColor(ImGuiCol_Text, {1.0, 0.8, 0.0, 1.0});
+            TextUnformatted("⚠");
+            PopStyleColor();
+            if (IsItemHovered())
+                SetTooltip(this->status_string.c_str());
+            break;
+
+        case NodeStatus::Warning:
+            SameLine();
+            PushStyleColor(ImGuiCol_Text, {1.0, 0.8, 0.0, 1.0});
+            TextUnformatted("⊗");
+            PopStyleColor();
+            if (IsItemHovered())
+                SetTooltip(this->status_string.c_str());
+            break;
     }
     imnodes::EndNodeTitleBar();
 
@@ -40,8 +50,9 @@ void Node::Render() {
     imnodes::EndNode();
 }
 
-void Node::SetError(std::string error_message) {
-    this->error_message = error_message;
+void Node::SetStatus(NodeStatus status, const std::string& message) {
+    this->status = status;
+    this->status_string = message;
 }
 
 Node Node::PrefabCurve(const std::function<int()> next_id) {

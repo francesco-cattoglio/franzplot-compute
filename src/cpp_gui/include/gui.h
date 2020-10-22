@@ -18,7 +18,9 @@ class Gui {
 
         void test_boxed_proxy();
         void Render();
+        void MarkClean(int id);
         void MarkError(std::int32_t id, rust::Str message);
+        void MarkWarning(std::int32_t id, rust::Str message);
 
     private:
         std::array<char, 32> new_globals_name;

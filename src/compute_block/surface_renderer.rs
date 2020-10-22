@@ -1,8 +1,6 @@
 use crate::compute_chain::ComputeChain;
 use crate::rendering::{Vertex, GLSL_VERTEX_STRUCT};
-use super::ComputeBlock;
-use super::SurfaceData;
-use super::Dimensions;
+use super::{ComputeBlock, BlockCreationError, Dimensions};
 use serde::{Deserialize, Serialize};
 
 const LOCAL_SIZE_X: usize = 16;
@@ -13,8 +11,9 @@ pub struct SurfaceRendererBlockDescriptor {
     pub surface: String,
 }
 impl SurfaceRendererBlockDescriptor {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
-        ComputeBlock::SurfaceRenderer(SurfaceRendererData::new(chain, device, &self))
+    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
+        let block = SurfaceRendererData::new(chain, device, &self)?;
+        Ok(ComputeBlock::SurfaceRenderer(block))
     }
 }
 
@@ -25,10 +24,10 @@ pub struct SurfaceRendererData {
     pub out_dim: Dimensions,
 }
 impl SurfaceRendererData {
-    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &SurfaceRendererBlockDescriptor) -> Self {
+    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &SurfaceRendererBlockDescriptor) -> Result<Self, BlockCreationError> {
 
-        let input_block = compute_chain.get_block(&descriptor.surface).expect("unable to find dependency for surface renderer block");
-        match input_block {
+        let input_block = compute_chain.get_block(&descriptor.surface).ok_or(BlockCreationError::Warning("unable to find dependency for surface renderer block"))?;
+        let new_block = match input_block {
             ComputeBlock::Point(point_data) => {
                 Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim)
             }
@@ -48,7 +47,8 @@ impl SurfaceRendererData {
                 }
             }
             _ => unimplemented!("case not handled")
-        }
+        };
+        Ok(new_block)
     }
 
     fn setup_0d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Self {

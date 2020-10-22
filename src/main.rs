@@ -183,6 +183,7 @@ fn main() {
         Event::UserEvent(ref user_event) => {
             match user_event {
                 CustomEvent::JsonScene(json_string) => {
+                    dbg!(&json_string);
                     let json_scene: SceneDescriptor = serde_jsonrc::from_str(&json_string).unwrap();
                     chain.set_scene(&device_manager.device, &device_manager.queue, &json_scene.context, &json_scene.descriptors).unwrap();
                     scene_renderer.update_renderables(&device_manager, &chain);

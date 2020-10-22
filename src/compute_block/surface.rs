@@ -1,6 +1,7 @@
 use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
 use super::ComputeBlock;
+use super::BlockCreationError;
 use super::Dimensions;
 use super::IntervalData;
 use serde::{Deserialize, Serialize};
@@ -17,8 +18,8 @@ pub struct SurfaceBlockDescriptor {
     pub fz: String,
 }
 impl SurfaceBlockDescriptor {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
-        ComputeBlock::Surface(SurfaceData::new(chain, device, &self))
+    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
+        Ok(ComputeBlock::Surface(SurfaceData::new(chain, device, &self)))
     }
 }
 

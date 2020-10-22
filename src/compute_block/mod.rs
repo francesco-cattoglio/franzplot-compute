@@ -24,6 +24,11 @@ pub use matrix::{MatrixData, MatrixBlockDescriptor};
 
 use serde::{Deserialize, Serialize};
 
+pub enum BlockCreationError {
+    Warning(&'static str),
+    Error(&'static str),
+}
+
 pub enum ComputeBlock {
     Point(PointData),
     Interval(IntervalData),
@@ -138,7 +143,7 @@ pub enum DescriptorData {
 
 use crate::compute_chain::ComputeChain;
 impl DescriptorData {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> ComputeBlock {
+    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
         match &self {
             DescriptorData::Point(desc) => desc.to_block(&chain, device),
             DescriptorData::Curve(desc) => desc.to_block(&chain, device),
