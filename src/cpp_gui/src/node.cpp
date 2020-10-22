@@ -22,7 +22,13 @@ void Node::Render() {
     ImGui::TextUnformatted(this->name.c_str());
     if (error_message.size() != 0) {
         SameLine();
-        TextUnformatted("⚠");
+        ImGui::PushStyleColor(ImGuiCol_Text, {1.0, 0.8, 0.0, 1.0});
+        ImGui::Text("⚠");
+        ImGui::PopStyleColor();
+        SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, {1.0, 0.8, 0.0, 1.0});
+        ImGui::Text("⊗");
+        ImGui::PopStyleColor();
         if (IsItemHovered())
             SetTooltip(this->error_message.c_str());
     }

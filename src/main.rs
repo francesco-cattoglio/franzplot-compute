@@ -88,22 +88,27 @@ fn main() {
     );
     imgui.set_ini_filename(None);
 
-    let font_size = (11.0 * hidpi_factor) as f32;
+    let font_size = (12.0 * hidpi_factor) as f32;
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
-    //imgui.fonts().add_font(&[FontSource::DefaultFontData {
-    //    config: Some(imgui::FontConfig {
-    //        oversample_h: 1,
-    //        pixel_snap_h: true,
-    //        size_pixels: font_size,
-    //        ..Default::default()
-    //    }),
-    //}]);
+    let glyph_range = FontGlyphRanges::from_slice(&[
+        0x0020, 0x00FF, // Basic Latin + Latin Supplement
+        0x2200, 0x22FF, // this range contains the miscellaneous symbols and arrows
+        0x2600, 0x26FF, // miscelaneous symbols
+        0]);
     imgui.fonts().add_font(&[FontSource::TtfData {
-        data: include_bytes!("../resources/NotoMono-Regular.ttf"),
+        data: include_bytes!("../resources/DejaVuSansCustom.ttf"),
         size_pixels: font_size,
-        config: None,
+        config: Some(imgui::FontConfig {
+            oversample_h: 2,
+            oversample_v: 2,
+            pixel_snap_h: false,
+            glyph_ranges: glyph_range,
+            size_pixels: font_size,
+            ..Default::default()
+        }),
     }]);
+
     cpp_gui::ffi::init_imnodes();
     let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance(Box::new(event_loop.create_proxy()));
     gui_unique_ptr.MarkError(6, "rendering error");
