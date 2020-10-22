@@ -108,7 +108,7 @@ impl<'a> ComputeChain {
         //println!("debug info for shader header: {}", &shader_header);
     }
 
-    pub fn set_scene(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, context: &Context, descriptors: &Vec<BlockDescriptor>) -> Result<()> {
+    pub fn set_scene(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, context: &Context, descriptors: &Vec<BlockDescriptor>) -> Result<(), Vec<(String, BlockCreationError)>> {
         assert!(context.globals.len() <= MAX_NUM_GLOBALS);
         // cleanup previously stored context, shader_header and blocks
         self.compute_blocks.clear();
@@ -119,18 +119,25 @@ impl<'a> ComputeChain {
         // now re-process the context
         self.set_globals(queue, &context.globals);
 
+        let mut error_list = Vec::<(String, BlockCreationError)>::new();
+
         // and turn the block descriptors into block and insert them into the map
         for descriptor in descriptors.iter() {
             match descriptor.data.to_block(&self, device) {
-                Ok(block) => self.insert(descriptor.id.clone(), block)?,
-                Err(error) => match error {
-                    BlockCreationError::Warning(message) => println!("insert failed with the following message: {}", message),
-                    BlockCreationError::Error(message) => panic!(message),
+                Ok(block) => {
+                    self.insert(descriptor.id.clone(), block).unwrap()
+                }
+                Err(error) => {
+                    error_list.push((descriptor.id.clone(), error));
                 }
             }
         }
 
-        Ok(())
+        if error_list.is_empty() {
+            Ok(())
+        } else {
+            Err(error_list)
+        }
     }
 
     pub fn run_chain(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
@@ -171,11 +178,9 @@ impl<'a> ComputeChain {
         }
     }
 
-    pub fn create_from_descriptors(device: &wgpu::Device, queue: &wgpu::Queue, context: &Context, descriptors: &Vec<BlockDescriptor>) -> Result<Self> {
+    pub fn create_from_descriptors(device: &wgpu::Device, queue: &wgpu::Queue, context: &Context, descriptors: &Vec<BlockDescriptor>) -> Result<(), Vec<(String, BlockCreationError)>> {
         let mut chain = Self::new(device);
-        chain.set_scene(device, queue, context, descriptors)?;
-
-        Ok(chain)
+        chain.set_scene(device, queue, context, descriptors)
     }
 
     pub fn get_block(&'a self, id: &String) -> Option<&'a ComputeBlock> {

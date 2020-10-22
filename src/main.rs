@@ -111,7 +111,6 @@ fn main() {
 
     cpp_gui::ffi::init_imnodes();
     let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance(Box::new(event_loop.create_proxy()));
-    gui_unique_ptr.MarkError(6, "rendering error");
 
     let mut renderer = Renderer::new(&mut imgui, &device_manager.device, &mut device_manager.queue, rendering::SWAPCHAIN_FORMAT);
     let mut last_frame = std::time::Instant::now();
@@ -126,7 +125,7 @@ fn main() {
         let mut file = std::fs::File::open(&filename).unwrap();
         file.read_to_string(&mut json_contents).unwrap();
         let json_scene: SceneDescriptor = serde_json::from_str(&json_contents).unwrap();
-        chain.set_scene(&device_manager.device, &device_manager.queue, &json_scene.context, &json_scene.descriptors).unwrap()
+        chain.set_scene(&device_manager.device, &device_manager.queue, &json_scene.context, &json_scene.descriptors);
     } else {
         print_usage(&program, opts);
     };
@@ -183,10 +182,22 @@ fn main() {
         Event::UserEvent(ref user_event) => {
             match user_event {
                 CustomEvent::JsonScene(json_string) => {
-                    dbg!(&json_string);
                     let json_scene: SceneDescriptor = serde_jsonrc::from_str(&json_string).unwrap();
-                    chain.set_scene(&device_manager.device, &device_manager.queue, &json_scene.context, &json_scene.descriptors).unwrap();
-                    scene_renderer.update_renderables(&device_manager, &chain);
+                    gui_unique_ptr.ClearAllMarks();
+                    let scene_result = chain.set_scene(&device_manager.device, &device_manager.queue, &json_scene.context, &json_scene.descriptors);
+                    match scene_result {
+                        Ok(()) => scene_renderer.update_renderables(&device_manager, &chain),
+                        Err(errors) => {
+                            for entry in errors.iter() {
+                                let id = entry.0.parse::<i32>().unwrap();
+                                let error = &entry.1;
+                                match error {
+                                    BlockCreationError::Warning(message) => gui_unique_ptr.MarkWarning(id, message),
+                                    BlockCreationError::Error(message) => gui_unique_ptr.MarkError(id, message),
+                                }
+                            }
+                        }
+                    }
                 }
                 CustomEvent::TestMessage(string) => {
                     println!("the event loop received the following message: {}", string);

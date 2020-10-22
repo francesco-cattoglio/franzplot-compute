@@ -144,6 +144,12 @@ void Graph::Render() {
 
 }
 
+void Graph::ClearAllMarks() {
+    for (auto& entry : nodes) {
+        entry.second.SetStatus(NodeStatus::Ok, "Ok");
+    }
+}
+
 int Graph::NextId() {
     return this->next_id++;
 }

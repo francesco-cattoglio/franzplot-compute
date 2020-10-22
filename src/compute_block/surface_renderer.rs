@@ -26,7 +26,7 @@ pub struct SurfaceRendererData {
 impl SurfaceRendererData {
     pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &SurfaceRendererBlockDescriptor) -> Result<Self, BlockCreationError> {
 
-        let input_block = compute_chain.get_block(&descriptor.surface).ok_or(BlockCreationError::Warning("unable to find dependency for surface renderer block"))?;
+        let input_block = compute_chain.get_block(&descriptor.surface).ok_or(BlockCreationError::Warning(" This rendering node \n is not connected \n to any input "))?;
         let new_block = match input_block {
             ComputeBlock::Point(point_data) => {
                 Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim)

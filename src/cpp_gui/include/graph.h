@@ -14,6 +14,7 @@ class Graph {
     public:
         void Test();
         void Render();
+        void ClearAllMarks();
         std::string ToJsonDescriptors();
         Node* GetNode(int id);
     private:

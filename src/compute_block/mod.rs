@@ -24,6 +24,7 @@ pub use matrix::{MatrixData, MatrixBlockDescriptor};
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug)]
 pub enum BlockCreationError {
     Warning(&'static str),
     Error(&'static str),

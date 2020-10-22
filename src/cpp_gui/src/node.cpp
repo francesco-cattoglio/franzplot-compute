@@ -24,7 +24,7 @@ void Node::Render() {
         case NodeStatus::Ok:
             break;
 
-        case NodeStatus::Error:
+        case NodeStatus::Warning:
             SameLine();
             PushStyleColor(ImGuiCol_Text, {1.0, 0.8, 0.0, 1.0});
             TextUnformatted("⚠");
@@ -33,7 +33,7 @@ void Node::Render() {
                 SetTooltip(this->status_string.c_str());
             break;
 
-        case NodeStatus::Warning:
+        case NodeStatus::Error:
             SameLine();
             PushStyleColor(ImGuiCol_Text, {1.0, 0.8, 0.0, 1.0});
             TextUnformatted("⊗");

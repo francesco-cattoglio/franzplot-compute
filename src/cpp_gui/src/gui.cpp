@@ -72,6 +72,10 @@ void Gui::Render() {
     ImGui::End();
 }
 
+void Gui::ClearAllMarks() {
+    graph.ClearAllMarks();
+}
+
 void Gui::MarkClean(int id) {
     Node* maybe_node = graph.GetNode(id);
     if (maybe_node)

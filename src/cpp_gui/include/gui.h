@@ -18,6 +18,7 @@ class Gui {
 
         void test_boxed_proxy();
         void Render();
+        void ClearAllMarks();
         void MarkClean(int id);
         void MarkError(std::int32_t id, rust::Str message);
         void MarkWarning(std::int32_t id, rust::Str message);
