@@ -96,7 +96,7 @@ Node Node::PrefabInterval(const std::function<int()> next_id) {
         std::make_shared<Text>(next_id(), to_return.id, "name", 35),
         begin,
         end,
-        std::make_shared<IntSlider>(next_id(), to_return.id, "quality", 1, 16),
+        std::make_shared<IntSlider>(next_id(), to_return.id, "quality", 4, 16),
     };
 
     return to_return;

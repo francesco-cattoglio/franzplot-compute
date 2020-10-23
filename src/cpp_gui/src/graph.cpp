@@ -178,7 +178,7 @@ void Graph::RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::s
     // therefore we cannot just loop over all the attributes and call one of their member functions
     if (visited_nodes.count(node.id) == 0) {
         json += std::string() + "{\n"; // opens new node entry
-        json += std::string() + "\t\"id\": \"" + std::to_string(node.id) + "\",\n";
+        json += std::string() + "\t\"id\": " + std::to_string(node.id) + ",\n";
         json += std::string() + "\t\"data\": {\n"; // opens the data section
         json += std::string() + "\t\t\"" + ToString(node.type) + "\": {\n"; // opens the attribute section
         for (auto& attribute : node.attributes) {
@@ -187,9 +187,9 @@ void Graph::RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::s
                 case AttributeKind::Input:
                     maybe_node_id = FindLinkedNode(attribute->id);
                     if (maybe_node_id) {
-                        json += std::string() + "\t\t\t\"" + attribute->label + "\": \"" + std::to_string(maybe_node_id.value()) + "\",\n";
+                        json += std::string() + "\t\t\t\"" + attribute->label + "\": " + std::to_string(maybe_node_id.value()) + ",\n";
                     } else {
-                        json += std::string() + "\t\t\t\"" + attribute->label + "\": \"\",\n";
+                        json += std::string() + "\t\t\t\"" + attribute->label + "\": null,\n";
                     }
                     break;
                 case AttributeKind::Output:

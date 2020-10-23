@@ -4,13 +4,11 @@ use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 
 use std::collections::BTreeMap;
-use std::collections::BTreeSet;
 
 use wgpu::util::DeviceExt;
 
 pub struct ComputeChain {
-    compute_blocks: Vec<ComputeBlock>,
-    blocks_map: BTreeMap<String, usize>,
+    processed_blocks: indexmap::IndexMap<BlockId, Result<ComputeBlock, BlockCreationError>>,
     globals_buffer_size: wgpu::BufferAddress,
     globals_buffer: wgpu::Buffer,
     pub globals_bind_layout: wgpu::BindGroupLayout,
@@ -80,8 +78,7 @@ impl<'a> ComputeChain {
             globals_bind_group,
             globals_buffer,
             globals_buffer_size,
-            compute_blocks: Vec::new(),
-            blocks_map: BTreeMap::new(),
+            processed_blocks: indexmap::IndexMap::new(),
             global_vars: BTreeMap::new(),
             shader_header: String::new(),
         }
@@ -108,28 +105,29 @@ impl<'a> ComputeChain {
         //println!("debug info for shader header: {}", &shader_header);
     }
 
-    pub fn set_scene(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, context: &Context, descriptors: &Vec<BlockDescriptor>) -> Result<(), Vec<(String, BlockCreationError)>> {
+    // TODO: I would really, REALLY like for this function to consume the descriptor array. Would
+    // simplify the process_descriptors function greatly
+    // TODO: this still requires some work, the way this returns an Ok(()) or a list of error is
+    // weird, maybe just a list of errors will do. After all, even if errors are returned, internal
+    // state is still modified by the process_descriptors call.
+    pub fn set_scene(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, context: &Context, descriptors: &Vec<BlockDescriptor>) -> Result<(), Vec<(BlockId, BlockCreationError)>> {
         assert!(context.globals.len() <= MAX_NUM_GLOBALS);
         // cleanup previously stored context, shader_header and blocks
-        self.compute_blocks.clear();
+        self.processed_blocks.clear();
         self.shader_header.clear();
         self.global_vars.clear();
-        self.blocks_map.clear();
 
         // now re-process the context
         self.set_globals(queue, &context.globals);
 
-        let mut error_list = Vec::<(String, BlockCreationError)>::new();
+        // and process descriptors into actual compute blocks
+        self.process_descriptors(device, descriptors);
 
-        // and turn the block descriptors into block and insert them into the map
-        for descriptor in descriptors.iter() {
-            match descriptor.data.to_block(&self, device) {
-                Ok(block) => {
-                    self.insert(descriptor.id.clone(), block).unwrap()
-                }
-                Err(error) => {
-                    error_list.push((descriptor.id.clone(), error));
-                }
+        // TODO: also, this code is ugly
+        let mut error_list = Vec::<(BlockId, BlockCreationError)>::new();
+        for processed in self.processed_blocks.iter() {
+            if let Err(error) = processed.1 {
+                error_list.push((*processed.0, error.clone()));
             }
         }
 
@@ -140,13 +138,56 @@ impl<'a> ComputeChain {
         }
     }
 
+    // TODO: evaluate the following:
+    // it might be worth it to rewrite this function so that it does not take a &self and it does
+    // not modify the compute_chain, instead returning the indexmap containing all the compute
+    // blocks and all the errors. In order to do however you need to pass in _a_lot_ of arguements,
+    // including the indexmap being modified, which is needed for lookup purposes inside
+    // ComputeBlock "constructors"
+    pub fn process_descriptors(&mut self, device: &wgpu::Device, descriptors: &Vec<BlockDescriptor>) {
+        // TODO: maybe rewrite this part, it looks like it is overcomplicated.
+        // compute a map from BlockId to references to all the descriptor data (this is necessary
+        // because DescriptorData is borrowed and non-copiable)
+        // and compute a map from BlockId to all the inputs that block has
+        let mut descriptor_data = BTreeMap::<BlockId, &DescriptorData>::new();
+        let mut descriptor_inputs = BTreeMap::<BlockId, Vec<BlockId>>::new();
+        for descriptor in descriptors.iter() {
+            descriptor_data.insert(descriptor.id, &descriptor.data);
+            descriptor_inputs.insert(descriptor.id, descriptor.data.get_input_ids());
+        }
+
+        // compute a list of blocks and use the following lambda to run the topological sort
+        let descriptor_ids: Vec<BlockId> = descriptor_inputs.keys().cloned().collect();
+        let successor_function = | id: &BlockId | -> Vec<BlockId> {
+            descriptor_inputs.remove(id).unwrap_or(Vec::<BlockId>::new())
+        };
+        let sorting_result = pathfinding::directed::topological_sort::topological_sort(&descriptor_ids, successor_function);
+
+        // here we unwrap, but this function would fail if a cycle in the graph is detected.
+        // It would be nice to return that as an error.
+        let sorted_ids = sorting_result.unwrap();
+
+        // Since we declared that the input of a node is the successor of the node, the ids are sorted
+        // having the rendering commands first and the intervals last.
+        // Therefore we process the descriptors in the reversed order
+        for id in sorted_ids.into_iter().rev() {
+            if let Some(descriptor) = descriptor_data.remove(&id) {
+                let new_block = descriptor.to_block(&self, device);
+                self.processed_blocks.insert(id, new_block);
+            }
+        }
+
+    }
+
     pub fn run_chain(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) {
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Compute Encoder this time"),
         });
-        for block in self.compute_blocks.iter() {
-            block.encode(&self.globals_bind_group, &mut encoder);
+        for maybe_block in self.processed_blocks.values() {
+            if let Ok(block) = maybe_block {
+                block.encode(&self.globals_bind_group, &mut encoder);
+            }
         }
         let compute_queue = encoder.finish();
         queue.submit(std::iter::once(compute_queue));
@@ -166,30 +207,17 @@ impl<'a> ComputeChain {
         queue.write_buffer(&self.globals_buffer, 0, bytemuck::cast_slice(&values));
     }
 
-    fn insert(&mut self, id: String, block: ComputeBlock) -> Result<()> {
-        if self.blocks_map.contains_key(&id) {
-            Err(anyhow!("Tried to insert two blocks that had the same id"))
-        } else {
-            // append the block to the vector and map its index in the blocks_map
-            let idx = self.compute_blocks.len(); // the index at which we store is the size of the vec before pushing
-            self.blocks_map.insert(id, idx);
-            self.compute_blocks.push(block);
-            Ok(())
-        }
-    }
-
-    pub fn create_from_descriptors(device: &wgpu::Device, queue: &wgpu::Queue, context: &Context, descriptors: &Vec<BlockDescriptor>) -> Result<(), Vec<(String, BlockCreationError)>> {
+    pub fn create_from_descriptors(device: &wgpu::Device, queue: &wgpu::Queue, context: &Context, descriptors: &Vec<BlockDescriptor>) -> Result<(), Vec<(BlockId, BlockCreationError)>> {
         let mut chain = Self::new(device);
         chain.set_scene(device, queue, context, descriptors)
     }
 
-    pub fn get_block(&'a self, id: &String) -> Option<&'a ComputeBlock> {
-        let idx = self.blocks_map.get(id)?;
-        self.compute_blocks.get(*idx)
+    pub fn get_block(&'a self, id: &BlockId) -> Option<&'a Result<ComputeBlock, BlockCreationError>> {
+        self.processed_blocks.get(id)
     }
 
-    pub fn blocks_iterator(&'a self) -> std::slice::Iter<ComputeBlock> {
-        self.compute_blocks.iter()
+    pub fn blocks_iterator(&'a self) -> impl Iterator<Item = &'a ComputeBlock> {
+        self.processed_blocks.values().filter_map(|elem| elem.as_ref().ok())
     }
 
 }

@@ -1,14 +1,16 @@
 use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
 use smol_str::SmolStr;
+use super::IntervalData;
 use super::ComputeBlock;
+use super::BlockId;
 use super::BlockCreationError;
 use super::Dimensions;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MatrixBlockDescriptor {
-    pub interval: Option<String>,
+    pub interval: Option<BlockId>,
     pub row_1: [SmolStr; 4], // matrix elements, row-major order
     pub row_2: [SmolStr; 4], // matrix elements, row-major order
     pub row_3: [SmolStr; 4], // matrix elements, row-major order
@@ -16,7 +18,14 @@ pub struct MatrixBlockDescriptor {
 
 impl MatrixBlockDescriptor {
     pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
-        Ok(ComputeBlock::Matrix(MatrixData::new(chain, device, &self)))
+        Ok(ComputeBlock::Matrix(MatrixData::new(chain, device, &self)?))
+    }
+
+    pub fn get_input_ids(&self) -> Vec<BlockId> {
+        match self.interval {
+            Some(id) => vec![id],
+            None => vec![]
+        }
     }
 }
 
@@ -40,7 +49,7 @@ pub struct MatrixData {
 }
 
 impl MatrixData {
-    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &MatrixBlockDescriptor) -> Self {
+    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
         println!("{:?}", descriptor);
         if descriptor.interval.is_some() {
             Self::new_with_interval(compute_chain, device, descriptor)
@@ -57,15 +66,16 @@ impl MatrixData {
             compute_pass.dispatch(1, 1, 1);
     }
 
-    fn new_with_interval(compute_chain: &ComputeChain, device: &wgpu::Device, desc: &MatrixBlockDescriptor) -> Self {
-        let interval = desc.interval.as_ref().unwrap();
-        let interval_block = compute_chain.get_block(interval).expect("could not find the interval");
-        let interval_data;
-        if let ComputeBlock::Interval(data) = interval_block {
-            interval_data = data;
-        } else {
-            panic!("");
-        }
+    fn new_with_interval(compute_chain: &ComputeChain, device: &wgpu::Device, desc: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
+        let input_id = desc.interval.ok_or(BlockCreationError::InternalError("Matrix new_with_interval() called with no-interval descriptor"))?;
+        let found_element = compute_chain.get_block(&input_id).ok_or(BlockCreationError::InternalError("Matrix interval input does not exist in the block map"))?;
+        let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
+
+        let interval_data = match input_block {
+            ComputeBlock::Interval(data) => data,
+            _ => return Err(BlockCreationError::InputInvalid("the input provided to the Matrix is not an Interval"))
+        };
+
         let out_dim = interval_data.out_dim.clone();
         let par = out_dim.as_1d().unwrap();
         let n_evals = par.size;
@@ -123,16 +133,16 @@ void main() {{
         });
         let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"));
 
-        Self {
+        Ok(Self {
             compute_pipeline,
             compute_bind_group,
             out_buffer,
             out_dim,
             buffer_size: output_buffer_size,
-        }
+        })
     }
 
-    fn new_without_interval(compute_chain: &ComputeChain, device: &wgpu::Device, desc: &MatrixBlockDescriptor) -> Self {
+    fn new_without_interval(compute_chain: &ComputeChain, device: &wgpu::Device, desc: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
         let out_dim = Dimensions::D0;
         let output_buffer_size = 16 * std::mem::size_of::<f32>() as wgpu::BufferAddress;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -178,13 +188,13 @@ void main() {{
         });
         let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"));
 
-        Self {
+        Ok(Self {
             compute_pipeline,
             compute_bind_group,
             out_buffer,
             out_dim,
             buffer_size: output_buffer_size,
-        }
+        })
     }
 
 }

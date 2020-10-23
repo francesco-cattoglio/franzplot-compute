@@ -189,11 +189,14 @@ fn main() {
                         Ok(()) => scene_renderer.update_renderables(&device_manager, &chain),
                         Err(errors) => {
                             for entry in errors.iter() {
-                                let id = entry.0.parse::<i32>().unwrap();
+                                let id = entry.0;
                                 let error = &entry.1;
                                 match error {
-                                    BlockCreationError::Warning(message) => gui_unique_ptr.MarkWarning(id, message),
-                                    BlockCreationError::Error(message) => gui_unique_ptr.MarkError(id, message),
+                                    BlockCreationError::IncorrectAttributes(message) => gui_unique_ptr.MarkError(id, message),
+                                    BlockCreationError::InputNotBuilt(message) => gui_unique_ptr.MarkWarning(id, message),
+                                    BlockCreationError::InputMissing(message) => gui_unique_ptr.MarkError(id, message),
+                                    BlockCreationError::InputInvalid(message) => gui_unique_ptr.MarkError(id, message),
+                                    BlockCreationError::InternalError(message) => { println!("internal error: {}", &message); panic!(); },
                                 }
                             }
                         }

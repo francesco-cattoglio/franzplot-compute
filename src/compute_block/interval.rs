@@ -12,8 +12,7 @@ pub struct IntervalBlockDescriptor {
 }
 impl IntervalBlockDescriptor {
     pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
-        assert!(self.quality <= 16);
-        Ok(ComputeBlock::Interval(IntervalData::new(chain, device, &self)))
+        Ok(ComputeBlock::Interval(IntervalData::new(chain, device, &self)?))
     }
 }
 
@@ -27,7 +26,10 @@ pub struct IntervalData {
 }
 
 impl IntervalData {
-    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &IntervalBlockDescriptor) -> Self {
+    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &IntervalBlockDescriptor) -> Result<Self, BlockCreationError> {
+        if descriptor.quality < 1 || descriptor.quality > 16 {
+            return Err(BlockCreationError::IncorrectAttributes("Interval quality attribute must be an integer in the [1, 16] range"))
+        }
         let n_evals = 16 * descriptor.quality;
         let param = Parameter {
             name: descriptor.name.clone().into(),
@@ -71,14 +73,14 @@ void main() {{
             buffer_slice: out_buffer.slice(..)
         });
         let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"));
-        Self {
+        Ok(Self {
             compute_pipeline,
             compute_bind_group,
             out_buffer,
             out_dim,
             buffer_size,
             name: descriptor.name.clone(),
-        }
+        })
     }
 
     pub fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {

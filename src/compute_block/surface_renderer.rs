@@ -1,6 +1,6 @@
 use crate::compute_chain::ComputeChain;
 use crate::rendering::{Vertex, GLSL_VERTEX_STRUCT};
-use super::{ComputeBlock, BlockCreationError, Dimensions};
+use super::{ComputeBlock, BlockCreationError, Dimensions, BlockId};
 use serde::{Deserialize, Serialize};
 
 const LOCAL_SIZE_X: usize = 16;
@@ -8,12 +8,19 @@ const LOCAL_SIZE_Y: usize = 16;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SurfaceRendererBlockDescriptor {
-    pub surface: String,
+    pub surface: Option<BlockId>,
 }
 impl SurfaceRendererBlockDescriptor {
     pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
         let block = SurfaceRendererData::new(chain, device, &self)?;
         Ok(ComputeBlock::SurfaceRenderer(block))
+    }
+
+    pub fn get_input_ids(&self) -> Vec<BlockId> {
+        match self.surface {
+            Some(id) => vec![id],
+            None => vec![]
+        }
     }
 }
 
@@ -25,8 +32,10 @@ pub struct SurfaceRendererData {
 }
 impl SurfaceRendererData {
     pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &SurfaceRendererBlockDescriptor) -> Result<Self, BlockCreationError> {
+        let input_id = descriptor.surface.ok_or(BlockCreationError::InputMissing(" This Renderer node \n has no input "))?;
+        let found_element = compute_chain.get_block(&input_id).ok_or(BlockCreationError::InternalError("Renderer input does not exist in the block map"))?;
+        let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
-        let input_block = compute_chain.get_block(&descriptor.surface).ok_or(BlockCreationError::Warning(" This rendering node \n is not connected \n to any input "))?;
         let new_block = match input_block {
             ComputeBlock::Point(point_data) => {
                 Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim)
@@ -46,7 +55,7 @@ impl SurfaceRendererData {
                     Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions),
                 }
             }
-            _ => unimplemented!("case not handled")
+            _ => return Err(BlockCreationError::InputInvalid("the input provided to the Renderer is not a geometry kind"))
         };
         Ok(new_block)
     }

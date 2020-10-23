@@ -24,10 +24,15 @@ pub use matrix::{MatrixData, MatrixBlockDescriptor};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug)]
+pub type BlockId = i32;
+
+#[derive(Debug, Clone)]
 pub enum BlockCreationError {
-    Warning(&'static str),
-    Error(&'static str),
+    IncorrectAttributes(&'static str),
+    InputMissing(&'static str),
+    InputInvalid(&'static str),
+    InputNotBuilt(&'static str),
+    InternalError(&'static str),
 }
 
 pub enum ComputeBlock {
@@ -127,7 +132,7 @@ impl ComputeBlock {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct BlockDescriptor {
-    pub id: String,
+    pub id: BlockId,
     pub data: DescriptorData,
 }
 
@@ -144,6 +149,19 @@ pub enum DescriptorData {
 
 use crate::compute_chain::ComputeChain;
 impl DescriptorData {
+    pub fn get_input_ids(&self) -> Vec<BlockId> {
+        match &self {
+            // we know that some nodes have no input at all, so we can always return an empty vec
+            DescriptorData::Point(_) => vec![],
+            DescriptorData::Interval(_) => vec![],
+            DescriptorData::Curve(desc) => desc.get_input_ids(),
+            DescriptorData::Surface(desc) => desc.get_input_ids(),
+            DescriptorData::Matrix(desc) => desc.get_input_ids(),
+            DescriptorData::Transform(desc) => desc.get_input_ids(),
+            DescriptorData::SurfaceRenderer(desc) => desc.get_input_ids(),
+        }
+    }
+
     pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
         match &self {
             DescriptorData::Point(desc) => desc.to_block(&chain, device),

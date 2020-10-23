@@ -1,6 +1,7 @@
 use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
 use super::ComputeBlock;
+use super::BlockId;
 use super::Dimensions;
 use super::BlockCreationError;
 use super::IntervalData;
@@ -8,14 +9,21 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CurveBlockDescriptor {
-    pub interval: String,
+    pub interval: Option<BlockId>,
     pub fx: String,
     pub fy: String,
     pub fz: String,
 }
 impl CurveBlockDescriptor {
     pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
-        Ok(ComputeBlock::Curve(CurveData::new(chain, device, &self)))
+        Ok(ComputeBlock::Curve(CurveData::new(chain, device, &self)?))
+    }
+
+    pub fn get_input_ids(&self) -> Vec<BlockId> {
+        match self.interval {
+            Some(id) => vec![id],
+            None => vec![]
+        }
     }
 }
 
@@ -29,14 +37,16 @@ pub struct CurveData {
 }
 
 impl CurveData {
-    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &CurveBlockDescriptor) -> Self {
-        let interval_block = compute_chain.get_block(&descriptor.interval).expect("unable to find dependency for curve block");
-        let interval_data: &IntervalData;
-        if let ComputeBlock::Interval(data) = interval_block {
-            interval_data = data;
-        } else {
-            panic!("internal error");
-        }
+    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &CurveBlockDescriptor) -> Result<Self, BlockCreationError> {
+        let input_id = descriptor.interval.ok_or(BlockCreationError::InputMissing(" This Curve node \n is missing its input "))?;
+        let found_element = compute_chain.get_block(&input_id).ok_or(BlockCreationError::InternalError("Curve input does not exist in the block map"))?;
+        let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
+
+        let interval_data = match input_block {
+            ComputeBlock::Interval(data) => data,
+            _ => return Err(BlockCreationError::InputInvalid("the input provided to the Curve is not an Interval"))
+        };
+
         // We are creating a curve from an interval, output vertex count is the same as the input
         // one. Buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
         let out_dim = interval_data.out_dim.clone();
@@ -91,13 +101,13 @@ void main() {{
         });
         let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"));
 
-        Self {
+        Ok(Self {
             compute_pipeline,
             compute_bind_group,
             out_buffer,
             out_dim,
             buffer_size: output_buffer_size,
-        }
+        })
     }
 
     pub fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {

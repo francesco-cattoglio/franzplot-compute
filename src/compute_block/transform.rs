@@ -1,6 +1,6 @@
 use crate::compute_chain::ComputeChain;
 use crate::shader_processing::*;
-use super::{ComputeBlock, BlockCreationError, Dimensions};
+use super::{ComputeBlock, BlockCreationError, BlockId, Dimensions};
 use serde::{Deserialize, Serialize};
 
 const LOCAL_SIZE_X: usize = 16;
@@ -8,13 +8,22 @@ const LOCAL_SIZE_Y: usize = 16;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct TransformBlockDescriptor {
-    pub geometry: String,
-    pub matrix: String,
+    pub geometry: Option<BlockId>,
+    pub matrix: Option<BlockId>,
 }
 
 impl TransformBlockDescriptor {
     pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
-        Ok(ComputeBlock::Transform(TransformData::new(chain, device, &self)))
+        Ok(ComputeBlock::Transform(TransformData::new(chain, device, &self)?))
+    }
+
+    pub fn get_input_ids(&self) -> Vec<BlockId> {
+        match (self.geometry, self.matrix) {
+            (Some(id_1), Some(id_2)) => vec![id_1, id_2],
+            (Some(id_1), None) => vec![id_1],
+            (None, Some(id_2)) => vec![id_2],
+            (None, None) => vec![],
+        }
     }
 }
 
@@ -27,18 +36,25 @@ pub struct TransformData {
 }
 
 impl TransformData {
-    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &TransformBlockDescriptor) -> Self {
-        let geometry_block = compute_chain.get_block(&descriptor.geometry).expect("could not find input geometry");
-        let matrix_block = compute_chain.get_block(&descriptor.matrix).expect("could not find input matrix");
+    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &TransformBlockDescriptor) -> Result<Self, BlockCreationError> {
+        let geometry_id = descriptor.geometry.ok_or(BlockCreationError::InputMissing(" This Transform node \n is missing the Geometry input "))?;
+        let found_element = compute_chain.get_block(&geometry_id).ok_or(BlockCreationError::InternalError("Transform Geometry input does not exist in the block map"))?;
+        let geometry_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
+
+        let matrix_id = descriptor.matrix.ok_or(BlockCreationError::InputMissing(" This Transform node \n is missing the Matrix input "))?;
+        let found_element = compute_chain.get_block(&matrix_id).ok_or(BlockCreationError::InternalError("Transform Matrix input does not exist in the block map"))?;
+        let matrix_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
+
         let (geometry_dim, geometry_buffer_slice) = match geometry_block {
             ComputeBlock::Point(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             ComputeBlock::Curve(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             ComputeBlock::Surface(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
-            _ => panic!("Internal error"),
+            ComputeBlock::Transform(_) => unimplemented!("double transform"),
+            _ => return Err(BlockCreationError::InputInvalid("the first input provided to the Transform is not a Geometry"))
         };
         let (matrix_dim, matrix_buffer_slice) = match matrix_block {
             ComputeBlock::Matrix(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
-            _ => panic!("internal error"),
+            _ => return Err(BlockCreationError::InputInvalid("the second input provided to the Transform is not a Matrix"))
         };
         let out_dim: Dimensions;
         let out_buffer: wgpu::Buffer;
@@ -175,13 +191,13 @@ impl TransformData {
                 panic!("Matrix has 2 parameters!");
             },
         }
-        Self {
+        Ok(Self {
             compute_pipeline,
             compute_bind_group,
             dispatch_sizes,
             out_dim,
             out_buffer,
-        }
+        })
     }
 
     pub fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
