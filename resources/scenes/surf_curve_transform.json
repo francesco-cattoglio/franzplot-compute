@@ -1,12 +1,9 @@
 {
-"context": {
-        "globals": {
-                "t": 7.310000
-        }
-},
+"global_vars": [ "t" ]
+,
 "descriptors": [
 {
-        "id": "0",
+        "id": 0,
         "data": {
                 "Interval": {
                         "name": "r",
@@ -17,10 +14,10 @@
         }
 },
 {
-        "id": "14",
+        "id": 14,
         "data": {
                 "Curve": {
-                        "interval": "0",
+                        "interval": 0,
                         "fx": "r",
                         "fy": "sin(r+t)",
                         "fz": "0"
@@ -28,15 +25,15 @@
         }
 },
 {
-        "id": "6",
+        "id": 6,
         "data": {
                 "SurfaceRenderer": {
-                        "surface": "14"
+                        "surface": 14
                 }
         }
 },
 {
-        "id": "8",
+        "id": 8,
         "data": {
                 "Interval": {
                         "name": "s",
@@ -47,10 +44,10 @@
         }
 },
 {
-        "id": "22",
+        "id": 22,
         "data": {
                 "Matrix": {
-                        "interval": "8",
+                        "interval": 8,
                         "row_1": ["1.0", "0.0", "0.0", "0.0"],
                         "row_2": ["0.0", "1.0", "0.0", "sin(s)"],
                         "row_3": ["0.0", "0.0", "1.0", "s"]
@@ -58,19 +55,19 @@
         }
 },
 {
-        "id": "28",
+        "id": 28,
         "data": {
                 "Transform": {
-                        "geometry": "14",
-                        "matrix": "22"
+                        "geometry": 14,
+                        "matrix": 22
                 }
         }
 },
 {
-        "id": "32",
+        "id": 32,
         "data": {
                 "SurfaceRenderer": {
-                        "surface": "28"
+                        "surface": 28
                 }
         }
 }

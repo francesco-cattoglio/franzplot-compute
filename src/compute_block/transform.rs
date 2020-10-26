@@ -1,5 +1,6 @@
-use crate::compute_chain::ComputeChain;
+use crate::compute_chain::Globals;
 use crate::shader_processing::*;
+use super::{ProcessedMap, ProcessingResult};
 use super::{ComputeBlock, BlockCreationError, BlockId, Dimensions};
 use serde::{Deserialize, Serialize};
 
@@ -13,8 +14,10 @@ pub struct TransformBlockDescriptor {
 }
 
 impl TransformBlockDescriptor {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
-        Ok(ComputeBlock::Transform(TransformData::new(chain, device, &self)?))
+    // TODO: TransformBlock and Rendering block currently use no globals. Decide if we should just
+    // remove them from this function signature as well
+    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Transform(TransformData::new(device, globals, processed_blocks, &self)?))
     }
 
     pub fn get_input_ids(&self) -> Vec<BlockId> {
@@ -36,13 +39,13 @@ pub struct TransformData {
 }
 
 impl TransformData {
-    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &TransformBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: &TransformBlockDescriptor) -> Result<Self, BlockCreationError> {
         let geometry_id = descriptor.geometry.ok_or(BlockCreationError::InputMissing(" This Transform node \n is missing the Geometry input "))?;
-        let found_element = compute_chain.get_block(&geometry_id).ok_or(BlockCreationError::InternalError("Transform Geometry input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&geometry_id).ok_or(BlockCreationError::InternalError("Transform Geometry input does not exist in the block map"))?;
         let geometry_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let matrix_id = descriptor.matrix.ok_or(BlockCreationError::InputMissing(" This Transform node \n is missing the Matrix input "))?;
-        let found_element = compute_chain.get_block(&matrix_id).ok_or(BlockCreationError::InternalError("Transform Matrix input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&matrix_id).ok_or(BlockCreationError::InternalError("Transform Matrix input does not exist in the block map"))?;
         let matrix_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let (geometry_dim, geometry_buffer_slice) = match geometry_block {
@@ -75,8 +78,8 @@ impl TransformData {
                 out_buffer = out_dim.create_storage_buffer(elem_size, &device);
                 dispatch_sizes = (1, 1);
                 let (pipeline, bind_group) = Self::transform_0d_0d(
-                    &compute_chain,
-                    &device,
+                    device,
+                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
@@ -89,8 +92,8 @@ impl TransformData {
                 out_buffer = out_dim.create_storage_buffer(elem_size, &device);
                 dispatch_sizes = (mat_param.size/LOCAL_SIZE_X, 1);
                 let (pipeline, bind_group) = Self::transform_0d_up1(
-                    &compute_chain,
-                    &device,
+                    device,
+                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
@@ -103,8 +106,8 @@ impl TransformData {
                 out_buffer = out_dim.create_storage_buffer(elem_size, &device);
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, 1);
                 let (pipeline, bind_group) = Self::transform_1d_1d(
-                    &compute_chain,
-                    &device,
+                    device,
+                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
@@ -117,8 +120,8 @@ impl TransformData {
                 out_buffer = out_dim.create_storage_buffer(elem_size, &device);
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, 1);
                 let (pipeline, bind_group) = Self::transform_1d_multi(
-                    &compute_chain,
-                    &device,
+                    device,
+                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
@@ -131,8 +134,8 @@ impl TransformData {
                 out_buffer = out_dim.create_storage_buffer(elem_size, &device);
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, mat_param.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_1d_up2(
-                    &compute_chain,
-                    &device,
+                    device,
+                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
@@ -145,8 +148,8 @@ impl TransformData {
                 out_buffer = out_dim.create_storage_buffer(elem_size, &device);
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_2d_2d(
-                    &compute_chain,
-                    &device,
+                    device,
+                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
@@ -159,8 +162,8 @@ impl TransformData {
                 out_buffer = out_dim.create_storage_buffer(elem_size, &device);
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_2d_same_param(
-                    &compute_chain,
-                    &device,
+                    device,
+                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
@@ -174,8 +177,8 @@ impl TransformData {
                 out_buffer = out_dim.create_storage_buffer(elem_size, &device);
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_2d_same_param(
-                    &compute_chain,
-                    &device,
+                    device,
+                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
@@ -208,7 +211,7 @@ impl TransformData {
             compute_pass.dispatch(self.dispatch_sizes.0 as u32, self.dispatch_sizes.1 as u32, 1);
     }
 
-    fn transform_0d_0d(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+    fn transform_0d_0d(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = 1, local_size_y = 1) in;
@@ -230,7 +233,7 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
 void main() {{
     out_buff = in_matrix * in_buff;
 }}
-"##, header=&compute_chain.shader_header);
+"##, header=&globals.shader_header);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -247,10 +250,10 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
+        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
     }
 
-    fn transform_0d_up1(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
+    fn transform_0d_up1(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
                      ) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
         let shader_source = format!(r##"
 #version 450
@@ -276,7 +279,7 @@ void main() {{
     // while the index used for accessing the inputs are the global invocation id for x and y
     out_buff[index] = in_matrix[index] * in_point;
 }}
-"##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X);
+"##, header=&globals.shader_header, dimx=LOCAL_SIZE_X);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -293,10 +296,10 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
+        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
     }
 
-    fn transform_1d_1d(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+    fn transform_1d_1d(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
@@ -319,7 +322,7 @@ void main() {{
     uint index = gl_GlobalInvocationID.x;
     out_buff[index] = in_matrix * in_buff[index];
 }}
-"##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X);
+"##, header=&globals.shader_header, dimx=LOCAL_SIZE_X);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -336,10 +339,10 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
+        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
     }
 
-    fn transform_1d_multi(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+    fn transform_1d_multi(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
@@ -362,7 +365,7 @@ void main() {{
     uint index = gl_GlobalInvocationID.x;
     out_buff[index] = in_matrix[index] * in_buff[index];
 }}
-"##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X);
+"##, header=&globals.shader_header, dimx=LOCAL_SIZE_X);
         //println!("debug info for 1d multi 1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -379,10 +382,10 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
+        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
     }
 
-    fn transform_2d_2d(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
+    fn transform_2d_2d(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
                      ) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
         let shader_source = format!(r##"
 #version 450
@@ -409,7 +412,7 @@ void main() {{
     uint index = gl_GlobalInvocationID.x + gl_NumWorkGroups.x * gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
     out_buff[index] = in_matrix * in_buff[index];
 }}
-"##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
+"##, header=&globals.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -426,10 +429,10 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
+        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
     }
 
-    fn transform_1d_up2(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
+    fn transform_1d_up2(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
                      ) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
         let shader_source = format!(r##"
 #version 450
@@ -457,7 +460,7 @@ void main() {{
     // while the index used for accessing the inputs are the global invocation id for x and y
     out_buff[index] = in_matrix[par2_idx] * in_buff[par1_idx];
 }}
-"##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
+"##, header=&globals.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -474,10 +477,10 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
+        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
     }
 
-    fn transform_2d_same_param(compute_chain: &ComputeChain, device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
+    fn transform_2d_same_param(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
         which_param: u32) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
         let shader_source = format!(r##"
 #version 450
@@ -504,7 +507,7 @@ void main() {{
     uint index = gl_GlobalInvocationID.x + gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
     out_buff[index] = in_matrix[index_{which_idx}] * in_buff[index];
 }}
-"##, header=&compute_chain.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, which_idx=which_param);
+"##, header=&globals.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, which_idx=which_param);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -521,6 +524,6 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"))
+        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
     }
 }

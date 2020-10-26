@@ -1,6 +1,7 @@
-use crate::compute_chain::ComputeChain;
+use crate::compute_chain::Globals;
 use crate::shader_processing::*;
 use super::{ComputeBlock, BlockCreationError, Dimensions};
+use super::{ProcessedMap, ProcessingResult};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -10,8 +11,8 @@ pub struct PointBlockDescriptor {
     pub fz: String,
 }
 impl PointBlockDescriptor {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
-        Ok(ComputeBlock::Point(PointData::new(chain, device, &self)))
+    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Point(PointData::new(device, globals, processed_blocks, &self)?))
     }
 }
 
@@ -22,7 +23,7 @@ pub struct PointData {
     pub out_dim: Dimensions,
 }
 impl PointData {
-    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &PointBlockDescriptor) -> Self {
+    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: &PointBlockDescriptor) -> Result<Self, BlockCreationError> {
         let out_dim = Dimensions::D0;
         let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
         let shader_source = format!(r##"
@@ -41,7 +42,7 @@ void main() {{
     out_buff.z = {fz};
     out_buff.w = 1;
 }}
-"##, header=&compute_chain.shader_header, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+"##, header=&globals.shader_header, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
         //println!("debug info for curve shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for output buffer
@@ -49,13 +50,13 @@ void main() {{
             position: 0,
             buffer_slice: out_buffer.slice(..)
         });
-        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"));
-        Self {
+        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Interval"));
+        Ok(Self {
             compute_bind_group,
             compute_pipeline,
             out_buffer,
             out_dim,
-        }
+        })
     }
 
     pub fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {

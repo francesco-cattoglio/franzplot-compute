@@ -1,9 +1,9 @@
-use crate::compute_chain::ComputeChain;
+use crate::compute_chain::Globals;
 use crate::shader_processing::*;
 use super::{ComputeBlock, BlockId};
 use super::BlockCreationError;
 use super::Dimensions;
-use super::IntervalData;
+use super::{ProcessedMap, ProcessingResult};
 use serde::{Deserialize, Serialize};
 
 const LOCAL_SIZE_X: usize = 16;
@@ -18,8 +18,8 @@ pub struct SurfaceBlockDescriptor {
     pub fz: String,
 }
 impl SurfaceBlockDescriptor {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
-        Ok(ComputeBlock::Surface(SurfaceData::new(chain, device, &self)?))
+    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Surface(SurfaceData::new(device, globals, processed_blocks, &self)?))
     }
 
     pub fn get_input_ids(&self) -> Vec<BlockId> {
@@ -40,9 +40,9 @@ pub struct SurfaceData {
 }
 
 impl SurfaceData {
-    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &SurfaceBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: &SurfaceBlockDescriptor) -> Result<Self, BlockCreationError> {
         let first_input_id = descriptor.interval_first.ok_or(BlockCreationError::InputMissing(" This Surface node \n is missing the first input "))?;
-        let found_element = compute_chain.get_block(&first_input_id).ok_or(BlockCreationError::InternalError("Surface first input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&first_input_id).ok_or(BlockCreationError::InternalError("Surface first input does not exist in the block map"))?;
         let first_input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let first_interval_data = match first_input_block {
@@ -51,7 +51,7 @@ impl SurfaceData {
         };
 
         let second_input_id = descriptor.interval_second.ok_or(BlockCreationError::InputMissing(" This surface node \n is missing the second input "))?;
-        let found_element = compute_chain.get_block(&second_input_id).ok_or(BlockCreationError::InternalError("Surface second input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&second_input_id).ok_or(BlockCreationError::InternalError("Surface second input does not exist in the block map"))?;
         let second_input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let second_interval_data = match second_input_block {
@@ -104,7 +104,7 @@ void main() {{
     out_buff[index].z = {fz};
     out_buff[index].w = 1;
 }}
-"##, header=&compute_chain.shader_header, par1=&first_interval_data.name, par2=&second_interval_data.name, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+"##, header=&globals.shader_header, par1=&first_interval_data.name, par2=&second_interval_data.name, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
         println!("debug info for curve shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffers
@@ -121,7 +121,7 @@ void main() {{
             position: 2,
             buffer_slice: out_buffer.slice(..)
         });
-        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"));
+        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Interval"));
 
         Ok(Self {
             compute_pipeline,

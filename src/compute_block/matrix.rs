@@ -1,10 +1,10 @@
-use crate::compute_chain::ComputeChain;
+use crate::compute_chain::Globals;
 use crate::shader_processing::*;
 use smol_str::SmolStr;
-use super::IntervalData;
 use super::ComputeBlock;
 use super::BlockId;
 use super::BlockCreationError;
+use super::{ProcessedMap, ProcessingResult};
 use super::Dimensions;
 use serde::{Deserialize, Serialize};
 
@@ -17,8 +17,8 @@ pub struct MatrixBlockDescriptor {
 }
 
 impl MatrixBlockDescriptor {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
-        Ok(ComputeBlock::Matrix(MatrixData::new(chain, device, &self)?))
+    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Matrix(MatrixData::new(device, globals, processed_blocks, &self)?))
     }
 
     pub fn get_input_ids(&self) -> Vec<BlockId> {
@@ -49,12 +49,11 @@ pub struct MatrixData {
 }
 
 impl MatrixData {
-    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
-        println!("{:?}", descriptor);
+    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
         if descriptor.interval.is_some() {
-            Self::new_with_interval(compute_chain, device, descriptor)
+            Self::new_with_interval(device, globals, processed_blocks, descriptor)
         } else {
-            Self::new_without_interval(compute_chain, device, descriptor)
+            Self::new_without_interval(device, globals, processed_blocks, descriptor)
         }
     }
 
@@ -66,9 +65,9 @@ impl MatrixData {
             compute_pass.dispatch(1, 1, 1);
     }
 
-    fn new_with_interval(compute_chain: &ComputeChain, device: &wgpu::Device, desc: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
+    fn new_with_interval(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, desc: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
         let input_id = desc.interval.ok_or(BlockCreationError::InternalError("Matrix new_with_interval() called with no-interval descriptor"))?;
-        let found_element = compute_chain.get_block(&input_id).ok_or(BlockCreationError::InternalError("Matrix interval input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Matrix interval input does not exist in the block map"))?;
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let interval_data = match input_block {
@@ -113,7 +112,7 @@ void main() {{
     out_buff[index][2] = col_2;
     out_buff[index][3] = col_3;
 }}
-"##, header=&compute_chain.shader_header, par=&interval_data.name, dimx=n_evals,
+"##, header=&globals.shader_header, par=&interval_data.name, dimx=n_evals,
     _m00=desc.row_1[0], _m10=desc.row_2[0], _m20=desc.row_3[0],
     _m01=desc.row_1[1], _m11=desc.row_2[1], _m21=desc.row_3[1],
     _m02=desc.row_1[2], _m12=desc.row_2[2], _m22=desc.row_3[2],
@@ -131,7 +130,7 @@ void main() {{
             position: 1,
             buffer_slice: out_buffer.slice(..)
         });
-        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"));
+        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Interval"));
 
         Ok(Self {
             compute_pipeline,
@@ -142,7 +141,7 @@ void main() {{
         })
     }
 
-    fn new_without_interval(compute_chain: &ComputeChain, device: &wgpu::Device, desc: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
+    fn new_without_interval(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, desc: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
         let out_dim = Dimensions::D0;
         let output_buffer_size = 16 * std::mem::size_of::<f32>() as wgpu::BufferAddress;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -173,7 +172,7 @@ void main() {{
     out_buff[index][2] = col_2;
     out_buff[index][3] = col_3;
 }}
-"##, header=&compute_chain.shader_header,
+"##, header=&globals.shader_header,
     _m00=desc.row_1[0], _m10=desc.row_2[0], _m20=desc.row_3[0],
     _m01=desc.row_1[1], _m11=desc.row_2[1], _m21=desc.row_3[1],
     _m02=desc.row_1[2], _m12=desc.row_2[2], _m22=desc.row_3[2],
@@ -186,7 +185,7 @@ void main() {{
             position: 0,
             buffer_slice: out_buffer.slice(..)
         });
-        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"));
+        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Interval"));
 
         Ok(Self {
             compute_pipeline,

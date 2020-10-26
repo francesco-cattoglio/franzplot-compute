@@ -21,7 +21,7 @@ mod tests;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct SceneDescriptor {
-    context: compute_chain::Context,
+    global_vars: Vec<String>,
     descriptors: Vec<BlockDescriptor>,
 }
 
@@ -38,7 +38,6 @@ pub enum CustomEvent {
     JsonScene(String),
     TestMessage(String),
     UpdateGlobals(Vec<(String, f32)>),
-    SetGlobals(std::collections::BTreeMap<String, f32>),
 }
 
 use std::io::prelude::*;
@@ -117,19 +116,21 @@ fn main() {
 
     let mut last_cursor = None;
 
-    let mut context = compute_chain::Context::default();
     //dbg!(&all_descriptors);
-    let mut chain = compute_chain::ComputeChain::new(&device_manager.device);
+    let mut chain = compute_chain::ComputeChain::new();
+    let mut globals;
     if let Some(filename) = input_file {
         let mut json_contents = String::new();
         let mut file = std::fs::File::open(&filename).unwrap();
         file.read_to_string(&mut json_contents).unwrap();
         let json_scene: SceneDescriptor = serde_json::from_str(&json_contents).unwrap();
-        chain.set_scene(&device_manager.device, &device_manager.queue, &json_scene.context, &json_scene.descriptors);
+        globals = compute_chain::Globals::new(&device_manager.device, json_scene.global_vars);
+        chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
     } else {
+        globals = compute_chain::Globals::new(&device_manager.device, vec![]);
         print_usage(&program, opts);
     };
-    chain.run_chain(&device_manager.device, &device_manager.queue);
+    chain.run_chain(&device_manager.device, &device_manager.queue, &globals);
 
     //let dbg_buff = chain.chain.get("").expect("wrong block name for dbg printout").output_renderer.get_buffer();
     //let dbg_vect = copy_buffer_as_f32(out_buff, &device_manager.device);
@@ -184,21 +185,17 @@ fn main() {
                 CustomEvent::JsonScene(json_string) => {
                     let json_scene: SceneDescriptor = serde_jsonrc::from_str(&json_string).unwrap();
                     gui_unique_ptr.ClearAllMarks();
-                    let scene_result = chain.set_scene(&device_manager.device, &device_manager.queue, &json_scene.context, &json_scene.descriptors);
-                    match scene_result {
-                        Ok(()) => scene_renderer.update_renderables(&device_manager, &chain),
-                        Err(errors) => {
-                            for entry in errors.iter() {
-                                let id = entry.0;
-                                let error = &entry.1;
-                                match error {
-                                    BlockCreationError::IncorrectAttributes(message) => gui_unique_ptr.MarkError(id, message),
-                                    BlockCreationError::InputNotBuilt(message) => gui_unique_ptr.MarkWarning(id, message),
-                                    BlockCreationError::InputMissing(message) => gui_unique_ptr.MarkError(id, message),
-                                    BlockCreationError::InputInvalid(message) => gui_unique_ptr.MarkError(id, message),
-                                    BlockCreationError::InternalError(message) => { println!("internal error: {}", &message); panic!(); },
-                                }
-                            }
+                    globals = compute_chain::Globals::new(&device_manager.device, json_scene.global_vars);
+                    let scene_result = chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
+                    scene_renderer.update_renderables(&device_manager, &chain);
+                    for (block_id, error) in scene_result.iter() {
+                        let id = *block_id;
+                        match error {
+                            BlockCreationError::IncorrectAttributes(message) => gui_unique_ptr.MarkError(id, message),
+                            BlockCreationError::InputNotBuilt(message) => gui_unique_ptr.MarkWarning(id, message),
+                            BlockCreationError::InputMissing(message) => gui_unique_ptr.MarkError(id, message),
+                            BlockCreationError::InputInvalid(message) => gui_unique_ptr.MarkError(id, message),
+                            BlockCreationError::InternalError(message) => { println!("internal error: {}", &message); panic!(); },
                         }
                     }
                 }
@@ -206,10 +203,7 @@ fn main() {
                     println!("the event loop received the following message: {}", string);
                 }
                 CustomEvent::UpdateGlobals(list) => {
-                    chain.update_globals(&device_manager.queue, list);
-                }
-                CustomEvent::SetGlobals(map) => {
-                    chain.set_globals(&device_manager.queue, map);
+                    globals.update(&device_manager.queue, list);
                 }
             }
         },
@@ -221,7 +215,7 @@ fn main() {
 
             //// TODO: currently bugged due to "uneven" initialization of context
             //chain.update_globals(&device_manager.queue, &context);
-            chain.run_chain(&device_manager.device, &device_manager.queue);
+            chain.run_chain(&device_manager.device, &device_manager.queue, &globals);
             let mut frame = device_manager.swap_chain.get_current_frame()
                 .expect("could not get next frame");
 

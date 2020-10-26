@@ -1,6 +1,7 @@
-use crate::compute_chain::ComputeChain;
+use crate::compute_chain::Globals;
 use crate::shader_processing::*;
 use super::{ ComputeBlock, BlockCreationError, Dimensions, Parameter };
+use super::{ProcessedMap, ProcessingResult};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -11,8 +12,8 @@ pub struct IntervalBlockDescriptor {
     pub name: String,
 }
 impl IntervalBlockDescriptor {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
-        Ok(ComputeBlock::Interval(IntervalData::new(chain, device, &self)?))
+    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Interval(IntervalData::new(device, globals, processed_blocks, &self)?))
     }
 }
 
@@ -26,7 +27,7 @@ pub struct IntervalData {
 }
 
 impl IntervalData {
-    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &IntervalBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: &IntervalBlockDescriptor) -> Result<Self, BlockCreationError> {
         if descriptor.quality < 1 || descriptor.quality > 16 {
             return Err(BlockCreationError::IncorrectAttributes("Interval quality attribute must be an integer in the [1, 16] range"))
         }
@@ -62,7 +63,7 @@ void main() {{
     float delta = ({interval_end} - {interval_begin}) / ({num_points} - 1.0);
     out_buff[index] = {interval_begin} + delta * index;
 }}
-"##, globals_header=&compute_chain.shader_header, interval_begin=&descriptor.begin, interval_end=&descriptor.end, num_points=n_evals, dimx=n_evals
+"##, globals_header=&globals.shader_header, interval_begin=&descriptor.begin, interval_end=&descriptor.end, num_points=n_evals, dimx=n_evals
 );
         println!("debug info for interval shader: \n{}", &shader_source);
 
@@ -72,7 +73,7 @@ void main() {{
             position: 0,
             buffer_slice: out_buffer.slice(..)
         });
-        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"));
+        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Interval"));
         Ok(Self {
             compute_pipeline,
             compute_bind_group,

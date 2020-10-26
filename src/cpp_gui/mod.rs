@@ -46,17 +46,6 @@ fn update_global_vars(proxy: &RustEventProxy, names: &cxx::CxxVector<cxx::CxxStr
     proxy.send_event(super::CustomEvent::UpdateGlobals(list));
 }
 
-fn set_global_vars(proxy: &RustEventProxy, names: &cxx::CxxVector<cxx::CxxString>, values: &cxx::CxxVector<f32>) {
-    let zip_iter = names.into_iter().zip(values.into_iter());
-    use std::collections::BTreeMap;
-    let mut map = BTreeMap::<String, f32>::new();
-    for (c_name, value) in zip_iter {
-        let string = c_name.to_string();
-        map.insert(string, *value);
-    }
-    proxy.send_event(super::CustomEvent::SetGlobals(map));
-}
-
 fn process_json(proxy: &RustEventProxy, json: &cxx::CxxString) {
     let rust_str = json.to_str().expect("error validating the json string as UTF8");
     proxy.send_event(super::CustomEvent::JsonScene(rust_str.to_string()));

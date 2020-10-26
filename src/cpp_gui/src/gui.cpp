@@ -51,15 +51,12 @@ void Gui::Render() {
         // create the json representation of our context+graph
         std::string json_output;
         json_output += std::string() + "{\n"; // opens file
-        json_output += std::string() + "\"context\": {\n"; // opens context
-        json_output += std::string() + "\t\"globals\": {\n"; // opens globals
+        json_output += std::string() + "\"global_vars\": [\n"; // opens globals
         for (size_t i = 0; i < globals_names.size(); i++) {
             std::string& name = globals_strings[i];
-            float value = globals_values[i];
-            json_output += std::string() + "\t\t\"" + name + "\": " + std::to_string(value) + ",\n";
+            json_output += std::string() + "\t\"" + name + "\",\n";
         }
-        json_output += std::string() + "\t}\n"; // closes globals
-        json_output += std::string() + "},\n"; // closes context, place a comma for descriptors
+        json_output += std::string() + "],\n"; // closes globals, places a comma for descriptors
         json_output += graph.ToJsonDescriptors(); // adds all the descriptors
         json_output += std::string() + "}"; // closes the file
 

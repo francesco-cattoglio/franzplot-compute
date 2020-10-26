@@ -1,10 +1,10 @@
-use crate::compute_chain::ComputeChain;
+use crate::compute_chain::Globals;
 use crate::shader_processing::*;
 use super::ComputeBlock;
 use super::BlockId;
 use super::Dimensions;
 use super::BlockCreationError;
-use super::IntervalData;
+use super::{ProcessedMap, ProcessingResult};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -15,8 +15,8 @@ pub struct CurveBlockDescriptor {
     pub fz: String,
 }
 impl CurveBlockDescriptor {
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
-        Ok(ComputeBlock::Curve(CurveData::new(chain, device, &self)?))
+    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Curve(CurveData::new(device, globals, processed_blocks, &self)?))
     }
 
     pub fn get_input_ids(&self) -> Vec<BlockId> {
@@ -37,9 +37,9 @@ pub struct CurveData {
 }
 
 impl CurveData {
-    pub fn new(compute_chain: &ComputeChain, device: &wgpu::Device, descriptor: &CurveBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: &CurveBlockDescriptor) -> Result<Self, BlockCreationError> {
         let input_id = descriptor.interval.ok_or(BlockCreationError::InputMissing(" This Curve node \n is missing its input "))?;
-        let found_element = compute_chain.get_block(&input_id).ok_or(BlockCreationError::InternalError("Curve input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Curve input does not exist in the block map"))?;
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let interval_data = match input_block {
@@ -86,7 +86,7 @@ void main() {{
     out_buff[index].z = {fz};
     out_buff[index].w = 1;
 }}
-"##, header=&compute_chain.shader_header, par=&interval_data.name, dimx=n_points, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+"##, header=&globals.shader_header, par=&interval_data.name, dimx=n_points, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
         //println!("debug info for curve shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -99,7 +99,7 @@ void main() {{
             position: 1,
             buffer_slice: out_buffer.slice(..)
         });
-        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &compute_chain.globals_bind_layout, device, Some("Interval"));
+        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Interval"));
 
         Ok(Self {
             compute_pipeline,

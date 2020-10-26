@@ -25,6 +25,10 @@ pub use matrix::{MatrixData, MatrixBlockDescriptor};
 use serde::{Deserialize, Serialize};
 
 pub type BlockId = i32;
+pub type ProcessingResult = Result<ComputeBlock, BlockCreationError>;
+pub type ProcessedMap = indexmap::IndexMap<BlockId, ProcessingResult>;
+
+use crate::compute_chain::Globals;
 
 #[derive(Debug, Clone)]
 pub enum BlockCreationError {
@@ -162,15 +166,15 @@ impl DescriptorData {
         }
     }
 
-    pub fn to_block(&self, chain: &ComputeChain, device: &wgpu::Device) -> Result<ComputeBlock, BlockCreationError> {
+    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
         match &self {
-            DescriptorData::Point(desc) => desc.to_block(&chain, device),
-            DescriptorData::Curve(desc) => desc.to_block(&chain, device),
-            DescriptorData::Interval(desc) => desc.to_block(&chain, device),
-            DescriptorData::Surface(desc) => desc.to_block(&chain, device),
-            DescriptorData::Matrix(desc) => desc.to_block(&chain, device),
-            DescriptorData::Transform(desc) => desc.to_block(&chain, device),
-            DescriptorData::SurfaceRenderer(desc) => desc.to_block(&chain, device),
+            DescriptorData::Point(desc) => desc.to_block(device, globals, processed_blocks),
+            DescriptorData::Curve(desc) => desc.to_block(device, globals, processed_blocks),
+            DescriptorData::Interval(desc) => desc.to_block(device, globals, processed_blocks),
+            DescriptorData::Surface(desc) => desc.to_block(device, globals, processed_blocks),
+            DescriptorData::Matrix(desc) => desc.to_block(device, globals, processed_blocks),
+            DescriptorData::Transform(desc) => desc.to_block(device, globals, processed_blocks),
+            DescriptorData::SurfaceRenderer(desc) => desc.to_block(device, globals, processed_blocks),
         }
     }
 }
