@@ -159,24 +159,23 @@ void Graph::Test() {
     AddNode(Node::PrefabRendering(std::bind(&Graph::NextId, this)), {200.0, 10.0});
 }
 
-void Graph::RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::string& json) {
-    // if the node has ANY input, recurse
-    for (auto& attribute_ptr : node.attributes) {
-        if (attribute_ptr->kind == AttributeKind::Input) {
-            auto maybe_node_id = FindLinkedNode(attribute_ptr->id);
-            if (maybe_node_id) {
-                auto& node = nodes.at(maybe_node_id.value());
-                RecurseToJson(node, visited_nodes, json);
-            } else {
-                std::cout << "warning: unconnected node" << std::endl;
-            }
-        }
+std::optional<int> Graph::FindLinkedNode(int input_attribute_id) {
+    auto find_results = input_to_output_links.find(input_attribute_id);
+    if (find_results != input_to_output_links.end()) {
+        int linked_attribute_id = find_results->second;
+        return attributes[linked_attribute_id]->node_id;
+    } else {
+        return std::nullopt;
     }
+}
 
-    // after we are done with the recursion, store myself in the json string, provided this has not been done before
-    // this code is a bit monolithic because link information is stored inside the graph, not in the attributes,
-    // therefore we cannot just loop over all the attributes and call one of their member functions
-    if (visited_nodes.count(node.id) == 0) {
+std::string Graph::ToJsonDescriptors() {
+    std::string json;
+    std::set<int> visited_nodes;
+
+    json += "\"descriptors\": [\n";
+    for (auto& id_node_pair : nodes) {
+        auto& node = id_node_pair.second;
         json += std::string() + "{\n"; // opens new node entry
         json += std::string() + "\t\"id\": " + std::to_string(node.id) + ",\n";
         json += std::string() + "\t\"data\": {\n"; // opens the data section
@@ -203,33 +202,10 @@ void Graph::RecurseToJson(const Node& node, std::set<int>& visited_nodes, std::s
         json += std::string() + "\t\t}\n"; // closes attribute
         json += std::string() + "\t}\n"; // closes data
         json += std::string() + "},\n"; // closes the new node entry
-        // mark as visited!
-        visited_nodes.insert(node.id);
     }
-}
+    json += "]\n"; // closes descriptors array
 
-std::optional<int> Graph::FindLinkedNode(int input_attribute_id) {
-    auto find_results = input_to_output_links.find(input_attribute_id);
-    if (find_results != input_to_output_links.end()) {
-        int linked_attribute_id = find_results->second;
-        return attributes[linked_attribute_id]->node_id;
-    } else {
-        return std::nullopt;
-    }
-}
-
-std::string Graph::ToJsonDescriptors() {
-    std::string to_return;
-    std::set<int> visited_nodes;
-
-    to_return += "\"descriptors\": [\n";
-    for (auto& id_node_pair : nodes) {
-        if (id_node_pair.second.type == NodeType::Rendering)
-            RecurseToJson(id_node_pair.second, visited_nodes, to_return);
-    }
-    to_return += "]\n"; // closes descriptors array
-
-    return to_return;
+    return json;
 }
 
 void Graph::AddNode(Node&& node, const ImVec2& position) {

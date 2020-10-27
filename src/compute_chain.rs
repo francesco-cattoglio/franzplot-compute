@@ -123,6 +123,9 @@ impl Globals {
 
 }
 
+// TODO: maybe this could just be a field in the BlockCreationError enum,
+// instead of its own type
+struct UnrecoverableError(BlockId, &'static str);
 
 impl<'a> ComputeChain {
     pub fn new() -> Self {
@@ -134,19 +137,26 @@ impl<'a> ComputeChain {
     // This function currently modifies the internal state of the compute chain and reports any
     // error that happened at ComputeBlock creation time
     pub fn set_scene(&mut self, device: &wgpu::Device, globals: &Globals, descriptors: Vec<BlockDescriptor>) -> Vec<(BlockId, BlockCreationError)> {
+        // create a list of errors to be reported
+        let mut error_list = Vec::<(BlockId, BlockCreationError)>::new();
 
         // process descriptors into actual compute blocks
-        let processed_map = Self::process_descriptors(device, globals, descriptors);
+        let process_result = Self::process_descriptors(device, globals, descriptors);
 
         // TODO: we might decide _not_ to replace the current compute chain if processed_map
         // contained errors, or by some other logic.
-        self.processed_blocks = processed_map;
+        match process_result {
+            Ok(processed_map) => {
+                self.processed_blocks = processed_map;
 
-        // create a list of errors to be reported
-        let mut error_list = Vec::<(BlockId, BlockCreationError)>::new();
-        for (block_id, result) in self.processed_blocks.iter() {
-            if let Err(error) = result {
-                error_list.push((*block_id, error.clone()));
+                for (block_id, result) in self.processed_blocks.iter() {
+                    if let Err(error) = result {
+                        error_list.push((*block_id, error.clone()));
+                    }
+                }
+            }
+            Err(error) => {
+                error_list.push((error.0, BlockCreationError::InputInvalid(error.1)));
             }
         }
 
@@ -156,7 +166,7 @@ impl<'a> ComputeChain {
     // consumes the input Vec<BlockDescriptor> and processes each one of them, turning it into a
     // ComputeBlock. This function fails if many BlockDescriptors share the same BlockId or if
     // there is a circular dependency between all the blocks.
-    pub fn process_descriptors(device: &wgpu::Device, globals: &Globals, descriptors: Vec<BlockDescriptor>) -> ProcessedMap {
+    fn process_descriptors(device: &wgpu::Device, globals: &Globals, descriptors: Vec<BlockDescriptor>) -> Result<ProcessedMap, UnrecoverableError> {
         // TODO: maybe rewrite this part, it looks like it is overcomplicated.
         // compute a map from BlockId to descriptor data and
         // a map from BlockId to all the inputs that a block has
@@ -176,9 +186,9 @@ impl<'a> ComputeChain {
         };
         let sorting_result = pathfinding::directed::topological_sort::topological_sort(&descriptor_ids, successor_function);
 
-        // here we unwrap, but this function would fail if a cycle in the graph is detected.
-        // It would be nice to return that as an error.
-        let sorted_ids = sorting_result.unwrap();
+        // This function fails if a cycle in the graph is detected.
+        // If it happens, return a UnrecoverableError.
+        let sorted_ids = sorting_result.map_err(|block_id: BlockId| { UnrecoverableError(block_id, " cycle detected \n at this node ") })?;
 
         let mut processed_blocks = ProcessedMap::new();
         // Since we declared that the input of a node is the successor of the node, the ids are sorted
@@ -190,7 +200,7 @@ impl<'a> ComputeChain {
                 processed_blocks.insert(id, new_block);
             }
         }
-        processed_blocks
+        Ok(processed_blocks)
     }
 
     pub fn run_chain(&self, device: &wgpu::Device, queue: &wgpu::Queue, globals: &Globals) {
