@@ -14,10 +14,8 @@ pub struct TransformBlockDescriptor {
 }
 
 impl TransformBlockDescriptor {
-    // TODO: TransformBlock and Rendering block currently use no globals. Decide if we should just
-    // remove them from this function signature as well
-    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
-        Ok(ComputeBlock::Transform(TransformData::new(device, globals, processed_blocks, &self)?))
+    pub fn to_block(&self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Transform(TransformData::new(device, processed_blocks, &self)?))
     }
 
     pub fn get_input_ids(&self) -> Vec<BlockId> {
@@ -39,7 +37,7 @@ pub struct TransformData {
 }
 
 impl TransformData {
-    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: &TransformBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: &TransformBlockDescriptor) -> Result<Self, BlockCreationError> {
         let geometry_id = descriptor.geometry.ok_or(BlockCreationError::InputMissing(" This Transform node \n is missing the Geometry input "))?;
         let found_element = processed_blocks.get(&geometry_id).ok_or(BlockCreationError::InternalError("Transform Geometry input does not exist in the block map"))?;
         let geometry_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
@@ -52,7 +50,7 @@ impl TransformData {
             ComputeBlock::Point(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             ComputeBlock::Curve(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             ComputeBlock::Surface(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
-            ComputeBlock::Transform(_) => unimplemented!("double transform"),
+            ComputeBlock::Transform(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             _ => return Err(BlockCreationError::InputInvalid("the first input provided to the Transform is not a Geometry"))
         };
         let (matrix_dim, matrix_buffer_slice) = match matrix_block {
@@ -79,11 +77,10 @@ impl TransformData {
                 dispatch_sizes = (1, 1);
                 let (pipeline, bind_group) = Self::transform_0d_0d(
                     device,
-                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
-                    );
+                    )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
             },
@@ -93,11 +90,10 @@ impl TransformData {
                 dispatch_sizes = (mat_param.size/LOCAL_SIZE_X, 1);
                 let (pipeline, bind_group) = Self::transform_0d_up1(
                     device,
-                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
-                    );
+                    )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
             },
@@ -107,11 +103,10 @@ impl TransformData {
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, 1);
                 let (pipeline, bind_group) = Self::transform_1d_1d(
                     device,
-                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
-                    );
+                    )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
             },
@@ -121,11 +116,10 @@ impl TransformData {
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, 1);
                 let (pipeline, bind_group) = Self::transform_1d_multi(
                     device,
-                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
-                    );
+                    )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
             },
@@ -135,11 +129,10 @@ impl TransformData {
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, mat_param.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_1d_up2(
                     device,
-                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
-                    );
+                    )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
             },
@@ -149,11 +142,10 @@ impl TransformData {
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_2d_2d(
                     device,
-                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
-                    );
+                    )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
             },
@@ -163,12 +155,11 @@ impl TransformData {
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_2d_same_param(
                     device,
-                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
                     1
-                    );
+                    )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
             },
@@ -178,20 +169,19 @@ impl TransformData {
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_2d_same_param(
                     device,
-                    globals,
                     geometry_buffer_slice,
                     matrix_buffer_slice,
                     out_buffer.slice(..),
                     2
-                    );
+                    )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
             },
             (Dimensions::D2(_geo_p1, _geo_p2), Dimensions::D1(_mat_param)) => {
-                panic!("We are applying a parametric transform to a surface");
+                return Err(BlockCreationError::InputInvalid(" this operation would create \n an object with three parameters, \n which is not supported "));
             },
             (_, Dimensions::D2(_, _)) => {
-                panic!("Matrix has 2 parameters!");
+                return Err(BlockCreationError::InternalError("the input Matrix has 2 parameters"));
             },
         }
         Ok(Self {
@@ -211,7 +201,7 @@ impl TransformData {
             compute_pass.dispatch(self.dispatch_sizes.0 as u32, self.dispatch_sizes.1 as u32, 1);
     }
 
-    fn transform_0d_0d(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+    fn transform_0d_0d(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = 1, local_size_y = 1) in;
@@ -228,12 +218,10 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
     vec4 out_buff;
 }};
 
-{header}
-
 void main() {{
     out_buff = in_matrix * in_buff;
 }}
-"##, header=&globals.shader_header);
+"##);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -250,11 +238,11 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
+        compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_0d_up1(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
-                     ) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+    fn transform_0d_up1(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
+                     ) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
@@ -271,15 +259,13 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
     vec4 out_buff[];
 }};
 
-{header}
-
 void main() {{
     // the output index should be the same as the common 2D -> 2D transform
     uint index = gl_GlobalInvocationID.x;
     // while the index used for accessing the inputs are the global invocation id for x and y
     out_buff[index] = in_matrix[index] * in_point;
 }}
-"##, header=&globals.shader_header, dimx=LOCAL_SIZE_X);
+"##, dimx=LOCAL_SIZE_X);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -296,10 +282,10 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
+        compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_1d_1d(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+    fn transform_1d_1d(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
@@ -316,13 +302,11 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
     vec4 out_buff[];
 }};
 
-{header}
-
 void main() {{
     uint index = gl_GlobalInvocationID.x;
     out_buff[index] = in_matrix * in_buff[index];
 }}
-"##, header=&globals.shader_header, dimx=LOCAL_SIZE_X);
+"##, dimx=LOCAL_SIZE_X);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -339,10 +323,10 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
+        compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_1d_multi(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+    fn transform_1d_multi(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
@@ -359,13 +343,11 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
     vec4 out_buff[];
 }};
 
-{header}
-
 void main() {{
     uint index = gl_GlobalInvocationID.x;
     out_buff[index] = in_matrix[index] * in_buff[index];
 }}
-"##, header=&globals.shader_header, dimx=LOCAL_SIZE_X);
+"##, dimx=LOCAL_SIZE_X);
         //println!("debug info for 1d multi 1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -382,11 +364,10 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
+        compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_2d_2d(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
-                     ) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+    fn transform_2d_2d(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
@@ -403,8 +384,6 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
     vec4 out_buff[];
 }};
 
-{header}
-
 void main() {{
     // the only difference between the 1d->1d and the 2d->2d shader is the local_sizes and the indexing
     uint par1_idx = gl_GlobalInvocationID.x;
@@ -412,7 +391,7 @@ void main() {{
     uint index = gl_GlobalInvocationID.x + gl_NumWorkGroups.x * gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
     out_buff[index] = in_matrix * in_buff[index];
 }}
-"##, header=&globals.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
+"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -429,11 +408,10 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
+        compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_1d_up2(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
-                     ) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+    fn transform_1d_up2(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
@@ -450,8 +428,6 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
     vec4 out_buff[];
 }};
 
-{header}
-
 void main() {{
     // the output index should be the same as the common 2D -> 2D transform
     uint par1_idx = gl_GlobalInvocationID.x;
@@ -460,7 +436,7 @@ void main() {{
     // while the index used for accessing the inputs are the global invocation id for x and y
     out_buff[index] = in_matrix[par2_idx] * in_buff[par1_idx];
 }}
-"##, header=&globals.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
+"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -477,11 +453,11 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
+        compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_2d_same_param(device: &wgpu::Device, globals: &Globals, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
-        which_param: u32) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
+    fn transform_2d_same_param(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
+        which_param: u32) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
@@ -498,8 +474,6 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
     vec4 out_buff[];
 }};
 
-{header}
-
 void main() {{
     uint index_1 = gl_GlobalInvocationID.x;
     uint index_2 = gl_GlobalInvocationID.y;
@@ -507,7 +481,7 @@ void main() {{
     uint index = gl_GlobalInvocationID.x + gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
     out_buff[index] = in_matrix[index_{which_idx}] * in_buff[index];
 }}
-"##, header=&globals.shader_header, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, which_idx=which_param);
+"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, which_idx=which_param);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
@@ -524,6 +498,6 @@ void main() {{
             position: 2,
             buffer_slice: out_buff,
         });
-        compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Transform"))
+        compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 }

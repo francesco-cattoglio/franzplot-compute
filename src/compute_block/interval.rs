@@ -12,8 +12,8 @@ pub struct IntervalBlockDescriptor {
     pub name: String,
 }
 impl IntervalBlockDescriptor {
-    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
-        Ok(ComputeBlock::Interval(IntervalData::new(device, globals, processed_blocks, &self)?))
+    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals) -> ProcessingResult {
+        Ok(ComputeBlock::Interval(IntervalData::new(device, globals, &self)?))
     }
 }
 
@@ -27,9 +27,12 @@ pub struct IntervalData {
 }
 
 impl IntervalData {
-    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: &IntervalBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, globals: &Globals, descriptor: &IntervalBlockDescriptor) -> Result<Self, BlockCreationError> {
         if descriptor.quality < 1 || descriptor.quality > 16 {
             return Err(BlockCreationError::IncorrectAttributes("Interval quality attribute must be an integer in the [1, 16] range"))
+        }
+        if descriptor.name.len() == 0 {
+            return Err(BlockCreationError::IncorrectAttributes(" please provide a name \n for the interval's variable "));
         }
         let n_evals = 16 * descriptor.quality;
         let param = Parameter {
@@ -73,7 +76,7 @@ void main() {{
             position: 0,
             buffer_slice: out_buffer.slice(..)
         });
-        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Interval"));
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, shader_source.as_str(), &bindings, Some(&globals.bind_layout), Some("Interval"))?;
         Ok(Self {
             compute_pipeline,
             compute_bind_group,

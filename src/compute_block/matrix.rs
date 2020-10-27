@@ -53,7 +53,7 @@ impl MatrixData {
         if descriptor.interval.is_some() {
             Self::new_with_interval(device, globals, processed_blocks, descriptor)
         } else {
-            Self::new_without_interval(device, globals, processed_blocks, descriptor)
+            Self::new_without_interval(device, globals, descriptor)
         }
     }
 
@@ -130,7 +130,7 @@ void main() {{
             position: 1,
             buffer_slice: out_buffer.slice(..)
         });
-        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Interval"));
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, shader_source.as_str(), &bindings, Some(&globals.bind_layout), Some("Interval"))?;
 
         Ok(Self {
             compute_pipeline,
@@ -141,7 +141,7 @@ void main() {{
         })
     }
 
-    fn new_without_interval(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, desc: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
+    fn new_without_interval(device: &wgpu::Device, globals: &Globals, desc: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
         let out_dim = Dimensions::D0;
         let output_buffer_size = 16 * std::mem::size_of::<f32>() as wgpu::BufferAddress;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
@@ -185,7 +185,7 @@ void main() {{
             position: 0,
             buffer_slice: out_buffer.slice(..)
         });
-        let (compute_pipeline, compute_bind_group) = compute_shader_from_glsl(shader_source.as_str(), &bindings, &globals.bind_layout, device, Some("Interval"));
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, shader_source.as_str(), &bindings, Some(&globals.bind_layout), Some("Interval"))?;
 
         Ok(Self {
             compute_pipeline,

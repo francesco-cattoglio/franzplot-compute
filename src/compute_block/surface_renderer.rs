@@ -1,4 +1,4 @@
-use crate::compute_chain::Globals;
+use crate::shader_processing::*;
 use crate::rendering::{Vertex, GLSL_VERTEX_STRUCT};
 use super::{ComputeBlock, BlockCreationError, Dimensions, BlockId};
 use serde::{Deserialize, Serialize};
@@ -12,10 +12,8 @@ pub struct SurfaceRendererBlockDescriptor {
     pub surface: Option<BlockId>,
 }
 impl SurfaceRendererBlockDescriptor {
-    // TODO: TransformBlock and Rendering block currently use no globals. Decide if we should just
-    // remove them from this function signature as well
-    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
-        Ok(ComputeBlock::SurfaceRenderer(SurfaceRendererData::new(device, globals, processed_blocks, &self)?))
+    pub fn to_block(&self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::SurfaceRenderer(SurfaceRendererData::new(device, processed_blocks, &self)?))
     }
 
     pub fn get_input_ids(&self) -> Vec<BlockId> {
@@ -33,12 +31,12 @@ pub struct SurfaceRendererData {
     pub out_dim: Dimensions,
 }
 impl SurfaceRendererData {
-    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: &SurfaceRendererBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: &SurfaceRendererBlockDescriptor) -> Result<Self, BlockCreationError> {
         let input_id = descriptor.surface.ok_or(BlockCreationError::InputMissing(" This Renderer node \n has no input "))?;
         let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Renderer input does not exist in the block map"))?;
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
-        let new_block = match input_block {
+        match input_block {
             ComputeBlock::Point(point_data) => {
                 Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim)
             }
@@ -58,15 +56,14 @@ impl SurfaceRendererData {
                 }
             }
             _ => return Err(BlockCreationError::InputInvalid("the input provided to the Renderer is not a geometry kind"))
-        };
-        Ok(new_block)
+        }
     }
 
-    fn setup_0d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Self {
+    fn setup_0d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Result<Self, BlockCreationError> {
         unimplemented!("point rendering not implemented yet")
     }
 
-    fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Self {
+    fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Result<Self, BlockCreationError> {
         let vertex_buffer = dimensions.create_storage_buffer(std::mem::size_of::<Vertex>(), device);
         let size = dimensions.as_1d().unwrap().size;
         let shader_source = format!(r##"
@@ -115,17 +112,17 @@ void main() {{
             position: 1,
             buffer_slice: vertex_buffer.slice(..)
         });
-        let (compute_pipeline, compute_bind_group) = compute_shader_no_globals(&shader_source, &bindings, &device, Some("Curve Normals"));
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Curve Normals"))?;
 
-        Self {
+        Ok(Self {
             compute_pipeline,
             compute_bind_group,
             out_dim: dimensions.clone(),
             vertex_buffer,
-        }
+        })
     }
 
-    fn setup_2d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Self {
+    fn setup_2d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Result<Self, BlockCreationError> {
         let vertex_buffer = dimensions.create_storage_buffer(std::mem::size_of::<Vertex>(), device);
         let shader_source = format!(r##"
 #version 450
@@ -218,14 +215,14 @@ void main() {{
             position: 1,
             buffer_slice: vertex_buffer.slice(..)
         });
-        let (compute_pipeline, compute_bind_group) = compute_shader_no_globals(&shader_source, &bindings, &device, Some("Surface Normals"));
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Surface Normals"))?;
 
-        Self {
+        Ok(Self {
             compute_pipeline,
             compute_bind_group,
             out_dim: dimensions.clone(),
             vertex_buffer,
-        }
+        })
 
     }
 

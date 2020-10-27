@@ -151,7 +151,6 @@ pub enum DescriptorData {
     SurfaceRenderer (SurfaceRendererBlockDescriptor),
 }
 
-use crate::compute_chain::ComputeChain;
 impl DescriptorData {
     pub fn get_input_ids(&self) -> Vec<BlockId> {
         match &self {
@@ -166,15 +165,18 @@ impl DescriptorData {
         }
     }
 
+    // Not all the blocks require the same inputs at creation time.
+    // As an example, a Transform block does not use any global variable,
+    // while an Interval cannot depend on any other already-processed block
     pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
         match &self {
             DescriptorData::Point(desc) => desc.to_block(device, globals, processed_blocks),
             DescriptorData::Curve(desc) => desc.to_block(device, globals, processed_blocks),
-            DescriptorData::Interval(desc) => desc.to_block(device, globals, processed_blocks),
+            DescriptorData::Interval(desc) => desc.to_block(device, globals),
             DescriptorData::Surface(desc) => desc.to_block(device, globals, processed_blocks),
             DescriptorData::Matrix(desc) => desc.to_block(device, globals, processed_blocks),
-            DescriptorData::Transform(desc) => desc.to_block(device, globals, processed_blocks),
-            DescriptorData::SurfaceRenderer(desc) => desc.to_block(device, globals, processed_blocks),
+            DescriptorData::Transform(desc) => desc.to_block(device, processed_blocks),
+            DescriptorData::SurfaceRenderer(desc) => desc.to_block(device, processed_blocks),
         }
     }
 }
