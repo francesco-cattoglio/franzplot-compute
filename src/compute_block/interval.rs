@@ -1,7 +1,7 @@
 use crate::compute_chain::Globals;
 use crate::shader_processing::*;
 use super::{ ComputeBlock, BlockCreationError, Dimensions, Parameter };
-use super::{ProcessedMap, ProcessingResult};
+use super::ProcessingResult;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -31,7 +31,7 @@ impl IntervalData {
         if descriptor.quality < 1 || descriptor.quality > 16 {
             return Err(BlockCreationError::IncorrectAttributes("Interval quality attribute must be an integer in the [1, 16] range"))
         }
-        if descriptor.name.len() == 0 {
+        if descriptor.name.is_empty() {
             return Err(BlockCreationError::IncorrectAttributes(" please provide a name \n for the interval's variable "));
         }
         let n_evals = 16 * descriptor.quality;

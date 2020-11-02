@@ -29,11 +29,12 @@ pub mod ffi{
 
 }
 
+use crate::CustomEvent;
 type RustEventProxy = winit::event_loop::EventLoopProxy<super::CustomEvent>;
 
 fn print_proxy(proxy: &RustEventProxy, message: &cxx::CxxString) {
-    let message = super::CustomEvent::TestMessage(message.to_str().unwrap().to_string());
-    proxy.send_event(message);
+    let message = CustomEvent::TestMessage(message.to_str().unwrap().to_string());
+    proxy.send_event(message).expect("Internal error: main application loop no longer exists");
 }
 
 fn update_global_vars(proxy: &RustEventProxy, names: &cxx::CxxVector<cxx::CxxString>, values: &cxx::CxxVector<f32>) {
@@ -43,11 +44,11 @@ fn update_global_vars(proxy: &RustEventProxy, names: &cxx::CxxVector<cxx::CxxStr
         let string = c_name.to_string();
         list.push((string, *value));
     }
-    proxy.send_event(super::CustomEvent::UpdateGlobals(list));
+    proxy.send_event(CustomEvent::UpdateGlobals(list)).expect("Internal error: main application loop no longer exists");
 }
 
 fn process_json(proxy: &RustEventProxy, json: &cxx::CxxString) {
     let rust_str = json.to_str().expect("error validating the json string as UTF8");
-    proxy.send_event(super::CustomEvent::JsonScene(rust_str.to_string()));
+    proxy.send_event(CustomEvent::JsonScene(rust_str.to_string())).expect("Internal error: main application loop no longer exists");
 }
 

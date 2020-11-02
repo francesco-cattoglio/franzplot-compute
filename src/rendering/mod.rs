@@ -15,7 +15,7 @@ pub struct Vertex {
     _padding: [f32; 2],
 }
 
-pub const GLSL_VERTEX_STRUCT: &'static str = r##"
+pub const GLSL_VERTEX_STRUCT: & str = r##"
 struct Vertex {
     vec4 position;
     vec4 normal;
@@ -84,6 +84,7 @@ impl Uniforms {
 // - or a shader that computes normals on the fly (can be tricky, just imagine
 // the issues for normal computation for a parametrix sphere or for z=sqrt(x + y))
 
+#[allow(unused)]
 pub struct SurfaceRenderer {
     pipeline_1d: wgpu::RenderPipeline,
     pipeline_2d: wgpu::RenderPipeline,

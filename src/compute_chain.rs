@@ -24,16 +24,20 @@ const GLOBAL_CONSTANTS: &[(&str, f32)] = &[
 const MAX_NUM_VARIABLES: usize = 31;
 
 impl Globals {
+    // In this case this function in used inside a Vec::<String>::retain() call,
+    // we cannot freely choose its signature! Disable the related clippy lint
+    // TODO: reconsider this way of dealing with invalid variable names.
+    #[allow(clippy::ptr_arg)]
     fn valid_name(variable_name: &String) -> bool {
         for (constant_name, _value) in GLOBAL_CONSTANTS {
-            if variable_name == constant_name {
+            if variable_name == *constant_name {
                 // TODO: this should be logged in as warning!
                 println!("Warning, invalid variable name used: {}", variable_name);
                 return false;
             }
         }
         println!("Valid global var name: {}", variable_name);
-        return true;
+        true
     }
 
     pub fn new(device: &wgpu::Device, mut variables_names: Vec<String>) -> Self {
@@ -105,7 +109,7 @@ impl Globals {
         }
     }
 
-    pub fn update(&mut self, queue: &wgpu::Queue, list: &Vec<(String, f32)>) {
+    pub fn update(&mut self, queue: &wgpu::Queue, list: &[(String, f32)]) {
         // Update our global variables with the ones found in the passed in list.
         // The passed-in list might contain some variables that do not actually exist;
         // we just do nothing in that case.
@@ -149,6 +153,7 @@ impl<'a> ComputeChain {
             Ok(processed_map) => {
                 self.processed_blocks = processed_map;
 
+                // TODO: maybe we could use the "ComputeChain::invalid_blocks" function?
                 for (block_id, result) in self.processed_blocks.iter() {
                     if let Err(error) = result {
                         error_list.push((*block_id, error.clone()));
@@ -182,7 +187,7 @@ impl<'a> ComputeChain {
         // copy a list of block ids and use the following lambda to run the topological sort
         let descriptor_ids: Vec<BlockId> = descriptor_inputs.keys().cloned().collect();
         let successor_function = | id: &BlockId | -> Vec<BlockId> {
-            descriptor_inputs.remove(id).unwrap_or(Vec::<BlockId>::new())
+            descriptor_inputs.remove(id).unwrap_or_default()
         };
         let sorting_result = pathfinding::directed::topological_sort::topological_sort(&descriptor_ids, successor_function);
 
@@ -213,10 +218,6 @@ impl<'a> ComputeChain {
         }
         let compute_queue = encoder.finish();
         queue.submit(std::iter::once(compute_queue));
-    }
-
-    pub fn get_block(&'a self, id: &BlockId) -> Option<&'a Result<ComputeBlock, BlockCreationError>> {
-        self.processed_blocks.get(id)
     }
 
     pub fn valid_blocks(&'a self) -> impl Iterator<Item = &'a ComputeBlock> {

@@ -4,7 +4,6 @@ use winit::{
 };
 use imgui::*;
 use imgui_wgpu::Renderer;
-use imgui_winit_support;
 use serde::{Deserialize, Serialize};
 
 mod util;
@@ -34,6 +33,7 @@ fn print_usage(program: &str, opts: Options) {
     print!("{}", opts.usage(&brief));
 }
 
+#[derive(Debug)]
 pub enum CustomEvent {
     JsonScene(String),
     TestMessage(String),
@@ -73,7 +73,7 @@ fn main() {
     }
     let window = builder.build(&event_loop).unwrap();
 
-    let mut hidpi_factor = window.scale_factor();
+    let hidpi_factor = window.scale_factor();
 
     let mut device_manager = device_manager::Manager::new(&window);
 
@@ -111,7 +111,7 @@ fn main() {
     cpp_gui::ffi::init_imnodes();
     let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance(Box::new(event_loop.create_proxy()));
 
-    let mut renderer = Renderer::new(&mut imgui, &device_manager.device, &mut device_manager.queue, rendering::SWAPCHAIN_FORMAT);
+    let mut renderer = Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, rendering::SWAPCHAIN_FORMAT);
     let mut last_frame = std::time::Instant::now();
 
     let mut last_cursor = None;
@@ -175,10 +175,10 @@ fn main() {
                 }
         },
        Event::WindowEvent {
-            event: WindowEvent::ScaleFactorChanged { scale_factor, .. },
+            event: WindowEvent::ScaleFactorChanged { .. },
             ..
         } => {
-            hidpi_factor = scale_factor;
+            // hidpi_factor = scale_factor;
         },
         Event::UserEvent(ref user_event) => {
             match user_event {
@@ -222,7 +222,7 @@ fn main() {
             scene_renderer.render(&device_manager, &mut frame);
 
             // imgui stuff
-            let delta_s = last_frame.elapsed();
+            let _delta_s = last_frame.elapsed();
             let now = std::time::Instant::now();
             imgui.io_mut().update_delta_time(now - last_frame);
             last_frame = now;

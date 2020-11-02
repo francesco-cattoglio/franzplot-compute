@@ -1,4 +1,3 @@
-use crate::shader_processing::*;
 use crate::rendering::{Vertex, GLSL_VERTEX_STRUCT};
 use super::{ComputeBlock, BlockCreationError, Dimensions, BlockId};
 use serde::{Deserialize, Serialize};
@@ -55,11 +54,11 @@ impl SurfaceRendererData {
                     Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions),
                 }
             }
-            _ => return Err(BlockCreationError::InputInvalid("the input provided to the Renderer is not a geometry kind"))
+            _ => Err(BlockCreationError::InputInvalid("the input provided to the Renderer is not a geometry kind"))
         }
     }
 
-    fn setup_0d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Result<Self, BlockCreationError> {
+    fn setup_0d_geometry(_device: &wgpu::Device, _data_buffer: &wgpu::Buffer, _dimensions: &Dimensions) -> Result<Self, BlockCreationError> {
         unimplemented!("point rendering not implemented yet")
     }
 
@@ -234,7 +233,7 @@ void main() {{
             Dimensions::D0 => {
                 unimplemented!();
             }
-            Dimensions::D1(param_1) => {
+            Dimensions::D1(_par_1) => {
                 // BEWARE: as described before, we wrote the size of the buffer inside the local shader
                 // dimensions, therefore the whole compute will always take just 1 dispatch
                 compute_pass.dispatch(1, 1, 1);

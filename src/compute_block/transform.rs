@@ -1,4 +1,3 @@
-use crate::compute_chain::Globals;
 use crate::shader_processing::*;
 use super::{ProcessedMap, ProcessingResult};
 use super::{ComputeBlock, BlockCreationError, BlockId, Dimensions};

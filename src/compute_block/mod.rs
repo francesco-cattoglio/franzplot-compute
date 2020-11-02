@@ -62,6 +62,7 @@ pub enum Dimensions {
 }
 
 impl Dimensions {
+    #[allow(unused)]
     pub fn as_0d(&self) -> Result<()> {
         match self {
             Self::D0 => Ok(()),
@@ -96,7 +97,10 @@ impl Dimensions {
     }
 }
 
+//TODO: maybe remove the get_buffer and get_dimensions functions.
+//Whenever we use a computeblock we have to match on its type anyway
 impl ComputeBlock {
+    #[allow(unused)]
     pub fn get_buffer(&self) -> &wgpu::Buffer {
         match self {
             Self::Point(data) => &data.out_buffer,
@@ -109,6 +113,7 @@ impl ComputeBlock {
         }
     }
 
+    #[allow(unused)]
     pub fn get_dimensions(&self) -> &Dimensions {
         match self {
             Self::Point(data) => &data.out_dim,
@@ -170,9 +175,9 @@ impl DescriptorData {
     // while an Interval cannot depend on any other already-processed block
     pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
         match &self {
-            DescriptorData::Point(desc) => desc.to_block(device, globals, processed_blocks),
-            DescriptorData::Curve(desc) => desc.to_block(device, globals, processed_blocks),
+            DescriptorData::Point(desc) => desc.to_block(device, globals),
             DescriptorData::Interval(desc) => desc.to_block(device, globals),
+            DescriptorData::Curve(desc) => desc.to_block(device, globals, processed_blocks),
             DescriptorData::Surface(desc) => desc.to_block(device, globals, processed_blocks),
             DescriptorData::Matrix(desc) => desc.to_block(device, globals, processed_blocks),
             DescriptorData::Transform(desc) => desc.to_block(device, processed_blocks),
