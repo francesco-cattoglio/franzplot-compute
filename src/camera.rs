@@ -13,7 +13,7 @@ pub struct Camera {
 impl Camera {
     pub fn build_view_projection_matrix(&self) -> ultraviolet::Mat4 {
         let lookat_matrix = Mat4::look_at(self.eye, self.target, self.up);
-        let proj_matrix = ultraviolet::projection::perspective_dx(self.fov_y, self.aspect, self.z_near, self.z_far);
+        let proj_matrix = ultraviolet::projection::perspective_wgpu_dx(self.fov_y, self.aspect, self.z_near, self.z_far);
 
         proj_matrix * lookat_matrix
     }

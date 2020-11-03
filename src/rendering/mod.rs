@@ -147,7 +147,7 @@ impl SurfaceRenderer {
         let camera = Camera {
             eye: (3.5, 3.5, 3.5).into(),
             target: (0.0, 0.0, 0.0).into(),
-            up: (0.0, 1.0, 0.0).into(),
+            up: (0.0, 0.0, 1.0).into(),
             aspect: manager.sc_desc.width as f32 / manager.sc_desc.height as f32,
             fov_y: 45.0,
             z_near: 0.1,
