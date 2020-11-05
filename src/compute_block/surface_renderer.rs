@@ -118,7 +118,7 @@ void main() {{
 
     mid_buff[idx] = tangent/t_len;
     out_buff[idx*3] = in_buff[idx];
-    out_buff[idx*3+1] = vec4(tangent/t_len, 101.0);
+    out_buff[idx*3+1] = vec4(tangent/t_len, 0.0);
 
     memoryBarrierShared();
     barrier();
@@ -130,12 +130,11 @@ void main() {{
         for (int i = 0; i < x_size; i++) {{
             vec3 next_dir = mid_buff[i];
             // TODO: handle 90 degrees curve
-            ref_next = normalize(ref_curr - dot(ref_curr, next_dir));
-            out_buff[i*3+2] = vec4(ref_next.xyz, 313.0);
+            ref_next = normalize(ref_curr - next_dir * dot(ref_curr, next_dir));
+            out_buff[i*3+2] = vec4(ref_next.xyz, 0.0);
             ref_curr = ref_next;
         }}
     }}
-    //out_buff[idx*3+2] = vec4(normal/n_len, 313.0);
 }}
 "##, dimx=size);
         println!("debug info for curve rendering shader: \n{}", shader_source);

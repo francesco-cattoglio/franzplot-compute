@@ -51,11 +51,12 @@ fn create_tube_buffer_index(device: &wgpu::Device, x_size: usize, circle_points:
 fn create_tube_vertex_index(device: &wgpu::Device, x_size: usize, n_circle_points: usize) -> wgpu::Buffer {
     let mut circle_points = Vec::<f32>::with_capacity(4 * n_circle_points);
     for i in 0 .. n_circle_points {
+        let r = 0.5;
         let angle = 2.0 * std::f32::consts::PI * i as f32 / n_circle_points as f32;
         // I want my circle to have the first vertex in (0, 0, 1)
-        circle_points.push(f32::sin(angle));
-        circle_points.push(0.0);
-        circle_points.push(f32::cos(angle));
+        circle_points.push(r * 0.0);
+        circle_points.push(r * f32::sin(angle));
+        circle_points.push(r * f32::cos(angle));
         circle_points.push(1.0);
     }
 
