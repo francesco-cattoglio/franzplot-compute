@@ -23,6 +23,23 @@ impl SurfaceRendererBlockDescriptor {
     }
 }
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct CurveProcessingData {
+    position: [f32; 4],
+    tangent: [f32; 4],
+    normal: [f32; 4],
+}
+
+pub const GLSL_CURVEDATA_STRUCT: & str = r##"
+struct CurveData {
+    vec4 position;
+    vec4 normal;
+    vec4 tangent;
+};
+"##;
+
+
 pub struct SurfaceRendererData {
     pub vertex_buffer: wgpu::Buffer,
     pub compute_pipeline: wgpu::ComputePipeline,
@@ -63,13 +80,15 @@ impl SurfaceRendererData {
     }
 
     fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Result<Self, BlockCreationError> {
-        let vertex_buffer = dimensions.create_storage_buffer(std::mem::size_of::<Vertex>(), device);
+        let vertex_buffer = dimensions.create_storage_buffer(std::mem::size_of::<CurveProcessingData>(), device);
         let size = dimensions.as_1d().unwrap().size;
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
 
 {vertex_struct}
+
+shared vec3 mid_buff[{dimx}];
 
 layout(set = 0, binding = 0) buffer InputVertices {{
     vec4 in_buff[];
@@ -91,13 +110,39 @@ void main() {{
 
     uint idx = gl_GlobalInvocationID.x;
 
-    vec3 normal = vec3(0.0, 0.0, 0.0);
+    vec3 tangent;
+    if (idx == 0) {{
+        tangent = (-1.5*in_buff[idx] + 2.0*in_buff[idx+1] - 0.5*in_buff[idx+2]).xyz;
+    }} else if (idx == x_size-1) {{
+        tangent = ( 1.5*in_buff[idx] - 2.0*in_buff[idx-1] + 0.5*in_buff[idx-2]).xyz;
+    }} else {{
+        tangent = (-0.5*in_buff[idx-1] + 0.5*in_buff[idx+1]).xyz;
+    }}
 
+    float t_len = length(tangent);
+
+    mid_buff[idx] = tangent/t_len;
     out_buff[idx*3] = in_buff[idx];
-    out_buff[idx*3+1] = vec4(normal, 0.0);
-    out_buff[idx*3+2] = vec4(idx/(x_size-1.0), 0.5, 0.0, 0.0);
+    out_buff[idx*3+1] = vec4(tangent/t_len, 101.0);
+
+    memoryBarrierShared();
+    barrier();
+
+    if (idx == 0) {{
+        // TODO: better choice of starting vector, this one fails if t = [0, 0, 1]
+        vec3 ref_curr = vec3(0.0, 0.0, 1.0);
+        vec3 ref_next = ref_curr;
+        for (int i = 0; i < x_size; i++) {{
+            vec3 next_dir = mid_buff[i];
+            // TODO: handle 90 degrees curve
+            ref_next = normalize(ref_curr - dot(ref_curr, next_dir));
+            out_buff[i*3+2] = vec4(ref_next.xyz, 313.0);
+            ref_curr = ref_next;
+        }}
+    }}
+    //out_buff[idx*3+2] = vec4(normal/n_len, 313.0);
 }}
-"##, vertex_struct=GLSL_VERTEX_STRUCT, dimx=size,);
+"##, vertex_struct=GLSL_CURVEDATA_STRUCT, dimx=size,);
         println!("debug info for curve rendering shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffers
