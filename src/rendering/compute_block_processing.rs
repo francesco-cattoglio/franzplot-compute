@@ -1,5 +1,6 @@
 use crate::compute_block::*;
 use crate::device_manager::Manager;
+use super::Renderer;
 
 // a tube is a sequence of circles connected to each other, with 2 flat caps at the beginning and
 // at the end.
@@ -47,7 +48,7 @@ fn create_tube_buffer_index(device: &wgpu::Device, x_size: usize, circle_points:
     (index_buffer, index_vector.len())
 }
 
-fn create_tube_vertex_index(device: &wgpu::Device, x_size: usize, n_circle_points: usize) -> (wgpu::Buffer, usize) {
+fn create_tube_vertex_index(device: &wgpu::Device, x_size: usize, n_circle_points: usize) -> wgpu::Buffer {
     let mut circle_points = Vec::<f32>::with_capacity(4 * n_circle_points);
     for i in 0 .. n_circle_points {
         let angle = 2.0 * std::f32::consts::PI * i as f32 / n_circle_points as f32;
@@ -71,7 +72,7 @@ fn create_tube_vertex_index(device: &wgpu::Device, x_size: usize, n_circle_point
             contents: bytemuck::cast_slice(&tube_vertices),
             usage: wgpu::BufferUsage::VERTEX,
     });
-    (vertex_buffer, tube_vertices.len())
+    vertex_buffer
 
 }
 
@@ -136,7 +137,7 @@ fn create_grid_buffer_index(device: &wgpu::Device, x_size: usize, y_size: usize,
     (index_buffer, index_vector.len())
 }
 
-pub fn block_to_renderable(manager: &Manager, compute_block: &ComputeBlock, camera_bind_group: &wgpu::BindGroup, pipeline_1d: &wgpu::RenderPipeline, pipeline_2d: &wgpu::RenderPipeline, texture_bind_group: &wgpu::BindGroup) -> Option<wgpu::RenderBundle> {
+pub fn block_to_renderable(manager: &Manager, compute_block: &ComputeBlock, renderer: &Renderer) -> Option<wgpu::RenderBundle> {
         match compute_block {
             ComputeBlock::SurfaceRenderer(data) => {
                 let mut render_bundle_encoder = manager.device.create_render_bundle_encoder(&wgpu::RenderBundleEncoderDescriptor{
@@ -151,26 +152,40 @@ pub fn block_to_renderable(manager: &Manager, compute_block: &ComputeBlock, came
                     }
                     Dimensions::D1(param_1) => {
                     use crate::util::copy_buffer_as_f32;
-                    let input_buffer = copy_buffer_as_f32(&data.vertex_buffer, &manager.device);
+                    let input_buffer = copy_buffer_as_f32(&data.out_buffer, &manager.device);
                     dbg!(&input_buffer);
-                        render_bundle_encoder.set_pipeline(pipeline_1d);
-                        let (index_buffer, indices_count) = create_lines_buffer_index(&manager.device, param_1.size);
-                        render_bundle_encoder.set_vertex_buffer(0, data.vertex_buffer.slice(..));
+                        let curvedata_bind_group = manager.device.create_bind_group(&wgpu::BindGroupDescriptor {
+                            layout: &renderer.curvedata_bind_layout,
+                                entries: &[
+                                    wgpu::BindGroupEntry {
+                                        binding: 0,
+                                        resource: wgpu::BindingResource::Buffer(data.out_buffer.slice(..)),
+                                    },
+                                ],
+                                label: Some("curvedata binding group")
+                            });
+
+                        render_bundle_encoder.set_pipeline(&renderer.pipeline_1d);
+                        let n_circle_points: usize = 3;
+                        let (index_buffer, indices_count) = create_tube_buffer_index(&manager.device, param_1.size, n_circle_points);
+                        let vertex_buffer = create_tube_vertex_index(&manager.device, param_1.size, n_circle_points);
+                        render_bundle_encoder.set_vertex_buffer(0, vertex_buffer.slice(..));
                         render_bundle_encoder.set_index_buffer(index_buffer.slice(..));
-                        render_bundle_encoder.set_bind_group(0, texture_bind_group, &[]);
-                        render_bundle_encoder.set_bind_group(1, camera_bind_group, &[]);
+                        render_bundle_encoder.set_bind_group(0, &curvedata_bind_group, &[]);
+                        render_bundle_encoder.set_bind_group(1, &renderer.camera_bind_group, &[]);
+                        render_bundle_encoder.set_bind_group(2, &renderer.texture_bind_group, &[]);
                         render_bundle_encoder.draw_indexed(0..indices_count as u32, 0, 0..1);
                         render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
                             label: Some("render bundle for curve"),
                         })
                     }
                     Dimensions::D2(param_1, param_2) => {
-                        render_bundle_encoder.set_pipeline(pipeline_2d);
+                        render_bundle_encoder.set_pipeline(&renderer.pipeline_2d);
                         let (index_buffer, indices_count) = create_grid_buffer_index(&manager.device, param_1.size, param_2.size, true);
-                        render_bundle_encoder.set_vertex_buffer(0, data.vertex_buffer.slice(..));
+                        render_bundle_encoder.set_vertex_buffer(0, data.out_buffer.slice(..));
                         render_bundle_encoder.set_index_buffer(index_buffer.slice(..));
-                        render_bundle_encoder.set_bind_group(0, texture_bind_group, &[]);
-                        render_bundle_encoder.set_bind_group(1, camera_bind_group, &[]);
+                        render_bundle_encoder.set_bind_group(0, &renderer.camera_bind_group, &[]);
+                        render_bundle_encoder.set_bind_group(1, &renderer.texture_bind_group, &[]);
                         render_bundle_encoder.draw_indexed(0..indices_count as u32, 0, 0..1);
                         render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
                             label: Some("render bundle for surface"),

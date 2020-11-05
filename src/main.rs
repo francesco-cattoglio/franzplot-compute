@@ -137,7 +137,7 @@ fn main() {
     //println!("debugged buffer contains {:?}", dbg_vect);
 
     // let renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
-    let mut scene_renderer = rendering::SurfaceRenderer::new(&device_manager);
+    let mut scene_renderer = rendering::Renderer::new(&device_manager);
     scene_renderer.update_renderables(&device_manager, &chain);
 
     let mut elapsed_time = std::time::Duration::from_secs(0);

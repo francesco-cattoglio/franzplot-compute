@@ -91,7 +91,8 @@ impl Dimensions {
             label: None,
             mapped_at_creation: false,
             size: buff_size as wgpu::BufferAddress,
-            // TODO: vertex is actually only required for surface and curve renderers
+            // TODO: vertex is actually only required for surface renderer,
+            // while copy and map are only needed when debugging/inspecting
             usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
         })
     }
@@ -109,7 +110,7 @@ impl ComputeBlock {
             Self::Surface(data) => &data.out_buffer,
             Self::Transform(data) => &data.out_buffer,
             Self::Matrix(data) => &data.out_buffer,
-            Self::SurfaceRenderer(data) => &data.vertex_buffer,
+            Self::SurfaceRenderer(data) => &data.out_buffer,
         }
     }
 

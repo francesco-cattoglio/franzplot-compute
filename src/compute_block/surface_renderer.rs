@@ -1,4 +1,4 @@
-use crate::rendering::{Vertex, GLSL_VERTEX_STRUCT};
+use crate::rendering::{CurveVertex, SurfaceVertex};
 use super::{ComputeBlock, BlockCreationError, Dimensions, BlockId};
 use serde::{Deserialize, Serialize};
 use super::{ProcessedMap, ProcessingResult};
@@ -23,6 +23,7 @@ impl SurfaceRendererBlockDescriptor {
     }
 }
 
+// TODO: do we really want to have this here, or should it belong to the rendering system?
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct CurveProcessingData {
@@ -41,7 +42,7 @@ struct CurveData {
 
 
 pub struct SurfaceRendererData {
-    pub vertex_buffer: wgpu::Buffer,
+    pub out_buffer: wgpu::Buffer,
     pub compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
     pub out_dim: Dimensions,
@@ -80,13 +81,11 @@ impl SurfaceRendererData {
     }
 
     fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Result<Self, BlockCreationError> {
-        let vertex_buffer = dimensions.create_storage_buffer(std::mem::size_of::<CurveProcessingData>(), device);
+        let curvedata_buffer = dimensions.create_storage_buffer(std::mem::size_of::<CurveProcessingData>(), device);
         let size = dimensions.as_1d().unwrap().size;
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
-
-{vertex_struct}
 
 shared vec3 mid_buff[{dimx}];
 
@@ -100,11 +99,7 @@ layout(set = 0, binding = 1) buffer OutputData {{
 
 
 void main() {{
-    // this shader prepares the data for surface rendering.
-    // output data will have the following format:
-    // for each vertex, we have a vec4 representing the position,
-    // then a vec4 representing the normal,
-    // then a vec2 for the uv_coords.
+    // this shader prepares the data for curve rendering.
 
     uint x_size = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
 
@@ -142,7 +137,7 @@ void main() {{
     }}
     //out_buff[idx*3+2] = vec4(normal/n_len, 313.0);
 }}
-"##, vertex_struct=GLSL_CURVEDATA_STRUCT, dimx=size,);
+"##, dimx=size);
         println!("debug info for curve rendering shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffers
@@ -154,7 +149,7 @@ void main() {{
         // add descriptor for output buffer
         bindings.push(CustomBindDescriptor {
             position: 1,
-            buffer_slice: vertex_buffer.slice(..)
+            buffer_slice: curvedata_buffer.slice(..)
         });
         let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Curve Normals"))?;
 
@@ -162,17 +157,15 @@ void main() {{
             compute_pipeline,
             compute_bind_group,
             out_dim: dimensions.clone(),
-            vertex_buffer,
+            out_buffer: curvedata_buffer,
         })
     }
 
     fn setup_2d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Result<Self, BlockCreationError> {
-        let vertex_buffer = dimensions.create_storage_buffer(std::mem::size_of::<Vertex>(), device);
+        let vertex_buffer = dimensions.create_storage_buffer(std::mem::size_of::<SurfaceVertex>(), device);
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
-
-{vertex_struct}
 
 layout(set = 0, binding = 0) buffer InputVertices {{
     vec4 in_buff[];
@@ -245,7 +238,7 @@ void main() {{
     out_buff[idx*3+1] = vec4(normal, 0.0);
     out_buff[idx*3+2] = vec4(i/(x_size-1.0), j/(y_size-1.0), 0.0, 0.0);
 }}
-"##, vertex_struct=GLSL_VERTEX_STRUCT, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y,);
+"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
         println!("debug info for surface rendering shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffers
@@ -265,7 +258,7 @@ void main() {{
             compute_pipeline,
             compute_bind_group,
             out_dim: dimensions.clone(),
-            vertex_buffer,
+            out_buffer: vertex_buffer,
         })
 
     }
