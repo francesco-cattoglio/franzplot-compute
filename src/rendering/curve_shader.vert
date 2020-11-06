@@ -12,9 +12,14 @@ layout(set = 1, binding = 0) uniform Uniforms {
     mat4 u_view_proj;
 };
 
+const vec2 circle_points[2] = {
+    vec2(0.0, 0.0),
+    vec2(1.1, 1.1),
+};
+
 void main() {
     v_uv_coords = vec2(0.5, 0.5);
-    int circle_id = gl_VertexIndex/3;
+    int circle_id = gl_VertexIndex/4;
     vec4 circle_position  = curvedata[circle_id*3];
     vec4 circle_forward   = curvedata[circle_id*3+1];
     vec4 circle_up        = curvedata[circle_id*3+2];
@@ -25,7 +30,9 @@ void main() {
     new_basis[2] = circle_up;
     new_basis[3] = vec4(0.0, 0.0, 0.0, 1.0);
     mat4 circle_transform = new_basis;
-    vec4 vertex_position = circle_transform * a_position + circle_position;
+    vec4 temp = a_position;
+    temp.x = 0;
+    vec4 vertex_position = circle_transform * temp + circle_position;
 
     vec3 circle_normal = normalize(a_position.xyz);
     v_n_vector = vec4(circle_normal, 0.0);

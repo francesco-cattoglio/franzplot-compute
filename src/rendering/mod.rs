@@ -5,7 +5,7 @@ use crate::compute_chain::ComputeChain;
 use wgpu::util::DeviceExt;
 use glam::Mat4;
 
-mod compute_block_processing;
+pub mod compute_block_processing;
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
@@ -264,7 +264,7 @@ impl Renderer {
     fn create_1d_pipeline(device: &wgpu::Device, curvedata_bind_layout: &wgpu::BindGroupLayout, camera_bind_layout: &wgpu::BindGroupLayout, texture_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
         // shader compiling
         let mut shader_compiler = shaderc::Compiler::new().unwrap();
-        let vert_src = include_str!("curve_shader.vert");
+        let vert_src = include_str!("surface_shader.vert");
         let frag_src = include_str!("curve_shader.frag");
         let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "curve_shader.vert", "main", None).unwrap();
         let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "curve_shader.frag", "main", None).unwrap();
@@ -277,7 +277,7 @@ impl Renderer {
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: None,
                 push_constant_ranges: &[],
-                bind_group_layouts: &[&curvedata_bind_layout, &camera_bind_layout, &texture_bind_layout]
+                bind_group_layouts: &[&camera_bind_layout, &texture_bind_layout]
             });
 
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{

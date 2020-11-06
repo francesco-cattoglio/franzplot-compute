@@ -48,21 +48,45 @@ fn create_tube_buffer_index(device: &wgpu::Device, x_size: usize, circle_points:
     (index_buffer, index_vector.len())
 }
 
-fn create_tube_vertex_index(device: &wgpu::Device, x_size: usize, n_circle_points: usize) -> wgpu::Buffer {
-    let mut circle_points = Vec::<f32>::with_capacity(4 * n_circle_points);
-    for i in 0 .. n_circle_points {
-        let r = 0.5;
-        let angle = 2.0 * std::f32::consts::PI * i as f32 / n_circle_points as f32;
-        // I want my circle to have the first vertex in (0, 0, 1)
-        circle_points.push(r * 0.0);
-        circle_points.push(r * f32::sin(angle));
-        circle_points.push(r * f32::cos(angle));
-        circle_points.push(1.0);
+pub fn create_shader_constants(radius: f32, n_section_points: usize) -> String {
+    // TODO: verify that an extra comma is always allowed in GLSL initializer lists
+    let mut shader_consts = String::new();
+    shader_consts += &format!("const vec2 section_points[{n}] = {{\n", n=n_section_points);
+    for i in 0 .. n_section_points {
+        let theta = 2.0 * std::f32::consts::PI * i as f32 / n_section_points as f32;
+        shader_consts += &format!("\tvec2({x}, {y}),\n", x=radius*theta.cos(), y=radius*theta.sin() );
     }
+    shader_consts += &format!("}};\n");
+
+    shader_consts
+}
+
+fn create_tube_vertex_index(device: &wgpu::Device, x_size: usize, n_circle_points: usize) -> wgpu::Buffer {
+    //let mut circle_points = Vec::<f32>::with_capacity(4 * n_circle_points);
+    //for i in 0 .. n_circle_points {
+    //    let r = 0.5;
+    //    let angle = 2.0 * std::f32::consts::PI * i as f32 / n_circle_points as f32;
+    //    // I want my circle to have the first vertex in (0, 0, 1)
+    //    circle_points.push(r * 0.0);
+    //    circle_points.push(r * f32::sin(angle));
+    //    circle_points.push(r * f32::cos(angle));
+    //    circle_points.push(1.0);
+    //}
 
     let mut tube_vertices = Vec::<f32>::with_capacity(4 * n_circle_points * x_size);
     // make up a vertex array by as many copies as needed
-    for _i in 0 .. x_size {
+    for x in 0 .. x_size {
+        let mut circle_points = Vec::<f32>::with_capacity(4 * n_circle_points);
+        for i in 0 .. n_circle_points {
+            let r = 0.5;
+            let angle = 2.0 * std::f32::consts::PI * i as f32 / n_circle_points as f32;
+            // I want my circle to have the first vertex in (0, 0, 1)
+            circle_points.push(x as f32);
+            circle_points.push(r * f32::sin(angle));
+            circle_points.push(r * f32::cos(angle));
+            circle_points.push(1.0);
+        }
+
         tube_vertices.extend_from_slice(&circle_points);
     }
 
@@ -142,7 +166,7 @@ pub fn block_to_renderable(manager: &Manager, compute_block: &ComputeBlock, rend
         match compute_block {
             ComputeBlock::SurfaceRenderer(data) => {
                 let mut render_bundle_encoder = manager.device.create_render_bundle_encoder(&wgpu::RenderBundleEncoderDescriptor{
-                    label: Some("render bundle encoder for surface"),
+        label: Some("render bundle encoder for surface"),
                     color_formats: &[super::SWAPCHAIN_FORMAT],
                     depth_stencil_format: Some(super::DEPTH_FORMAT),
                     sample_count: 1,
@@ -163,15 +187,13 @@ pub fn block_to_renderable(manager: &Manager, compute_block: &ComputeBlock, rend
                                 label: Some("curvedata binding group")
                             });
 
-                        render_bundle_encoder.set_pipeline(&renderer.pipeline_1d);
+                        render_bundle_encoder.set_pipeline(&renderer.pipeline_2d);
                         let n_circle_points: usize = 4;
                         let (index_buffer, indices_count) = create_tube_buffer_index(&manager.device, param_1.size, n_circle_points);
-                        let vertex_buffer = create_tube_vertex_index(&manager.device, param_1.size, n_circle_points);
-                        render_bundle_encoder.set_vertex_buffer(0, vertex_buffer.slice(..));
+                        render_bundle_encoder.set_vertex_buffer(0, data.out_buffer.slice(..));
                         render_bundle_encoder.set_index_buffer(index_buffer.slice(..));
-                        render_bundle_encoder.set_bind_group(0, &curvedata_bind_group, &[]);
-                        render_bundle_encoder.set_bind_group(1, &renderer.camera_bind_group, &[]);
-                        render_bundle_encoder.set_bind_group(2, &renderer.texture_bind_group, &[]);
+                        render_bundle_encoder.set_bind_group(0, &renderer.camera_bind_group, &[]);
+                        render_bundle_encoder.set_bind_group(1, &renderer.texture_bind_group, &[]);
                         render_bundle_encoder.draw_indexed(0..indices_count as u32, 0, 0..1);
                         render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
                             label: Some("render bundle for curve"),

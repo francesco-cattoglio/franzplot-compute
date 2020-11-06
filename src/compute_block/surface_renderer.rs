@@ -1,4 +1,5 @@
-use crate::rendering::{CurveVertex, SurfaceVertex};
+use crate::rendering::{CurveVertex, SurfaceVertex, GLSL_VERTEX_STRUCT};
+use crate::rendering::compute_block_processing::create_shader_constants;
 use super::{ComputeBlock, BlockCreationError, Dimensions, BlockId};
 use serde::{Deserialize, Serialize};
 use super::{ProcessedMap, ProcessingResult};
@@ -83,20 +84,28 @@ impl SurfaceRendererData {
     fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Result<Self, BlockCreationError> {
         let curvedata_buffer = dimensions.create_storage_buffer(std::mem::size_of::<CurveProcessingData>(), device);
         let size = dimensions.as_1d().unwrap().size;
+        let section_radius = 0.5;
+        let n_section_points = 3usize;
+        let shader_consts = create_shader_constants(section_radius, n_section_points);
+        dbg!(&shader_consts);
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
 
+{vertex_struct}
+
 shared vec3 mid_buff[{dimx}];
+shared vec3 ref_buff[{dimx}];
 
 layout(set = 0, binding = 0) buffer InputVertices {{
     vec4 in_buff[];
 }};
 
 layout(set = 0, binding = 1) buffer OutputData {{
-    vec4 out_buff[];
+    Vertex out_buff[];
 }};
 
+{shader_constants}
 
 void main() {{
     // this shader prepares the data for curve rendering.
@@ -117,8 +126,6 @@ void main() {{
     float t_len = length(tangent);
 
     mid_buff[idx] = tangent/t_len;
-    out_buff[idx*3] = in_buff[idx];
-    out_buff[idx*3+1] = vec4(tangent/t_len, 0.0);
 
     memoryBarrierShared();
     barrier();
@@ -131,12 +138,44 @@ void main() {{
             vec3 next_dir = mid_buff[i];
             // TODO: handle 90 degrees curve
             ref_next = normalize(ref_curr - next_dir * dot(ref_curr, next_dir));
-            out_buff[i*3+2] = vec4(ref_next.xyz, 0.0);
+            ref_buff[i] = ref_next;
             ref_curr = ref_next;
         }}
     }}
+
+    memoryBarrierShared();
+    barrier();
+
+    // now all the compute threads can access the ref_buff, which contains a reference
+    // vector for every frame. Each thread computes the transformed section.
+    vec4 section_position = in_buff[idx];
+    // compute the three directions for the frame: forward
+    vec4 frame_forward = vec4(tangent, 0.0);
+    // up direction
+    vec3 ref_vector = ref_buff[idx];
+    vec4 frame_up = vec4(ref_vector, 0.0);
+    // and left direction
+    vec3 left_dir = -1.0 * normalize(cross(frame_forward.xyz, frame_up.xyz));
+    vec4 frame_left = vec4(left_dir, 0.0);
+    // we can now assemble the matrix that we will be using to transform all the section points
+
+    mat4 new_basis;
+    new_basis[0] = frame_forward;
+    new_basis[1] = frame_left;
+    new_basis[2] = frame_up;
+    new_basis[3] = section_position;
+    for (int i = 0; i < {n_points}; i++) {{
+        // the constants making up the section are vec2, turn them into vec3 or vec4 and multiply
+        // them by the transform matrix
+        uint out_idx = idx * {n_points} + i;
+        vec3 section_point = vec3(0.0, section_points[i].x, section_points[i].y);
+        out_buff[out_idx].position = new_basis * vec4(section_point, 0.0);
+        out_buff[out_idx].normal = vec4(normalize(section_point), 0.0);
+        out_buff[out_idx].uv_coords = vec2(0.4, 0.5);
+        out_buff[out_idx]._padding = vec2(0.123, 0.456);
+    }}
 }}
-"##, dimx=size);
+"##, vertex_struct=GLSL_VERTEX_STRUCT, shader_constants=shader_consts, n_points=n_section_points, dimx=size);
         println!("debug info for curve rendering shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffers
@@ -166,12 +205,14 @@ void main() {{
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
 
+{vertex_struct}
+
 layout(set = 0, binding = 0) buffer InputVertices {{
     vec4 in_buff[];
 }};
 
 layout(set = 0, binding = 1) buffer OutputData {{
-    vec4 out_buff[];
+    Vertex out_buff[];
 }};
 
 
@@ -233,11 +274,12 @@ void main() {{
     float len_n = length(normal);
     normal = (len_n > 1e-3 * len_x * len_y) ? 1.0/len_n*normal : vec3(0.0, 0.0, 0.0);
 
-    out_buff[idx*3] = in_buff[idx];
-    out_buff[idx*3+1] = vec4(normal, 0.0);
-    out_buff[idx*3+2] = vec4(i/(x_size-1.0), j/(y_size-1.0), 0.0, 0.0);
+    out_buff[idx].position = in_buff[idx];
+    out_buff[idx].normal = vec4(normal, 0.0);
+    out_buff[idx].uv_coords = vec2(i/(x_size-1.0), j/(y_size-1.0));
+    out_buff[idx]._padding = vec2(0.0, 0.0);
 }}
-"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
+"##, vertex_struct=GLSL_VERTEX_STRUCT, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
         println!("debug info for surface rendering shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffers
