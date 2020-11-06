@@ -152,9 +152,6 @@ pub fn block_to_renderable(manager: &Manager, compute_block: &ComputeBlock, rend
                         unimplemented!()
                     }
                     Dimensions::D1(param_1) => {
-                    use crate::util::copy_buffer_as_f32;
-                    let input_buffer = copy_buffer_as_f32(&data.out_buffer, &manager.device);
-                    dbg!(&input_buffer);
                         let curvedata_bind_group = manager.device.create_bind_group(&wgpu::BindGroupDescriptor {
                             layout: &renderer.curvedata_bind_layout,
                                 entries: &[
@@ -167,7 +164,7 @@ pub fn block_to_renderable(manager: &Manager, compute_block: &ComputeBlock, rend
                             });
 
                         render_bundle_encoder.set_pipeline(&renderer.pipeline_1d);
-                        let n_circle_points: usize = 3;
+                        let n_circle_points: usize = 4;
                         let (index_buffer, indices_count) = create_tube_buffer_index(&manager.device, param_1.size, n_circle_points);
                         let vertex_buffer = create_tube_vertex_index(&manager.device, param_1.size, n_circle_points);
                         render_bundle_encoder.set_vertex_buffer(0, vertex_buffer.slice(..));

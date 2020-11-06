@@ -3,6 +3,7 @@ use super::texture;
 use super::device_manager;
 use crate::compute_chain::ComputeChain;
 use wgpu::util::DeviceExt;
+use glam::Mat4;
 
 mod compute_block_processing;
 
@@ -81,7 +82,7 @@ impl CurveVertex {
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct Uniforms {
-    view_proj: ultraviolet::Mat4,
+    view_proj: Mat4,
 }
 
 unsafe impl bytemuck::Pod for Uniforms {}
@@ -90,7 +91,7 @@ unsafe impl bytemuck::Zeroable for Uniforms {}
 impl Uniforms {
     fn new() -> Self {
         Self {
-            view_proj: ultraviolet::Mat4::identity(),
+            view_proj: Mat4::identity(),
         }
     }
 
@@ -184,15 +185,15 @@ pub const SWAPCHAIN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8Unor
 
 impl Renderer {
     pub fn new(manager: &device_manager::Manager) -> Self {
-        let camera = Camera {
-            eye: (-3.5, -3.5, 3.5).into(),
-            target: (0.0, 0.0, 0.0).into(),
-            up: (0.0, 0.0, 1.0).into(),
-            aspect: manager.sc_desc.width as f32 / manager.sc_desc.height as f32,
-            fov_y: 45.0,
-            z_near: 0.1,
-            z_far: 100.0,
-        };
+        let camera = Camera::new(
+            (-3.5, -3.5, 3.5).into(),
+            0.0,
+            0.0,
+            manager.sc_desc.width as f32 / manager.sc_desc.height as f32,
+            45.0,
+            0.1,
+            100.0,
+        );
 
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(&camera);
@@ -404,7 +405,12 @@ impl Renderer {
         }
     }
 
-    pub fn render(&self, manager: &device_manager::Manager, frame: &mut wgpu::SwapChainFrame) {
+    pub fn render(&self, manager: &device_manager::Manager, frame: &mut wgpu::SwapChainFrame, camera: &Camera) {
+        // update the uniform buffer containing the camera
+        let mut uniforms = Uniforms::new();
+        uniforms.update_view_proj(&camera);
+        manager.queue.write_buffer(&self.camera_uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+
         // run the render pipeline
         let mut encoder =
             manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {

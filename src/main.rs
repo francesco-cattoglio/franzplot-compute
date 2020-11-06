@@ -15,6 +15,7 @@ mod compute_chain;
 mod compute_block;
 mod shader_processing;
 mod cpp_gui;
+use camera::{ Camera, CameraController };
 #[cfg(test)]
 mod tests;
 
@@ -77,6 +78,18 @@ fn main() {
 
     let mut device_manager = device_manager::Manager::new(&window);
 
+    let mut camera = Camera::new(
+        (-3.0, 0.0, 0.5).into(),
+        0.0,
+        0.0,
+        device_manager.sc_desc.width as f32 / device_manager.sc_desc.height as f32,
+        45.0,
+        0.1,
+        100.0,
+    );
+    let mut camera_controller = CameraController::new(4.0, 444.0);
+    let mut last_mouse_pos = winit::dpi::PhysicalPosition::<f64>::new(0.0, 0.0);
+    let mut mouse_pressed: bool = false;
     // Set up dear imgui
     let mut imgui = imgui::Context::create();
     let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
@@ -150,6 +163,7 @@ fn main() {
             //println!("frame time: {} ms", frame_duration.as_millis());
             elapsed_time += frame_duration;
         }
+        camera_controller.update_camera(&mut camera, frame_duration);
         old_instant = now;
         match event {
         Event::WindowEvent {
@@ -166,15 +180,38 @@ fn main() {
                             virtual_keycode: Some(VirtualKeyCode::Escape),
                             ..
                         } => *control_flow = ControlFlow::Exit,
+                        KeyboardInput {
+                            virtual_keycode: Some(key),
+                            state,
+                            ..
+                        } => camera_controller.process_keyboard(*key, *state),
                         _ => {}
                     },
-                    WindowEvent::Resized(physical_size) => {
-                        device_manager.resize(*physical_size);
+                    WindowEvent::MouseInput {
+                        button: winit::event::MouseButton::Left,
+                        state,
+                        ..
+                    } => {
+                        mouse_pressed = *state == ElementState::Pressed;
                     }
-                    _ => {}
+                    WindowEvent::CursorMoved {
+                        position,
+                        ..
+                    } => {
+                        let mouse_dx = position.x - last_mouse_pos.x;
+                        let mouse_dy = position.y - last_mouse_pos.y;
+                        last_mouse_pos = *position;
+                        if mouse_pressed {
+                            camera_controller.process_mouse(mouse_dx, mouse_dy);
+                        }
+                    }
+                WindowEvent::Resized(physical_size) => {
+                    device_manager.resize(*physical_size);
+                }
+                _ => {}
                 }
         },
-       Event::WindowEvent {
+        Event::WindowEvent {
             event: WindowEvent::ScaleFactorChanged { .. },
             ..
         } => {
@@ -219,7 +256,7 @@ fn main() {
             let mut frame = device_manager.swap_chain.get_current_frame()
                 .expect("could not get next frame");
 
-            scene_renderer.render(&device_manager, &mut frame);
+            scene_renderer.render(&device_manager, &mut frame, &camera);
 
             // imgui stuff
             let _delta_s = last_frame.elapsed();

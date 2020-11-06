@@ -8,7 +8,7 @@
                 "Interval": {
                         "name": "r",
                         "begin": "-pi",
-                        "end": "pi",
+                        "end": "pi/2",
                         "quality": 4
                 }
         }
