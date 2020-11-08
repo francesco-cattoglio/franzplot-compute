@@ -1,4 +1,4 @@
-use crate::rendering::{CurveVertex, SurfaceVertex, GLSL_VERTEX_STRUCT};
+use crate::rendering::{SurfaceVertex, GLSL_VERTEX_STRUCT};
 use crate::rendering::compute_block_processing::create_shader_constants;
 use super::{ComputeBlock, BlockCreationError, Dimensions, BlockId};
 use serde::{Deserialize, Serialize};
@@ -82,10 +82,10 @@ impl SurfaceRendererData {
     }
 
     fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Result<Self, BlockCreationError> {
-        let curvedata_buffer = dimensions.create_storage_buffer(std::mem::size_of::<CurveProcessingData>(), device);
         let size = dimensions.as_1d().unwrap().size;
-        let section_radius = 0.5;
-        let n_section_points = 3usize;
+        let section_radius = 0.25;
+        let n_section_points = 4usize;
+        let vertexdata_buffer = dimensions.create_storage_buffer(n_section_points*std::mem::size_of::<SurfaceVertex>(), device);
         let shader_consts = create_shader_constants(section_radius, n_section_points);
         dbg!(&shader_consts);
         let shader_source = format!(r##"
@@ -169,7 +169,7 @@ void main() {{
         // them by the transform matrix
         uint out_idx = idx * {n_points} + i;
         vec3 section_point = vec3(0.0, section_points[i].x, section_points[i].y);
-        out_buff[out_idx].position = new_basis * vec4(section_point, 0.0);
+        out_buff[out_idx].position = new_basis * vec4(section_point, 1.0);
         out_buff[out_idx].normal = vec4(normalize(section_point), 0.0);
         out_buff[out_idx].uv_coords = vec2(0.4, 0.5);
         out_buff[out_idx]._padding = vec2(0.123, 0.456);
@@ -187,7 +187,7 @@ void main() {{
         // add descriptor for output buffer
         bindings.push(CustomBindDescriptor {
             position: 1,
-            buffer_slice: curvedata_buffer.slice(..)
+            buffer_slice: vertexdata_buffer.slice(..)
         });
         let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Curve Normals"))?;
 
@@ -195,7 +195,7 @@ void main() {{
             compute_pipeline,
             compute_bind_group,
             out_dim: dimensions.clone(),
-            out_buffer: curvedata_buffer,
+            out_buffer: vertexdata_buffer,
         })
     }
 

@@ -56,7 +56,7 @@ pub fn create_shader_constants(radius: f32, n_section_points: usize) -> String {
         let theta = 2.0 * std::f32::consts::PI * i as f32 / n_section_points as f32;
         shader_consts += &format!("\tvec2({x}, {y}),\n", x=radius*theta.cos(), y=radius*theta.sin() );
     }
-    shader_consts += &format!("}};\n");
+    shader_consts += &"};\n".to_string();
 
     shader_consts
 }

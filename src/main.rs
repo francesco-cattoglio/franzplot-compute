@@ -79,7 +79,7 @@ fn main() {
     let mut device_manager = device_manager::Manager::new(&window);
 
     let mut camera = Camera::new(
-        (-3.0, 0.0, 0.5).into(),
+        (-3.0, 0.0, 0.0).into(),
         0.0,
         0.0,
         device_manager.sc_desc.width as f32 / device_manager.sc_desc.height as f32,
@@ -87,7 +87,7 @@ fn main() {
         0.1,
         100.0,
     );
-    let mut camera_controller = CameraController::new(4.0, 444.0);
+    let mut camera_controller = CameraController::new(4.0, 40.0);
     let mut last_mouse_pos = winit::dpi::PhysicalPosition::<f64>::new(0.0, 0.0);
     let mut mouse_pressed: bool = false;
     // Set up dear imgui

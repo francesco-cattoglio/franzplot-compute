@@ -54,30 +54,30 @@ impl SurfaceVertex {
     }
 }
 
-#[repr(C)]
-#[derive(Copy, Clone, Debug)]
-pub struct CurveVertex {
-    position: [f32; 4],
-}
-
-unsafe impl bytemuck::Pod for CurveVertex {}
-unsafe impl bytemuck::Zeroable for CurveVertex {}
-
-impl CurveVertex {
-    fn description<'a>() -> wgpu::VertexBufferDescriptor<'a> {
-        wgpu::VertexBufferDescriptor {
-            stride: std::mem::size_of::<CurveVertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::InputStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttributeDescriptor {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float4
-                },
-            ],
-        }
-    }
-}
+//#[repr(C)]
+//#[derive(Copy, Clone, Debug)]
+//pub struct CurveVertex {
+//    position: [f32; 4],
+//}
+//
+//unsafe impl bytemuck::Pod for CurveVertex {}
+//unsafe impl bytemuck::Zeroable for CurveVertex {}
+//
+//impl CurveVertex {
+//    fn description<'a>() -> wgpu::VertexBufferDescriptor<'a> {
+//        wgpu::VertexBufferDescriptor {
+//            stride: std::mem::size_of::<CurveVertex>() as wgpu::BufferAddress,
+//            step_mode: wgpu::InputStepMode::Vertex,
+//            attributes: &[
+//                wgpu::VertexAttributeDescriptor {
+//                    offset: 0,
+//                    shader_location: 0,
+//                    format: wgpu::VertexFormat::Float4
+//                },
+//            ],
+//        }
+//    }
+//}
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -111,7 +111,6 @@ impl Uniforms {
 
 #[allow(unused)]
 pub struct Renderer {
-    pipeline_1d: wgpu::RenderPipeline,
     pipeline_2d: wgpu::RenderPipeline,
     renderables: Vec<wgpu::RenderBundle>,
     texture: texture::Texture,
@@ -239,7 +238,6 @@ impl Renderer {
         let curvedata_bind_layout =
             manager.device.create_bind_group_layout(&CURVEDATA_LAYOUT_DESCRIPTOR);
 
-        let pipeline_1d = Self::create_1d_pipeline(&manager.device, &curvedata_bind_layout, &camera_bind_layout, &texture_bind_layout);
         let pipeline_2d = Self::create_2d_pipeline(&manager.device, &camera_bind_layout, &texture_bind_layout);
         let depth_texture = texture::Texture::create_depth_texture(&manager.device, &manager.sc_desc, "depth_texture");
 
@@ -256,7 +254,6 @@ impl Renderer {
             curvedata_bind_layout,
             camera_uniform_buffer,
             camera_bind_group,
-            pipeline_1d,
             pipeline_2d,
         }
     }
@@ -322,7 +319,7 @@ impl Renderer {
             alpha_to_coverage_enabled: false,
             vertex_state: wgpu::VertexStateDescriptor {
                 index_format: wgpu::IndexFormat::Uint32,
-                vertex_buffers: &[CurveVertex::description()],
+                vertex_buffers: &[SurfaceVertex::description()],
             },
         })
 
