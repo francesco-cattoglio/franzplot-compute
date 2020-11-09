@@ -175,7 +175,7 @@ impl SurfaceRenderer {
             label: Some("Camera bind group"),
         });
         use anyhow::Context;
-        let path = std::path::Path::new("/home/franz/rust/franzplot-compute/resources/grid_color.png");
+        let path = std::path::Path::new("./resources/grid_color.png");
         let diffuse_texture = texture::Texture::load(&manager.device, &manager.queue, path, "cube-diffuse").context("failed to load texture").unwrap();
         let texture_bind_group = manager.device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &texture_bind_group_layout,
