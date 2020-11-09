@@ -163,7 +163,7 @@ std::string ToString(NodeType type) {
             return "Transform";
 
         case NodeType::Rendering:
-            return "SurfaceRenderer";
+            return "Rendering";
 
         case NodeType::Other:
             assert(0 && "unimplemented - case not handled");

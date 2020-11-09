@@ -7,16 +7,18 @@ use glam::Mat4;
 
 pub mod compute_block_processing;
 
+// BEWARE: whenever you do any change at the following structure, also remember to modify
+// the corresponding VertexStateDescriptor that is used at pipeline creation stage
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-pub struct SurfaceVertex {
+pub struct StandardVertexData {
     position: [f32; 4],
     normal: [f32; 4],
     uv_coords: [f32; 2],
     _padding: [f32; 2],
 }
 
-pub const GLSL_VERTEX_STRUCT: & str = r##"
+pub const GLSL_STANDARD_VERTEX_STRUCT: & str = r##"
 struct Vertex {
     vec4 position;
     vec4 normal;
@@ -25,59 +27,8 @@ struct Vertex {
 };
 "##;
 
-unsafe impl bytemuck::Pod for SurfaceVertex {}
-unsafe impl bytemuck::Zeroable for SurfaceVertex {}
-
-impl SurfaceVertex {
-    fn description<'a>() -> wgpu::VertexBufferDescriptor<'a> {
-        wgpu::VertexBufferDescriptor {
-            stride: std::mem::size_of::<SurfaceVertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::InputStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttributeDescriptor {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float4
-                },
-                wgpu::VertexAttributeDescriptor {
-                    offset: std::mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float4
-                },
-                wgpu::VertexAttributeDescriptor {
-                    offset: std::mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Float2
-                },
-            ],
-        }
-    }
-}
-
-//#[repr(C)]
-//#[derive(Copy, Clone, Debug)]
-//pub struct CurveVertex {
-//    position: [f32; 4],
-//}
-//
-//unsafe impl bytemuck::Pod for CurveVertex {}
-//unsafe impl bytemuck::Zeroable for CurveVertex {}
-//
-//impl CurveVertex {
-//    fn description<'a>() -> wgpu::VertexBufferDescriptor<'a> {
-//        wgpu::VertexBufferDescriptor {
-//            stride: std::mem::size_of::<CurveVertex>() as wgpu::BufferAddress,
-//            step_mode: wgpu::InputStepMode::Vertex,
-//            attributes: &[
-//                wgpu::VertexAttributeDescriptor {
-//                    offset: 0,
-//                    shader_location: 0,
-//                    format: wgpu::VertexFormat::Float4
-//                },
-//            ],
-//        }
-//    }
-//}
+unsafe impl bytemuck::Pod for StandardVertexData {}
+unsafe impl bytemuck::Zeroable for StandardVertexData {}
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -119,7 +70,6 @@ pub struct Renderer {
     camera_bind_group: wgpu::BindGroup,
     depth_texture: texture::Texture,
     clear_color: wgpu::Color,
-    curvedata_bind_layout: wgpu::BindGroupLayout,
 }
 
 pub const TEXTURE_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
@@ -160,24 +110,6 @@ wgpu::BindGroupLayoutDescriptor {
                 ],
                 label: Some("camera bind group layout"),
             };
-
-pub const CURVEDATA_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
-wgpu::BindGroupLayoutDescriptor {
-    entries: &[
-        wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            count: None,
-            visibility: wgpu::ShaderStage::VERTEX,
-            ty: wgpu::BindingType::StorageBuffer {
-                dynamic: false,
-                min_binding_size: None,
-                readonly: false,
-            },
-        },
-    ],
-    label: Some("curvedata bind group layout"),
-};
-
 
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const SWAPCHAIN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
@@ -235,9 +167,6 @@ impl Renderer {
             label: Some("all_materials")
         });
 
-        let curvedata_bind_layout =
-            manager.device.create_bind_group_layout(&CURVEDATA_LAYOUT_DESCRIPTOR);
-
         let pipeline_2d = Self::create_2d_pipeline(&manager.device, &camera_bind_layout, &texture_bind_layout);
         let depth_texture = texture::Texture::create_depth_texture(&manager.device, &manager.sc_desc, "depth_texture");
 
@@ -251,78 +180,10 @@ impl Renderer {
             texture: diffuse_texture,
             texture_bind_group,
             depth_texture,
-            curvedata_bind_layout,
             camera_uniform_buffer,
             camera_bind_group,
             pipeline_2d,
         }
-    }
-
-    fn create_1d_pipeline(device: &wgpu::Device, curvedata_bind_layout: &wgpu::BindGroupLayout, camera_bind_layout: &wgpu::BindGroupLayout, texture_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
-        // shader compiling
-        let mut shader_compiler = shaderc::Compiler::new().unwrap();
-        let vert_src = include_str!("surface_shader.vert");
-        let frag_src = include_str!("curve_shader.frag");
-        let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "curve_shader.vert", "main", None).unwrap();
-        let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "curve_shader.frag", "main", None).unwrap();
-        let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
-        let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
-        let vert_module = device.create_shader_module(vert_data);
-        let frag_module = device.create_shader_module(frag_data);
-
-        let render_pipeline_layout =
-            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: None,
-                push_constant_ranges: &[],
-                bind_group_layouts: &[&camera_bind_layout, &texture_bind_layout]
-            });
-
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
-            layout: Some(&render_pipeline_layout),
-            label: None,
-            vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &vert_module,
-                entry_point: "main",
-            },
-            fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
-                module: &frag_module,
-                entry_point: "main",
-            }),
-            rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-                front_face: wgpu::FrontFace::Ccw,
-                clamp_depth: false,
-                cull_mode: wgpu::CullMode::None,
-                depth_bias: 0,
-                depth_bias_slope_scale: 0.0,
-                depth_bias_clamp: 0.0,
-            }),
-            primitive_topology: wgpu::PrimitiveTopology::TriangleList,
-            color_states: &[wgpu::ColorStateDescriptor{
-                format: SWAPCHAIN_FORMAT,
-                color_blend: wgpu::BlendDescriptor::REPLACE,
-                alpha_blend: wgpu::BlendDescriptor::REPLACE,
-                write_mask: wgpu::ColorWrite::ALL
-            }],
-            depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
-                format: DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: wgpu::StencilStateDescriptor {
-                    front: wgpu::StencilStateFaceDescriptor::IGNORE,
-                    back: wgpu::StencilStateFaceDescriptor::IGNORE,
-                    read_mask: 0,
-                    write_mask: 0,
-                }
-            }),
-            sample_count: 1,
-            sample_mask: !0,
-            alpha_to_coverage_enabled: false,
-            vertex_state: wgpu::VertexStateDescriptor {
-                index_format: wgpu::IndexFormat::Uint32,
-                vertex_buffers: &[SurfaceVertex::description()],
-            },
-        })
-
     }
 
     fn create_2d_pipeline(device: &wgpu::Device, camera_bind_layout: &wgpu::BindGroupLayout, texture_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
@@ -386,7 +247,13 @@ impl Renderer {
             alpha_to_coverage_enabled: false,
             vertex_state: wgpu::VertexStateDescriptor {
                 index_format: wgpu::IndexFormat::Uint32,
-                vertex_buffers: &[SurfaceVertex::description()],
+                vertex_buffers: &[
+                    wgpu::VertexBufferDescriptor {
+                        stride: std::mem::size_of::<StandardVertexData>() as wgpu::BufferAddress,
+                        step_mode: wgpu::InputStepMode::Vertex,
+                        attributes: &wgpu::vertex_attr_array![0 => Float4, 1 => Float4, 2 => Float2],
+                    },
+                ],
             },
         })
 

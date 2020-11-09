@@ -11,7 +11,7 @@ pub mod surface;
 pub use surface::{SurfaceData, SurfaceBlockDescriptor};
 
 pub mod surface_renderer;
-pub use surface_renderer::{SurfaceRendererData, SurfaceRendererBlockDescriptor};
+pub use surface_renderer::{RenderingData, RenderingBlockDescriptor};
 
 pub mod interval;
 pub use interval::{IntervalData, IntervalBlockDescriptor};
@@ -46,7 +46,7 @@ pub enum ComputeBlock {
     Surface(SurfaceData),
     Transform(TransformData),
     Matrix(MatrixData),
-    SurfaceRenderer(SurfaceRendererData),
+    Rendering(RenderingData),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -102,19 +102,6 @@ impl Dimensions {
 //Whenever we use a computeblock we have to match on its type anyway
 impl ComputeBlock {
     #[allow(unused)]
-    pub fn get_buffer(&self) -> &wgpu::Buffer {
-        match self {
-            Self::Point(data) => &data.out_buffer,
-            Self::Interval(data) => &data.out_buffer,
-            Self::Curve(data) => &data.out_buffer,
-            Self::Surface(data) => &data.out_buffer,
-            Self::Transform(data) => &data.out_buffer,
-            Self::Matrix(data) => &data.out_buffer,
-            Self::SurfaceRenderer(data) => &data.out_buffer,
-        }
-    }
-
-    #[allow(unused)]
     pub fn get_dimensions(&self) -> &Dimensions {
         match self {
             Self::Point(data) => &data.out_dim,
@@ -123,7 +110,7 @@ impl ComputeBlock {
             Self::Surface(data) => &data.out_dim,
             Self::Transform(data) => &data.out_dim,
             Self::Matrix(data) => &data.out_dim,
-            Self::SurfaceRenderer(data) => &data.out_dim,
+            Self::Rendering(data) => &data.out_dim,
         }
     }
 
@@ -133,9 +120,9 @@ impl ComputeBlock {
             Self::Interval(data) => data.encode(globals_bind_group, encoder),
             Self::Curve(data) => data.encode(globals_bind_group, encoder),
             Self::Surface(data) => data.encode(globals_bind_group, encoder),
-            Self::Transform(data) => data.encode(globals_bind_group, encoder),
             Self::Matrix(data) => data.encode(globals_bind_group, encoder),
-            Self::SurfaceRenderer(data) => data.encode(encoder),
+            Self::Transform(data) => data.encode(encoder),
+            Self::Rendering(data) => data.encode(encoder),
         }
     }
 }
@@ -154,7 +141,7 @@ pub enum DescriptorData {
     Surface (SurfaceBlockDescriptor),
     Matrix (MatrixBlockDescriptor),
     Transform (TransformBlockDescriptor),
-    SurfaceRenderer (SurfaceRendererBlockDescriptor),
+    Rendering (RenderingBlockDescriptor),
 }
 
 impl DescriptorData {
@@ -167,7 +154,7 @@ impl DescriptorData {
             DescriptorData::Surface(desc) => desc.get_input_ids(),
             DescriptorData::Matrix(desc) => desc.get_input_ids(),
             DescriptorData::Transform(desc) => desc.get_input_ids(),
-            DescriptorData::SurfaceRenderer(desc) => desc.get_input_ids(),
+            DescriptorData::Rendering(desc) => desc.get_input_ids(),
         }
     }
 
@@ -182,7 +169,7 @@ impl DescriptorData {
             DescriptorData::Surface(desc) => desc.to_block(device, globals, processed_blocks),
             DescriptorData::Matrix(desc) => desc.to_block(device, globals, processed_blocks),
             DescriptorData::Transform(desc) => desc.to_block(device, processed_blocks),
-            DescriptorData::SurfaceRenderer(desc) => desc.to_block(device, processed_blocks),
+            DescriptorData::Rendering(desc) => desc.to_block(device, processed_blocks),
         }
     }
 }

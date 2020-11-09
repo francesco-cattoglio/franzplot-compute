@@ -192,11 +192,10 @@ impl TransformData {
         })
     }
 
-    pub fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
+    pub fn encode(&self, encoder: &mut wgpu::CommandEncoder) {
             let mut compute_pass = encoder.begin_compute_pass();
             compute_pass.set_pipeline(&self.compute_pipeline);
             compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
-            compute_pass.set_bind_group(1, variables_bind_group, &[]);
             compute_pass.dispatch(self.dispatch_sizes.0 as u32, self.dispatch_sizes.1 as u32, 1);
     }
 

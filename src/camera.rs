@@ -1,26 +1,6 @@
 use glam::{Vec3, Mat4};
 use winit::event::*;
 
-//pub struct Camera {
-//    pub eye: Vec3,
-//    pub target: Vec3,
-//    pub up: Vec3,
-//    pub aspect: f32,
-//    pub fov_y: f32,
-//    pub z_near: f32,
-//    pub z_far: f32,
-//}
-//
-//impl Camera {
-//    pub fn build_view_projection_matrix(&self) -> Mat4 {
-//        let lookat_matrix = Mat4::look_at_lh(self.eye, self.target, self.up);
-//        // let proj_matrix = Mat4::perspective_lh(self.fov_y, self.aspect, self.z_near, self.z_far);
-//        let proj_matrix = Mat4::orthographic_lh(-4.0, 4.0, -2.5, 2.5, -10.0, 10.0);
-//
-//        proj_matrix * lookat_matrix
-//    }
-//}
-
 #[derive(Debug)]
 pub struct Camera {
     pub position: Vec3,
