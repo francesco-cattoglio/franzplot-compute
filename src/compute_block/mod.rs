@@ -10,8 +10,8 @@ pub use curve::{CurveBlockDescriptor, CurveData};
 pub mod surface;
 pub use surface::{SurfaceData, SurfaceBlockDescriptor};
 
-pub mod surface_renderer;
-pub use surface_renderer::{RenderingData, RenderingBlockDescriptor};
+pub mod rendering;
+pub use rendering::{RenderingData, RenderingBlockDescriptor};
 
 pub mod interval;
 pub use interval::{IntervalData, IntervalBlockDescriptor};
