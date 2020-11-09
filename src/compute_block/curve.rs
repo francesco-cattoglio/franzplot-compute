@@ -87,18 +87,20 @@ void main() {{
     out_buff[index].w = 1;
 }}
 "##, header=&globals.shader_header, par=&interval_data.name, dimx=n_points, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
-        //println!("debug info for curve shader: \n{}", shader_source);
-        let mut bindings = Vec::<CustomBindDescriptor>::new();
-        // add descriptor for input buffer
-        bindings.push(CustomBindDescriptor {
-            position: 0,
-            buffer_slice: interval_data.out_buffer.slice(..)
-        });
-        // add descriptor for output buffer
-        bindings.push(CustomBindDescriptor {
-            position: 1,
-            buffer_slice: out_buffer.slice(..)
-        });
+
+        let bindings = [
+            // add descriptor for input buffer
+            CustomBindDescriptor {
+                position: 0,
+                buffer_slice: interval_data.out_buffer.slice(..)
+            },
+            // add descriptor for output buffer
+            CustomBindDescriptor {
+                position: 1,
+                buffer_slice: out_buffer.slice(..)
+            }
+        ];
+
         let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, shader_source.as_str(), &bindings, Some(&globals.bind_layout), Some("Interval"))?;
 
         Ok(Self {

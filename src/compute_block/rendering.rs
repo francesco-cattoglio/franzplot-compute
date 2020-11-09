@@ -159,7 +159,7 @@ void main() {{
 "##, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, shader_constants=shader_consts, n_points=n_section_points, dimx=size);
 
         let bindings = [
-            // add descriptor for input buffers
+            // add descriptor for input buffer
             CustomBindDescriptor {
                 position: 0,
                 buffer_slice: data_buffer.slice(..)

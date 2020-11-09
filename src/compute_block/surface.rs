@@ -105,22 +105,24 @@ void main() {{
     out_buff[index].w = 1;
 }}
 "##, header=&globals.shader_header, par1=&first_interval_data.name, par2=&second_interval_data.name, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
-        println!("debug info for curve shader: \n{}", shader_source);
-        let mut bindings = Vec::<CustomBindDescriptor>::new();
-        // add descriptor for input buffers
-        bindings.push(CustomBindDescriptor {
-            position: 0,
-            buffer_slice: first_interval_data.out_buffer.slice(..)
-        });
-        bindings.push(CustomBindDescriptor {
-            position: 1,
-            buffer_slice: second_interval_data.out_buffer.slice(..)
-        });
-        // add descriptor for output buffer
-        bindings.push(CustomBindDescriptor {
-            position: 2,
-            buffer_slice: out_buffer.slice(..)
-        });
+
+        let bindings = [
+            // add descriptor for input buffers
+            CustomBindDescriptor {
+                position: 0,
+                buffer_slice: first_interval_data.out_buffer.slice(..)
+            },
+            CustomBindDescriptor {
+                position: 1,
+                buffer_slice: second_interval_data.out_buffer.slice(..)
+            },
+            // add descriptor for output buffer
+            CustomBindDescriptor {
+                position: 2,
+                buffer_slice: out_buffer.slice(..)
+            }
+        ];
+
         let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, shader_source.as_str(), &bindings, Some(&globals.bind_layout), Some("Interval"))?;
 
         Ok(Self {
