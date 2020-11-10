@@ -15,6 +15,7 @@ mod compute_chain;
 mod compute_block;
 mod shader_processing;
 mod cpp_gui;
+use camera::{ Camera, CameraController };
 #[cfg(test)]
 mod tests;
 
@@ -59,7 +60,7 @@ fn main() {
 
     let input_file = matches.opt_str("i");
 
-    //wgpu_subscriber::initialize_default_subscriber(None);
+    wgpu_subscriber::initialize_default_subscriber(None);
 
     let event_loop = EventLoop::<CustomEvent>::with_user_event();
     let mut builder = winit::window::WindowBuilder::new();
@@ -77,6 +78,18 @@ fn main() {
 
     let mut device_manager = device_manager::Manager::new(&window);
 
+    let mut camera = Camera::new(
+        (-3.0, 0.0, 0.0).into(),
+        0.0,
+        0.0,
+        device_manager.sc_desc.width as f32 / device_manager.sc_desc.height as f32,
+        45.0,
+        0.1,
+        100.0,
+    );
+    let mut camera_controller = CameraController::new(4.0, 40.0);
+    let mut last_mouse_pos = winit::dpi::PhysicalPosition::<f64>::new(0.0, 0.0);
+    let mut mouse_pressed: bool = false;
     // Set up dear imgui
     let mut imgui = imgui::Context::create();
     let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
@@ -125,7 +138,28 @@ fn main() {
         file.read_to_string(&mut json_contents).unwrap();
         let json_scene: SceneDescriptor = serde_json::from_str(&json_contents).unwrap();
         globals = compute_chain::Globals::new(&device_manager.device, json_scene.global_vars);
-        chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
+                    let scene_result = chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
+                    for (block_id, error) in scene_result.iter() {
+                        let id = *block_id;
+                        match error {
+                            BlockCreationError::IncorrectAttributes(message) => {
+                                println!("incorrect attributes error for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InputNotBuilt(message) => {
+                                println!("input not build warning for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InputMissing(message) => {
+                                println!("missing input error for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InputInvalid(message) => {
+                                println!("invalid input error for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InternalError(message) => {
+                                println!("internal error: {}", &message);
+                                panic!();
+                            },
+                        }
+                    }
     } else {
         globals = compute_chain::Globals::new(&device_manager.device, vec![]);
         print_usage(&program, opts);
@@ -137,8 +171,8 @@ fn main() {
     //println!("debugged buffer contains {:?}", dbg_vect);
 
     // let renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
-    let mut scene_renderer = rendering::SurfaceRenderer::new(&device_manager);
-    scene_renderer.update_renderables(&device_manager, &chain);
+    let mut scene_renderer = rendering::Renderer::new(&device_manager);
+    scene_renderer.update_renderables(&device_manager.device, &chain);
 
     let mut elapsed_time = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
@@ -150,6 +184,7 @@ fn main() {
             //println!("frame time: {} ms", frame_duration.as_millis());
             elapsed_time += frame_duration;
         }
+        camera_controller.update_camera(&mut camera, frame_duration);
         old_instant = now;
         match event {
         Event::WindowEvent {
@@ -166,15 +201,38 @@ fn main() {
                             virtual_keycode: Some(VirtualKeyCode::Escape),
                             ..
                         } => *control_flow = ControlFlow::Exit,
+                        KeyboardInput {
+                            virtual_keycode: Some(key),
+                            state,
+                            ..
+                        } => camera_controller.process_keyboard(*key, *state),
                         _ => {}
                     },
-                    WindowEvent::Resized(physical_size) => {
-                        device_manager.resize(*physical_size);
+                    WindowEvent::MouseInput {
+                        button: winit::event::MouseButton::Left,
+                        state,
+                        ..
+                    } => {
+                        mouse_pressed = *state == ElementState::Pressed;
                     }
-                    _ => {}
+                    WindowEvent::CursorMoved {
+                        position,
+                        ..
+                    } => {
+                        let mouse_dx = position.x - last_mouse_pos.x;
+                        let mouse_dy = position.y - last_mouse_pos.y;
+                        last_mouse_pos = *position;
+                        if mouse_pressed {
+                            camera_controller.process_mouse(mouse_dx, mouse_dy);
+                        }
+                    }
+                WindowEvent::Resized(physical_size) => {
+                    device_manager.resize(*physical_size);
+                }
+                _ => {}
                 }
         },
-       Event::WindowEvent {
+        Event::WindowEvent {
             event: WindowEvent::ScaleFactorChanged { .. },
             ..
         } => {
@@ -187,15 +245,30 @@ fn main() {
                     gui_unique_ptr.ClearAllMarks();
                     globals = compute_chain::Globals::new(&device_manager.device, json_scene.global_vars);
                     let scene_result = chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
-                    scene_renderer.update_renderables(&device_manager, &chain);
+                    scene_renderer.update_renderables(&device_manager.device, &chain);
                     for (block_id, error) in scene_result.iter() {
                         let id = *block_id;
                         match error {
-                            BlockCreationError::IncorrectAttributes(message) => gui_unique_ptr.MarkError(id, message),
-                            BlockCreationError::InputNotBuilt(message) => gui_unique_ptr.MarkWarning(id, message),
-                            BlockCreationError::InputMissing(message) => gui_unique_ptr.MarkError(id, message),
-                            BlockCreationError::InputInvalid(message) => gui_unique_ptr.MarkError(id, message),
-                            BlockCreationError::InternalError(message) => { println!("internal error: {}", &message); panic!(); },
+                            BlockCreationError::IncorrectAttributes(message) => {
+                                gui_unique_ptr.MarkError(id, message);
+                                println!("incorrect attributes error for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InputNotBuilt(message) => {
+                                gui_unique_ptr.MarkWarning(id, message);
+                                println!("input not build warning for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InputMissing(message) => {
+                                gui_unique_ptr.MarkError(id, message);
+                                println!("missing input error for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InputInvalid(message) => {
+                                gui_unique_ptr.MarkError(id, message);
+                                println!("invalid input error for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InternalError(message) => {
+                                println!("internal error: {}", &message);
+                                panic!();
+                            },
                         }
                     }
                 }
@@ -219,7 +292,7 @@ fn main() {
             let mut frame = device_manager.swap_chain.get_current_frame()
                 .expect("could not get next frame");
 
-            scene_renderer.render(&device_manager, &mut frame);
+            scene_renderer.render(&device_manager, &mut frame, &camera);
 
             // imgui stuff
             let _delta_s = last_frame.elapsed();

@@ -10,7 +10,7 @@ wgpu = "0.6"
 shaderc = "0.6"
 anyhow = "1.0"
 futures = "0.3"
-ultraviolet = "0.7"
+glam = { version = "0.10", features = ["debug-glam-assert"] }
 maplit = "1.0"
 winit = "0.22"
 tobj = "2.0"

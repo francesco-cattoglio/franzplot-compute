@@ -106,7 +106,7 @@ Node Node::PrefabRendering(const std::function<int()> next_id) {
     Node to_return = Node(next_id(), NodeType::Rendering);
     to_return.name = "Rendering";
     to_return.attributes = {
-        std::make_shared<SimpleInput>(next_id(), to_return.id, "surface", PinKind::Geometry)
+        std::make_shared<SimpleInput>(next_id(), to_return.id, "geometry", PinKind::Geometry)
     };
 
     return to_return;
@@ -163,7 +163,7 @@ std::string ToString(NodeType type) {
             return "Transform";
 
         case NodeType::Rendering:
-            return "SurfaceRenderer";
+            return "Rendering";
 
         case NodeType::Other:
             assert(0 && "unimplemented - case not handled");

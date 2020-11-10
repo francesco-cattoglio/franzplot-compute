@@ -7,7 +7,7 @@ layout(location=2) in vec4 uv_coords;
 layout(location=0) out vec2 v_uv_coords;
 layout(location=1) out vec3 v_n_vector;
 
-layout(set = 1, binding = 0) uniform Uniforms {
+layout(set = 0, binding = 0) uniform Uniforms {
     mat4 u_view_proj;
 };
 

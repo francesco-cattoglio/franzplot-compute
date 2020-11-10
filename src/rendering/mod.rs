@@ -2,20 +2,22 @@ use super::camera::Camera;
 use super::texture;
 use super::device_manager;
 use crate::compute_chain::ComputeChain;
+use crate::compute_block::ComputeBlock;
 use wgpu::util::DeviceExt;
+use glam::Mat4;
 
-mod compute_block_processing;
-
+// BEWARE: whenever you do any change at the following structure, also remember to modify
+// the corresponding VertexStateDescriptor that is used at pipeline creation stage
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
-pub struct Vertex {
+pub struct StandardVertexData {
     position: [f32; 4],
     normal: [f32; 4],
     uv_coords: [f32; 2],
     _padding: [f32; 2],
 }
 
-pub const GLSL_VERTEX_STRUCT: & str = r##"
+pub const GLSL_STANDARD_VERTEX_STRUCT: & str = r##"
 struct Vertex {
     vec4 position;
     vec4 normal;
@@ -24,40 +26,13 @@ struct Vertex {
 };
 "##;
 
-unsafe impl bytemuck::Pod for Vertex {}
-unsafe impl bytemuck::Zeroable for Vertex {}
-
-impl Vertex {
-    fn description<'a>() -> wgpu::VertexBufferDescriptor<'a> {
-        wgpu::VertexBufferDescriptor {
-            stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
-            step_mode: wgpu::InputStepMode::Vertex,
-            attributes: &[
-                wgpu::VertexAttributeDescriptor {
-                    offset: 0,
-                    shader_location: 0,
-                    format: wgpu::VertexFormat::Float4
-                },
-                wgpu::VertexAttributeDescriptor {
-                    offset: std::mem::size_of::<[f32; 4]>() as wgpu::BufferAddress,
-                    shader_location: 1,
-                    format: wgpu::VertexFormat::Float4
-                },
-                wgpu::VertexAttributeDescriptor {
-                    offset: std::mem::size_of::<[f32; 8]>() as wgpu::BufferAddress,
-                    shader_location: 2,
-                    format: wgpu::VertexFormat::Float2
-                },
-            ],
-        }
-    }
-}
-
+unsafe impl bytemuck::Pod for StandardVertexData {}
+unsafe impl bytemuck::Zeroable for StandardVertexData {}
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct Uniforms {
-    view_proj: ultraviolet::Mat4,
+    view_proj: Mat4,
 }
 
 unsafe impl bytemuck::Pod for Uniforms {}
@@ -66,7 +41,7 @@ unsafe impl bytemuck::Zeroable for Uniforms {}
 impl Uniforms {
     fn new() -> Self {
         Self {
-            view_proj: ultraviolet::Mat4::identity(),
+            view_proj: Mat4::identity(),
         }
     }
 
@@ -85,8 +60,7 @@ impl Uniforms {
 // the issues for normal computation for a parametrix sphere or for z=sqrt(x + y))
 
 #[allow(unused)]
-pub struct SurfaceRenderer {
-    pipeline_1d: wgpu::RenderPipeline,
+pub struct Renderer {
     pipeline_2d: wgpu::RenderPipeline,
     renderables: Vec<wgpu::RenderBundle>,
     texture: texture::Texture,
@@ -119,40 +93,37 @@ wgpu::BindGroupLayoutDescriptor {
     ],
     label: Some("texture bind group layout"),
 };
+
 pub const CAMERA_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
 wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        count: None,
-                        visibility: wgpu::ShaderStage::VERTEX,
-                        ty: wgpu::BindingType::UniformBuffer {
-                            dynamic: false,
-                            min_binding_size: None,
-                        },
-                    },
-                ],
-                label: Some("camera bind group layout"),
-            };
-
+    entries: &[
+        wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            count: None,
+            visibility: wgpu::ShaderStage::VERTEX,
+            ty: wgpu::BindingType::UniformBuffer {
+                dynamic: false,
+                min_binding_size: None,
+            },
+        },
+    ],
+    label: Some("camera bind group layout"),
+};
 
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const SWAPCHAIN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
 
-impl SurfaceRenderer {
+impl Renderer {
     pub fn new(manager: &device_manager::Manager) -> Self {
-        let texture_bind_group_layout =
-            manager.device.create_bind_group_layout(&TEXTURE_LAYOUT_DESCRIPTOR);
-
-        let camera = Camera {
-            eye: (3.5, 3.5, 3.5).into(),
-            target: (0.0, 0.0, 0.0).into(),
-            up: (0.0, 0.0, 1.0).into(),
-            aspect: manager.sc_desc.width as f32 / manager.sc_desc.height as f32,
-            fov_y: 45.0,
-            z_near: 0.1,
-            z_far: 100.0,
-        };
+        let camera = Camera::new(
+            (-3.5, -3.5, 3.5).into(),
+            0.0,
+            0.0,
+            manager.sc_desc.width as f32 / manager.sc_desc.height as f32,
+            45.0,
+            0.1,
+            100.0,
+        );
 
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(&camera);
@@ -177,8 +148,11 @@ impl SurfaceRenderer {
         use anyhow::Context;
         let path = std::path::Path::new("./resources/grid_color.png");
         let diffuse_texture = texture::Texture::load(&manager.device, &manager.queue, path, "cube-diffuse").context("failed to load texture").unwrap();
+
+        let texture_bind_layout =
+            manager.device.create_bind_group_layout(&TEXTURE_LAYOUT_DESCRIPTOR);
         let texture_bind_group = manager.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &texture_bind_group_layout,
+            layout: &texture_bind_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
@@ -192,15 +166,7 @@ impl SurfaceRenderer {
             label: Some("all_materials")
         });
 
-        let render_pipeline_layout =
-            manager.device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-                label: None,
-                push_constant_ranges: &[],
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_bind_layout]
-            });
-
-        let pipeline_1d = Self::create_1d_pipeline(&manager.device, &render_pipeline_layout);
-        let pipeline_2d = Self::create_2d_pipeline(&manager.device, &render_pipeline_layout);
+        let pipeline_2d = Self::create_2d_pipeline(&manager.device, &camera_bind_layout, &texture_bind_layout);
         let depth_texture = texture::Texture::create_depth_texture(&manager.device, &manager.sc_desc, "depth_texture");
 
         let clear_color = wgpu::Color::BLACK;
@@ -215,72 +181,11 @@ impl SurfaceRenderer {
             depth_texture,
             camera_uniform_buffer,
             camera_bind_group,
-            pipeline_1d,
             pipeline_2d,
         }
     }
 
-    fn create_1d_pipeline(device: &wgpu::Device, render_pipeline_layout: &wgpu::PipelineLayout) -> wgpu::RenderPipeline {
-        // shader compiling
-        let mut shader_compiler = shaderc::Compiler::new().unwrap();
-        let vert_src = include_str!("curve_shader.vert");
-        let frag_src = include_str!("curve_shader.frag");
-        let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "curve_shader.vert", "main", None).unwrap();
-        let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "curve_shader.frag", "main", None).unwrap();
-        let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
-        let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
-        let vert_module = device.create_shader_module(vert_data);
-        let frag_module = device.create_shader_module(frag_data);
-
-        device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
-            layout: Some(render_pipeline_layout),
-            label: None,
-            vertex_stage: wgpu::ProgrammableStageDescriptor {
-                module: &vert_module,
-                entry_point: "main",
-            },
-            fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
-                module: &frag_module,
-                entry_point: "main",
-            }),
-            rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-                front_face: wgpu::FrontFace::Ccw,
-                clamp_depth: false,
-                cull_mode: wgpu::CullMode::None,
-                depth_bias: 0,
-                depth_bias_slope_scale: 0.0,
-                depth_bias_clamp: 0.0,
-            }),
-            primitive_topology: wgpu::PrimitiveTopology::LineStrip,
-            color_states: &[wgpu::ColorStateDescriptor{
-                format: SWAPCHAIN_FORMAT,
-                color_blend: wgpu::BlendDescriptor::REPLACE,
-                alpha_blend: wgpu::BlendDescriptor::REPLACE,
-                write_mask: wgpu::ColorWrite::ALL
-            }],
-            depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
-                format: DEPTH_FORMAT,
-                depth_write_enabled: true,
-                depth_compare: wgpu::CompareFunction::Less,
-                stencil: wgpu::StencilStateDescriptor {
-                    front: wgpu::StencilStateFaceDescriptor::IGNORE,
-                    back: wgpu::StencilStateFaceDescriptor::IGNORE,
-                    read_mask: 0,
-                    write_mask: 0,
-                }
-            }),
-            sample_count: 1,
-            sample_mask: !0,
-            alpha_to_coverage_enabled: false,
-            vertex_state: wgpu::VertexStateDescriptor {
-                index_format: wgpu::IndexFormat::Uint32,
-                vertex_buffers: &[Vertex::description()],
-            },
-        })
-
-    }
-
-    fn create_2d_pipeline(device: &wgpu::Device, render_pipeline_layout: &wgpu::PipelineLayout) -> wgpu::RenderPipeline {
+    fn create_2d_pipeline(device: &wgpu::Device, camera_bind_layout: &wgpu::BindGroupLayout, texture_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
         // shader compiling
         let mut shader_compiler = shaderc::Compiler::new().unwrap();
         let vert_src = include_str!("surface_shader.vert");
@@ -291,6 +196,13 @@ impl SurfaceRenderer {
         let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
         let vert_module = device.create_shader_module(vert_data);
         let frag_module = device.create_shader_module(frag_data);
+
+        let render_pipeline_layout =
+            device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: None,
+                push_constant_ranges: &[],
+                bind_group_layouts: &[&camera_bind_layout, &texture_bind_layout]
+            });
 
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
             layout: Some(&render_pipeline_layout),
@@ -334,23 +246,34 @@ impl SurfaceRenderer {
             alpha_to_coverage_enabled: false,
             vertex_state: wgpu::VertexStateDescriptor {
                 index_format: wgpu::IndexFormat::Uint32,
-                vertex_buffers: &[Vertex::description()],
+                vertex_buffers: &[
+                    wgpu::VertexBufferDescriptor {
+                        stride: std::mem::size_of::<StandardVertexData>() as wgpu::BufferAddress,
+                        step_mode: wgpu::InputStepMode::Vertex,
+                        attributes: &wgpu::vertex_attr_array![0 => Float4, 1 => Float4, 2 => Float2],
+                    },
+                ],
             },
         })
 
     }
 
-    pub fn update_renderables (&mut self, manager: &device_manager::Manager, chain: &ComputeChain,) {
+    pub fn update_renderables (&mut self, device: &wgpu::Device, chain: &ComputeChain,) {
         self.renderables.clear();
         for compute_block in chain.valid_blocks() {
-            let maybe_renderable = compute_block_processing::block_to_renderable(manager, compute_block, &self.camera_bind_group, &self.pipeline_1d, &self.pipeline_2d, &self.texture_bind_group);
+            let maybe_renderable = block_to_renderable(device, compute_block, &self);
             if let Some(renderable) = maybe_renderable {
                 self.renderables.push(renderable);
             }
         }
     }
 
-    pub fn render(&self, manager: &device_manager::Manager, frame: &mut wgpu::SwapChainFrame) {
+    pub fn render(&self, manager: &device_manager::Manager, frame: &mut wgpu::SwapChainFrame, camera: &Camera) {
+        // update the uniform buffer containing the camera
+        let mut uniforms = Uniforms::new();
+        uniforms.update_view_proj(&camera);
+        manager.queue.write_buffer(&self.camera_uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+
         // run the render pipeline
         let mut encoder =
             manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
@@ -392,4 +315,33 @@ impl SurfaceRenderer {
         manager.queue.submit(std::iter::once(render_queue));
     }
 }
+
+// UTILITY FUNCTIONS
+
+fn block_to_renderable(device: &wgpu::Device, compute_block: &ComputeBlock, renderer: &Renderer) -> Option<wgpu::RenderBundle> {
+        match compute_block {
+            ComputeBlock::Rendering(data) => {
+                let mut render_bundle_encoder = device.create_render_bundle_encoder(
+                    &wgpu::RenderBundleEncoderDescriptor{
+                        label: Some("Render bundle encoder for Rendering Block"),
+                        color_formats: &[SWAPCHAIN_FORMAT],
+                        depth_stencil_format: Some(DEPTH_FORMAT),
+                        sample_count: 1,
+                    }
+                );
+                render_bundle_encoder.set_pipeline(&renderer.pipeline_2d);
+                render_bundle_encoder.set_vertex_buffer(0, data.vertex_buffer.slice(..));
+                render_bundle_encoder.set_index_buffer(data.index_buffer.slice(..));
+                render_bundle_encoder.set_bind_group(0, &renderer.camera_bind_group, &[]);
+                render_bundle_encoder.set_bind_group(1, &renderer.texture_bind_group, &[]);
+                render_bundle_encoder.draw_indexed(0..data.index_count, 0, 0..1);
+                let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
+                    label: Some("Render bundle for Rendering Block"),
+                });
+                Some(render_bundle)
+            },
+            _ => None,
+        }
+
+    }
 

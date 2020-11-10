@@ -16,8 +16,8 @@
 {
         "id": 6,
         "data": {
-                "SurfaceRenderer": {
-                        "surface": 14
+                "Rendering": {
+                        "geometry": 14
                 }
         }
 },
@@ -66,8 +66,8 @@
 {
         "id": 32,
         "data": {
-                "SurfaceRenderer": {
-                        "surface": 28
+                "Rendering": {
+                        "geometry": 28
                 }
         }
 }
