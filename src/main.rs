@@ -138,7 +138,28 @@ fn main() {
         file.read_to_string(&mut json_contents).unwrap();
         let json_scene: SceneDescriptor = serde_json::from_str(&json_contents).unwrap();
         globals = compute_chain::Globals::new(&device_manager.device, json_scene.global_vars);
-        chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
+                    let scene_result = chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
+                    for (block_id, error) in scene_result.iter() {
+                        let id = *block_id;
+                        match error {
+                            BlockCreationError::IncorrectAttributes(message) => {
+                                println!("incorrect attributes error for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InputNotBuilt(message) => {
+                                println!("input not build warning for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InputMissing(message) => {
+                                println!("missing input error for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InputInvalid(message) => {
+                                println!("invalid input error for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InternalError(message) => {
+                                println!("internal error: {}", &message);
+                                panic!();
+                            },
+                        }
+                    }
     } else {
         globals = compute_chain::Globals::new(&device_manager.device, vec![]);
         print_usage(&program, opts);
@@ -151,7 +172,7 @@ fn main() {
 
     // let renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
     let mut scene_renderer = rendering::Renderer::new(&device_manager);
-    scene_renderer.update_renderables(&device_manager, &chain);
+    scene_renderer.update_renderables(&device_manager.device, &chain);
 
     let mut elapsed_time = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
@@ -224,15 +245,30 @@ fn main() {
                     gui_unique_ptr.ClearAllMarks();
                     globals = compute_chain::Globals::new(&device_manager.device, json_scene.global_vars);
                     let scene_result = chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
-                    scene_renderer.update_renderables(&device_manager, &chain);
+                    scene_renderer.update_renderables(&device_manager.device, &chain);
                     for (block_id, error) in scene_result.iter() {
                         let id = *block_id;
                         match error {
-                            BlockCreationError::IncorrectAttributes(message) => gui_unique_ptr.MarkError(id, message),
-                            BlockCreationError::InputNotBuilt(message) => gui_unique_ptr.MarkWarning(id, message),
-                            BlockCreationError::InputMissing(message) => gui_unique_ptr.MarkError(id, message),
-                            BlockCreationError::InputInvalid(message) => gui_unique_ptr.MarkError(id, message),
-                            BlockCreationError::InternalError(message) => { println!("internal error: {}", &message); panic!(); },
+                            BlockCreationError::IncorrectAttributes(message) => {
+                                gui_unique_ptr.MarkError(id, message);
+                                println!("incorrect attributes error for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InputNotBuilt(message) => {
+                                gui_unique_ptr.MarkWarning(id, message);
+                                println!("input not build warning for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InputMissing(message) => {
+                                gui_unique_ptr.MarkError(id, message);
+                                println!("missing input error for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InputInvalid(message) => {
+                                gui_unique_ptr.MarkError(id, message);
+                                println!("invalid input error for {}: {}", id, &message);
+                            },
+                            BlockCreationError::InternalError(message) => {
+                                println!("internal error: {}", &message);
+                                panic!();
+                            },
                         }
                     }
                 }

@@ -8,7 +8,9 @@ const LOCAL_SIZE_Y: usize = 16;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RenderingBlockDescriptor {
-    pub surface: Option<BlockId>,
+    // TODO: rename this to Geometry,
+    // start adding more input options like curve radius and such
+    pub geometry: Option<BlockId>,
 }
 impl RenderingBlockDescriptor {
     pub fn to_block(&self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
@@ -16,7 +18,7 @@ impl RenderingBlockDescriptor {
     }
 
     pub fn get_input_ids(&self) -> Vec<BlockId> {
-        match self.surface {
+        match self.geometry {
             Some(id) => vec![id],
             None => vec![]
         }
@@ -34,7 +36,7 @@ pub struct RenderingData {
 
 impl RenderingData {
     pub fn new(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: &RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
-        let input_id = descriptor.surface.ok_or(BlockCreationError::InputMissing(" This Renderer node \n has no input "))?;
+        let input_id = descriptor.geometry.ok_or(BlockCreationError::InputMissing(" This Renderer node \n has no input "))?;
         let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Renderer input does not exist in the block map"))?;
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 

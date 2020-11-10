@@ -2,10 +2,9 @@ use super::camera::Camera;
 use super::texture;
 use super::device_manager;
 use crate::compute_chain::ComputeChain;
+use crate::compute_block::ComputeBlock;
 use wgpu::util::DeviceExt;
 use glam::Mat4;
-
-pub mod compute_block_processing;
 
 // BEWARE: whenever you do any change at the following structure, also remember to modify
 // the corresponding VertexStateDescriptor that is used at pipeline creation stage
@@ -97,19 +96,19 @@ wgpu::BindGroupLayoutDescriptor {
 
 pub const CAMERA_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
 wgpu::BindGroupLayoutDescriptor {
-                entries: &[
-                    wgpu::BindGroupLayoutEntry {
-                        binding: 0,
-                        count: None,
-                        visibility: wgpu::ShaderStage::VERTEX,
-                        ty: wgpu::BindingType::UniformBuffer {
-                            dynamic: false,
-                            min_binding_size: None,
-                        },
-                    },
-                ],
-                label: Some("camera bind group layout"),
-            };
+    entries: &[
+        wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            count: None,
+            visibility: wgpu::ShaderStage::VERTEX,
+            ty: wgpu::BindingType::UniformBuffer {
+                dynamic: false,
+                min_binding_size: None,
+            },
+        },
+    ],
+    label: Some("camera bind group layout"),
+};
 
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const SWAPCHAIN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
@@ -259,10 +258,10 @@ impl Renderer {
 
     }
 
-    pub fn update_renderables (&mut self, manager: &device_manager::Manager, chain: &ComputeChain,) {
+    pub fn update_renderables (&mut self, device: &wgpu::Device, chain: &ComputeChain,) {
         self.renderables.clear();
         for compute_block in chain.valid_blocks() {
-            let maybe_renderable = compute_block_processing::block_to_renderable(manager, compute_block, &self);
+            let maybe_renderable = block_to_renderable(device, compute_block, &self);
             if let Some(renderable) = maybe_renderable {
                 self.renderables.push(renderable);
             }
@@ -316,4 +315,33 @@ impl Renderer {
         manager.queue.submit(std::iter::once(render_queue));
     }
 }
+
+// UTILITY FUNCTIONS
+
+fn block_to_renderable(device: &wgpu::Device, compute_block: &ComputeBlock, renderer: &Renderer) -> Option<wgpu::RenderBundle> {
+        match compute_block {
+            ComputeBlock::Rendering(data) => {
+                let mut render_bundle_encoder = device.create_render_bundle_encoder(
+                    &wgpu::RenderBundleEncoderDescriptor{
+                        label: Some("Render bundle encoder for Rendering Block"),
+                        color_formats: &[SWAPCHAIN_FORMAT],
+                        depth_stencil_format: Some(DEPTH_FORMAT),
+                        sample_count: 1,
+                    }
+                );
+                render_bundle_encoder.set_pipeline(&renderer.pipeline_2d);
+                render_bundle_encoder.set_vertex_buffer(0, data.vertex_buffer.slice(..));
+                render_bundle_encoder.set_index_buffer(data.index_buffer.slice(..));
+                render_bundle_encoder.set_bind_group(0, &renderer.camera_bind_group, &[]);
+                render_bundle_encoder.set_bind_group(1, &renderer.texture_bind_group, &[]);
+                render_bundle_encoder.draw_indexed(0..data.index_count, 0, 0..1);
+                let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
+                    label: Some("Render bundle for Rendering Block"),
+                });
+                Some(render_bundle)
+            },
+            _ => None,
+        }
+
+    }
 

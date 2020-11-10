@@ -27,8 +27,8 @@
 {
         "id": 6,
         "data": {
-                "SurfaceRenderer": {
-                        "surface": 8
+                "Rendering": {
+                        "geometry": 8
                 }
         }
 }
