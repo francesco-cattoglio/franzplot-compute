@@ -36,6 +36,9 @@ void Gui::Render() {
     }
     End();
 
+    Begin("scene view", nullptr);
+    ImGui::Image((void*) scene_texture_id, ImVec2(400, 300));
+    End();
     // update the globals.
     std::vector<std::string> globals_strings;
     for (auto& name : globals_names) {
@@ -67,6 +70,10 @@ void Gui::Render() {
     graph.Render();
 
     ImGui::End();
+}
+
+void Gui::UpdateSceneTexture(std::size_t scene_texture_id){
+    this->scene_texture_id = scene_texture_id;
 }
 
 void Gui::ClearAllMarks() {

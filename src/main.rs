@@ -134,6 +134,7 @@ fn main() {
         .set_usage(TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED | TextureUsage::COPY_DST)
         .build(&device_manager.device, &renderer);
     let scene_texture_id = renderer.textures.insert(scene_texture);
+    gui_unique_ptr.UpdateSceneTexture(scene_texture_id.id());
     let mut last_frame = std::time::Instant::now();
 
     let mut last_cursor = None;

@@ -18,6 +18,7 @@ class Gui {
 
         void test_boxed_proxy();
         void Render();
+        void UpdateSceneTexture(std::size_t scene_texture_id);
         void ClearAllMarks();
         void MarkClean(int id);
         void MarkError(std::int32_t id, rust::Str message);
@@ -29,6 +30,7 @@ class Gui {
         std::vector<float> globals_values;
 
         Graph graph;
+        std::size_t scene_texture_id;
         rust::Box<RustEventProxy> boxed_proxy;
 };
 
