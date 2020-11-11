@@ -48,7 +48,7 @@ impl Manager {
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
         };
-        let swap_chain = device.create_swap_chain(&surface, &sc_desc);
+        let swap_chain = Self::create_swapchain(&device, &surface, &sc_desc);
 
         Self {
             device,
@@ -59,6 +59,22 @@ impl Manager {
             swap_chain,
             sc_desc,
         }
+    }
+
+    pub fn update_swapchain(&mut self, window: &Window) {
+        let size = window.inner_size();
+        let swapchain_descriptor = wgpu::SwapChainDescriptor {
+                usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+                format: wgpu::TextureFormat::Bgra8UnormSrgb,
+                width: size.width,
+                height: size.height,
+                present_mode: wgpu::PresentMode::Fifo,
+            };
+        self.swap_chain = Self::create_swapchain(&self.device, &self.surface, &swapchain_descriptor);
+    }
+
+    fn create_swapchain(device: &wgpu::Device, surface: &wgpu::Surface, swapchain_descriptor: &wgpu::SwapChainDescriptor) -> wgpu::SwapChain {
+        device.create_swap_chain(surface, swapchain_descriptor)
     }
 
     pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {

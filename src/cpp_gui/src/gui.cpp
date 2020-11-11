@@ -36,8 +36,13 @@ void Gui::Render() {
     }
     End();
 
-    Begin("scene view", nullptr);
-    ImGui::Image((void*) scene_texture_id, ImVec2(400, 300));
+    Begin("scene view", nullptr, ImGuiWindowFlags_NoMove);
+    ImGui::ImageButton((void*) scene_texture_id, ImVec2(400, 300));
+    if (ImGui::IsItemActive()){
+        ImVec2 value_raw = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0f);
+        ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
+        update_scene_camera(*boxed_proxy, value_raw.x, value_raw.y);
+    }
     End();
     // update the globals.
     std::vector<std::string> globals_strings;

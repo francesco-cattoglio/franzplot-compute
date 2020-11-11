@@ -39,6 +39,7 @@ pub enum CustomEvent {
     JsonScene(String),
     TestMessage(String),
     UpdateGlobals(Vec<(String, f32)>),
+    UpdateCamera(f32, f32),
 }
 
 use std::io::prelude::*;
@@ -224,17 +225,6 @@ fn main() {
                     } => {
                         mouse_pressed = *state == ElementState::Pressed;
                     }
-                    WindowEvent::CursorMoved {
-                        position,
-                        ..
-                    } => {
-                        let mouse_dx = position.x - last_mouse_pos.x;
-                        let mouse_dy = position.y - last_mouse_pos.y;
-                        last_mouse_pos = *position;
-                        if mouse_pressed {
-                            camera_controller.process_mouse(mouse_dx, mouse_dy);
-                        }
-                    }
                 WindowEvent::Resized(physical_size) => {
                     device_manager.resize(*physical_size);
                 }
@@ -287,6 +277,9 @@ fn main() {
                 CustomEvent::UpdateGlobals(list) => {
                     globals.update(&device_manager.queue, list);
                 }
+                CustomEvent::UpdateCamera(dx, dy) => {
+                    camera_controller.process_mouse(*dx, *dy);
+                }
             }
         },
         Event::RedrawRequested(_) => {
@@ -297,8 +290,33 @@ fn main() {
 
             //// TODO: currently bugged due to "uneven" initialization of context
             //chain.update_globals(&device_manager.queue, &context);
-            let frame = device_manager.swap_chain.get_current_frame()
-                .expect("could not get next frame");
+            let maybe_frame = device_manager
+                .swap_chain
+                .get_current_frame();
+                    //maybe_frame.expect("Unable to get next frame")
+            let frame = match maybe_frame {
+                    Ok(swapchain_frame) => {
+                        swapchain_frame
+                    }
+                    Err(wgpu::SwapChainError::Outdated) => {
+                    // Recreate the swap chain to mitigate race condition on drawing surface resize.
+                    // See https://github.com/parasyte/pixels/issues/121
+                    device_manager.update_swapchain(&window);
+                    device_manager
+                        .swap_chain
+                        .get_current_frame()
+                        .unwrap()
+                    }
+                    Err(wgpu::SwapChainError::OutOfMemory) => {
+                        panic!("Out Of Memory error in frame rendering");
+                    }
+                    Err(wgpu::SwapChainError::Timeout) => {
+                        panic!("Timeout error in frame rendering");
+                    }
+                    Err(wgpu::SwapChainError::Lost) => {
+                        panic!("Frame Lost error in frame rendering");
+                    }
+            };
 
             if let Some(scene_texture) = renderer.textures.get(scene_texture_id) {
                 chain.run_chain(&device_manager.device, &device_manager.queue, &globals);
