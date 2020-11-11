@@ -12,6 +12,8 @@ namespace franzplot_gui {
 
 void init_imnodes() {
     imnodes::Initialize();
+    auto& global_style = ImGui::GetStyle();
+    global_style.WindowRounding = 0.0f; // square window borders
 }
 
 void shutdown_imnodes() {

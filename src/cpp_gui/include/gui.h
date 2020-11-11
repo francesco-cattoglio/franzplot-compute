@@ -6,6 +6,8 @@
 
 #include "graph.h"
 
+typedef std::array<char, 32> VarName;
+
 namespace franzplot_gui {
 
 struct RustEventProxy;
@@ -17,7 +19,7 @@ class Gui {
         Gui(rust::Box<RustEventProxy>& boxed_proxy);
 
         void test_boxed_proxy();
-        void Render();
+        void Render(std::uint32_t x_size, std::uint32_t y_size);
         void UpdateSceneTexture(std::size_t scene_texture_id);
         void ClearAllMarks();
         void MarkClean(int id);
@@ -25,8 +27,12 @@ class Gui {
         void MarkWarning(std::int32_t id, rust::Str message);
 
     private:
-        std::array<char, 32> new_globals_name;
-        std::vector<std::array<char, 32>> globals_names;
+        bool ValidVarName(const VarName& name);
+        void RenderGraphPage();
+        void RenderScenePage();
+        void RenderSettingsPage();
+        VarName new_var_name;
+        std::vector<VarName> globals_names;
         std::vector<float> globals_values;
 
         Graph graph;

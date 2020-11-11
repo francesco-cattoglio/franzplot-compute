@@ -11,7 +11,7 @@ pub mod ffi{
         include!("gui.h");
         type Gui;
         fn create_gui_instance(boxed_proxy: Box<RustEventProxy>) -> UniquePtr<Gui>;
-        fn Render(self: &mut Gui);
+        fn Render(self: &mut Gui, x_size: u32, y_size: u32);
         fn UpdateSceneTexture(self: &mut Gui, scene_texture_id: usize);
         fn ClearAllMarks(self: &mut Gui);
         fn MarkClean(self: &mut Gui, node_id: i32);

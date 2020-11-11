@@ -88,12 +88,18 @@ fn main() {
         0.1,
         100.0,
     );
-    let mut camera_controller = CameraController::new(4.0, 40.0);
+    // TODO: camera controller movement currently depends on the frame dt. However,
+    // rotation should NOT depend on it, since it depends on how many pixel I dragged
+    // over the rendered scene, which kinda makes it already framerate-agnostic
+    // OTOH, we might want to make it frame *dimension* agnostic!
+    let mut camera_controller = CameraController::new(4.0, 600.0);
     let mut last_mouse_pos = winit::dpi::PhysicalPosition::<f64>::new(0.0, 0.0);
     let mut mouse_pressed: bool = false;
     // Set up dear imgui
     let mut imgui = imgui::Context::create();
     let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
+    // TODO: decide what to do about the hidpi. This requires a bit of investigation, especially
+    // when we want to support both retina and small screen displays
     platform.attach_window(
         imgui.io_mut(),
         &window,
@@ -300,7 +306,8 @@ fn main() {
                     }
                     Err(wgpu::SwapChainError::Outdated) => {
                     // Recreate the swap chain to mitigate race condition on drawing surface resize.
-                    // See https://github.com/parasyte/pixels/issues/121
+                    // See https://github.com/parasyte/pixels/issues/121 and relevant fix:
+                    // https://github.com/svenstaro/pixels/commit/b8b4fee8493a0d63d48f7dbc10032736022de677
                     device_manager.update_swapchain(&window);
                     device_manager
                         .swap_chain
@@ -335,7 +342,8 @@ fn main() {
                 .prepare_frame(imgui.io_mut(), &window)
                 .expect("Failed to prepare frame");
             let ui = imgui.frame();
-            gui_unique_ptr.Render();
+            let size = window.inner_size().to_logical(hidpi_factor);
+            gui_unique_ptr.Render(size.width, size.height);
 
             let mut encoder: wgpu::CommandEncoder =
                 device_manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
