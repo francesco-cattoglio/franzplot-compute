@@ -103,6 +103,7 @@ fn main() {
     let font_size = (12.0 * hidpi_factor) as f32;
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
+
     let glyph_range = FontGlyphRanges::from_slice(&[
         0x0020, 0x00FF, // Basic Latin + Latin Supplement
         0x2200, 0x22FF, // this range contains the miscellaneous symbols and arrows
@@ -124,7 +125,15 @@ fn main() {
     cpp_gui::ffi::init_imnodes();
     let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance(Box::new(event_loop.create_proxy()));
 
-    let mut renderer = Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, rendering::SWAPCHAIN_FORMAT);
+    let mut renderer = imgui_wgpu::RendererConfig::new()
+        .set_texture_format(rendering::SWAPCHAIN_FORMAT)
+        .build(&mut imgui, &device_manager.device, &device_manager.queue);
+    use wgpu::TextureUsage;
+    let scene_texture = imgui_wgpu::TextureConfig::new(1280, 800)
+        .set_label("scene texture config")
+        .set_usage(TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED | TextureUsage::COPY_DST)
+        .build(&device_manager.device, &renderer);
+    let scene_texture_id = renderer.textures.insert(scene_texture);
     let mut last_frame = std::time::Instant::now();
 
     let mut last_cursor = None;
@@ -170,8 +179,7 @@ fn main() {
     //let dbg_vect = copy_buffer_as_f32(out_buff, &device_manager.device);
     //println!("debugged buffer contains {:?}", dbg_vect);
 
-    // let renderer = renderer::Renderer::new(&device_manager, out_buffer_slice);
-    let mut scene_renderer = rendering::Renderer::new(&device_manager);
+    let mut scene_renderer = rendering::SceneRenderer::new(&device_manager);
     scene_renderer.update_renderables(&device_manager.device, &chain);
 
     let mut elapsed_time = std::time::Duration::from_secs(0);
@@ -288,11 +296,15 @@ fn main() {
 
             //// TODO: currently bugged due to "uneven" initialization of context
             //chain.update_globals(&device_manager.queue, &context);
-            chain.run_chain(&device_manager.device, &device_manager.queue, &globals);
-            let mut frame = device_manager.swap_chain.get_current_frame()
+            let frame = device_manager.swap_chain.get_current_frame()
                 .expect("could not get next frame");
 
-            scene_renderer.render(&device_manager, &mut frame, &camera);
+            if let Some(scene_texture) = renderer.textures.get(scene_texture_id) {
+                chain.run_chain(&device_manager.device, &device_manager.queue, &globals);
+                scene_renderer.render(&device_manager, scene_texture.view(), &camera);
+            } else {
+                panic!("no texture for rendering!");
+            }
 
             // imgui stuff
             let _delta_s = last_frame.elapsed();
@@ -319,7 +331,7 @@ fn main() {
                     attachment: &frame.output.view,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Load,
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                         store: true,
                     },
                 }],

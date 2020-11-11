@@ -59,8 +59,8 @@ impl Uniforms {
 // - or a shader that computes normals on the fly (can be tricky, just imagine
 // the issues for normal computation for a parametrix sphere or for z=sqrt(x + y))
 
-#[allow(unused)]
-pub struct Renderer {
+pub struct SceneRenderer {
+    camera: Camera,
     pipeline_2d: wgpu::RenderPipeline,
     renderables: Vec<wgpu::RenderBundle>,
     texture: texture::Texture,
@@ -113,7 +113,7 @@ wgpu::BindGroupLayoutDescriptor {
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const SWAPCHAIN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
 
-impl Renderer {
+impl SceneRenderer {
     pub fn new(manager: &device_manager::Manager) -> Self {
         let camera = Camera::new(
             (-3.5, -3.5, 3.5).into(),
@@ -174,6 +174,7 @@ impl Renderer {
         let renderables = Vec::<wgpu::RenderBundle>::new();
 
         Self {
+            camera,
             clear_color,
             renderables,
             texture: diffuse_texture,
@@ -268,7 +269,7 @@ impl Renderer {
         }
     }
 
-    pub fn render(&self, manager: &device_manager::Manager, frame: &mut wgpu::SwapChainFrame, camera: &Camera) {
+    pub fn render(&self, manager: &device_manager::Manager, target_texture: &wgpu::TextureView, camera: &Camera) {
         // update the uniform buffer containing the camera
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(&camera);
@@ -284,11 +285,11 @@ impl Renderer {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[
                     wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment: &frame.output.view,
+                        attachment: target_texture,
                         resolve_target: None,
                         ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(self.clear_color),
-                        store: true,
+                            load: wgpu::LoadOp::Clear(self.clear_color),
+                            store: true,
                         },
                     }
                 ],
@@ -303,12 +304,6 @@ impl Renderer {
             });
 
             // actual render call
-            //render_pass.set_pipeline(&self.pipeline);
-            //render_pass.set_vertex_buffer(0, self.model.vertex_buffer_slice);
-            //render_pass.set_index_buffer(self.model.index_buffer.slice(..));
-            //render_pass.set_bind_group(0, &self.texture_bind_group, &[]);
-            //render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
-            //render_pass.draw_indexed(0..self.model.num_elements, 0, 0..1);
             render_pass.execute_bundles(self.renderables.iter());
         }
         let render_queue = encoder.finish();
@@ -317,8 +312,9 @@ impl Renderer {
 }
 
 // UTILITY FUNCTIONS
+// TODO: decide about moving this into the SceneRenderer impl block
 
-fn block_to_renderable(device: &wgpu::Device, compute_block: &ComputeBlock, renderer: &Renderer) -> Option<wgpu::RenderBundle> {
+fn block_to_renderable(device: &wgpu::Device, compute_block: &ComputeBlock, renderer: &SceneRenderer) -> Option<wgpu::RenderBundle> {
         match compute_block {
             ComputeBlock::Rendering(data) => {
                 let mut render_bundle_encoder = device.create_render_bundle_encoder(
