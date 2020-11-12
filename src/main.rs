@@ -39,7 +39,8 @@ pub enum CustomEvent {
     TestMessage(String),
     UpdateGlobals(Vec<(String, f32)>),
     UpdateCamera(f32, f32),
-    FreezeMouseCursor(bool),
+    LockMouseCursor(u32, u32),
+    UnlockMouseCursor,
 }
 
 use std::io::prelude::*;
@@ -92,7 +93,7 @@ fn main() {
     // rotation should NOT depend on it, since it depends on how many pixel I dragged
     // over the rendered scene, which kinda makes it already framerate-agnostic
     // OTOH, we might want to make it frame *dimension* agnostic!
-    let mut camera_controller = CameraController::new(4.0, 0.25);
+    let mut camera_controller = CameraController::new(4.0, 0.1);
     // Set up dear imgui
     let mut imgui = imgui::Context::create();
     let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
@@ -187,7 +188,7 @@ fn main() {
 
     let mut frame_duration = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
-    let mut old_mouse_position = winit::dpi::PhysicalPosition::new(0, 0);
+    let mut frozen_mouse_position = winit::dpi::PhysicalPosition::new(0, 0);
     let mut freeze_mouse_position = false;
     event_loop.run(move |event, _, control_flow| {
         // BEWARE: keep in mind that if you go multi-window
@@ -289,7 +290,11 @@ fn main() {
             // Emitted after all RedrawRequested events have been processed and control flow is about to be taken away from the program.
             // If there are no RedrawRequested events, it is emitted immediately after MainEventsCleared.
             Event::RedrawEventsCleared => {
-                // Nothing to do after rendering, for now
+                // If we are dragging onto something that requires the mouse pointer to stay fixed,
+                // this is the moment in which we move it back to its old position.
+                if freeze_mouse_position {
+                    window.set_cursor_position(frozen_mouse_position);
+                }
             }
             // Emitted when an event is sent from EventLoopProxy::send_event
             // This is where we handle all the events generated in our cpp gui
@@ -338,8 +343,14 @@ fn main() {
                     CustomEvent::UpdateCamera(dx, dy) => {
                         camera_controller.process_mouse(dx, dy);
                     }
-                    CustomEvent::FreezeMouseCursor(status) => {
-                        freeze_mouse_position = status;
+                    CustomEvent::LockMouseCursor(x, y) => {
+                        frozen_mouse_position = winit::dpi::LogicalPosition::new(x, y).to_physical(hidpi_factor);
+                        window.set_cursor_visible(false);
+                        freeze_mouse_position = true;
+                    }
+                    CustomEvent::UnlockMouseCursor => {
+                        freeze_mouse_position = false;
+                        window.set_cursor_visible(true);
                     }
                 }
             }
@@ -361,22 +372,10 @@ fn main() {
                         device_manager.resize(physical_size);
                     }
                     Event::WindowEvent{ event: WindowEvent::MouseInput { button, state, .. }, ..} => {
-                        // safety un-freeze feature
+                        // safety un-freeze feature, in case the cpp gui messes something up really bad
                         if button == MouseButton::Left && state == ElementState::Released {
                             freeze_mouse_position = false;
-                        }
-                    }
-                    Event::WindowEvent{ event: WindowEvent::CursorMoved { position, .. }, .. } => {
-                        // When the mouse moves, we need to do either one of these two things:
-                        if freeze_mouse_position {
-                            // If we are dragging onto something that requires the mouse pointer to stay fixed,
-                            // this is the moment in which we move it back to its old position.
-                            // TODO: we should use this result to check for success.
-                            // also: there might be a lock_cursor API sooner then later for winit
-                            window.set_cursor_position(old_mouse_position);
-                        } else {
-                            // otherwise, update the old_mouse_position with the latest updated one.
-                            old_mouse_position = winit::dpi::PhysicalPosition::new(position.x as u32, position.y as u32);
+                            window.set_cursor_visible(true);
                         }
                     }
                     Event::WindowEvent{ event: WindowEvent::KeyboardInput { input, .. }, .. } => {

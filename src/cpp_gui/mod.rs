@@ -27,9 +27,9 @@ pub mod ffi{
         fn print_proxy(boxed: &RustEventProxy, message: &CxxString);
         fn update_global_vars(proxy: &RustEventProxy, names: &CxxVector<CxxString>, values: &CxxVector<f32>);
         fn update_scene_camera(proxy: &RustEventProxy, dx: f32, dy: f32);
-        fn freeze_mouse_cursor(proxy: &RustEventProxy, status: bool);
+        fn lock_mouse_cursor(proxy: &RustEventProxy, x: f32, y: f32);
+        fn unlock_mouse_cursor(proxy: &RustEventProxy);
     }
-
 }
 
 use crate::CustomEvent;
@@ -59,7 +59,11 @@ fn update_scene_camera(proxy: &RustEventProxy, dx: f32, dy: f32) {
     proxy.send_event(CustomEvent::UpdateCamera(dx, dy)).expect("Internal error: main application loop no longer exists");
 }
 
-fn freeze_mouse_cursor(proxy: &RustEventProxy, status: bool) {
-    proxy.send_event(CustomEvent::FreezeMouseCursor(status)).expect("Internal error: main application loop no longer exists");
+fn lock_mouse_cursor(proxy: &RustEventProxy, x: f32, y: f32) {
+    proxy.send_event(CustomEvent::LockMouseCursor(x as u32, y as u32)).expect("Internal error: main application loop no longer exists");
+}
+
+fn unlock_mouse_cursor(proxy: &RustEventProxy) {
+    proxy.send_event(CustomEvent::UnlockMouseCursor).expect("Internal error: main application loop no longer exists");
 }
 
