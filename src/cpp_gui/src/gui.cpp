@@ -105,7 +105,7 @@ void Gui::RenderScenePage() {
     auto avail_space = GetContentRegionAvail();
     // we need to leave a little bit of space, otherwise a vertical scrollbar appears
     // maybe this has to do with the imagebutton borders
-    ImGui::ImageButton((void*) scene_texture_id, ImVec2(avail_space.x, avail_space.y-6));
+    ImGui::ImageButton((void*) scene_texture_id, ImVec2(avail_space.x, avail_space.y), ImVec2(0, 0), ImVec2(1,1), 0);
     // We need to communicate to Winit where we want to lock the mouse. This is because
     // we use a proxy to communicate, and that always takes a frame.
     if (ImGui::IsItemActivated()) {
