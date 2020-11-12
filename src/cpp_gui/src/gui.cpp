@@ -106,10 +106,16 @@ void Gui::RenderScenePage() {
     // we need to leave a little bit of space, otherwise a vertical scrollbar appears
     // maybe this has to do with the imagebutton borders
     ImGui::ImageButton((void*) scene_texture_id, ImVec2(avail_space.x, avail_space.y-6));
+    if (ImGui::IsItemActivated()) {
+        ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
+        freeze_mouse_cursor(*boxed_proxy, true);
+    }
     if (ImGui::IsItemActive()){
         ImVec2 value_raw = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left, 0.0f);
-        ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
         update_scene_camera(*boxed_proxy, value_raw.x, value_raw.y);
+    }
+    if (ImGui::IsItemDeactivated()) {
+        freeze_mouse_cursor(*boxed_proxy, false);
     }
     ImGui::Columns(1);
     // TODO: when cxx allows us, use arrays for pushing updated constants!

@@ -18,9 +18,9 @@
         "data": {
                 "Curve": {
                         "interval": 0,
-                        "fx": "0",
-                        "fy": "3*sin(r)",
-                        "fz": "3*cos(r)"
+                        "fx": "1",
+                        "fy": "2*sin(r)",
+                        "fz": "2*cos(r)"
                 }
         }
 },

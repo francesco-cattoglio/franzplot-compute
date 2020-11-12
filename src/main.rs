@@ -2,8 +2,7 @@ use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
 };
-use imgui::*;
-use imgui_wgpu::Renderer;
+use imgui::{FontSource, FontGlyphRanges};
 use serde::{Deserialize, Serialize};
 
 mod util;
@@ -40,6 +39,7 @@ pub enum CustomEvent {
     TestMessage(String),
     UpdateGlobals(Vec<(String, f32)>),
     UpdateCamera(f32, f32),
+    FreezeMouseCursor(bool),
 }
 
 use std::io::prelude::*;
@@ -92,9 +92,7 @@ fn main() {
     // rotation should NOT depend on it, since it depends on how many pixel I dragged
     // over the rendered scene, which kinda makes it already framerate-agnostic
     // OTOH, we might want to make it frame *dimension* agnostic!
-    let mut camera_controller = CameraController::new(4.0, 600.0);
-    let mut last_mouse_pos = winit::dpi::PhysicalPosition::<f64>::new(0.0, 0.0);
-    let mut mouse_pressed: bool = false;
+    let mut camera_controller = CameraController::new(4.0, 0.25);
     // Set up dear imgui
     let mut imgui = imgui::Context::create();
     let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
@@ -142,9 +140,6 @@ fn main() {
         .build(&device_manager.device, &renderer);
     let scene_texture_id = renderer.textures.insert(scene_texture);
     gui_unique_ptr.UpdateSceneTexture(scene_texture_id.id());
-    let mut last_frame = std::time::Instant::now();
-
-    let mut last_cursor = None;
 
     //dbg!(&all_descriptors);
     let mut chain = compute_chain::ComputeChain::new();
@@ -190,198 +185,209 @@ fn main() {
     let mut scene_renderer = rendering::SceneRenderer::new(&device_manager);
     scene_renderer.update_renderables(&device_manager.device, &chain);
 
-    let mut elapsed_time = std::time::Duration::from_secs(0);
+    let mut frame_duration = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
+    let mut old_mouse_position = winit::dpi::PhysicalPosition::new(0, 0);
+    let mut freeze_mouse_position = false;
     event_loop.run(move |event, _, control_flow| {
-        let now = std::time::Instant::now();
-
-        let frame_duration = now.duration_since(old_instant);
-        if frame_duration.as_millis() > 0 {
-            //println!("frame time: {} ms", frame_duration.as_millis());
-            elapsed_time += frame_duration;
-        }
-        camera_controller.update_camera(&mut camera, frame_duration);
-        old_instant = now;
+        // BEWARE: keep in mind that if you go multi-window
+        // you need to redo the whole handling of the events!
+        // Please note: if you want to know in which order events
+        // are dispatched to the handler, according to winit docs:
+        // see https://docs.rs/winit/0.22.2/winit/event/index.html
         match event {
-        Event::WindowEvent {
-            ref event,
-            window_id,
-        } if window_id == window.id() => {
-                match event {
-                    WindowEvent::CloseRequested => {
-                        *control_flow = ControlFlow::Exit
-                    },
-                    WindowEvent::KeyboardInput { input, .. } => match input {
-                        KeyboardInput {
-                            state: ElementState::Pressed,
-                            virtual_keycode: Some(VirtualKeyCode::Escape),
-                            ..
-                        } => *control_flow = ControlFlow::Exit,
-                        KeyboardInput {
-                            virtual_keycode: Some(key),
-                            state,
-                            ..
-                        } => camera_controller.process_keyboard(*key, *state),
-                        _ => {}
-                    },
-                    WindowEvent::MouseInput {
-                        button: winit::event::MouseButton::Left,
-                        state,
-                        ..
-                    } => {
-                        mouse_pressed = *state == ElementState::Pressed;
-                    }
-                WindowEvent::Resized(physical_size) => {
-                    device_manager.resize(*physical_size);
+            // This event type is useful as a place to put code that should be done before you start processing events
+            Event::NewEvents(_start_cause) => {
+                let now = std::time::Instant::now();
+                frame_duration = now.duration_since(old_instant);
+                //println!("frame time: {} ms", frame_duration.as_millis());
+                imgui.io_mut().update_delta_time(frame_duration); // this function only computes imgui internal time delta
+                old_instant = now;
+            }
+            // Emitted when all of the event loop's input events have been processed and redraw processing is about to begin.
+            Event::MainEventsCleared => {
+                // update the chain
+                chain.run_chain(&device_manager.device, &device_manager.queue, &globals);
+                // prepare gui rendering
+                camera_controller.update_camera(&mut camera, frame_duration);
+                platform
+                    .prepare_frame(imgui.io_mut(), &window)
+                    .expect("Failed to prepare frame");
+                window.request_redraw();
+            }
+            // Begin rendering. During each iteration of the event loop, Winit will aggregate duplicate redraw requests
+            // into a single event, to help avoid duplicating rendering work.
+            Event::RedrawRequested(_window_id) => {
+                // redraw the scene to the texture
+                if let Some(scene_texture) = renderer.textures.get(scene_texture_id) {
+                    scene_renderer.render(&device_manager, scene_texture.view(), &camera);
+                } else {
+                    panic!("no texture for rendering!");
                 }
-                _ => {}
-                }
-        },
-        Event::WindowEvent {
-            event: WindowEvent::ScaleFactorChanged { .. },
-            ..
-        } => {
-            // hidpi_factor = scale_factor;
-        },
-        Event::UserEvent(ref user_event) => {
-            match user_event {
-                CustomEvent::JsonScene(json_string) => {
-                    let json_scene: SceneDescriptor = serde_jsonrc::from_str(&json_string).unwrap();
-                    gui_unique_ptr.ClearAllMarks();
-                    globals = compute_chain::Globals::new(&device_manager.device, json_scene.global_vars);
-                    let scene_result = chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
-                    scene_renderer.update_renderables(&device_manager.device, &chain);
-                    for (block_id, error) in scene_result.iter() {
-                        let id = *block_id;
-                        match error {
-                            BlockCreationError::IncorrectAttributes(message) => {
-                                gui_unique_ptr.MarkError(id, message);
-                                println!("incorrect attributes error for {}: {}", id, &message);
-                            },
-                            BlockCreationError::InputNotBuilt(message) => {
-                                gui_unique_ptr.MarkWarning(id, message);
-                                println!("input not build warning for {}: {}", id, &message);
-                            },
-                            BlockCreationError::InputMissing(message) => {
-                                gui_unique_ptr.MarkError(id, message);
-                                println!("missing input error for {}: {}", id, &message);
-                            },
-                            BlockCreationError::InputInvalid(message) => {
-                                gui_unique_ptr.MarkError(id, message);
-                                println!("invalid input error for {}: {}", id, &message);
-                            },
-                            BlockCreationError::InternalError(message) => {
-                                println!("internal error: {}", &message);
-                                panic!();
-                            },
+
+                // get the framebuffer frame. We might need to re-create the swapchain if for some
+                // reason our current one is outdated
+                let maybe_frame = device_manager
+                    .swap_chain
+                    .get_current_frame();
+                let frame = match maybe_frame {
+                        Ok(swapchain_frame) => {
+                            swapchain_frame
+                        }
+                        Err(wgpu::SwapChainError::Outdated) => {
+                        // Recreate the swap chain to mitigate race condition on drawing surface resize.
+                        // See https://github.com/parasyte/pixels/issues/121 and relevant fix:
+                        // https://github.com/svenstaro/pixels/commit/b8b4fee8493a0d63d48f7dbc10032736022de677
+                        device_manager.update_swapchain(&window);
+                        device_manager
+                            .swap_chain
+                            .get_current_frame()
+                            .unwrap()
+                        }
+                        Err(wgpu::SwapChainError::OutOfMemory) => {
+                            panic!("Out Of Memory error in frame rendering");
+                        }
+                        Err(wgpu::SwapChainError::Timeout) => {
+                            panic!("Timeout error in frame rendering");
+                        }
+                        Err(wgpu::SwapChainError::Lost) => {
+                            panic!("Frame Lost error in frame rendering");
+                        }
+                };
+
+                // use the acquired frame for a new rendering pass, which will clear the screen and
+                // render imgui
+                let mut encoder: wgpu::CommandEncoder =
+                    device_manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+                let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
+                        attachment: &frame.output.view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                            store: true,
+                        },
+                    }],
+                    depth_stencil_attachment: None,
+                });
+
+                // actual imgui rendering
+                let ui = imgui.frame();
+                let size = window.inner_size().to_logical(hidpi_factor);
+                gui_unique_ptr.Render(size.width, size.height);
+                platform.prepare_render(&ui, &window);
+                renderer
+                    .render(ui.render(), &device_manager.queue, &device_manager.device, &mut rpass)
+                    .expect("Imgui rendering failed");
+
+                drop(rpass);
+
+                // submit the framebuffer rendering pass
+                device_manager.queue.submit(Some(encoder.finish()));
+            }
+            // Emitted after all RedrawRequested events have been processed and control flow is about to be taken away from the program.
+            // If there are no RedrawRequested events, it is emitted immediately after MainEventsCleared.
+            Event::RedrawEventsCleared => {
+                // Nothing to do after rendering, for now
+            }
+            // Emitted when an event is sent from EventLoopProxy::send_event
+            // This is where we handle all the events generated in our cpp gui
+            // TODO: maybe move this somewhere else, it does look already massive and will grow even more
+            // over time
+            Event::UserEvent(user_event) => {
+                match user_event {
+                    CustomEvent::JsonScene(json_string) => {
+                        let json_scene: SceneDescriptor = serde_jsonrc::from_str(&json_string).unwrap();
+                        gui_unique_ptr.ClearAllMarks();
+                        globals = compute_chain::Globals::new(&device_manager.device, json_scene.global_vars);
+                        let scene_result = chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
+                        scene_renderer.update_renderables(&device_manager.device, &chain);
+                        for (block_id, error) in scene_result.iter() {
+                            let id = *block_id;
+                            match error {
+                                BlockCreationError::IncorrectAttributes(message) => {
+                                    gui_unique_ptr.MarkError(id, message);
+                                    println!("incorrect attributes error for {}: {}", id, &message);
+                                },
+                                BlockCreationError::InputNotBuilt(message) => {
+                                    gui_unique_ptr.MarkWarning(id, message);
+                                    println!("input not build warning for {}: {}", id, &message);
+                                },
+                                BlockCreationError::InputMissing(message) => {
+                                    gui_unique_ptr.MarkError(id, message);
+                                    println!("missing input error for {}: {}", id, &message);
+                                },
+                                BlockCreationError::InputInvalid(message) => {
+                                    gui_unique_ptr.MarkError(id, message);
+                                    println!("invalid input error for {}: {}", id, &message);
+                                },
+                                BlockCreationError::InternalError(message) => {
+                                    println!("internal error: {}", &message);
+                                    panic!();
+                                },
+                            }
                         }
                     }
-                }
-                CustomEvent::TestMessage(string) => {
-                    println!("the event loop received the following message: {}", string);
-                }
-                CustomEvent::UpdateGlobals(list) => {
-                    globals.update(&device_manager.queue, list);
-                }
-                CustomEvent::UpdateCamera(dx, dy) => {
-                    camera_controller.process_mouse(*dx, *dy);
+                    CustomEvent::TestMessage(string) => {
+                        println!("the event loop received the following message: {}", string);
+                    }
+                    CustomEvent::UpdateGlobals(list) => {
+                        globals.update(&device_manager.queue, &list);
+                    }
+                    CustomEvent::UpdateCamera(dx, dy) => {
+                        camera_controller.process_mouse(dx, dy);
+                    }
+                    CustomEvent::FreezeMouseCursor(status) => {
+                        freeze_mouse_position = status;
+                    }
                 }
             }
-        },
-        Event::RedrawRequested(_) => {
-            // update variables and do the actual rendering
-            // now, update the variables and run the chain again
-            //let time_var: &mut f32 = context.globals.get_mut(&"t".to_string()).unwrap();
-            //*time_var = elapsed_time.as_secs_f32();
-
-            //// TODO: currently bugged due to "uneven" initialization of context
-            //chain.update_globals(&device_manager.queue, &context);
-            let maybe_frame = device_manager
-                .swap_chain
-                .get_current_frame();
-                    //maybe_frame.expect("Unable to get next frame")
-            let frame = match maybe_frame {
-                    Ok(swapchain_frame) => {
-                        swapchain_frame
-                    }
-                    Err(wgpu::SwapChainError::Outdated) => {
-                    // Recreate the swap chain to mitigate race condition on drawing surface resize.
-                    // See https://github.com/parasyte/pixels/issues/121 and relevant fix:
-                    // https://github.com/svenstaro/pixels/commit/b8b4fee8493a0d63d48f7dbc10032736022de677
-                    device_manager.update_swapchain(&window);
-                    device_manager
-                        .swap_chain
-                        .get_current_frame()
-                        .unwrap()
-                    }
-                    Err(wgpu::SwapChainError::OutOfMemory) => {
-                        panic!("Out Of Memory error in frame rendering");
-                    }
-                    Err(wgpu::SwapChainError::Timeout) => {
-                        panic!("Timeout error in frame rendering");
-                    }
-                    Err(wgpu::SwapChainError::Lost) => {
-                        panic!("Frame Lost error in frame rendering");
-                    }
-            };
-
-            if let Some(scene_texture) = renderer.textures.get(scene_texture_id) {
-                chain.run_chain(&device_manager.device, &device_manager.queue, &globals);
-                scene_renderer.render(&device_manager, scene_texture.view(), &camera);
-            } else {
-                panic!("no texture for rendering!");
+            // match a very specific WindowEvent: user-requested closing of the application
+            Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
+                *control_flow = ControlFlow::Exit;
             }
+            // catch-all for remaining events (WindowEvent and DeviceEvent). We do this because
+            // we want imgui to handle it first, and then do any kind of "post-processing"
+            // that we might be thinking of.
+            other_event => {
+                // in here, imgui will process keyboard and mouse status!
+                platform.handle_event(imgui.io_mut(), &window, &other_event);
 
-            // imgui stuff
-            let _delta_s = last_frame.elapsed();
-            let now = std::time::Instant::now();
-            imgui.io_mut().update_delta_time(now - last_frame);
-            last_frame = now;
+                // "post-processing" of input
+                match other_event {
+                    // if the window was resized, we need to resize the swapchain as well!
+                    Event::WindowEvent{ event: WindowEvent::Resized(physical_size), .. } => {
+                        device_manager.resize(physical_size);
+                    }
+                    Event::WindowEvent{ event: WindowEvent::MouseInput { button, state, .. }, ..} => {
+                        // safety un-freeze feature
+                        if button == MouseButton::Left && state == ElementState::Released {
+                            freeze_mouse_position = false;
+                        }
+                    }
+                    Event::WindowEvent{ event: WindowEvent::CursorMoved { position, .. }, .. } => {
+                        // When the mouse moves, we need to do either one of these two things:
+                        if freeze_mouse_position {
+                            // If we are dragging onto something that requires the mouse pointer to stay fixed,
+                            // this is the moment in which we move it back to its old position.
+                            // TODO: we should use this result to check for success.
+                            // also: there might be a lock_cursor API sooner then later for winit
+                            window.set_cursor_position(old_mouse_position);
+                        } else {
+                            // otherwise, update the old_mouse_position with the latest updated one.
+                            old_mouse_position = winit::dpi::PhysicalPosition::new(position.x as u32, position.y as u32);
+                        }
+                    }
+                    Event::WindowEvent{ event: WindowEvent::KeyboardInput { input, .. }, .. } => {
+                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Escape) {
+                            *control_flow = ControlFlow::Exit;
+                        }
+                    }
 
-            platform
-                .prepare_frame(imgui.io_mut(), &window)
-                .expect("Failed to prepare frame");
-            let ui = imgui.frame();
-            let size = window.inner_size().to_logical(hidpi_factor);
-            gui_unique_ptr.Render(size.width, size.height);
-
-            let mut encoder: wgpu::CommandEncoder =
-                device_manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-
-            if last_cursor != Some(ui.mouse_cursor()) {
-                last_cursor = Some(ui.mouse_cursor());
-                platform.prepare_render(&ui, &window);
+                    _ => {}
+                }
             }
-
-            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.output.view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: true,
-                    },
-                }],
-                depth_stencil_attachment: None,
-            });
-
-            renderer
-                .render(ui.render(), &device_manager.queue, &device_manager.device, &mut rpass)
-                .expect("Rendering failed");
-
-            drop(rpass);
-
-            device_manager.queue.submit(Some(encoder.finish()));
         }
-        Event::MainEventsCleared => {
-            // RedrawRequested will only trigger once, unless we manually
-            // request it.
-            window.request_redraw();
-        }
-        Event::RedrawEventsCleared => {
-        },
-        _ => {}
-        }
-        platform.handle_event(imgui.io_mut(), &window, &event);
     });
 }
