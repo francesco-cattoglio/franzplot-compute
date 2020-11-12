@@ -11,6 +11,7 @@ pub mod ffi{
         include!("gui.h");
         type Gui;
         fn create_gui_instance(boxed_proxy: Box<RustEventProxy>) -> UniquePtr<Gui>;
+        fn test_scene_ref(ref_state: Box<RustState>);
         fn Render(self: &mut Gui, x_size: u32, y_size: u32);
         fn UpdateSceneTexture(self: &mut Gui, scene_texture_id: usize);
         fn ClearAllMarks(self: &mut Gui);
@@ -23,17 +24,25 @@ pub mod ffi{
     extern "Rust" {
         // All rust functions that we need to interact with the loop event proxy
         type RustEventProxy;
+        type RustState;
         fn process_json(proxy: &RustEventProxy, json: &CxxString);
         fn print_proxy(boxed: &RustEventProxy, message: &CxxString);
         fn update_global_vars(proxy: &RustEventProxy, names: &CxxVector<CxxString>, values: &CxxVector<f32>);
         fn update_scene_camera(proxy: &RustEventProxy, dx: f32, dy: f32);
         fn lock_mouse_cursor(proxy: &RustEventProxy, x: f32, y: f32);
         fn unlock_mouse_cursor(proxy: &RustEventProxy);
+        fn print_scene(scene: Box<RustState>);
     }
 }
 
 use crate::CustomEvent;
+use crate::state;
 type RustEventProxy = winit::event_loop::EventLoopProxy<super::CustomEvent>;
+type RustState<'a> = &'a state::State;
+
+fn print_scene(state: Box<RustState>) {
+    state.test_print();
+}
 
 fn print_proxy(proxy: &RustEventProxy, message: &cxx::CxxString) {
     let message = CustomEvent::TestMessage(message.to_str().unwrap().to_string());

@@ -11,6 +11,7 @@ typedef std::array<char, 32> VarName;
 namespace franzplot_gui {
 
 struct RustEventProxy;
+struct RustState;
 
 class Gui {
     public:
@@ -41,5 +42,6 @@ class Gui {
 };
 
 std::unique_ptr<Gui> create_gui_instance(rust::Box<RustEventProxy> boxed_proxy);
+void test_scene_ref(rust::Box<RustState> rust_scene);
 
 }

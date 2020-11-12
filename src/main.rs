@@ -9,6 +9,7 @@ mod util;
 mod camera;
 mod texture;
 mod rendering;
+mod state;
 mod device_manager;
 mod compute_chain;
 mod compute_block;
@@ -130,6 +131,12 @@ fn main() {
 
     cpp_gui::ffi::init_imnodes();
     let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance(Box::new(event_loop.create_proxy()));
+
+    // some testing with fancy FFI
+    let mut state_1 = state::State { value: 1 };
+    cpp_gui::ffi::test_scene_ref(Box::new(&state_1));
+    state_1.value += 1;
+    cpp_gui::ffi::test_scene_ref(Box::new(&state_1));
 
     let mut renderer = imgui_wgpu::RendererConfig::new()
         .set_texture_format(rendering::SWAPCHAIN_FORMAT)

@@ -20,6 +20,10 @@ Gui::Gui(rust::Box<RustEventProxy>& boxed_proxy)
 void Gui::test_boxed_proxy() {
 }
 
+void test_scene_ref(rust::Box<RustState> rust_scene) {
+    print_scene(std::move(rust_scene));
+}
+
 void Gui::RenderGraphPage() {
     using namespace ImGui;
     bool test_button = ImGui::Button("Render!");
