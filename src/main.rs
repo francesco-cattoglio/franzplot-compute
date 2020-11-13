@@ -132,12 +132,6 @@ fn main() {
     cpp_gui::ffi::init_imnodes();
     let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance(Box::new(event_loop.create_proxy()));
 
-    // some testing with fancy FFI
-    let mut state_1 = state::State { value: 1 };
-    cpp_gui::ffi::test_scene_ref(Box::new(&state_1));
-    state_1.value += 1;
-    cpp_gui::ffi::test_scene_ref(Box::new(&state_1));
-
     let mut renderer = imgui_wgpu::RendererConfig::new()
         .set_texture_format(rendering::SWAPCHAIN_FORMAT)
         .build(&mut imgui, &device_manager.device, &device_manager.queue);
@@ -193,6 +187,16 @@ fn main() {
     let mut scene_renderer = rendering::SceneRenderer::new(&device_manager);
     scene_renderer.update_renderables(&device_manager.device, &chain);
 
+    // assemble the application state by moving all the variables inside it
+    let mut app_state = state::State {
+        camera,
+        camera_controller,
+        chain,
+        globals,
+        manager: device_manager,
+        scene_renderer,
+    };
+
     let mut frame_duration = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
     let mut frozen_mouse_position = winit::dpi::PhysicalPosition::new(0, 0);
@@ -215,9 +219,9 @@ fn main() {
             // Emitted when all of the event loop's input events have been processed and redraw processing is about to begin.
             Event::MainEventsCleared => {
                 // update the chain
-                chain.run_chain(&device_manager.device, &device_manager.queue, &globals);
+                app_state.chain.run_chain(&app_state.manager.device, &app_state.manager.queue, &app_state.globals);
                 // prepare gui rendering
-                camera_controller.update_camera(&mut camera, frame_duration);
+                app_state.camera_controller.update_camera(&mut app_state.camera, frame_duration);
                 platform
                     .prepare_frame(imgui.io_mut(), &window)
                     .expect("Failed to prepare frame");
@@ -228,14 +232,14 @@ fn main() {
             Event::RedrawRequested(_window_id) => {
                 // redraw the scene to the texture
                 if let Some(scene_texture) = renderer.textures.get(scene_texture_id) {
-                    scene_renderer.render(&device_manager, scene_texture.view(), &camera);
+                    app_state.scene_renderer.render(&app_state.manager, scene_texture.view(), &app_state.camera);
                 } else {
                     panic!("no texture for rendering!");
                 }
 
                 // get the framebuffer frame. We might need to re-create the swapchain if for some
                 // reason our current one is outdated
-                let maybe_frame = device_manager
+                let maybe_frame = app_state.manager
                     .swap_chain
                     .get_current_frame();
                 let frame = match maybe_frame {
@@ -246,8 +250,8 @@ fn main() {
                         // Recreate the swap chain to mitigate race condition on drawing surface resize.
                         // See https://github.com/parasyte/pixels/issues/121 and relevant fix:
                         // https://github.com/svenstaro/pixels/commit/b8b4fee8493a0d63d48f7dbc10032736022de677
-                        device_manager.update_swapchain(&window);
-                        device_manager
+                        app_state.manager.update_swapchain(&window);
+                        app_state.manager
                             .swap_chain
                             .get_current_frame()
                             .unwrap()
@@ -266,7 +270,7 @@ fn main() {
                 // use the acquired frame for a new rendering pass, which will clear the screen and
                 // render imgui
                 let mut encoder: wgpu::CommandEncoder =
-                    device_manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+                    app_state.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
@@ -286,13 +290,13 @@ fn main() {
                 gui_unique_ptr.Render(size.width, size.height);
                 platform.prepare_render(&ui, &window);
                 renderer
-                    .render(ui.render(), &device_manager.queue, &device_manager.device, &mut rpass)
+                    .render(ui.render(), &app_state.manager.queue, &app_state.manager.device, &mut rpass)
                     .expect("Imgui rendering failed");
 
                 drop(rpass);
 
                 // submit the framebuffer rendering pass
-                device_manager.queue.submit(Some(encoder.finish()));
+                app_state.manager.queue.submit(Some(encoder.finish()));
             }
             // Emitted after all RedrawRequested events have been processed and control flow is about to be taken away from the program.
             // If there are no RedrawRequested events, it is emitted immediately after MainEventsCleared.
@@ -312,9 +316,9 @@ fn main() {
                     CustomEvent::JsonScene(json_string) => {
                         let json_scene: SceneDescriptor = serde_jsonrc::from_str(&json_string).unwrap();
                         gui_unique_ptr.ClearAllMarks();
-                        globals = compute_chain::Globals::new(&device_manager.device, json_scene.global_vars);
-                        let scene_result = chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
-                        scene_renderer.update_renderables(&device_manager.device, &chain);
+                        app_state.globals = compute_chain::Globals::new(&app_state.manager.device, json_scene.global_vars);
+                        let scene_result = app_state.chain.set_scene(&app_state.manager.device, &app_state.globals, json_scene.descriptors);
+                        app_state.scene_renderer.update_renderables(&app_state.manager.device, &app_state.chain);
                         for (block_id, error) in scene_result.iter() {
                             let id = *block_id;
                             match error {
@@ -345,10 +349,10 @@ fn main() {
                         println!("the event loop received the following message: {}", string);
                     }
                     CustomEvent::UpdateGlobals(list) => {
-                        globals.update(&device_manager.queue, &list);
+                        app_state.globals.update(&app_state.manager.queue, &list);
                     }
                     CustomEvent::UpdateCamera(dx, dy) => {
-                        camera_controller.process_mouse(dx, dy);
+                        app_state.camera_controller.process_mouse(dx, dy);
                     }
                     CustomEvent::LockMouseCursor(x, y) => {
                         frozen_mouse_position = winit::dpi::LogicalPosition::new(x, y).to_physical(hidpi_factor);
@@ -376,7 +380,7 @@ fn main() {
                 match other_event {
                     // if the window was resized, we need to resize the swapchain as well!
                     Event::WindowEvent{ event: WindowEvent::Resized(physical_size), .. } => {
-                        device_manager.resize(physical_size);
+                        app_state.manager.resize(physical_size);
                     }
                     Event::WindowEvent{ event: WindowEvent::MouseInput { button, state, .. }, ..} => {
                         // safety un-freeze feature, in case the cpp gui messes something up really bad
