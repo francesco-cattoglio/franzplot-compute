@@ -290,7 +290,13 @@ fn main() {
                 // actual imgui rendering
                 let ui = imgui.frame();
                 let size = window.inner_size().to_logical(hidpi_factor);
-                gui_unique_ptr.Render(&mut app_state, size.width, size.height);
+                let gui_requests = gui_unique_ptr.Render(&mut app_state, size.width, size.height);
+                if gui_requests.freeze_mouse {
+                    freeze_mouse_position = true;
+                    frozen_mouse_position = winit::dpi::LogicalPosition::new(gui_requests.frozen_mouse_x, gui_requests.frozen_mouse_y).to_physical(hidpi_factor);
+                } else {
+                    freeze_mouse_position = false;
+                }
                 platform.prepare_render(&ui, &window);
                 renderer
                     .render(ui.render(), &app_state.manager.queue, &app_state.manager.device, &mut rpass)
@@ -316,37 +322,8 @@ fn main() {
             // over time
             Event::UserEvent(user_event) => {
                 match user_event {
-                    CustomEvent::JsonScene(json_string) => {
-                        let json_scene: SceneDescriptor = serde_jsonrc::from_str(&json_string).unwrap();
-                        gui_unique_ptr.ClearAllMarks();
-                        app_state.globals = compute_chain::Globals::new(&app_state.manager.device, json_scene.global_vars);
-                        let scene_result = app_state.chain.set_scene(&app_state.manager.device, &app_state.globals, json_scene.descriptors);
-                        app_state.scene_renderer.update_renderables(&app_state.manager.device, &app_state.chain);
-                        for (block_id, error) in scene_result.iter() {
-                            let id = *block_id;
-                            match error {
-                                BlockCreationError::IncorrectAttributes(message) => {
-                                    gui_unique_ptr.MarkError(id, message);
-                                    println!("incorrect attributes error for {}: {}", id, &message);
-                                },
-                                BlockCreationError::InputNotBuilt(message) => {
-                                    gui_unique_ptr.MarkWarning(id, message);
-                                    println!("input not build warning for {}: {}", id, &message);
-                                },
-                                BlockCreationError::InputMissing(message) => {
-                                    gui_unique_ptr.MarkError(id, message);
-                                    println!("missing input error for {}: {}", id, &message);
-                                },
-                                BlockCreationError::InputInvalid(message) => {
-                                    gui_unique_ptr.MarkError(id, message);
-                                    println!("invalid input error for {}: {}", id, &message);
-                                },
-                                BlockCreationError::InternalError(message) => {
-                                    println!("internal error: {}", &message);
-                                    panic!();
-                                },
-                            }
-                        }
+                    CustomEvent::JsonScene(_json_string) => {
+                        panic!("signal removed, use direct function instead");
                     }
                     CustomEvent::TestMessage(string) => {
                         println!("the event loop received the following message: {}", string);
@@ -354,7 +331,7 @@ fn main() {
                     CustomEvent::UpdateGlobals(list) => {
                         app_state.globals.update(&app_state.manager.queue, &list);
                     }
-                    CustomEvent::UpdateCamera(dx, dy) => {
+                    CustomEvent::UpdateCamera(_dx, _dy) => {
                         panic!("signal removed, use direct function instead");
                     }
                     CustomEvent::LockMouseCursor(x, y) => {

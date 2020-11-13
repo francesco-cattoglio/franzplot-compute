@@ -39,7 +39,15 @@ void Gui::RenderGraphPage(State& rust_state) {
         json_output += std::string() + "}"; // closes the file
 
         std::cout << "testing took place:\n" << json_output << std::endl;
-        process_json(*boxed_proxy, json_output);
+        ClearAllMarks();
+        auto graph_errors = process_json(rust_state, json_output);
+        for (auto& error : graph_errors) {
+            if (error.is_warning) {
+                MarkWarning(error.node_id, error.message);
+            } else {
+                MarkError(error.node_id, error.message);
+            }
+        }
     }
     Columns(2, "graph edit layout columns", false);
     auto size = CalcTextSize("Use this text for sizing!");
@@ -87,8 +95,9 @@ bool Gui::ValidVarName(const VarName& name) {
     return true;
 }
 
-void Gui::RenderScenePage(State& rust_state) {
+GuiRequests Gui::RenderScenePage(State& rust_state) {
     using namespace ImGui;
+    GuiRequests to_return {0, 0, false};
     Columns(2, "scene layout columns", false);
     auto size = CalcTextSize("Use this text for sizing!");
     SetColumnWidth(-1, size.x);
@@ -106,15 +115,22 @@ void Gui::RenderScenePage(State& rust_state) {
     // We need to communicate to Winit where we want to lock the mouse. This is because
     // we use a proxy to communicate, and that always takes a frame.
     if (ImGui::IsItemActivated()) {
-        ImVec2 mouse_position = ImGui::GetIO().MousePos;
-        lock_mouse_cursor(*boxed_proxy, mouse_position.x, mouse_position.y);
+        ImVec2 mouse_position = ImGui::GetMousePos();
+        to_return.freeze_mouse = true;
+        to_return.frozen_mouse_x = mouse_position.x;
+        to_return.frozen_mouse_y = mouse_position.y;
     } else if (ImGui::IsItemActive()){
         // Since we reset the cursor via Winit, the delta for each frame is exactly
         // the amount taht we would like the camera to move!
         ImVec2 mouse_delta = GetMouseDragDelta(0, 0.0f);
+        ImVec2 mouse_position = ImGui::GetMousePos();
+        to_return.freeze_mouse = true;
+        to_return.frozen_mouse_x = mouse_position.x - mouse_delta.x;
+        to_return.frozen_mouse_y = mouse_position.y - mouse_delta.y;
+
         update_scene_camera(rust_state, mouse_delta.x, mouse_delta.y);
     } else if (ImGui::IsItemDeactivated()) {
-        unlock_mouse_cursor(*boxed_proxy);
+        to_return.freeze_mouse = false;
     }
     ImGui::Columns(1);
     // TODO: when cxx allows us, use arrays for pushing updated constants!
@@ -124,6 +140,7 @@ void Gui::RenderScenePage(State& rust_state) {
     }
     update_global_vars(*boxed_proxy, globals_strings, globals_values);
 
+    return to_return;
 }
 
 void Gui::RenderSettingsPage(State& rust_state) {
@@ -131,8 +148,9 @@ void Gui::RenderSettingsPage(State& rust_state) {
     ImGui::Text("Scene settings will be in this tab");
 }
 
-void Gui::Render(State& rust_state, std::uint32_t x_size, std::uint32_t y_size) {
+GuiRequests Gui::Render(State& rust_state, std::uint32_t x_size, std::uint32_t y_size) {
     using namespace ImGui;
+    GuiRequests to_return {0, 0, false};
     // main window, that will contain everything
     ImGuiWindowFlags main_window_flags =
         ImGuiWindowFlags_NoTitleBar
@@ -156,7 +174,7 @@ void Gui::Render(State& rust_state, std::uint32_t x_size, std::uint32_t y_size) 
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Scene rendering")) {
-            RenderScenePage(rust_state);
+            to_return = RenderScenePage(rust_state);
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Scene settings"))
@@ -179,6 +197,7 @@ void Gui::Render(State& rust_state, std::uint32_t x_size, std::uint32_t y_size) 
     //    globals_strings.push_back(std::string(name.data()));
     //}
     //update_global_vars(*boxed_proxy, globals_strings, globals_values);
+    return to_return;
 }
 
 void Gui::UpdateSceneTexture(std::size_t scene_texture_id){
@@ -195,14 +214,14 @@ void Gui::MarkClean(int id) {
         maybe_node->SetStatus(NodeStatus::Ok, "Ok");
 }
 
-void Gui::MarkError(int id, rust::Str rust_message) {
+void Gui::MarkError(int id, const rust::String& rust_message) {
     std::string message(rust_message);
     Node* maybe_node = graph.GetNode(id);
     if (maybe_node)
         maybe_node->SetStatus(NodeStatus::Error, message);
 }
 
-void Gui::MarkWarning(int id, rust::Str rust_message) {
+void Gui::MarkWarning(int id, const rust::String& rust_message) {
     std::string message(rust_message);
     Node* maybe_node = graph.GetNode(id);
     if (maybe_node)

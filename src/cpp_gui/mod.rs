@@ -2,6 +2,22 @@ use crate::state::State;
 
 #[cxx::bridge(namespace = franzplot_gui)]
 pub mod ffi{
+    // some common structures used as return types for various functions
+    struct GraphError {
+        message: String,
+        node_id: i32,
+        is_warning: bool,
+    }
+
+    // this struct is the easies way I found to give imgui some control over
+    // the winit event loop without using the event proxy. The event proxy
+    // sometimes is not good enough because there is one frame delay between
+    // the request and the execution.
+    struct GuiRequests {
+        frozen_mouse_x: u32,
+        frozen_mouse_y: u32,
+        freeze_mouse: bool,
+    }
 
     extern "C++" {
         // library initialization functions
@@ -17,12 +33,8 @@ pub mod ffi{
         include!("gui.h");
         type Gui;
         fn create_gui_instance(boxed_proxy: Box<RustEventProxy>) -> UniquePtr<Gui>;
-        fn Render(self: &mut Gui, state: &mut State, x_size: u32, y_size: u32);
+        fn Render(self: &mut Gui, state: &mut State, x_size: u32, y_size: u32) -> GuiRequests;
         fn UpdateSceneTexture(self: &mut Gui, scene_texture_id: usize);
-        fn ClearAllMarks(self: &mut Gui);
-        fn MarkClean(self: &mut Gui, node_id: i32);
-        fn MarkError(self: &mut Gui, node_id: i32, message: &str);
-        fn MarkWarning(self: &mut Gui, node_id: i32, message: &str);
     }
 
     extern "Rust" {
@@ -30,8 +42,7 @@ pub mod ffi{
         // or with the application state
         type RustEventProxy;
         type State;
-        fn process_json(proxy: &RustEventProxy, json: &CxxString);
-        fn print_proxy(boxed: &RustEventProxy, message: &CxxString);
+        fn process_json(state: &mut State, json: &CxxString) -> Vec<GraphError>;
         fn update_global_vars(proxy: &RustEventProxy, names: &CxxVector<CxxString>, values: &CxxVector<f32>);
         fn update_scene_camera(state: &mut State, dx: f32, dy: f32);
         fn lock_mouse_cursor(proxy: &RustEventProxy, x: f32, y: f32);
@@ -41,11 +52,6 @@ pub mod ffi{
 
 use crate::CustomEvent;
 type RustEventProxy = winit::event_loop::EventLoopProxy<super::CustomEvent>;
-
-fn print_proxy(proxy: &RustEventProxy, message: &cxx::CxxString) {
-    let message = CustomEvent::TestMessage(message.to_str().unwrap().to_string());
-    proxy.send_event(message).expect("Internal error: main application loop no longer exists");
-}
 
 fn update_global_vars(proxy: &RustEventProxy, names: &cxx::CxxVector<cxx::CxxString>, values: &cxx::CxxVector<f32>) {
     let zip_iter = names.into_iter().zip(values.into_iter());
@@ -57,9 +63,9 @@ fn update_global_vars(proxy: &RustEventProxy, names: &cxx::CxxVector<cxx::CxxStr
     proxy.send_event(CustomEvent::UpdateGlobals(list)).expect("Internal error: main application loop no longer exists");
 }
 
-fn process_json(proxy: &RustEventProxy, json: &cxx::CxxString) {
+fn process_json(state: &mut State, json: &cxx::CxxString) -> Vec<ffi::GraphError> {
     let rust_str = json.to_str().expect("error validating the json string as UTF8");
-    proxy.send_event(CustomEvent::JsonScene(rust_str.to_string())).expect("Internal error: main application loop no longer exists");
+    state.process_json(rust_str)
 }
 
 fn update_scene_camera(state: &mut State, dx: f32, dy: f32) {
