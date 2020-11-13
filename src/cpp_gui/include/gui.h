@@ -11,7 +11,7 @@ typedef std::array<char, 32> VarName;
 namespace franzplot_gui {
 
 struct RustEventProxy;
-struct RustState;
+struct State;
 
 class Gui {
     public:
@@ -19,8 +19,7 @@ class Gui {
         Gui(Gui&) = delete;
         Gui(rust::Box<RustEventProxy>& boxed_proxy);
 
-        void test_boxed_proxy();
-        void Render(rust::Box<RustState> rust_state, std::uint32_t x_size, std::uint32_t y_size);
+        void Render(State& rust_state, std::uint32_t x_size, std::uint32_t y_size);
         void UpdateSceneTexture(std::size_t scene_texture_id);
         void ClearAllMarks();
         void MarkClean(int id);
@@ -29,9 +28,9 @@ class Gui {
 
     private:
         bool ValidVarName(const VarName& name);
-        void RenderGraphPage(rust::Box<RustState>& rust_state);
-        void RenderScenePage(rust::Box<RustState>& rust_state);
-        void RenderSettingsPage(rust::Box<RustState>& rust_state);
+        void RenderGraphPage(State& rust_state);
+        void RenderScenePage(State& rust_state);
+        void RenderSettingsPage(State& rust_state);
         VarName new_var_name;
         std::vector<VarName> globals_names;
         std::vector<float> globals_values;
@@ -42,6 +41,5 @@ class Gui {
 };
 
 std::unique_ptr<Gui> create_gui_instance(rust::Box<RustEventProxy> boxed_proxy);
-void test_scene_ref(rust::Box<RustState> rust_scene);
 
 }

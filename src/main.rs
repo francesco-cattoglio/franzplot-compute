@@ -290,7 +290,7 @@ fn main() {
                 // actual imgui rendering
                 let ui = imgui.frame();
                 let size = window.inner_size().to_logical(hidpi_factor);
-                gui_unique_ptr.Render(Box::new(&mut app_state), size.width, size.height);
+                gui_unique_ptr.Render(&mut app_state, size.width, size.height);
                 platform.prepare_render(&ui, &window);
                 renderer
                     .render(ui.render(), &app_state.manager.queue, &app_state.manager.device, &mut rpass)

@@ -17,14 +17,7 @@ Gui::Gui(rust::Box<RustEventProxy>& boxed_proxy)
     graph.Test(); // creates a few default nodes
 }
 
-void Gui::test_boxed_proxy() {
-}
-
-void test_scene_ref(rust::Box<RustState> rust_scene) {
-    print_scene(std::move(rust_scene));
-}
-
-void Gui::RenderGraphPage(rust::Box<RustState>& rust_state) {
+void Gui::RenderGraphPage(State& rust_state) {
     using namespace ImGui;
     bool test_button = ImGui::Button("Render!");
     SameLine(); ImGui::Button("Alongside");
@@ -94,7 +87,7 @@ bool Gui::ValidVarName(const VarName& name) {
     return true;
 }
 
-void Gui::RenderScenePage(rust::Box<RustState>& rust_state) {
+void Gui::RenderScenePage(State& rust_state) {
     using namespace ImGui;
     Columns(2, "scene layout columns", false);
     auto size = CalcTextSize("Use this text for sizing!");
@@ -133,12 +126,12 @@ void Gui::RenderScenePage(rust::Box<RustState>& rust_state) {
 
 }
 
-void Gui::RenderSettingsPage(rust::Box<RustState>& rust_state) {
+void Gui::RenderSettingsPage(State& rust_state) {
     using namespace ImGui;
     ImGui::Text("Scene settings will be in this tab");
 }
 
-void Gui::Render(rust::Box<RustState> rust_state, std::uint32_t x_size, std::uint32_t y_size) {
+void Gui::Render(State& rust_state, std::uint32_t x_size, std::uint32_t y_size) {
     using namespace ImGui;
     // main window, that will contain everything
     ImGuiWindowFlags main_window_flags =
