@@ -20,7 +20,7 @@ class Gui {
         Gui(rust::Box<RustEventProxy>& boxed_proxy);
 
         void test_boxed_proxy();
-        void Render(std::uint32_t x_size, std::uint32_t y_size);
+        void Render(rust::Box<RustState> rust_state, std::uint32_t x_size, std::uint32_t y_size);
         void UpdateSceneTexture(std::size_t scene_texture_id);
         void ClearAllMarks();
         void MarkClean(int id);
@@ -29,9 +29,9 @@ class Gui {
 
     private:
         bool ValidVarName(const VarName& name);
-        void RenderGraphPage();
-        void RenderScenePage();
-        void RenderSettingsPage();
+        void RenderGraphPage(rust::Box<RustState>& rust_state);
+        void RenderScenePage(rust::Box<RustState>& rust_state);
+        void RenderSettingsPage(rust::Box<RustState>& rust_state);
         VarName new_var_name;
         std::vector<VarName> globals_names;
         std::vector<float> globals_values;

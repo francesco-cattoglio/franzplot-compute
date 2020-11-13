@@ -24,7 +24,7 @@ void test_scene_ref(rust::Box<RustState> rust_scene) {
     print_scene(std::move(rust_scene));
 }
 
-void Gui::RenderGraphPage() {
+void Gui::RenderGraphPage(rust::Box<RustState>& rust_state) {
     using namespace ImGui;
     bool test_button = ImGui::Button("Render!");
     SameLine(); ImGui::Button("Alongside");
@@ -94,7 +94,7 @@ bool Gui::ValidVarName(const VarName& name) {
     return true;
 }
 
-void Gui::RenderScenePage() {
+void Gui::RenderScenePage(rust::Box<RustState>& rust_state) {
     using namespace ImGui;
     Columns(2, "scene layout columns", false);
     auto size = CalcTextSize("Use this text for sizing!");
@@ -119,7 +119,7 @@ void Gui::RenderScenePage() {
         // Since we reset the cursor via Winit, the delta for each frame is exactly
         // the amount taht we would like the camera to move!
         ImVec2 mouse_delta = GetMouseDragDelta(0, 0.0f);
-        update_scene_camera(*boxed_proxy, mouse_delta.x, mouse_delta.y);
+        update_scene_camera(rust_state, mouse_delta.x, mouse_delta.y);
     } else if (ImGui::IsItemDeactivated()) {
         unlock_mouse_cursor(*boxed_proxy);
     }
@@ -133,12 +133,12 @@ void Gui::RenderScenePage() {
 
 }
 
-void Gui::RenderSettingsPage() {
+void Gui::RenderSettingsPage(rust::Box<RustState>& rust_state) {
     using namespace ImGui;
     ImGui::Text("Scene settings will be in this tab");
 }
 
-void Gui::Render(std::uint32_t x_size, std::uint32_t y_size) {
+void Gui::Render(rust::Box<RustState> rust_state, std::uint32_t x_size, std::uint32_t y_size) {
     using namespace ImGui;
     // main window, that will contain everything
     ImGuiWindowFlags main_window_flags =
@@ -159,16 +159,16 @@ void Gui::Render(std::uint32_t x_size, std::uint32_t y_size) {
     ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
     if (ImGui::BeginTabBar("MyTabBar", tab_bar_flags)) {
         if (ImGui::BeginTabItem("Node graph")) {
-            RenderGraphPage();
+            RenderGraphPage(rust_state);
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Scene rendering")) {
-            RenderScenePage();
+            RenderScenePage(rust_state);
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Scene settings"))
         {
-            RenderSettingsPage();
+            RenderSettingsPage(rust_state);
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

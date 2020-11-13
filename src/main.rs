@@ -67,6 +67,9 @@ fn main() {
 
     let event_loop = EventLoop::<CustomEvent>::with_user_event();
     let mut builder = winit::window::WindowBuilder::new();
+    // TODO: if you try using fixed dimensions that are too big for the screen to fit
+    // (eg: a 768p monitor) the returned window will have different size and
+    // the program crashes because the scene texture size will not match
     builder = builder
         .with_title("test")
         .with_inner_size(winit::dpi::PhysicalSize::new(1280, 800));
@@ -287,7 +290,7 @@ fn main() {
                 // actual imgui rendering
                 let ui = imgui.frame();
                 let size = window.inner_size().to_logical(hidpi_factor);
-                gui_unique_ptr.Render(size.width, size.height);
+                gui_unique_ptr.Render(Box::new(&mut app_state), size.width, size.height);
                 platform.prepare_render(&ui, &window);
                 renderer
                     .render(ui.render(), &app_state.manager.queue, &app_state.manager.device, &mut rpass)
@@ -352,7 +355,7 @@ fn main() {
                         app_state.globals.update(&app_state.manager.queue, &list);
                     }
                     CustomEvent::UpdateCamera(dx, dy) => {
-                        app_state.camera_controller.process_mouse(dx, dy);
+                        panic!("signal removed, use direct function instead");
                     }
                     CustomEvent::LockMouseCursor(x, y) => {
                         frozen_mouse_position = winit::dpi::LogicalPosition::new(x, y).to_physical(hidpi_factor);

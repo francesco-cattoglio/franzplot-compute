@@ -12,7 +12,7 @@ pub mod ffi{
         type Gui;
         fn create_gui_instance(boxed_proxy: Box<RustEventProxy>) -> UniquePtr<Gui>;
         fn test_scene_ref(ref_state: Box<RustState>);
-        fn Render(self: &mut Gui, x_size: u32, y_size: u32);
+        fn Render(self: &mut Gui, state: Box<RustState>, x_size: u32, y_size: u32);
         fn UpdateSceneTexture(self: &mut Gui, scene_texture_id: usize);
         fn ClearAllMarks(self: &mut Gui);
         fn MarkClean(self: &mut Gui, node_id: i32);
@@ -28,7 +28,7 @@ pub mod ffi{
         fn process_json(proxy: &RustEventProxy, json: &CxxString);
         fn print_proxy(boxed: &RustEventProxy, message: &CxxString);
         fn update_global_vars(proxy: &RustEventProxy, names: &CxxVector<CxxString>, values: &CxxVector<f32>);
-        fn update_scene_camera(proxy: &RustEventProxy, dx: f32, dy: f32);
+        fn update_scene_camera(state: &mut Box<RustState>, dx: f32, dy: f32);
         fn lock_mouse_cursor(proxy: &RustEventProxy, x: f32, y: f32);
         fn unlock_mouse_cursor(proxy: &RustEventProxy);
         fn print_scene(scene: Box<RustState>);
@@ -38,7 +38,7 @@ pub mod ffi{
 use crate::CustomEvent;
 use crate::state;
 type RustEventProxy = winit::event_loop::EventLoopProxy<super::CustomEvent>;
-type RustState<'a> = &'a state::State;
+type RustState<'a> = &'a mut state::State;
 
 fn print_scene(state: Box<RustState>) {
     state.test_print();
@@ -64,8 +64,8 @@ fn process_json(proxy: &RustEventProxy, json: &cxx::CxxString) {
     proxy.send_event(CustomEvent::JsonScene(rust_str.to_string())).expect("Internal error: main application loop no longer exists");
 }
 
-fn update_scene_camera(proxy: &RustEventProxy, dx: f32, dy: f32) {
-    proxy.send_event(CustomEvent::UpdateCamera(dx, dy)).expect("Internal error: main application loop no longer exists");
+fn update_scene_camera(state: &mut Box<RustState>, dx: f32, dy: f32) {
+    state.camera_controller.process_mouse(dx, dy);
 }
 
 fn lock_mouse_cursor(proxy: &RustEventProxy, x: f32, y: f32) {
