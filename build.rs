@@ -42,4 +42,6 @@ fn main() {
     for filename in include_files.iter() {
         println!("cargo:rerun-if-changed={}", filename);
     }
+    // also, re-run the build system if the cpp_gui module changes!
+    println!("cargo:rerun-if-changed=src/cpp_gui/mod.rs");
 }

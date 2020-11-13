@@ -61,6 +61,35 @@ impl Manager {
         }
     }
 
+    pub fn get_frame_or_update(&mut self, window: &winit::window::Window) -> wgpu::SwapChainFrame {
+        // get the framebuffer frame. We might need to re-create the swapchain if for some
+        // reason our current one is outdated
+        let maybe_frame = self.swap_chain.get_current_frame();
+        match maybe_frame {
+                Ok(swapchain_frame) => {
+                    swapchain_frame
+                }
+                Err(wgpu::SwapChainError::Outdated) => {
+                // Recreate the swap chain to mitigate race condition on drawing surface resize.
+                // See https://github.com/parasyte/pixels/issues/121 and relevant fix:
+                // https://github.com/svenstaro/pixels/commit/b8b4fee8493a0d63d48f7dbc10032736022de677
+                self.update_swapchain(window);
+                self.swap_chain
+                    .get_current_frame()
+                    .expect("get_current_frame() failed even after updating the swapchain")
+                }
+                Err(wgpu::SwapChainError::OutOfMemory) => {
+                    panic!("Out Of Memory error in frame rendering");
+                }
+                Err(wgpu::SwapChainError::Timeout) => {
+                    panic!("Timeout error in frame rendering");
+                }
+                Err(wgpu::SwapChainError::Lost) => {
+                    panic!("Frame Lost error in frame rendering");
+                }
+        }
+    }
+
     pub fn update_swapchain(&mut self, window: &Window) {
         let size = window.inner_size();
         let swapchain_descriptor = wgpu::SwapChainDescriptor {

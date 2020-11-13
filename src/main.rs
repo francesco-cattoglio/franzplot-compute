@@ -34,14 +34,10 @@ fn print_usage(program: &str, opts: Options) {
     print!("{}", opts.usage(&brief));
 }
 
+#[allow(unused)]
 #[derive(Debug)]
 pub enum CustomEvent {
-    JsonScene(String),
-    TestMessage(String),
-    UpdateGlobals(Vec<(String, f32)>),
-    UpdateCamera(f32, f32),
-    LockMouseCursor(u32, u32),
-    UnlockMouseCursor,
+    CurrentlyUnused,
 }
 
 use std::io::prelude::*;
@@ -82,9 +78,9 @@ fn main() {
 
     let hidpi_factor = window.scale_factor();
 
-    let mut device_manager = device_manager::Manager::new(&window);
+    let device_manager = device_manager::Manager::new(&window);
 
-    let mut camera = Camera::new(
+    let camera = Camera::new(
         (-3.0, 0.0, 0.0).into(),
         0.0,
         0.0,
@@ -97,7 +93,7 @@ fn main() {
     // rotation should NOT depend on it, since it depends on how many pixel I dragged
     // over the rendered scene, which kinda makes it already framerate-agnostic
     // OTOH, we might want to make it frame *dimension* agnostic!
-    let mut camera_controller = CameraController::new(4.0, 0.1);
+    let camera_controller = CameraController::new(4.0, 0.1);
     // Set up dear imgui
     let mut imgui = imgui::Context::create();
     let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
@@ -148,7 +144,7 @@ fn main() {
 
     //dbg!(&all_descriptors);
     let mut chain = compute_chain::ComputeChain::new();
-    let mut globals;
+    let globals;
     if let Some(filename) = input_file {
         let mut json_contents = String::new();
         let mut file = std::fs::File::open(&filename).unwrap();
@@ -240,38 +236,9 @@ fn main() {
                     panic!("no texture for rendering!");
                 }
 
-                // get the framebuffer frame. We might need to re-create the swapchain if for some
-                // reason our current one is outdated
-                let maybe_frame = app_state.manager
-                    .swap_chain
-                    .get_current_frame();
-                let frame = match maybe_frame {
-                        Ok(swapchain_frame) => {
-                            swapchain_frame
-                        }
-                        Err(wgpu::SwapChainError::Outdated) => {
-                        // Recreate the swap chain to mitigate race condition on drawing surface resize.
-                        // See https://github.com/parasyte/pixels/issues/121 and relevant fix:
-                        // https://github.com/svenstaro/pixels/commit/b8b4fee8493a0d63d48f7dbc10032736022de677
-                        app_state.manager.update_swapchain(&window);
-                        app_state.manager
-                            .swap_chain
-                            .get_current_frame()
-                            .unwrap()
-                        }
-                        Err(wgpu::SwapChainError::OutOfMemory) => {
-                            panic!("Out Of Memory error in frame rendering");
-                        }
-                        Err(wgpu::SwapChainError::Timeout) => {
-                            panic!("Timeout error in frame rendering");
-                        }
-                        Err(wgpu::SwapChainError::Lost) => {
-                            panic!("Frame Lost error in frame rendering");
-                        }
-                };
+                let frame = app_state.manager.get_frame_or_update(&window);
 
-                // use the acquired frame for a new rendering pass, which will clear the screen and
-                // render imgui
+                // use the acquired frame for a rendering pass, which will clear the screen and render the gui
                 let mut encoder: wgpu::CommandEncoder =
                     app_state.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
@@ -302,7 +269,7 @@ fn main() {
                     .render(ui.render(), &app_state.manager.queue, &app_state.manager.device, &mut rpass)
                     .expect("Imgui rendering failed");
 
-                drop(rpass);
+                drop(rpass); // dropping the render pass is required for the encoder.finish() command
 
                 // submit the framebuffer rendering pass
                 app_state.manager.queue.submit(Some(encoder.finish()));
@@ -317,32 +284,11 @@ fn main() {
                 }
             }
             // Emitted when an event is sent from EventLoopProxy::send_event
-            // This is where we handle all the events generated in our cpp gui
-            // TODO: maybe move this somewhere else, it does look already massive and will grow even more
-            // over time
+            // We are not currently using it, but this might become useful for issuing commands
+            // to winit that have to be executed during the next frame.
             Event::UserEvent(user_event) => {
                 match user_event {
-                    CustomEvent::JsonScene(_json_string) => {
-                        panic!("signal removed, use direct function instead");
-                    }
-                    CustomEvent::TestMessage(string) => {
-                        println!("the event loop received the following message: {}", string);
-                    }
-                    CustomEvent::UpdateGlobals(list) => {
-                        app_state.globals.update(&app_state.manager.queue, &list);
-                    }
-                    CustomEvent::UpdateCamera(_dx, _dy) => {
-                        panic!("signal removed, use direct function instead");
-                    }
-                    CustomEvent::LockMouseCursor(x, y) => {
-                        frozen_mouse_position = winit::dpi::LogicalPosition::new(x, y).to_physical(hidpi_factor);
-                        window.set_cursor_visible(false);
-                        freeze_mouse_position = true;
-                    }
-                    CustomEvent::UnlockMouseCursor => {
-                        freeze_mouse_position = false;
-                        window.set_cursor_visible(true);
-                    }
+                    CustomEvent::CurrentlyUnused => println!("received a custom user event")
                 }
             }
             // match a very specific WindowEvent: user-requested closing of the application

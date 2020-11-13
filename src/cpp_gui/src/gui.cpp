@@ -97,6 +97,7 @@ bool Gui::ValidVarName(const VarName& name) {
 
 GuiRequests Gui::RenderScenePage(State& rust_state) {
     using namespace ImGui;
+    ImGuiMouseCursor mouse_cursor = ImGuiMouseCursor_Arrow;
     GuiRequests to_return {0, 0, false};
     Columns(2, "scene layout columns", false);
     auto size = CalcTextSize("Use this text for sizing!");
@@ -106,6 +107,9 @@ GuiRequests Gui::RenderScenePage(State& rust_state) {
     PushItemWidth(80);
     for (size_t i = 0; i < globals_names.size(); i++) {
         DragFloat(globals_names[i].data(), &globals_values[i], 0.01);
+        if (ImGui::IsItemHovered()) {
+            mouse_cursor = ImGuiMouseCursor_ResizeEW;
+        }
     }
     NextColumn();
     auto avail_space = GetContentRegionAvail();
@@ -114,6 +118,9 @@ GuiRequests Gui::RenderScenePage(State& rust_state) {
     ImGui::ImageButton((void*) scene_texture_id, ImVec2(avail_space.x, avail_space.y), ImVec2(0, 0), ImVec2(1,1), 0);
     // We need to communicate to Winit where we want to lock the mouse. This is because
     // we use a proxy to communicate, and that always takes a frame.
+    if (ImGui::IsItemHovered()) {
+        mouse_cursor = ImGuiMouseCursor_Arrow;
+    }
     if (ImGui::IsItemActivated()) {
         ImVec2 mouse_position = ImGui::GetMousePos();
         to_return.freeze_mouse = true;
@@ -138,7 +145,8 @@ GuiRequests Gui::RenderScenePage(State& rust_state) {
     for (auto& name : globals_names) {
         globals_strings.push_back(std::string(name.data()));
     }
-    update_global_vars(*boxed_proxy, globals_strings, globals_values);
+    update_global_vars(rust_state, globals_strings, globals_values);
+    SetMouseCursor(mouse_cursor);
 
     return to_return;
 }

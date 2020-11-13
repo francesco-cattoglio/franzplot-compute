@@ -38,29 +38,28 @@ pub mod ffi{
     }
 
     extern "Rust" {
-        // All rust functions that we need to interact with the loop event proxy
-        // or with the application state
+        // All rust functions that we need to interact with the rest of the code.
+        // Most of them are just shims/translation layers for the C++ types
         type RustEventProxy;
         type State;
         fn process_json(state: &mut State, json: &CxxString) -> Vec<GraphError>;
-        fn update_global_vars(proxy: &RustEventProxy, names: &CxxVector<CxxString>, values: &CxxVector<f32>);
+        fn update_global_vars(state: &mut State, names: &CxxVector<CxxString>, values: &CxxVector<f32>);
         fn update_scene_camera(state: &mut State, dx: f32, dy: f32);
-        fn lock_mouse_cursor(proxy: &RustEventProxy, x: f32, y: f32);
-        fn unlock_mouse_cursor(proxy: &RustEventProxy);
     }
 }
 
+// TODO: maybe remove this. There is no use for it right now, but perhaps it will be needed in the future
 use crate::CustomEvent;
-type RustEventProxy = winit::event_loop::EventLoopProxy<super::CustomEvent>;
+type RustEventProxy = winit::event_loop::EventLoopProxy<CustomEvent>;
 
-fn update_global_vars(proxy: &RustEventProxy, names: &cxx::CxxVector<cxx::CxxString>, values: &cxx::CxxVector<f32>) {
+fn update_global_vars(state: &mut State, names: &cxx::CxxVector<cxx::CxxString>, values: &cxx::CxxVector<f32>) {
     let zip_iter = names.into_iter().zip(values.into_iter());
     let mut list = Vec::<(String, f32)>::new();
     for (c_name, value) in zip_iter {
         let string = c_name.to_string();
         list.push((string, *value));
     }
-    proxy.send_event(CustomEvent::UpdateGlobals(list)).expect("Internal error: main application loop no longer exists");
+    state.globals.update(&state.manager.queue, &list);
 }
 
 fn process_json(state: &mut State, json: &cxx::CxxString) -> Vec<ffi::GraphError> {
@@ -72,11 +71,4 @@ fn update_scene_camera(state: &mut State, dx: f32, dy: f32) {
     state.camera_controller.process_mouse(dx, dy);
 }
 
-fn lock_mouse_cursor(proxy: &RustEventProxy, x: f32, y: f32) {
-    proxy.send_event(CustomEvent::LockMouseCursor(x as u32, y as u32)).expect("Internal error: main application loop no longer exists");
-}
-
-fn unlock_mouse_cursor(proxy: &RustEventProxy) {
-    proxy.send_event(CustomEvent::UnlockMouseCursor).expect("Internal error: main application loop no longer exists");
-}
 

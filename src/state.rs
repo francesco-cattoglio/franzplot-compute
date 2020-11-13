@@ -5,9 +5,9 @@ use crate::camera::{ Camera, CameraController };
 use crate::cpp_gui::ffi::GraphError;
 use crate::compute_block::BlockCreationError;
 
-// this struct encapsulates the whole application state, and doubles as an "interface"
-// for the C++ side of the code: the GUI will take a Box as an input and this will allow
-// imgui to have (some) control over the Rust side.
+// this struct encapsulates the whole application state, and doubles as an entry point
+// for the C++ side of the code: the GUI will take a reference to the state, thus allowing
+// the gui to have some control over the Rust side.
 pub struct State {
     pub chain: ComputeChain,
     pub globals: Globals,
@@ -24,6 +24,7 @@ impl State {
         let scene_result = self.chain.set_scene(&self.manager.device, &self.globals, json_scene.descriptors);
         self.scene_renderer.update_renderables(&self.manager.device, &self.chain);
         let mut to_return = Vec::<GraphError>::new();
+        // TODO: rewrite as a iter.map.collect
         for (block_id, error) in scene_result.iter() {
             let id = *block_id;
             match error {
