@@ -14,7 +14,7 @@ use compute_block::BlockCreationError;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Descriptor {
     pub global_names: Vec<String>,
-    pub global_init_values: Vec<String>,
+    pub global_init_values: Vec<f32>,
     pub descriptors: Vec<compute_block::BlockDescriptor>,
 }
 
@@ -27,6 +27,7 @@ pub struct ComputableScene{
 impl ComputableScene {
     pub fn process_json(&mut self, device: &wgpu::Device, json: &str) -> Vec<GraphError> {
         let json_scene: Descriptor = serde_jsonrc::from_str(&json).unwrap();
+        // TODO: make globals use both the names and the init values!
         self.globals = globals::Globals::new(device, json_scene.global_names);
         let scene_result = self.chain.set_scene(device, &self.globals, json_scene.descriptors);
         self.renderer.update_renderables(device, &self.chain);

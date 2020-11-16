@@ -2,8 +2,10 @@ use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct Globals {
+    // TODO: do not give public access to these fields, get a const ref accessors
     pub names: Vec<String>,
     pub values: Vec<f32>,
+    // TODO: remove variables, only use names and values
     variables: BTreeMap<String, f32>,
     buffer_size: wgpu::BufferAddress,
     buffer: wgpu::Buffer,

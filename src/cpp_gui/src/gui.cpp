@@ -29,12 +29,17 @@ void Gui::RenderGraphPage(State& rust_state) {
         // create the json representation of our context+graph
         std::string json_output;
         json_output += std::string() + "{\n"; // opens file
-        json_output += std::string() + "\"global_vars\": [\n"; // opens globals
+        json_output += std::string() + "\"global_names\": [\n"; // opens global names
         for (size_t i = 0; i < globals_names.size(); i++) {
             std::string name = globals_names[i].data();
             json_output += std::string() + "\t\"" + name + "\",\n";
         }
-        json_output += std::string() + "],\n"; // closes globals, places a comma for descriptors
+        json_output += std::string() + "],\n"; // closes global names,
+        json_output += std::string() + "\"global_init_values\": [\n"; // opens global init vals
+        for (size_t i = 0; i < globals_names.size(); i++) {
+            json_output += std::string() + "\t\"" + std::to_string(0.0) + "\",\n";
+        }
+        json_output += std::string() + "],\n"; // closes globals init vals, places a comma for descriptors
         json_output += graph.ToJsonDescriptors(); // adds all the descriptors
         json_output += std::string() + "}"; // closes the file
 

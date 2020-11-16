@@ -1,5 +1,7 @@
 {
-"global_vars": [ "t" ]
+"global_names": [ "t" ]
+,
+"global_init_values": [ 0.0 ]
 ,
 "descriptors": [
         {
