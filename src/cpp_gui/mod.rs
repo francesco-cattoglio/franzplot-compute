@@ -65,7 +65,7 @@ fn update_global_vars(state: &mut State, names: &cxx::CxxVector<cxx::CxxString>,
 
 fn process_json(state: &mut State, json: &cxx::CxxString) -> Vec<ffi::GraphError> {
     let rust_str = json.to_str().expect("error validating the json string as UTF8");
-    state.process_json(rust_str)
+    state.computable_scene.process_json(&state.manager.device, rust_str)
 }
 
 fn update_scene_camera(state: &mut State, dx: f32, dy: f32) {
