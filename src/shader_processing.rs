@@ -1,4 +1,4 @@
-use crate::compute_block::BlockCreationError;
+use crate::computable_scene::compute_block::BlockCreationError;
 
 pub type CompilationResult = Result<(wgpu::ComputePipeline, wgpu::BindGroup), BlockCreationError>;
 

@@ -6,28 +6,21 @@ use imgui::{FontSource, FontGlyphRanges};
 use serde::{Deserialize, Serialize};
 
 mod util;
-mod camera;
-mod texture;
 mod rendering;
+//mod rendering;
 mod state;
+mod computable_scene;
 mod device_manager;
-mod compute_chain;
-mod compute_block;
 mod shader_processing;
 mod cpp_gui;
-use camera::{ Camera, CameraController };
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug, Deserialize, Serialize)]
-struct SceneDescriptor {
-    global_vars: Vec<String>,
-    descriptors: Vec<BlockDescriptor>,
-}
-
-use compute_block::*;
+use rendering::camera::{ Camera, CameraController };
 use getopts::Options;
 use std::env;
+
+use computable_scene::compute_block::BlockCreationError;
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} [options]", program);
@@ -143,14 +136,14 @@ fn main() {
     gui_unique_ptr.UpdateSceneTexture(scene_texture_id.id());
 
     //dbg!(&all_descriptors);
-    let mut chain = compute_chain::ComputeChain::new();
+    let mut chain = computable_scene::compute_chain::ComputeChain::new();
     let globals;
     if let Some(filename) = input_file {
         let mut json_contents = String::new();
         let mut file = std::fs::File::open(&filename).unwrap();
         file.read_to_string(&mut json_contents).unwrap();
-        let json_scene: SceneDescriptor = serde_json::from_str(&json_contents).unwrap();
-        globals = compute_chain::Globals::new(&device_manager.device, json_scene.global_vars);
+        let json_scene: computable_scene::Descriptor = serde_json::from_str(&json_contents).unwrap();
+        globals = computable_scene::globals::Globals::new(&device_manager.device, json_scene.global_names);
                     let scene_result = chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
                     for (block_id, error) in scene_result.iter() {
                         let id = *block_id;
@@ -174,7 +167,7 @@ fn main() {
                         }
                     }
     } else {
-        globals = compute_chain::Globals::new(&device_manager.device, vec![]);
+        globals = computable_scene::globals::Globals::new(&device_manager.device, vec![]);
         print_usage(&program, opts);
     };
     chain.run_chain(&device_manager.device, &device_manager.queue, &globals);
@@ -183,17 +176,20 @@ fn main() {
     //let dbg_vect = copy_buffer_as_f32(out_buff, &device_manager.device);
     //println!("debugged buffer contains {:?}", dbg_vect);
 
-    let mut scene_renderer = rendering::SceneRenderer::new(&device_manager);
+    let mut scene_renderer = computable_scene::scene_renderer::SceneRenderer::new(&device_manager);
     scene_renderer.update_renderables(&device_manager.device, &chain);
 
+    let computable_scene = computable_scene::ComputableScene {
+        chain,
+        renderer: scene_renderer,
+        globals
+    };
     // assemble the application state by moving all the variables inside it
     let mut app_state = state::State {
         camera,
         camera_controller,
-        chain,
-        globals,
+        computable_scene,
         manager: device_manager,
-        scene_renderer,
     };
 
     let mut frame_duration = std::time::Duration::from_secs(0);
@@ -218,7 +214,7 @@ fn main() {
             // Emitted when all of the event loop's input events have been processed and redraw processing is about to begin.
             Event::MainEventsCleared => {
                 // update the chain
-                app_state.chain.run_chain(&app_state.manager.device, &app_state.manager.queue, &app_state.globals);
+                app_state.computable_scene.chain.run_chain(&app_state.manager.device, &app_state.manager.queue, &app_state.computable_scene.globals);
                 // prepare gui rendering
                 app_state.camera_controller.update_camera(&mut app_state.camera, frame_duration);
                 platform
@@ -231,7 +227,7 @@ fn main() {
             Event::RedrawRequested(_window_id) => {
                 // redraw the scene to the texture
                 if let Some(scene_texture) = renderer.textures.get(scene_texture_id) {
-                    app_state.scene_renderer.render(&app_state.manager, scene_texture.view(), &app_state.camera);
+                    app_state.computable_scene.renderer.render(&app_state.manager, scene_texture.view(), &app_state.camera);
                 } else {
                     panic!("no texture for rendering!");
                 }

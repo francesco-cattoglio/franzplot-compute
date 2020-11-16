@@ -28,8 +28,6 @@ pub type BlockId = i32;
 pub type ProcessingResult = Result<ComputeBlock, BlockCreationError>;
 pub type ProcessedMap = indexmap::IndexMap<BlockId, ProcessingResult>;
 
-use crate::compute_chain::Globals;
-
 #[derive(Debug, Clone)]
 pub enum BlockCreationError {
     IncorrectAttributes(&'static str),
@@ -161,7 +159,7 @@ impl DescriptorData {
     // Not all the blocks require the same inputs at creation time.
     // As an example, a Transform block does not use any global variable,
     // while an Interval cannot depend on any other already-processed block
-    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
+    pub fn to_block(&self, device: &wgpu::Device, globals: &super::globals::Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
         match &self {
             DescriptorData::Point(desc) => desc.to_block(device, globals),
             DescriptorData::Interval(desc) => desc.to_block(device, globals),

@@ -1,4 +1,4 @@
-use crate::compute_chain::Globals;
+use crate::computable_scene::globals::Globals;
 use crate::shader_processing::*;
 use smol_str::SmolStr;
 use super::ComputeBlock;

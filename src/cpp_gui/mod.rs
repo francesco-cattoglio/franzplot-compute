@@ -60,7 +60,7 @@ fn update_global_vars(state: &mut State, names: &cxx::CxxVector<cxx::CxxString>,
         let string = c_name.to_string();
         list.push((string, *value));
     }
-    state.globals.update(&state.manager.queue, &list);
+    state.computable_scene.globals.update(&state.manager.queue, &list);
 }
 
 fn process_json(state: &mut State, json: &cxx::CxxString) -> Vec<ffi::GraphError> {
@@ -73,11 +73,11 @@ fn update_scene_camera(state: &mut State, dx: f32, dy: f32) {
 }
 
 fn get_globals_names(state: &mut State) -> &mut Vec<String> {
-    &mut state.globals.names
+    &mut state.computable_scene.globals.names
 }
 
 fn get_globals_values(state: &mut State) -> &mut Vec<String> {
-    &mut state.globals.names
+    &mut state.computable_scene.globals.names
 }
 
 

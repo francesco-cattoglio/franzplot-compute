@@ -1,28 +1,26 @@
-use crate::compute_chain::{ ComputeChain, Globals };
+use crate::computable_scene::*;
 use crate::device_manager::Manager;
-use crate::rendering::SceneRenderer;
-use crate::camera::{ Camera, CameraController };
+use crate::rendering::camera::{ Camera, CameraController };
 use crate::cpp_gui::ffi::GraphError;
-use crate::compute_block::BlockCreationError;
+
+use crate::computable_scene::compute_block::BlockCreationError;
 
 // this struct encapsulates the whole application state, and doubles as an entry point
 // for the C++ side of the code: the GUI will take a reference to the state, thus allowing
 // the gui to have some control over the Rust side.
 pub struct State {
-    pub chain: ComputeChain,
-    pub globals: Globals,
+    pub computable_scene: ComputableScene,
     pub manager: Manager,
-    pub scene_renderer: SceneRenderer,
     pub camera: Camera,
     pub camera_controller: CameraController,
 }
 
 impl State {
     pub fn process_json(&mut self, json: &str) -> Vec<GraphError> {
-        let json_scene: super::SceneDescriptor = serde_jsonrc::from_str(&json).unwrap();
-        self.globals = Globals::new(&self.manager.device, json_scene.global_vars);
-        let scene_result = self.chain.set_scene(&self.manager.device, &self.globals, json_scene.descriptors);
-        self.scene_renderer.update_renderables(&self.manager.device, &self.chain);
+        let json_scene: Descriptor = serde_jsonrc::from_str(&json).unwrap();
+        self.computable_scene.globals = globals::Globals::new(&self.manager.device, json_scene.global_names);
+        let scene_result = self.computable_scene.chain.set_scene(&self.manager.device, &self.computable_scene.globals, json_scene.descriptors);
+        self.computable_scene.renderer.update_renderables(&self.manager.device, &self.computable_scene.chain);
         let mut to_return = Vec::<GraphError>::new();
         // TODO: rewrite as a iter.map.collect
         for (block_id, error) in scene_result.iter() {
