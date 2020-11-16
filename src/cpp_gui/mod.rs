@@ -45,6 +45,7 @@ pub mod ffi{
         fn process_json(state: &mut State, json: &CxxString) -> Vec<GraphError>;
         fn update_global_vars(state: &mut State, names: &CxxVector<CxxString>, values: &CxxVector<f32>);
         fn update_scene_camera(state: &mut State, dx: f32, dy: f32);
+        fn get_globals_names(state: &mut State) -> &mut Vec<String>;
     }
 }
 
@@ -69,6 +70,14 @@ fn process_json(state: &mut State, json: &cxx::CxxString) -> Vec<ffi::GraphError
 
 fn update_scene_camera(state: &mut State, dx: f32, dy: f32) {
     state.camera_controller.process_mouse(dx, dy);
+}
+
+fn get_globals_names(state: &mut State) -> &mut Vec<String> {
+    &mut state.globals.names
+}
+
+fn get_globals_values(state: &mut State) -> &mut Vec<String> {
+    &mut state.globals.names
 }
 
 

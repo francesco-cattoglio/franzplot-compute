@@ -10,6 +10,8 @@ pub struct ComputeChain {
 
 #[derive(Debug)]
 pub struct Globals {
+    pub names: Vec<String>,
+    pub values: Vec<f32>,
     variables: BTreeMap<String, f32>,
     buffer_size: wgpu::BufferAddress,
     buffer: wgpu::Buffer,
@@ -102,6 +104,7 @@ impl Globals {
         Self {
             bind_layout,
             bind_group,
+            names: vec!{"var_1".into(), "var2".into()},
             buffer,
             buffer_size,
             variables,

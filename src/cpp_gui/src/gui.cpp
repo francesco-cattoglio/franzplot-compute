@@ -111,6 +111,12 @@ GuiRequests Gui::RenderScenePage(State& rust_state) {
             mouse_cursor = ImGuiMouseCursor_ResizeEW;
         }
     }
+    auto& globals_names_ref = get_globals_names(rust_state);
+    for (auto& name : globals_names_ref) {
+        std::string c_name(name);
+        ImGui::Text(c_name.c_str());
+    }
+
     NextColumn();
     auto avail_space = GetContentRegionAvail();
     // we need to leave a little bit of space, otherwise a vertical scrollbar appears
