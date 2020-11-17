@@ -2,6 +2,7 @@ use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
 };
+
 use imgui::{FontSource, FontGlyphRanges};
 use serde::{Deserialize, Serialize};
 
@@ -143,7 +144,7 @@ fn main() {
         let mut file = std::fs::File::open(&filename).unwrap();
         file.read_to_string(&mut json_contents).unwrap();
         let json_scene: computable_scene::Descriptor = serde_json::from_str(&json_contents).unwrap();
-        globals = computable_scene::globals::Globals::new(&device_manager.device, json_scene.global_names);
+        globals = computable_scene::globals::Globals::new(&device_manager.device, json_scene.global_names, json_scene.global_init_values);
                     let scene_result = chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
                     for (block_id, error) in scene_result.iter() {
                         let id = *block_id;
@@ -167,7 +168,7 @@ fn main() {
                         }
                     }
     } else {
-        globals = computable_scene::globals::Globals::new(&device_manager.device, vec![]);
+        globals = computable_scene::globals::Globals::new(&device_manager.device, vec![], vec![]);
         print_usage(&program, opts);
     };
     chain.run_chain(&device_manager.device, &device_manager.queue, &globals);
@@ -214,6 +215,9 @@ fn main() {
             // Emitted when all of the event loop's input events have been processed and redraw processing is about to begin.
             Event::MainEventsCleared => {
                 // update the chain
+                // TODO: move this functionality somewhere inside computable_scene, and make sure
+                // this is done only when it is really needed!
+                app_state.computable_scene.globals.update_buffer(&app_state.manager.queue);
                 app_state.computable_scene.chain.run_chain(&app_state.manager.device, &app_state.manager.queue, &app_state.computable_scene.globals);
                 // prepare gui rendering
                 app_state.camera_controller.update_camera(&mut app_state.camera, frame_duration);

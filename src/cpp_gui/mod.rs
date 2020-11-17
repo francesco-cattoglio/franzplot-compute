@@ -43,25 +43,15 @@ pub mod ffi{
         type RustEventProxy;
         type State;
         fn process_json(state: &mut State, json: &CxxString) -> Vec<GraphError>;
-        fn update_global_vars(state: &mut State, names: &CxxVector<CxxString>, values: &CxxVector<f32>);
         fn update_scene_camera(state: &mut State, dx: f32, dy: f32);
-        fn get_globals_names(state: &mut State) -> &mut Vec<String>;
+        fn get_globals_names(state: &State) -> &Vec<String>;
+        fn get_globals_values(state: &mut State) -> &mut Vec<f32>;
     }
 }
 
 // TODO: maybe remove this. There is no use for it right now, but perhaps it will be needed in the future
 use crate::CustomEvent;
 type RustEventProxy = winit::event_loop::EventLoopProxy<CustomEvent>;
-
-fn update_global_vars(state: &mut State, names: &cxx::CxxVector<cxx::CxxString>, values: &cxx::CxxVector<f32>) {
-    let zip_iter = names.into_iter().zip(values.into_iter());
-    let mut list = Vec::<(String, f32)>::new();
-    for (c_name, value) in zip_iter {
-        let string = c_name.to_string();
-        list.push((string, *value));
-    }
-    state.computable_scene.globals.update(&state.manager.queue, &list);
-}
 
 fn process_json(state: &mut State, json: &cxx::CxxString) -> Vec<ffi::GraphError> {
     let rust_str = json.to_str().expect("error validating the json string as UTF8");
@@ -72,12 +62,12 @@ fn update_scene_camera(state: &mut State, dx: f32, dy: f32) {
     state.camera_controller.process_mouse(dx, dy);
 }
 
-fn get_globals_names(state: &mut State) -> &mut Vec<String> {
-    &mut state.computable_scene.globals.names
+fn get_globals_names(state: &State) -> &Vec<String> {
+    state.computable_scene.globals.get_names()
 }
 
-fn get_globals_values(state: &mut State) -> &mut Vec<String> {
-    &mut state.computable_scene.globals.names
+fn get_globals_values(state: &mut State) -> &mut Vec<f32> {
+    state.computable_scene.globals.get_values_mut()
 }
 
 

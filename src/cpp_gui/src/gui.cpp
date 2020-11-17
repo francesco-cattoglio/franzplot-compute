@@ -37,7 +37,7 @@ void Gui::RenderGraphPage(State& rust_state) {
         json_output += std::string() + "],\n"; // closes global names,
         json_output += std::string() + "\"global_init_values\": [\n"; // opens global init vals
         for (size_t i = 0; i < globals_names.size(); i++) {
-            json_output += std::string() + "\t\"" + std::to_string(0.0) + "\",\n";
+            json_output += std::string() + "\t" + std::to_string(0.0) + ",\n";
         }
         json_output += std::string() + "],\n"; // closes globals init vals, places a comma for descriptors
         json_output += graph.ToJsonDescriptors(); // adds all the descriptors
@@ -110,16 +110,17 @@ GuiRequests Gui::RenderScenePage(State& rust_state) {
     // first fill the sidebar
     ImGui::Text("Global variables");
     PushItemWidth(80);
-    for (size_t i = 0; i < globals_names.size(); i++) {
-        DragFloat(globals_names[i].data(), &globals_values[i], 0.01);
+    // fetch global variables' names and values from rust state
+    auto& globals_names_ref = get_globals_names(rust_state);
+    auto& globals_values_ref = get_globals_values(rust_state);
+    // and add the UI for updating them
+    for (size_t i = 0; i < globals_names_ref.size(); i++) {
+        std::string name(globals_names_ref[i]);
+        float* value_ptr = globals_values_ref.data() + i;
+        DragFloat(name.c_str(), value_ptr, 0.01);
         if (ImGui::IsItemHovered()) {
             mouse_cursor = ImGuiMouseCursor_ResizeEW;
         }
-    }
-    auto& globals_names_ref = get_globals_names(rust_state);
-    for (auto& name : globals_names_ref) {
-        std::string c_name(name);
-        ImGui::Text(c_name.c_str());
     }
 
     NextColumn();
@@ -156,7 +157,6 @@ GuiRequests Gui::RenderScenePage(State& rust_state) {
     for (auto& name : globals_names) {
         globals_strings.push_back(std::string(name.data()));
     }
-    update_global_vars(rust_state, globals_strings, globals_values);
     SetMouseCursor(mouse_cursor);
 
     return to_return;

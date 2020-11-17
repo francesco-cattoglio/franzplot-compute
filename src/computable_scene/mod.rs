@@ -28,7 +28,7 @@ impl ComputableScene {
     pub fn process_json(&mut self, device: &wgpu::Device, json: &str) -> Vec<GraphError> {
         let json_scene: Descriptor = serde_jsonrc::from_str(&json).unwrap();
         // TODO: make globals use both the names and the init values!
-        self.globals = globals::Globals::new(device, json_scene.global_names);
+        self.globals = globals::Globals::new(device, json_scene.global_names, json_scene.global_init_values);
         let scene_result = self.chain.set_scene(device, &self.globals, json_scene.descriptors);
         self.renderer.update_renderables(device, &self.chain);
         let mut to_return = Vec::<GraphError>::new();
