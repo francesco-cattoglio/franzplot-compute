@@ -12,6 +12,7 @@ mod state;
 mod computable_scene;
 mod device_manager;
 mod shader_processing;
+mod node_graph;
 mod cpp_gui;
 #[cfg(test)]
 mod tests;
@@ -89,6 +90,10 @@ fn main() {
     let camera_controller = CameraController::new(4.0, 0.1);
     // Set up dear imgui
     let mut imgui = imgui::Context::create();
+    let mut node_graph = node_graph::NodeGraph {
+        nodes: std::collections::BTreeMap::new(),
+        attributes: std::collections::BTreeMap::new(),
+    };
     let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
     // TODO: decide what to do about the hidpi. This requires a bit of investigation, especially
     // when we want to support both retina and small screen displays
@@ -255,14 +260,15 @@ fn main() {
 
                 // actual imgui rendering
                 let ui = imgui.frame();
-                let size = window.inner_size().to_logical(hidpi_factor);
-                let gui_requests = gui_unique_ptr.as_mut().unwrap().Render(&mut app_state, size.width, size.height);
-                if gui_requests.freeze_mouse {
-                    freeze_mouse_position = true;
-                    frozen_mouse_position = winit::dpi::LogicalPosition::new(gui_requests.frozen_mouse_x, gui_requests.frozen_mouse_y).to_physical(hidpi_factor);
-                } else {
-                    freeze_mouse_position = false;
-                }
+                node_graph.render(&ui);
+                //let size = window.inner_size().to_logical(hidpi_factor);
+                //let gui_requests = gui_unique_ptr.as_mut().unwrap().Render(&mut app_state, size.width, size.height);
+                //if gui_requests.freeze_mouse {
+                //    freeze_mouse_position = true;
+                //    frozen_mouse_position = winit::dpi::LogicalPosition::new(gui_requests.frozen_mouse_x, gui_requests.frozen_mouse_y).to_physical(hidpi_factor);
+                //} else {
+                //    freeze_mouse_position = false;
+                //}
                 platform.prepare_render(&ui, &window);
                 renderer
                     .render(ui.render(), &app_state.manager.queue, &app_state.manager.device, &mut rpass)

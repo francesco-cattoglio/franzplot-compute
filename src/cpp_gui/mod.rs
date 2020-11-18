@@ -1,8 +1,9 @@
 use crate::state::State;
 
-#[cxx::bridge(namespace = franzplot_gui)]
+#[cxx::bridge]
 pub mod ffi{
     // some common structures used as return types for various functions
+    #[namespace = "franzplot_gui"]
     struct GraphError {
         message: String,
         node_id: i32,
@@ -13,12 +14,24 @@ pub mod ffi{
     // the winit event loop without using the event proxy. The event proxy
     // sometimes is not good enough because there is one frame delay between
     // the request and the execution.
+    #[namespace = "franzplot_gui"]
     struct GuiRequests {
         frozen_mouse_x: u32,
         frozen_mouse_y: u32,
         freeze_mouse: bool,
     }
 
+    #[namespace = "imnodes"]
+    unsafe extern "C++" {
+        fn BeginNodeEditor();
+        fn EndNodeEditor();
+        fn BeginNode(id: i32);
+        fn EndNode();
+        fn BeginNodeTitleBar();
+        fn EndNodeTitleBar();
+    }
+
+    #[namespace = "franzplot_gui"]
     unsafe extern "C++" {
         // library initialization functions
         include!("library.h");
@@ -37,6 +50,7 @@ pub mod ffi{
         fn UpdateSceneTexture(self: Pin<&mut Gui>, scene_texture_id: usize);
     }
 
+    #[namespace = "franzplot_gui"]
     extern "Rust" {
         // All rust functions that we need to interact with the rest of the code.
         // Most of them are just shims/translation layers for the C++ types
@@ -64,5 +78,4 @@ fn get_globals_names(state: &State) -> &Vec<String> {
 fn get_globals_values(state: &mut State) -> &mut Vec<f32> {
     state.computable_scene.globals.get_values_mut()
 }
-
 
