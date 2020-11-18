@@ -89,14 +89,14 @@ impl Dimensions {
             label: None,
             mapped_at_creation: false,
             size: buff_size as wgpu::BufferAddress,
-            // TODO: vertex is actually only required for surface renderer,
+            // Beware: vertex is actually only required for surface renderer,
             // while copy and map are only needed when debugging/inspecting
             usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
         })
     }
 }
 
-//TODO: maybe remove the get_buffer and get_dimensions functions.
+//TODO: maybe remove the get_dimensions functions.
 //Whenever we use a computeblock we have to match on its type anyway
 impl ComputeBlock {
     #[allow(unused)]

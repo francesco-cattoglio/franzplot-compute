@@ -1,8 +1,6 @@
-use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct Globals {
-    // TODO: do not give public access to these fields, get a const ref accessors
     names: Vec<String>,
     values: Vec<f32>,
     buffer_size: wgpu::BufferAddress,
