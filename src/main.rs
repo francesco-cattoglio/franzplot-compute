@@ -126,7 +126,7 @@ fn main() {
 
     //cpp_gui::ffi::init_imnodes();
     //let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance();
-    cpp_gui::ffi2::Initialize();
+    cpp_gui::imnodes::Initialize();
 
     let mut renderer = imgui_wgpu::RendererConfig::new()
         .set_texture_format(rendering::SWAPCHAIN_FORMAT)
@@ -139,10 +139,14 @@ fn main() {
     let scene_texture_id = renderer.textures.insert(scene_texture);
     //gui_unique_ptr.as_mut().unwrap().UpdateSceneTexture(scene_texture_id.id());
 
-    let node_graph = node_graph::NodeGraph {
+    let mut node_graph = node_graph::NodeGraph {
         nodes: std::collections::BTreeMap::new(),
         attributes: std::collections::BTreeMap::new(),
+        next_id: 0,
     };
+    node_graph.add_interval_node();
+    node_graph.add_interval_node();
+    node_graph.add_interval_node();
     let mut rust_gui = rust_gui::Gui {
         graph: node_graph,
         scene_texture_id
@@ -306,7 +310,7 @@ fn main() {
             }
             // Emitted when the event loop is being shut down.
             Event::LoopDestroyed => {
-                cpp_gui::ffi2::Shutdown();
+                cpp_gui::imnodes::Shutdown();
             }
             // match a very specific WindowEvent: user-requested closing of the application
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {

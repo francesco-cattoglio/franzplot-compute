@@ -1,5 +1,6 @@
 use crate::state::State;
 
+#[derive(Clone, Copy)]
 #[repr(i32)]
 pub enum PinShape
 {
@@ -15,7 +16,7 @@ unsafe impl cxx::ExternType for PinShape {
     type Kind = cxx::kind::Trivial;
 }
 #[cxx::bridge(namespace = "imnodes")]
-pub mod ffi2 {
+pub mod imnodes {
     unsafe extern "C++" {
         include!("franzplot-compute/src/cpp_gui/imnodes-8ecdd3/imnodes.h");
         type PinShape = super::PinShape;
