@@ -10,15 +10,13 @@ typedef std::array<char, 32> VarName;
 
 namespace franzplot_gui {
 
-struct RustEventProxy;
 struct State;
 struct GuiRequests;
 
 class Gui {
     public:
-        Gui() = delete;
+        Gui();
         Gui(Gui&) = delete;
-        Gui(rust::Box<RustEventProxy>& boxed_proxy);
 
         GuiRequests Render(State& rust_state, std::uint32_t x_size, std::uint32_t y_size);
         void UpdateSceneTexture(std::size_t scene_texture_id);
@@ -39,9 +37,8 @@ class Gui {
 
         Graph graph;
         std::size_t scene_texture_id;
-        rust::Box<RustEventProxy> boxed_proxy;
 };
 
-std::unique_ptr<Gui> create_gui_instance(rust::Box<RustEventProxy> boxed_proxy);
+std::unique_ptr<Gui> create_gui_instance();
 
 }

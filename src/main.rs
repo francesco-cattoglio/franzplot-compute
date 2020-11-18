@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 
 mod util;
 mod rendering;
-//mod rendering;
 mod state;
 mod computable_scene;
 mod device_manager;
@@ -123,7 +122,7 @@ fn main() {
     }]);
 
     cpp_gui::ffi::init_imnodes();
-    let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance(Box::new(event_loop.create_proxy()));
+    let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance();
 
     let mut renderer = imgui_wgpu::RendererConfig::new()
         .set_texture_format(rendering::SWAPCHAIN_FORMAT)
@@ -134,7 +133,7 @@ fn main() {
         .set_usage(TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED | TextureUsage::COPY_DST)
         .build(&device_manager.device, &renderer);
     let scene_texture_id = renderer.textures.insert(scene_texture);
-    gui_unique_ptr.UpdateSceneTexture(scene_texture_id.id());
+    gui_unique_ptr.as_mut().unwrap().UpdateSceneTexture(scene_texture_id.id());
 
     //dbg!(&all_descriptors);
     let mut chain = computable_scene::compute_chain::ComputeChain::new();
@@ -257,7 +256,7 @@ fn main() {
                 // actual imgui rendering
                 let ui = imgui.frame();
                 let size = window.inner_size().to_logical(hidpi_factor);
-                let gui_requests = gui_unique_ptr.Render(&mut app_state, size.width, size.height);
+                let gui_requests = gui_unique_ptr.as_mut().unwrap().Render(&mut app_state, size.width, size.height);
                 if gui_requests.freeze_mouse {
                     freeze_mouse_position = true;
                     frozen_mouse_position = winit::dpi::LogicalPosition::new(gui_requests.frozen_mouse_x, gui_requests.frozen_mouse_y).to_physical(hidpi_factor);

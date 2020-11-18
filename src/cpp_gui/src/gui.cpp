@@ -9,10 +9,7 @@
 
 namespace franzplot_gui {
 
-Gui::Gui(rust::Box<RustEventProxy>& boxed_proxy)
-    :
-        boxed_proxy(std::move(boxed_proxy))
-{
+Gui::Gui() {
     new_var_name.fill('\0');
     graph.Test(); // creates a few default nodes
 }
@@ -247,8 +244,8 @@ void Gui::MarkWarning(int id, const rust::String& rust_message) {
         maybe_node->SetStatus(NodeStatus::Warning, message);
 }
 
-std::unique_ptr<Gui> create_gui_instance(rust::Box<RustEventProxy> boxed_proxy){
-    return std::make_unique<Gui>(boxed_proxy);
+std::unique_ptr<Gui> create_gui_instance() {
+    return std::make_unique<Gui>();
 }
 
 }

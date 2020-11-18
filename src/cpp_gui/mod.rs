@@ -19,7 +19,7 @@ pub mod ffi{
         freeze_mouse: bool,
     }
 
-    extern "C++" {
+    unsafe extern "C++" {
         // library initialization functions
         include!("library.h");
         fn init_imnodes();
@@ -32,15 +32,14 @@ pub mod ffi{
         // to a State's function, or we can pass a mut reference of the State to the GUI function.
         include!("gui.h");
         type Gui;
-        fn create_gui_instance(boxed_proxy: Box<RustEventProxy>) -> UniquePtr<Gui>;
-        fn Render(self: &mut Gui, state: &mut State, x_size: u32, y_size: u32) -> GuiRequests;
-        fn UpdateSceneTexture(self: &mut Gui, scene_texture_id: usize);
+        fn create_gui_instance() -> UniquePtr<Gui>;
+        fn Render(self: Pin<&mut Gui>, state: &mut State, x_size: u32, y_size: u32) -> GuiRequests;
+        fn UpdateSceneTexture(self: Pin<&mut Gui>, scene_texture_id: usize);
     }
 
     extern "Rust" {
         // All rust functions that we need to interact with the rest of the code.
         // Most of them are just shims/translation layers for the C++ types
-        type RustEventProxy;
         type State;
         fn process_json(state: &mut State, json: &CxxString) -> Vec<GraphError>;
         fn update_scene_camera(state: &mut State, dx: f32, dy: f32);
@@ -48,10 +47,6 @@ pub mod ffi{
         fn get_globals_values(state: &mut State) -> &mut Vec<f32>;
     }
 }
-
-// TODO: maybe remove this. There is no use for it right now, but perhaps it will be needed in the future
-use crate::CustomEvent;
-type RustEventProxy = winit::event_loop::EventLoopProxy<CustomEvent>;
 
 fn process_json(state: &mut State, json: &cxx::CxxString) -> Vec<ffi::GraphError> {
     let rust_str = json.to_str().expect("error validating the json string as UTF8");
