@@ -13,6 +13,7 @@ mod computable_scene;
 mod device_manager;
 mod shader_processing;
 mod node_graph;
+mod rust_gui;
 mod cpp_gui;
 #[cfg(test)]
 mod tests;
@@ -90,10 +91,7 @@ fn main() {
     let camera_controller = CameraController::new(4.0, 0.1);
     // Set up dear imgui
     let mut imgui = imgui::Context::create();
-    let mut node_graph = node_graph::NodeGraph {
-        nodes: std::collections::BTreeMap::new(),
-        attributes: std::collections::BTreeMap::new(),
-    };
+    imgui.style_mut().window_rounding = 0.0;
     let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
     // TODO: decide what to do about the hidpi. This requires a bit of investigation, especially
     // when we want to support both retina and small screen displays
@@ -126,8 +124,9 @@ fn main() {
         }),
     }]);
 
-    cpp_gui::ffi::init_imnodes();
-    let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance();
+    //cpp_gui::ffi::init_imnodes();
+    //let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance();
+    cpp_gui::ffi2::Initialize();
 
     let mut renderer = imgui_wgpu::RendererConfig::new()
         .set_texture_format(rendering::SWAPCHAIN_FORMAT)
@@ -138,8 +137,16 @@ fn main() {
         .set_usage(TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED | TextureUsage::COPY_DST)
         .build(&device_manager.device, &renderer);
     let scene_texture_id = renderer.textures.insert(scene_texture);
-    gui_unique_ptr.as_mut().unwrap().UpdateSceneTexture(scene_texture_id.id());
+    //gui_unique_ptr.as_mut().unwrap().UpdateSceneTexture(scene_texture_id.id());
 
+    let node_graph = node_graph::NodeGraph {
+        nodes: std::collections::BTreeMap::new(),
+        attributes: std::collections::BTreeMap::new(),
+    };
+    let mut rust_gui = rust_gui::Gui {
+        graph: node_graph,
+        scene_texture_id
+    };
     //dbg!(&all_descriptors);
     let mut chain = computable_scene::compute_chain::ComputeChain::new();
     let globals;
@@ -260,8 +267,9 @@ fn main() {
 
                 // actual imgui rendering
                 let ui = imgui.frame();
-                node_graph.render(&ui);
-                //let size = window.inner_size().to_logical(hidpi_factor);
+                let size = window.inner_size().to_logical(hidpi_factor);
+                rust_gui.render(&ui, [size.width, size.height]);
+                //node_graph.render(&ui);
                 //let gui_requests = gui_unique_ptr.as_mut().unwrap().Render(&mut app_state, size.width, size.height);
                 //if gui_requests.freeze_mouse {
                 //    freeze_mouse_position = true;
@@ -295,6 +303,10 @@ fn main() {
                 match user_event {
                     CustomEvent::CurrentlyUnused => println!("received a custom user event")
                 }
+            }
+            // Emitted when the event loop is being shut down.
+            Event::LoopDestroyed => {
+                cpp_gui::ffi2::Shutdown();
             }
             // match a very specific WindowEvent: user-requested closing of the application
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {

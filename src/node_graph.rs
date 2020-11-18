@@ -5,8 +5,8 @@ pub type AttributeID = i32;
 pub type NodeID = i32;
 
 pub struct Node {
-    node_title: String,
-    node_contents: NodeContents,
+    title: String,
+    contents: NodeContents,
 }
 
 pub enum NodeContents {
@@ -35,8 +35,17 @@ impl Node {
     }
 }
 
-pub enum Attribute {
-    Pin {
+pub struct Attribute {
+    id: AttributeID,
+    node_id: NodeID,
+    contents: AttributeContents,
+}
+
+pub enum AttributeContents {
+    InputPin {
+        label: &'static str,
+    },
+    OutputPin {
         label: &'static str,
     },
     Text {
@@ -50,10 +59,11 @@ pub enum Attribute {
 
 impl Attribute {
     pub fn render(&self) {
-        match self {
-            Attribute::Pin{..} => {
+        match self.contents {
+            AttributeContents::InputPin{..} => {
+
             },
-            Attribute::Text{..} => {
+            AttributeContents::Text{..} => {
             },
             _ => {
             }
@@ -68,16 +78,26 @@ pub struct NodeGraph {
 
 impl NodeGraph {
     pub fn render(&mut self, ui: &imgui::Ui<'_>) {
-        let window = imgui::Window::new(im_str!("testt"));
-        if let Some(token) = window.begin(ui) {
-            crate::cpp_gui::ffi::BeginNodeEditor();
-            crate::cpp_gui::ffi::BeginNode(12);
-            crate::cpp_gui::ffi::BeginNodeTitleBar();
+        use crate::cpp_gui::ffi2::*;
+        BeginNodeEditor();
+        BeginNode(12);
+            BeginNodeTitleBar();
             ui.text("works ⚠");
-            crate::cpp_gui::ffi::EndNodeTitleBar();
-            crate::cpp_gui::ffi::EndNode();
-            crate::cpp_gui::ffi::EndNodeEditor();
-            token.end(ui);
-        }
+            EndNodeTitleBar();
+            BeginInputAttribute(2, crate::cpp_gui::PinShape::Circle);
+            ui.text("works 2 ⚠");
+            EndInputAttribute();
+        EndNode();
+
+        BeginNode(14);
+            BeginNodeTitleBar();
+            ui.text("works  ⚠");
+            EndNodeTitleBar();
+            BeginOutputAttribute(3, crate::cpp_gui::PinShape::CircleFilled);
+            ui.text("works 3 ⚠");
+            EndOutputAttribute();
+        EndNode();
+
+        EndNodeEditor();
     }
 }
