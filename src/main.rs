@@ -273,7 +273,7 @@ fn main() {
                 // actual imgui rendering
                 let ui = imgui.frame();
                 let size = window.inner_size().to_logical(hidpi_factor);
-                rust_gui.render(&ui, [size.width, size.height]);
+                rust_gui.render(&ui, [size.width, size.height], &mut app_state);
                 //node_graph.render(&ui);
                 //let gui_requests = gui_unique_ptr.as_mut().unwrap().Render(&mut app_state, size.width, size.height);
                 //if gui_requests.freeze_mouse {

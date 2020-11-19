@@ -1,5 +1,6 @@
 use imgui::*;
 use crate::node_graph;
+use crate::state::State;
 
 pub struct Gui {
     pub graph: node_graph::NodeGraph,
@@ -7,7 +8,7 @@ pub struct Gui {
 }
 
 impl Gui {
-    pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2]) {
+    pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State) {
         // create main window
         let window_begun = Window::new(im_str!("Rust window"))
             .no_decoration()
@@ -34,7 +35,7 @@ impl Gui {
             if let Some(tab_bar_token) = tab_bar_begun {
                 TabItem::new(im_str!("Node editor"))
                     .build(ui, || {
-                        self.render_editor_tab(ui);
+                        self.render_editor_tab(ui, state);
                     });
 
                 TabItem::new(im_str!("Scene"))
@@ -53,7 +54,10 @@ impl Gui {
         }
     }
 
-    fn render_editor_tab(&mut self, ui: &Ui<'_>) {
+    fn render_editor_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
+        if ui.button(im_str!("Render"), [0.0, 0.0]) {
+            // try to build a new compute chain.
+        }
         ui.columns(2, im_str!("editor columns"), false);
         ui.set_current_column_width(80.0);
         ui.text(im_str!("Left side"));

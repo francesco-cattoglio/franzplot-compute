@@ -79,6 +79,17 @@ impl Attribute {
             }
         }
     }
+
+    pub fn as_string(&self) -> String {
+        match &self.contents {
+            AttributeContents::Text{
+                string, ..
+            } => {
+                string.to_string()
+            }
+            _ => panic!("wrong conversion: attribute to string")
+        }
+    }
 }
 
 pub struct Node {
@@ -111,6 +122,10 @@ pub enum NodeContents {
 }
 
 impl Node {
+    pub fn contents(&self) -> &NodeContents {
+        &self.contents
+    }
+
     pub fn render(&mut self, ui: &imgui::Ui<'_>, attributes: &mut BTreeMap<AttributeID, Attribute>) {
         imnodes::BeginNode(self.id);
             imnodes::BeginNodeTitleBar();
@@ -142,6 +157,23 @@ impl Node {
                 _ => {}
             }
         imnodes::EndNode();
+    }
+
+    pub fn get_inputs(&self, attributes: &BTreeMap<AttributeID, Attribute>) -> Vec::<NodeID> {
+        match &self.contents {
+            NodeContents::Interval { .. } => {
+                vec![]
+            },
+            NodeContents::Curve { interval, .. } => {
+                vec![attributes.get(interval).unwrap().node_id]
+            },
+            NodeContents::Rendering { geometry, } => {
+                vec![attributes.get(geometry).unwrap().node_id]
+            },
+            _ => {
+                vec![]
+            }
+        }
     }
 }
 
@@ -183,6 +215,41 @@ impl NodeGraph {
             if let Some((input_id, output_id)) = maybe_link {
                 self.links.insert(input_id, output_id);
             }
+        }
+    }
+
+    pub fn get_attribute_as_string(&self, attribute_id: AttributeID) -> Option<String> {
+        // first, we need to check if the attribute_id actually exists in our attributes map
+        if let Some(attribute) = self.attributes.get(&attribute_id) {
+            // if it exists, then we need to check if it is an input pin
+            if let AttributeContents::Text{ string, .. } = &attribute.contents {
+                Some(string.to_string())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn get_attribute_as_linked_node(&self, input_attribute_id: AttributeID) -> Option<NodeID> {
+        // first, we need to check if the input_attribute_id actually exists in our attributes map
+        if let Some(attribute) = self.attributes.get(&input_attribute_id) {
+            // if it exists, then we need to check if it is an input pin
+            if let AttributeContents::InputPin{..} = &attribute.contents {
+                // and then we can finally check if it is actually linked to something!
+                if let Some(output_attribute_id) = self.links.get(&attribute.id) {
+                    // we can assert that if there is a link, then the linked one exists
+                    let linked_node_id = self.attributes.get(output_attribute_id).unwrap().node_id;
+                    Some(linked_node_id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
         }
     }
 

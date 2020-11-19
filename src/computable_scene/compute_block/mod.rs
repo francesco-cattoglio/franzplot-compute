@@ -23,6 +23,9 @@ pub mod matrix;
 pub use matrix::{MatrixData, MatrixBlockDescriptor};
 
 use serde::{Deserialize, Serialize};
+use super::Globals;
+use crate::node_graph::{ Node, NodeContents, NodeGraph, AttributeID };
+use std::collections::BTreeMap;
 
 pub type BlockId = i32;
 pub type ProcessingResult = Result<ComputeBlock, BlockCreationError>;
@@ -121,6 +124,48 @@ impl ComputeBlock {
             Self::Matrix(data) => data.encode(globals_bind_group, encoder),
             Self::Transform(data) => data.encode(encoder),
             Self::Rendering(data) => data.encode(encoder),
+        }
+    }
+
+    pub fn from_node(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, node: &Node, graph: &NodeGraph) -> ProcessingResult {
+        match node.contents() {
+            &NodeContents::Interval {
+                variable, begin, end, ..
+            } => {
+                let interval_descriptor = IntervalBlockDescriptor {
+                    name: graph.get_attribute_as_string(variable).unwrap(),
+                    begin: graph.get_attribute_as_string(begin).unwrap(),
+                    end: graph.get_attribute_as_string(end).unwrap(),
+                    quality: 4,
+                };
+                interval_descriptor.to_block(device, globals)
+            },
+            &NodeContents::Curve {
+                interval, fx, fy, fz, ..
+            } => {
+                let curve_descriptor = CurveBlockDescriptor {
+                    interval: graph.get_attribute_as_linked_node(interval),
+                    fx: graph.get_attribute_as_string(fx).unwrap(),
+                    fy: graph.get_attribute_as_string(fy).unwrap(),
+                    fz: graph.get_attribute_as_string(fz).unwrap(),
+                };
+                curve_descriptor.to_block(device, globals, processed_blocks)
+            },
+            &NodeContents::Rendering {
+                geometry,
+            } => {
+                let rendering_descriptor = RenderingBlockDescriptor {
+                    geometry: graph.get_attribute_as_linked_node(geometry)
+                };
+                rendering_descriptor.to_block(device, processed_blocks)
+            }
+            _ => unimplemented!(),
+            //DescriptorData::Interval(desc) => desc.to_block(device, globals),
+            //DescriptorData::Curve(desc) => desc.to_block(device, globals, processed_blocks),
+            //DescriptorData::Surface(desc) => desc.to_block(device, globals, processed_blocks),
+            //DescriptorData::Matrix(desc) => desc.to_block(device, globals, processed_blocks),
+            //DescriptorData::Transform(desc) => desc.to_block(device, processed_blocks),
+            //DescriptorData::Rendering(desc) => desc.to_block(device, processed_blocks),
         }
     }
 }
