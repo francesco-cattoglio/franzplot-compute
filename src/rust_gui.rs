@@ -78,15 +78,34 @@ impl Gui {
 
     fn render_scene_tab(&self, ui: &Ui<'_>, state: &mut State) {
         ui.columns(2, im_str!("scene columns"), false);
-        ui.set_current_column_width(80.0);
+        ui.set_current_column_width(120.0);
         ui.text(im_str!("Globals side"));
+        ui.text("Global variables");
+
+        // and add the UI for updating them
+        let width_token = ui.push_item_width(80.0);
+        let zip = state.computable_scene.globals.get_variables_iter();
+        let mut requested_cursor = MouseCursor::Arrow;
+        for (name, value) in zip {
+            let imgui_name = ImString::new("##".to_string() + name);
+            ui.text(name);
+            Drag::new(&imgui_name)
+                .speed(0.02)
+                .build(ui, value);
+
+            if ui.is_item_hovered() {
+                requested_cursor = MouseCursor::ResizeEW;
+            }
+        }
+        ui.set_mouse_cursor(Some(requested_cursor));
+        width_token.pop(ui);
         ui.next_column();
         ui.text(im_str!("Scene side"));
         let available_region = ui.content_region_avail();
         ImageButton::new(self.scene_texture_id, available_region)
             .frame_padding(0)
             .build(ui);
-        if (ui.is_item_active()) {
+        if ui.is_item_active() {
             let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Left, 0.0);
             ui.reset_mouse_drag_delta(MouseButton::Left);
             state.camera_controller.process_mouse(mouse_delta[0], mouse_delta[1]);

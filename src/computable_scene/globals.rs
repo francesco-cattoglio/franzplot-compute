@@ -28,6 +28,10 @@ impl Globals {
         true
     }
 
+    pub fn get_variables_iter<'a>(&'a mut self) -> impl Iterator<Item = (&'a String, &'a mut f32)> {
+        self.names.iter().zip(self.values.iter_mut())
+    }
+
     pub fn new(device: &wgpu::Device, variables_names: Vec<String>, init_values: Vec<f32>) -> Self {
         // assert there are as many variables as init values
         assert!(variables_names.len() == init_values.len());
@@ -130,20 +134,5 @@ impl Globals {
         queue.write_buffer(&self.buffer, offset, bytemuck::cast_slice(&self.values));
     }
 
-    pub fn get_names(&self) -> &Vec<String> {
-        &self.names
-    }
-
-    pub fn get_values(&self) -> &Vec<f32> {
-        &self.values
-    }
-
-    // BEWARE: this function is a bit of a safety hazard. It returns a &mut so that you can
-    // change the value contained by vector elements. But since you are given full control over the
-    // values arrays, so you can do whatever you want, including resizing it. Please, refrain
-    // from doing so!
-    pub fn get_values_mut(&mut self) -> &mut Vec<f32> {
-        &mut self.values
-    }
 }
 

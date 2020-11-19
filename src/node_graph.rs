@@ -72,22 +72,13 @@ impl Attribute {
                 ui.text(&label);
                 ui.same_line(0.0);
                 ui.set_next_item_width(80.0);
-                InputText::new(ui, im_str!(""), string).build();
+                InputText::new(ui, im_str!(""), string)
+                    .resize_buffer(true)
+                    .build();
                 imnodes::EndStaticAttribute();
             },
             _ => {
             }
-        }
-    }
-
-    pub fn as_string(&self) -> String {
-        match &self.contents {
-            AttributeContents::Text{
-                string, ..
-            } => {
-                string.to_string()
-            }
-            _ => panic!("wrong conversion: attribute to string")
         }
     }
 }
