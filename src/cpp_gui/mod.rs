@@ -37,6 +37,8 @@ pub mod imnodes {
         fn EndOutputAttribute();
         fn Link(link_id: i32, first_id: i32, second_id: i32);
         fn IsLinkCreated(first_id: &mut i32, second_id: &mut i32) -> bool;
+        fn IsNodeHovered(id: &mut i32) -> bool;
+        fn IsLinkHovered(id: &mut i32) -> bool;
     }
 }
 

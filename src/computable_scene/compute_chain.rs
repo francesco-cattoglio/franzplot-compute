@@ -87,7 +87,7 @@ impl<'a> ComputeChain {
         let mut node_inputs = BTreeMap::<NodeID, Vec<NodeID>>::new();
         for (node_id, node) in graph.nodes.iter() {
             let existing_inputs: Vec<NodeID> = node
-                .get_inputs(graph)
+                .get_input_nodes(graph)
                 .into_iter()
                 .filter_map(|x| x)
                 .collect();

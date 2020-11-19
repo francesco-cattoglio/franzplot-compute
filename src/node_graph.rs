@@ -166,7 +166,7 @@ impl Node {
         imnodes::EndNode();
     }
 
-    pub fn get_inputs(&self, graph: &NodeGraph) -> Vec::<Option<NodeID>> {
+    pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<Option<NodeID>> {
         match &self.contents {
             NodeContents::Interval { .. } => {
                 vec![]
@@ -178,9 +178,33 @@ impl Node {
                 vec![graph.get_attribute_as_linked_node(*geometry)]
             },
             _ => {
-                vec![]
+                unimplemented!()
             }
         }
+    }
+
+    pub fn get_owned_attributes(self) -> Vec::<AttributeID> {
+        match self.contents {
+            NodeContents::Interval {
+                variable, begin, end, output,
+            } => {
+                vec![variable, begin, end, output]
+            },
+            NodeContents::Curve {
+                interval, fx, fy, fz, output
+            } => {
+                vec![interval, fx, fy, fz, output]
+            },
+            NodeContents::Rendering {
+                geometry,
+            } => {
+                vec![geometry]
+            },
+            _ => {
+                unimplemented!()
+            }
+        }
+
     }
 }
 
@@ -194,15 +218,28 @@ pub struct GraphError {
     pub message: ImString,
 }
 
-// TODO: get a constructor and make next_id private!
+// TODO: maybe make more fields private!
 pub struct NodeGraph {
     pub nodes: BTreeMap::<NodeID, Node>,
     pub attributes: BTreeMap::<AttributeID, Attribute>,
     pub links: BTreeMap::<AttributeID, AttributeID>,
-    pub next_id: i32,
+    next_id: i32,
+    last_hovered_node: NodeID,
+    last_hovered_link: AttributeID,
 }
 
 impl NodeGraph {
+    pub fn new() -> Self {
+        Self {
+            nodes: std::collections::BTreeMap::new(),
+            attributes: std::collections::BTreeMap::new(),
+            links: std::collections::BTreeMap::new(),
+            next_id: 0,
+            last_hovered_node: -1,
+            last_hovered_link: -1,
+        }
+    }
+
     pub fn render(&mut self, ui: &imgui::Ui<'_>) {
         imnodes::BeginNodeEditor();
         // render all links first. Remember that link ID is the same as the input attribute ID!
@@ -222,9 +259,47 @@ impl NodeGraph {
         // (e.g: right clicks, node creation)
         imnodes::EndNodeEditor();
 
+        // Process right click
+        let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Right, 4.0);
+        let right_click_popup: bool = ui.is_window_focused_with_flags(WindowFocusedFlags::ROOT_AND_CHILD_WINDOWS)
+            && !ui.is_any_item_hovered()
+            && ui.is_mouse_released(MouseButton::Right)
+            && mouse_delta == [0.0, 0.0]; // exact comparison is fine due to GetMouseDragDelta threshold
+
+        let mut hovered_id: i32 = -1;
+        if right_click_popup {
+            println!("rcd");
+            if imnodes::IsNodeHovered(&mut hovered_id) {
+                self.last_hovered_node = hovered_id;
+                ui.open_popup(im_str!("Node menu"));
+            } else if imnodes::IsLinkHovered(&mut hovered_id) {
+                self.last_hovered_link = hovered_id;
+                ui.open_popup(im_str!("Link menu"));
+            } else {
+                ui.open_popup(im_str!("Add menu"));
+            }
+        }
+
+        ui.popup(im_str!("Node menu"), || {
+            if MenuItem::new(im_str!("delete node")).build(ui) {
+                println!("need to remove {}", self.last_hovered_node);
+                self.remove_node(self.last_hovered_node);
+            }
+            if MenuItem::new(im_str!("rename node")).build(ui) {
+                println!("need to rename {}", self.last_hovered_node);
+            }
+        });
+
+        ui.popup(im_str!("Link menu"), || {
+            if MenuItem::new(im_str!("delete link")).build(ui) {
+                println!("need to remove {}", self.last_hovered_link);
+                self.links.remove(&self.last_hovered_link);
+            }
+        });
+
         // check if a link was created
-        let mut start_attribute_id: AttributeID = 0;
-        let mut end_attribute_id: AttributeID = 0;
+        let mut start_attribute_id: AttributeID = -1;
+        let mut end_attribute_id: AttributeID = -1;
         if imnodes::IsLinkCreated(&mut start_attribute_id, &mut end_attribute_id) {
             let maybe_link = Self::check_link_creation(&self.attributes, start_attribute_id, end_attribute_id);
             // check which one of the two attributes is the input attribute and which is the output
@@ -244,6 +319,38 @@ impl NodeGraph {
         for node in self.nodes.values_mut() {
             node.error = None;
         }
+    }
+
+    fn remove_node(&mut self, node_id: NodeID) {
+        // try to remove this node_id from the map
+        let maybe_node = self.nodes.remove(&node_id);
+        // if the node existed, get a list of all the attributes belonging to it
+        let owned_attributes = if let Some(node) = maybe_node {
+            node.get_owned_attributes()
+        } else {
+            vec![]
+        };
+
+        // remove all the attributes of the attributes map.
+        for id in owned_attributes.iter() {
+            self.attributes.remove(id);
+        }
+
+        // remove all the inbound AND outbound links.
+        // the quickest way of doing it is just by rebuilding the link map
+        // TODO: when BTreeMap::drain_filter is implemented, just use that
+        // swap self.links with a temporary
+        let mut new_links = BTreeMap::<AttributeID, AttributeID>::new();
+        new_links.append(&mut self.links);
+        // rebuild the temporary by filtering the ones contained in other elements
+        new_links = new_links
+            .into_iter()
+            .filter(|pair| {
+                !owned_attributes.contains(&pair.0) && !owned_attributes.contains(&pair.1)
+            })
+            .collect();
+        // swap back the temporary into self.links
+        self.links.append(&mut new_links);
     }
 
     pub fn get_attribute_as_string(&self, attribute_id: AttributeID) -> Option<String> {

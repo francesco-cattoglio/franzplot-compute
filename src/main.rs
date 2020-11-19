@@ -139,12 +139,7 @@ fn main() {
     let scene_texture_id = renderer.textures.insert(scene_texture);
     //gui_unique_ptr.as_mut().unwrap().UpdateSceneTexture(scene_texture_id.id());
 
-    let mut node_graph = node_graph::NodeGraph {
-        nodes: std::collections::BTreeMap::new(),
-        attributes: std::collections::BTreeMap::new(),
-        links: std::collections::BTreeMap::new(),
-        next_id: 0,
-    };
+    let mut node_graph = node_graph::NodeGraph::new();
     node_graph.add_interval_node();
     node_graph.add_rendering_node();
     node_graph.add_curve_node();
