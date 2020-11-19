@@ -114,7 +114,7 @@ impl Node {
     pub fn render(&mut self, ui: &imgui::Ui<'_>, attributes: &mut BTreeMap<AttributeID, Attribute>) {
         imnodes::BeginNode(self.id);
             imnodes::BeginNodeTitleBar();
-            ui.text("works ⚠");
+            ui.text(&self.title);
             imnodes::EndNodeTitleBar();
             match &self.contents {
                 NodeContents::Interval {
@@ -133,6 +133,11 @@ impl Node {
                     attributes.get_mut(fx).unwrap().render(ui);
                     attributes.get_mut(fy).unwrap().render(ui);
                     attributes.get_mut(fz).unwrap().render(ui);
+                },
+                NodeContents::Rendering {
+                    geometry,
+                } => {
+                    attributes.get_mut(geometry).unwrap().render(ui);
                 }
                 _ => {}
             }
@@ -342,6 +347,27 @@ impl NodeGraph {
         self.attributes.insert(fz.id, fz);
         self.attributes.insert(interval.id, interval);
         self.attributes.insert(output.id, output);
+    }
+
+    pub fn add_rendering_node(&mut self) {
+        let node_id = self.get_next_id();
+        let geometry = Attribute {
+            id: self.get_next_id(),
+            node_id,
+            contents: AttributeContents::InputPin {
+                label: ImString::new("geometry"),
+                kind: DataKind::Geometry,
+            }
+        };
+        let node = Node {
+            title: ImString::new("Curve node"),
+            id: node_id,
+            contents: NodeContents::Rendering {
+                geometry: geometry.id,
+            }
+        };
+        self.nodes.insert(node_id, node);
+        self.attributes.insert(geometry.id, geometry);
     }
 
     pub fn get_next_id(&mut self) -> i32 {
