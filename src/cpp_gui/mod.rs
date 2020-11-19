@@ -19,6 +19,7 @@ unsafe impl cxx::ExternType for PinShape {
 pub mod imnodes {
     unsafe extern "C++" {
         include!("franzplot-compute/src/cpp_gui/imnodes-8ecdd3/imnodes.h");
+        include!("franzplot-compute/src/cpp_gui/pointer_shims.h");
         type PinShape = super::PinShape;
         fn Initialize();
         fn Shutdown();
@@ -34,6 +35,8 @@ pub mod imnodes {
         fn EndStaticAttribute();
         fn BeginOutputAttribute(id: i32, shape: PinShape);
         fn EndOutputAttribute();
+        fn Link(link_id: i32, first_id: i32, second_id: i32);
+        fn IsLinkCreated(first_id: &mut i32, second_id: &mut i32) -> bool;
     }
 }
 

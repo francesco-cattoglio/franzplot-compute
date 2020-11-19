@@ -142,11 +142,12 @@ fn main() {
     let mut node_graph = node_graph::NodeGraph {
         nodes: std::collections::BTreeMap::new(),
         attributes: std::collections::BTreeMap::new(),
+        links: std::collections::BTreeMap::new(),
         next_id: 0,
     };
     node_graph.add_interval_node();
     node_graph.add_interval_node();
-    node_graph.add_interval_node();
+    node_graph.add_curve_node();
     let mut rust_gui = rust_gui::Gui {
         graph: node_graph,
         scene_texture_id
