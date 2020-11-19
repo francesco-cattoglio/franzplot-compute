@@ -95,6 +95,7 @@ impl Attribute {
 pub struct Node {
     id: i32,
     title: ImString,
+    error: Option<GraphError>,
     contents: NodeContents,
 }
 
@@ -129,7 +130,22 @@ impl Node {
     pub fn render(&mut self, ui: &imgui::Ui<'_>, attributes: &mut BTreeMap<AttributeID, Attribute>) {
         imnodes::BeginNode(self.id);
             imnodes::BeginNodeTitleBar();
-            ui.text(&self.title);
+                ui.text(&self.title);
+                // handle error reporting
+                if let Some(error) = &self.error {
+                    ui.same_line(0.0);
+                    match error.severity {
+                        Severity::Warning => {
+                            ui.text_colored( [1.0, 0.8, 0.0, 1.0], "⚠");
+                        },
+                        Severity::Error => {
+                            ui.text_colored( [1.0, 0.8, 0.0, 1.0], "⊗");
+                        }
+                    }
+                    if ui.is_item_hovered() {
+                        ui.tooltip_text(&error.message);
+                    }
+                }
             imnodes::EndNodeTitleBar();
             match &self.contents {
                 NodeContents::Interval {
@@ -159,16 +175,16 @@ impl Node {
         imnodes::EndNode();
     }
 
-    pub fn get_inputs(&self, attributes: &BTreeMap<AttributeID, Attribute>) -> Vec::<NodeID> {
+    pub fn get_inputs(&self, graph: &NodeGraph) -> Vec::<Option<NodeID>> {
         match &self.contents {
             NodeContents::Interval { .. } => {
                 vec![]
             },
             NodeContents::Curve { interval, .. } => {
-                vec![attributes.get(interval).unwrap().node_id]
+                vec![graph.get_attribute_as_linked_node(*interval)]
             },
             NodeContents::Rendering { geometry, } => {
-                vec![attributes.get(geometry).unwrap().node_id]
+                vec![graph.get_attribute_as_linked_node(*geometry)]
             },
             _ => {
                 vec![]
@@ -177,6 +193,15 @@ impl Node {
     }
 }
 
+pub enum Severity {
+    Warning,
+    Error
+}
+pub struct GraphError {
+    pub node_id: NodeID,
+    pub severity: Severity,
+    pub message: ImString,
+}
 
 // TODO: get a constructor and make next_id private!
 pub struct NodeGraph {
@@ -215,6 +240,18 @@ impl NodeGraph {
             if let Some((input_id, output_id)) = maybe_link {
                 self.links.insert(input_id, output_id);
             }
+        }
+    }
+
+    pub fn mark_error(&mut self, error: GraphError) {
+         if let Some(node) = self.nodes.get_mut(&error.node_id) {
+            node.error = Some(error);
+         }
+    }
+
+    pub fn clear_all_errors(&mut self) {
+        for node in self.nodes.values_mut() {
+            node.error = None;
         }
     }
 
@@ -339,8 +376,9 @@ impl NodeGraph {
             }
         };
         let node = Node {
-            title: ImString::new("Interval node"),
             id: node_id,
+            title: ImString::new("Interval node"),
+            error: None,
             contents: NodeContents::Interval {
                 variable: variable.id,
                 begin: begin.id,
@@ -398,8 +436,9 @@ impl NodeGraph {
             }
         };
         let node = Node {
-            title: ImString::new("Curve node"),
             id: node_id,
+            title: ImString::new("Curve node"),
+            error: None,
             contents: NodeContents::Curve {
                 fx: fx.id,
                 fy: fy.id,
@@ -427,8 +466,9 @@ impl NodeGraph {
             }
         };
         let node = Node {
-            title: ImString::new("Curve node"),
             id: node_id,
+            title: ImString::new("Curve node"),
+            error: None,
             contents: NodeContents::Rendering {
                 geometry: geometry.id,
             }

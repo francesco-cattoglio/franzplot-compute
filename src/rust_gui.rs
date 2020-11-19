@@ -1,6 +1,7 @@
 use imgui::*;
 use crate::node_graph;
 use crate::state::State;
+use crate::computable_scene::globals::Globals;
 
 pub struct Gui {
     pub graph: node_graph::NodeGraph,
@@ -57,6 +58,14 @@ impl Gui {
     fn render_editor_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
         if ui.button(im_str!("Render"), [0.0, 0.0]) {
             // try to build a new compute chain.
+            // clear all errors
+            self.graph.clear_all_errors();
+            // create a new Globals from the user defined names
+            let globals = Globals::new(&state.manager.device, vec![], vec![]);
+            let graph_errors = state.computable_scene.process_graph(&state.manager.device, &mut self.graph, globals);
+            for error in graph_errors.into_iter() {
+                self.graph.mark_error(error);
+            }
         }
         ui.columns(2, im_str!("editor columns"), false);
         ui.set_current_column_width(80.0);

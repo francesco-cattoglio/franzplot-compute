@@ -3,13 +3,14 @@ pub mod compute_chain;
 pub mod globals;
 pub mod scene_renderer;
 
-use crate::cpp_gui::ffi::GraphError;
 use serde::{Deserialize, Serialize};
 
 use globals::Globals;
 use compute_chain::ComputeChain;
 use scene_renderer::SceneRenderer;
 use compute_block::BlockCreationError;
+use crate::node_graph::NodeGraph;
+use crate::node_graph::{ GraphError, Severity };
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Descriptor {
@@ -25,46 +26,45 @@ pub struct ComputableScene{
 }
 
 impl ComputableScene {
-    pub fn process_json(&mut self, device: &wgpu::Device, json: &str) -> Vec<GraphError> {
-        let json_scene: Descriptor = serde_jsonrc::from_str(&json).unwrap();
-        // TODO: make globals use both the names and the init values!
-        self.globals = globals::Globals::new(device, json_scene.global_names, json_scene.global_init_values);
-        let scene_result = self.chain.set_scene(device, &self.globals, json_scene.descriptors);
+    pub fn process_graph(&mut self, device: &wgpu::Device, graph: &mut NodeGraph, globals: Globals) -> Vec<GraphError> {
+        self.globals = globals;
+        let scene_result = self.chain.scene_from_graph(device, &self.globals, graph);
         self.renderer.update_renderables(device, &self.chain);
+
+        // TODO: rewrite as a iter.map.collect?
         let mut to_return = Vec::<GraphError>::new();
-        // TODO: rewrite as a iter.map.collect
-        for (block_id, error) in scene_result.iter() {
-            let id = *block_id;
+        for (block_id, error) in scene_result.into_iter() {
+            let id = block_id;
             match error {
                 BlockCreationError::IncorrectAttributes(message) => {
                     to_return.push(GraphError {
-                        is_warning: false,
+                        severity: Severity::Error,
                         node_id: id,
-                        message: message.to_string(),
+                        message: imgui::ImString::new(message),
                     });
                     println!("incorrect attributes error for {}: {}", id, &message);
                 },
                 BlockCreationError::InputNotBuilt(message) => {
                     to_return.push(GraphError {
-                        is_warning: true,
+                        severity: Severity::Warning,
                         node_id: id,
-                        message: message.to_string(),
+                        message: imgui::ImString::new(message),
                     });
                     println!("input not build warning for {}: {}", id, &message);
                 },
                 BlockCreationError::InputMissing(message) => {
                     to_return.push(GraphError {
-                        is_warning: false,
+                        severity: Severity::Warning,
                         node_id: id,
-                        message: message.to_string(),
+                        message: imgui::ImString::new(message),
                     });
                     println!("missing input error for {}: {}", id, &message);
                 },
                 BlockCreationError::InputInvalid(message) => {
                     to_return.push(GraphError {
-                        is_warning: false,
+                        severity: Severity::Warning,
                         node_id: id,
-                        message: message.to_string(),
+                        message: imgui::ImString::new(message),
                     });
                     println!("invalid input error for {}: {}", id, &message);
                 },
@@ -76,4 +76,5 @@ impl ComputableScene {
         }
         to_return
     }
+
 }

@@ -42,14 +42,6 @@ pub mod imnodes {
 
 #[cxx::bridge]
 pub mod ffi{
-    // some common structures used as return types for various functions
-    #[namespace = "franzplot_gui"]
-    struct GraphError {
-        message: String,
-        node_id: i32,
-        is_warning: bool,
-    }
-
     // this struct is the easies way I found to give imgui some control over
     // the winit event loop without using the event proxy. The event proxy
     // sometimes is not good enough because there is one frame delay between
