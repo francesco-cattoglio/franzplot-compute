@@ -41,7 +41,7 @@ impl Gui {
 
                 TabItem::new(im_str!("Scene"))
                     .build(ui, || {
-                        self.render_scene_tab(ui);
+                        self.render_scene_tab(ui, state);
                     });
 
                 TabItem::new(im_str!("Settings"))
@@ -76,7 +76,7 @@ impl Gui {
         ui.columns(1, im_str!("editor columns"), false);
     }
 
-    fn render_scene_tab(&self, ui: &Ui<'_>) {
+    fn render_scene_tab(&self, ui: &Ui<'_>, state: &mut State) {
         ui.columns(2, im_str!("scene columns"), false);
         ui.set_current_column_width(80.0);
         ui.text(im_str!("Globals side"));
@@ -86,6 +86,12 @@ impl Gui {
         ImageButton::new(self.scene_texture_id, available_region)
             .frame_padding(0)
             .build(ui);
+        if (ui.is_item_active()) {
+            let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Left, 0.0);
+            ui.reset_mouse_drag_delta(MouseButton::Left);
+            state.camera_controller.process_mouse(mouse_delta[0], mouse_delta[1]);
+
+        }
         ui.columns(1, im_str!("scene columns"), false);
     }
 
