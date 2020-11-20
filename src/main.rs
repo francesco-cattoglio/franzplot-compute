@@ -143,10 +143,7 @@ fn main() {
     node_graph.add_interval_node();
     node_graph.add_rendering_node();
     node_graph.add_curve_node();
-    let mut rust_gui = rust_gui::Gui {
-        graph: node_graph,
-        scene_texture_id
-    };
+    let mut rust_gui = rust_gui::Gui::new(scene_texture_id);
     //dbg!(&all_descriptors);
     let mut chain = computable_scene::compute_chain::ComputeChain::new();
     let globals;

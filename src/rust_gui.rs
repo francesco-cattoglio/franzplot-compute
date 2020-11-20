@@ -6,9 +6,22 @@ use crate::computable_scene::globals::Globals;
 pub struct Gui {
     pub graph: node_graph::NodeGraph,
     pub scene_texture_id: TextureId,
+    pub globals_names: Vec<String>,
+    pub globals_init_values: Vec<f32>,
+    pub new_global_buffer: ImString,
 }
 
 impl Gui {
+    pub fn new(scene_texture_id: TextureId) -> Self {
+        Self {
+            new_global_buffer: ImString::with_capacity(8),
+            graph: node_graph::NodeGraph::new(),
+            scene_texture_id,
+            globals_init_values: Vec::new(),
+            globals_names: Vec::new(),
+        }
+    }
+
     pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State) {
         // create main window
         let window_begun = Window::new(im_str!("Rust window"))
@@ -61,15 +74,46 @@ impl Gui {
             // clear all errors
             self.graph.clear_all_errors();
             // create a new Globals from the user defined names
-            let globals = Globals::new(&state.manager.device, vec![], vec![]);
+            let globals = Globals::new(&state.manager.device, self.globals_names.clone(), self.globals_init_values.clone());
             let graph_errors = state.computable_scene.process_graph(&state.manager.device, &mut self.graph, globals);
             for error in graph_errors.into_iter() {
                 self.graph.mark_error(error);
             }
         }
         ui.columns(2, im_str!("editor columns"), false);
-        ui.set_current_column_width(80.0);
+        ui.set_current_column_width(120.0);
         ui.text(im_str!("Left side"));
+        // the following code is similar to what a Vec::drain_filter would do,
+        // but operates on 2 vectors at the same time.
+        let mut i = 0;
+        while i != self.globals_names.len() {
+            ui.set_next_item_width(80.0);
+            ui.text(&self.globals_names[i]);
+            ui.same_line(0.0);
+            if ui.small_button(im_str!("X")) {
+                self.globals_init_values.remove(i);
+                self.globals_names.remove(i);
+            } else {
+                // to make each slider unique, we are gonna push an invisible unique imgui label
+                let imgui_name = ImString::new("##".to_string() + &self.globals_names[i]);
+                Drag::new(&ImString::from(imgui_name))
+                    .speed(0.01)
+                    .build(ui, &mut self.globals_init_values[i]);
+                i += 1;
+            }
+        }
+        ui.text(im_str!("add new variable:"));
+        ui.set_next_item_width(75.0);
+        InputText::new(ui, im_str!("##new_var_input"), &mut self.new_global_buffer)
+            .resize_buffer(false)
+            .build();
+        ui.same_line(0.0);
+        if ui.button(im_str!("New"), [0.0, 0.0]) { // TODO: we need a check: the name must be valid!
+            self.globals_names.push(self.new_global_buffer.to_string());
+            self.globals_init_values.push(0.0);
+            self.new_global_buffer.clear();
+        }
+
         ui.next_column();
         ui.text(im_str!("Right side"));
         self.graph.render(ui);
@@ -87,6 +131,7 @@ impl Gui {
         let zip = state.computable_scene.globals.get_variables_iter();
         let mut requested_cursor = MouseCursor::Arrow;
         for (name, value) in zip {
+            // to make each slider unique, we are gonna push an invisible unique imgui label
             let imgui_name = ImString::new("##".to_string() + name);
             ui.text(name);
             Drag::new(&imgui_name)
