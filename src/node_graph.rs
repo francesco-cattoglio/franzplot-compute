@@ -181,8 +181,8 @@ impl Node {
         }
     }
 
-    pub fn get_owned_attributes(self) -> Vec::<AttributeID> {
-        match self.contents {
+    pub fn get_owned_attributes(&mut self) -> Vec::<&AttributeID> {
+        match &self.contents {
             NodeContents::Interval {
                 variable, begin, end, output,
             } => {
@@ -202,7 +202,6 @@ impl Node {
                 unimplemented!()
             }
         }
-
     }
 }
 
@@ -331,14 +330,18 @@ impl NodeGraph {
         // try to remove this node_id from the map
         let maybe_node = self.nodes.remove(&node_id);
         // if the node existed, get a list of all the attributes belonging to it
-        let owned_attributes = if let Some(node) = maybe_node {
-            node.get_owned_attributes()
+        let list_of_attributes = if let Some(mut node) = maybe_node {
+            node
+                .get_owned_attributes()
+                .into_iter()
+                .map(|x| *x)
+                .collect()
         } else {
             vec![]
         };
 
         // remove all the attributes of the attributes map.
-        for id in owned_attributes.iter() {
+        for id in list_of_attributes.iter() {
             self.attributes.remove(id);
         }
 
@@ -352,7 +355,7 @@ impl NodeGraph {
         new_links = new_links
             .into_iter()
             .filter(|pair| {
-                !owned_attributes.contains(&pair.0) && !owned_attributes.contains(&pair.1)
+                !list_of_attributes.contains(&pair.0) && !list_of_attributes.contains(&pair.1)
             })
             .collect();
         // swap back the temporary into self.links
