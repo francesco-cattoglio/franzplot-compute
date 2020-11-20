@@ -40,7 +40,7 @@ impl ComputableScene {
                     to_return.push(GraphError {
                         severity: Severity::Error,
                         node_id: id,
-                        message: imgui::ImString::new(message),
+                        message: String::from(message),
                     });
                     println!("incorrect attributes error for {}: {}", id, &message);
                 },
@@ -48,7 +48,7 @@ impl ComputableScene {
                     to_return.push(GraphError {
                         severity: Severity::Warning,
                         node_id: id,
-                        message: imgui::ImString::new(message),
+                        message: String::from(message),
                     });
                     println!("input not build warning for {}: {}", id, &message);
                 },
@@ -56,7 +56,7 @@ impl ComputableScene {
                     to_return.push(GraphError {
                         severity: Severity::Warning,
                         node_id: id,
-                        message: imgui::ImString::new(message),
+                        message: String::from(message),
                     });
                     println!("missing input error for {}: {}", id, &message);
                 },
@@ -64,7 +64,7 @@ impl ComputableScene {
                     to_return.push(GraphError {
                         severity: Severity::Warning,
                         node_id: id,
-                        message: imgui::ImString::new(message),
+                        message: String::from(message),
                     });
                     println!("invalid input error for {}: {}", id, &message);
                 },

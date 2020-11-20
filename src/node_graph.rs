@@ -32,19 +32,19 @@ pub struct Attribute {
 
 pub enum AttributeContents {
     InputPin {
-        label: ImString,
+        label: String,
         kind: DataKind,
     },
     OutputPin {
-        label: ImString,
+        label: String,
         kind: DataKind,
     },
     Text {
-        label: ImString,
-        string: ImString,
+        label: String,
+        string: String,
     },
     Unknown {
-        label: ImString,
+        label: String,
     }
 }
 
@@ -72,9 +72,11 @@ impl Attribute {
                 ui.text(&label);
                 ui.same_line(0.0);
                 ui.set_next_item_width(80.0);
-                InputText::new(ui, im_str!(""), string)
+                let mut imstring = ImString::new(string.clone());
+                InputText::new(ui, im_str!(""), &mut imstring)
                     .resize_buffer(true)
                     .build();
+                *string = imstring.to_string();
                 imnodes::EndStaticAttribute();
             },
             _ => {
@@ -85,7 +87,7 @@ impl Attribute {
 
 pub struct Node {
     id: i32,
-    title: ImString,
+    title: String,
     error: Option<GraphError>,
     contents: NodeContents,
 }
@@ -215,7 +217,7 @@ pub enum Severity {
 pub struct GraphError {
     pub node_id: NodeID,
     pub severity: Severity,
-    pub message: ImString,
+    pub message: String,
 }
 
 // TODO: maybe make more fields private!
@@ -445,37 +447,37 @@ impl NodeGraph {
             id: self.get_next_id(),
             node_id,
             contents: AttributeContents::Text {
-                label: ImString::new(" name"),
-                string: ImString::new(""),
+                label: String::from(" name"),
+                string: String::from(""),
             }
         };
         let begin = Attribute {
             id: self.get_next_id(),
             node_id,
             contents: AttributeContents::Text {
-                label: ImString::new("begin"),
-                string: ImString::new(""),
+                label: String::from("begin"),
+                string: String::from(""),
             }
         };
         let end = Attribute {
             id: self.get_next_id(),
             node_id,
             contents: AttributeContents::Text {
-                label: ImString::new("  end"),
-                string: ImString::new(""),
+                label: String::from("  end"),
+                string: String::from(""),
             }
         };
         let output = Attribute {
             id: self.get_next_id(),
             node_id,
             contents: AttributeContents::OutputPin {
-                label: ImString::new("interval"),
+                label: String::from("interval"),
                 kind: DataKind::Interval,
             }
         };
         let node = Node {
             id: node_id,
-            title: ImString::new("Interval node"),
+            title: String::from("Interval node"),
             error: None,
             contents: NodeContents::Interval {
                 variable: variable.id,
@@ -497,31 +499,31 @@ impl NodeGraph {
             id: self.get_next_id(),
             node_id,
             contents: AttributeContents::Text {
-                label: ImString::new("fx"),
-                string: ImString::new(""),
+                label: String::from("fx"),
+                string: String::from(""),
             }
         };
         let fy = Attribute {
             id: self.get_next_id(),
             node_id,
             contents: AttributeContents::Text {
-                label: ImString::new("fy"),
-                string: ImString::new(""),
+                label: String::from("fy"),
+                string: String::from(""),
             }
         };
         let fz = Attribute {
             id: self.get_next_id(),
             node_id,
             contents: AttributeContents::Text {
-                label: ImString::new("fz"),
-                string: ImString::new(""),
+                label: String::from("fz"),
+                string: String::from(""),
             }
         };
         let interval = Attribute {
             id: self.get_next_id(),
             node_id,
             contents: AttributeContents::InputPin {
-                label: ImString::new("interval"),
+                label: String::from("interval"),
                 kind: DataKind::Interval,
             }
         };
@@ -529,13 +531,13 @@ impl NodeGraph {
             id: self.get_next_id(),
             node_id,
             contents: AttributeContents::OutputPin {
-                label: ImString::new("geometry"),
+                label: String::from("geometry"),
                 kind: DataKind::Geometry,
             }
         };
         let node = Node {
             id: node_id,
-            title: ImString::new("Curve node"),
+            title: String::from("Curve node"),
             error: None,
             contents: NodeContents::Curve {
                 fx: fx.id,
@@ -559,13 +561,13 @@ impl NodeGraph {
             id: self.get_next_id(),
             node_id,
             contents: AttributeContents::InputPin {
-                label: ImString::new("geometry"),
+                label: String::from("geometry"),
                 kind: DataKind::Geometry,
             }
         };
         let node = Node {
             id: node_id,
-            title: ImString::new("Curve node"),
+            title: String::from("Curve node"),
             error: None,
             contents: NodeContents::Rendering {
                 geometry: geometry.id,
