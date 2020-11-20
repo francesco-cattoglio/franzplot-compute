@@ -7,7 +7,7 @@ fn main() {
     ];
     let cpp_files = vec![
         "src/cpp_gui/imnodes-5959729/imnodes.cpp",
-        "src/cpp_gui/pointer_shims.cpp",
+        "src/cpp_gui/imnodes_shims.cpp",
 //        "src/cpp_gui/src/attribute.cpp",
 //        "src/cpp_gui/src/library.cpp",
 //        "src/cpp_gui/src/graph.cpp",
@@ -17,7 +17,7 @@ fn main() {
 
     let include_files = vec![
         "src/cpp_gui/imnodes-5959729/imnodes.h",
-        "pointer_shims.h",
+        "imnodes_shims.h",
 //        "src/cpp_gui/include/library.h",
 //        "src/cpp_gui/include/attribute.h",
 //        "src/cpp_gui/include/graph.h",

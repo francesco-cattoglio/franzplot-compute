@@ -151,6 +151,18 @@ impl ComputeBlock {
                 };
                 curve_descriptor.to_block(device, globals, processed_blocks)
             },
+            &NodeContents::Surface {
+                interval_1, interval_2, fx, fy, fz, ..
+            } => {
+                let curve_descriptor = SurfaceBlockDescriptor {
+                    interval_first: graph.get_attribute_as_linked_node(interval_1),
+                    interval_second: graph.get_attribute_as_linked_node(interval_2),
+                    fx: graph.get_attribute_as_string(fx).unwrap(),
+                    fy: graph.get_attribute_as_string(fy).unwrap(),
+                    fz: graph.get_attribute_as_string(fz).unwrap(),
+                };
+                curve_descriptor.to_block(device, globals, processed_blocks)
+            },
             &NodeContents::Rendering {
                 geometry,
             } => {

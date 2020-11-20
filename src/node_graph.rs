@@ -112,7 +112,14 @@ pub enum NodeContents {
         fz: AttributeID,
         output: AttributeID,
     },
-    Surface,
+    Surface {
+        interval_1: AttributeID,
+        interval_2: AttributeID,
+        fx: AttributeID,
+        fy: AttributeID,
+        fz: AttributeID,
+        output: AttributeID,
+    },
     Transform,
     Matrix,
     Rendering {
@@ -159,25 +166,36 @@ impl Node {
                 } => {
                     Attribute::render_list(ui, attributes, vec![interval, fx, fy, fz, output,]);
                 },
+                NodeContents::Surface {
+                    interval_1, interval_2, fx, fy, fz, output,
+                } => {
+                    Attribute::render_list(ui, attributes, vec![interval_1, interval_2, fx, fy, fz, output,]);
+                },
                 NodeContents::Rendering {
                     geometry,
                 } => {
                     Attribute::render_list(ui, attributes, vec![geometry,]);
-                }
-                _ => {}
+                },
+                _ => { unimplemented!() }
             }
     }
 
     pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<Option<NodeID>> {
-        match &self.contents {
+        match self.contents {
             NodeContents::Interval { .. } => {
                 vec![]
             },
             NodeContents::Curve { interval, .. } => {
-                vec![graph.get_attribute_as_linked_node(*interval)]
+                vec![graph.get_attribute_as_linked_node(interval)]
+            },
+            NodeContents::Surface { interval_1, interval_2, .. } => {
+                vec![
+                    graph.get_attribute_as_linked_node(interval_1),
+                    graph.get_attribute_as_linked_node(interval_2),
+                ]
             },
             NodeContents::Rendering { geometry, } => {
-                vec![graph.get_attribute_as_linked_node(*geometry)]
+                vec![graph.get_attribute_as_linked_node(geometry)]
             },
             _ => {
                 unimplemented!()
@@ -185,6 +203,7 @@ impl Node {
         }
     }
 
+    // TODO: macro? NodeContents-to-attributes-list function?
     pub fn get_owned_attributes(&mut self) -> Vec::<&mut AttributeID> {
         match &mut self.contents {
             NodeContents::Interval {
@@ -196,6 +215,11 @@ impl Node {
                 interval, fx, fy, fz, output
             } => {
                 vec![interval, fx, fy, fz, output]
+            },
+            NodeContents::Surface {
+                interval_1, interval_2, fx, fy, fz, output
+            } => {
+                vec![interval_1, interval_2, fx, fy, fz, output]
             },
             NodeContents::Rendering {
                 geometry,
@@ -273,7 +297,7 @@ impl NodeGraph {
         }
     }
 
-    pub fn insert_node(&mut self, mut node: Node, attributes_contents: Vec<AttributeContents>) {
+    pub fn insert_node(&mut self, mut node: Node, attributes_contents: Vec<AttributeContents>) -> NodeID {
         // make a check: the list of owned attributes must have the same
         // length as the attributes vector
         let owned_attributes = node.get_owned_attributes();
@@ -308,6 +332,7 @@ impl NodeGraph {
         // some existing attribute, that would mean something is off!
         assert!(self.nodes[node_id as usize].is_none());
         self.nodes[node_id as usize] = Some(node);
+        node_id
     }
 
     pub fn render(&mut self, ui: &imgui::Ui<'_>) {
@@ -370,6 +395,62 @@ impl NodeGraph {
                 self.links.remove(&self.last_hovered_link);
             }
         });
+
+        let style_token = ui.push_style_var(StyleVar::WindowPadding([8.0, 8.0]));
+        ui.popup(im_str!("Add menu"), || {
+            let clicked_pos = ui.mouse_pos_on_opening_current_popup();
+            if MenuItem::new(im_str!("Interval")).build(ui) {
+                let new_node_id = self.add_interval_node();
+                imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+            }
+
+            ui.menu(im_str!("Geometries"), true, || {
+                if MenuItem::new(im_str!("Curve")).build(ui) {
+                    let new_node_id = self.add_curve_node();
+                    imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+                }
+                if MenuItem::new(im_str!("Surface")).build(ui) {
+                    let new_node_id = self.add_surface_node();
+                    imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+                }
+
+            }); // "Geometries closure ends here"
+        }); // "Add" closure ends here
+        style_token.pop(ui);
+
+    //if (ImGui::BeginPopup("Add node")) {
+    //    const ImVec2 click_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
+
+    //    if (ImGui::MenuItem("Interval")) {
+    //        AddNode(Node::PrefabInterval(std::bind(&Graph::NextId, this)), click_pos);
+    //    }
+
+    //    if (ImGui::BeginMenu("Geometries")) {
+    //        if (ImGui::MenuItem("Curve")) {
+    //            AddNode(Node::PrefabCurve(std::bind(&Graph::NextId, this)), click_pos);
+    //        }
+    //        if (ImGui::MenuItem("Surface")) {
+    //            AddNode(Node::PrefabSurface(std::bind(&Graph::NextId, this)), click_pos);
+    //        }
+    //        ImGui::EndMenu();
+    //    }
+
+    //    if (ImGui::BeginMenu("Transformations")) {
+    //        if (ImGui::MenuItem("Matrix")) {
+    //            AddNode(Node::PrefabMatrix(std::bind(&Graph::NextId, this)), click_pos);
+    //        }
+    //        if (ImGui::MenuItem("Transform")) {
+    //            AddNode(Node::PrefabTransform(std::bind(&Graph::NextId, this)), click_pos);
+    //        }
+    //        ImGui::EndMenu();
+    //    }
+
+    //    if (ImGui::MenuItem("Rendering")) {
+    //        AddNode(Node::PrefabRendering(std::bind(&Graph::NextId, this)), click_pos);
+    //    }
+
+    //    ImGui::EndPopup();
+    //}
 
         // check if a link was created
         let mut start_attribute_id: AttributeID = -1;
@@ -546,7 +627,7 @@ impl NodeGraph {
         }
     }
 
-    pub fn add_interval_node(&mut self) {
+    pub fn add_interval_node(&mut self) -> NodeID {
         let attributes_contents = vec![
             AttributeContents::Text {
                 label: String::from(" name"),
@@ -575,10 +656,10 @@ impl NodeGraph {
                 output: 3,
             }
         };
-        self.insert_node(node, attributes_contents);
+        self.insert_node(node, attributes_contents)
     }
 
-    pub fn add_curve_node(&mut self) {
+    pub fn add_curve_node(&mut self) -> NodeID {
         let attributes_contents = vec![
             AttributeContents::Text {
                 label: String::from("fx"),
@@ -612,10 +693,52 @@ impl NodeGraph {
                 output: 4,
             }
         };
-        self.insert_node(node, attributes_contents);
+        self.insert_node(node, attributes_contents)
     }
 
-    pub fn add_rendering_node(&mut self) {
+    pub fn add_surface_node(&mut self) -> NodeID {
+        let attributes_contents = vec![
+            AttributeContents::Text {
+                label: String::from("fx"),
+                string: String::from(""),
+            },
+            AttributeContents::Text {
+                label: String::from("fy"),
+                string: String::from(""),
+            },
+            AttributeContents::Text {
+                label: String::from("fz"),
+                string: String::from(""),
+            },
+            AttributeContents::InputPin {
+                label: String::from("interval 1"),
+                kind: DataKind::Interval,
+            },
+            AttributeContents::InputPin {
+                label: String::from("interval 2"),
+                kind: DataKind::Interval,
+            },
+            AttributeContents::OutputPin {
+                label: String::from("geometry"),
+                kind: DataKind::Geometry,
+            }
+        ];
+        let node = Node {
+            title: String::from("Surface node"),
+            error: None,
+            contents: NodeContents::Surface {
+                fx: 0,
+                fy: 1,
+                fz: 2,
+                interval_1: 3,
+                interval_2: 4,
+                output: 5,
+            }
+        };
+        self.insert_node(node, attributes_contents)
+    }
+
+    pub fn add_rendering_node(&mut self) -> NodeID {
         let attributes_contents = vec![
             AttributeContents::InputPin {
                 label: String::from("geometry"),
@@ -629,7 +752,7 @@ impl NodeGraph {
                 geometry: 0,
             }
         };
-        self.insert_node(node, attributes_contents);
+        self.insert_node(node, attributes_contents)
     }
 
 }

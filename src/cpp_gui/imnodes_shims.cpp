@@ -1,4 +1,8 @@
-#include "pointer_shims.h"
+#include "imnodes_shims.h"
+
+struct ImVec2 {
+    float x, y;
+};
 
 namespace imnodes {
 
@@ -12,5 +16,10 @@ namespace imnodes {
 
     bool IsNodeHovered(int& id) {
         return IsNodeHovered(&id);
+    }
+
+    void SetNodeScreenSpacePos(int node_id, float x, float y) {
+        ImVec2 pos = ImVec2{x, y};
+        return SetNodeScreenSpacePos(node_id, pos);
     }
 }
