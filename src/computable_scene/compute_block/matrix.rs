@@ -1,6 +1,5 @@
 use crate::computable_scene::globals::Globals;
 use crate::shader_processing::*;
-use smol_str::SmolStr;
 use super::ComputeBlock;
 use super::BlockId;
 use super::BlockCreationError;
@@ -11,9 +10,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MatrixBlockDescriptor {
     pub interval: Option<BlockId>,
-    pub row_1: [SmolStr; 4], // matrix elements, row-major order
-    pub row_2: [SmolStr; 4], // matrix elements, row-major order
-    pub row_3: [SmolStr; 4], // matrix elements, row-major order
+    pub row_1: [String; 4], // matrix elements, row-major order
+    pub row_2: [String; 4], // matrix elements, row-major order
+    pub row_3: [String; 4], // matrix elements, row-major order
 }
 
 impl MatrixBlockDescriptor {

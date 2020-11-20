@@ -42,6 +42,16 @@ pub enum AttributeContents {
         label: String,
         string: String,
     },
+    QualitySlider {
+        label: String,
+        quality: i32,
+    },
+    MatrixRow {
+        col_1: String,
+        col_2: String,
+        col_3: String,
+        col_4: String,
+    },
     Unknown {
         label: String,
     }
@@ -78,7 +88,62 @@ impl Attribute {
                 *string = imstring.to_string();
                 imnodes::EndStaticAttribute();
             },
+            AttributeContents::QualitySlider {
+                label, quality,
+            } => {
+                imnodes::BeginStaticAttribute(id);
+                ui.text(&label);
+                ui.same_line(0.0);
+                ui.set_next_item_width(55.0);
+                Slider::new(im_str!(""))
+                    .range(4 ..= 16)
+                    .build(ui, quality);
+                imnodes::EndStaticAttribute();
+            },
+            AttributeContents::MatrixRow {
+                col_1, col_2, col_3, col_4,
+            } => {
+                imnodes::BeginStaticAttribute(id);
+
+                let width_token = ui.push_item_width(50.0);
+                let mut imstring: ImString;
+
+                // TODO: this is kinda ugly
+                imstring = ImString::new(col_1.clone());
+                InputText::new(ui, im_str!("##1"), &mut imstring)
+                    .resize_buffer(true)
+                    .build();
+                *col_1 = imstring.to_string();
+
+                ui.same_line(0.0);
+
+                imstring = ImString::new(col_2.clone());
+                InputText::new(ui, im_str!("##2"), &mut imstring)
+                    .resize_buffer(true)
+                    .build();
+                *col_2 = imstring.to_string();
+
+                ui.same_line(0.0);
+
+                imstring = ImString::new(col_3.clone());
+                InputText::new(ui, im_str!("##3"), &mut imstring)
+                    .resize_buffer(true)
+                    .build();
+                *col_3 = imstring.to_string();
+
+                ui.same_line(0.0);
+
+                imstring = ImString::new(col_4.clone());
+                InputText::new(ui, im_str!("##4"), &mut imstring)
+                    .resize_buffer(true)
+                    .build();
+                *col_4 = imstring.to_string();
+
+                imnodes::EndStaticAttribute();
+                width_token.pop(ui);
+            },
             _ => {
+                unimplemented!()
             }
         }
     }
@@ -103,6 +168,7 @@ pub enum NodeContents {
         variable: AttributeID,
         begin: AttributeID,
         end: AttributeID,
+        quality: AttributeID,
         output: AttributeID,
     },
     Curve {
@@ -120,8 +186,18 @@ pub enum NodeContents {
         fz: AttributeID,
         output: AttributeID,
     },
-    Transform,
-    Matrix,
+    Transform {
+        geometry: AttributeID,
+        matrix: AttributeID,
+        output: AttributeID,
+    },
+    Matrix {
+        interval: AttributeID,
+        row_1: AttributeID,
+        row_2: AttributeID,
+        row_3: AttributeID,
+        output: AttributeID,
+    },
     Rendering {
         geometry: AttributeID,
     },
@@ -157,9 +233,9 @@ impl Node {
             // of node in the future...
             match self.contents {
                 NodeContents::Interval {
-                    variable, begin, end, output,
+                    variable, begin, end, quality, output,
                 } => {
-                    Attribute::render_list(ui, attributes, vec![variable, begin, end, output,]);
+                    Attribute::render_list(ui, attributes, vec![variable, begin, end, quality, output,]);
                 },
                 NodeContents::Curve {
                     interval, fx, fy, fz, output,
@@ -170,6 +246,16 @@ impl Node {
                     interval_1, interval_2, fx, fy, fz, output,
                 } => {
                     Attribute::render_list(ui, attributes, vec![interval_1, interval_2, fx, fy, fz, output,]);
+                },
+                NodeContents::Transform {
+                    geometry, matrix, output,
+                } => {
+                    Attribute::render_list(ui, attributes, vec![geometry, matrix, output,]);
+                },
+                NodeContents::Matrix {
+                    interval, row_1, row_2, row_3, output,
+                } => {
+                    Attribute::render_list(ui, attributes, vec![interval, row_1, row_2, row_3, output,]);
                 },
                 NodeContents::Rendering {
                     geometry,
@@ -194,8 +280,21 @@ impl Node {
                     graph.get_attribute_as_linked_node(interval_2),
                 ]
             },
+            NodeContents::Transform { geometry, matrix, .. } => {
+                vec![
+                    graph.get_attribute_as_linked_node(geometry),
+                    graph.get_attribute_as_linked_node(matrix),
+                ]
+            },
+            NodeContents::Matrix { interval, .. } => {
+                vec![
+                    graph.get_attribute_as_linked_node(interval),
+                ]
+            },
             NodeContents::Rendering { geometry, } => {
-                vec![graph.get_attribute_as_linked_node(geometry)]
+                vec![
+                    graph.get_attribute_as_linked_node(geometry)
+                ]
             },
             _ => {
                 unimplemented!()
@@ -207,9 +306,9 @@ impl Node {
     pub fn get_owned_attributes(&mut self) -> Vec::<&mut AttributeID> {
         match &mut self.contents {
             NodeContents::Interval {
-                variable, begin, end, output,
+                variable, begin, end, quality, output,
             } => {
-                vec![variable, begin, end, output]
+                vec![variable, begin, end, quality, output]
             },
             NodeContents::Curve {
                 interval, fx, fy, fz, output
@@ -220,6 +319,16 @@ impl Node {
                 interval_1, interval_2, fx, fy, fz, output
             } => {
                 vec![interval_1, interval_2, fx, fy, fz, output]
+            },
+            NodeContents::Transform {
+                geometry, matrix, output
+            } => {
+                vec![geometry, matrix, output]
+            },
+            NodeContents::Matrix {
+                interval, row_1, row_2, row_3, output,
+            } => {
+                vec![interval, row_1, row_2, row_3, output,]
             },
             NodeContents::Rendering {
                 geometry,
@@ -243,11 +352,10 @@ pub struct GraphError {
     pub message: String,
 }
 
-// TODO: maybe make more fields private!
 pub struct NodeGraph {
     nodes: Vec<Option<Node>>,
     attributes: Vec<Option<Attribute>>,
-    pub links: HashMap::<AttributeID, AttributeID>,
+    links: HashMap::<AttributeID, AttributeID>,
     free_nodes_list: Vec<NodeID>,
     free_attributes_list: Vec<AttributeID>,
     last_hovered_node: NodeID,
@@ -413,44 +521,25 @@ impl NodeGraph {
                     let new_node_id = self.add_surface_node();
                     imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
                 }
-
             }); // "Geometries closure ends here"
+
+            ui.menu(im_str!("Transformations"), true, || {
+                if MenuItem::new(im_str!("Matrix")).build(ui) {
+                    let new_node_id = self.add_matrix_node();
+                    imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+                }
+                if MenuItem::new(im_str!("Transform")).build(ui) {
+                    let new_node_id = self.add_transform_node();
+                    imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+                }
+            }); // "Geometries closure ends here"
+
+            if MenuItem::new(im_str!("Rendering")).build(ui) {
+                let new_node_id = self.add_rendering_node();
+                imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+            }
         }); // "Add" closure ends here
         style_token.pop(ui);
-
-    //if (ImGui::BeginPopup("Add node")) {
-    //    const ImVec2 click_pos = ImGui::GetMousePosOnOpeningCurrentPopup();
-
-    //    if (ImGui::MenuItem("Interval")) {
-    //        AddNode(Node::PrefabInterval(std::bind(&Graph::NextId, this)), click_pos);
-    //    }
-
-    //    if (ImGui::BeginMenu("Geometries")) {
-    //        if (ImGui::MenuItem("Curve")) {
-    //            AddNode(Node::PrefabCurve(std::bind(&Graph::NextId, this)), click_pos);
-    //        }
-    //        if (ImGui::MenuItem("Surface")) {
-    //            AddNode(Node::PrefabSurface(std::bind(&Graph::NextId, this)), click_pos);
-    //        }
-    //        ImGui::EndMenu();
-    //    }
-
-    //    if (ImGui::BeginMenu("Transformations")) {
-    //        if (ImGui::MenuItem("Matrix")) {
-    //            AddNode(Node::PrefabMatrix(std::bind(&Graph::NextId, this)), click_pos);
-    //        }
-    //        if (ImGui::MenuItem("Transform")) {
-    //            AddNode(Node::PrefabTransform(std::bind(&Graph::NextId, this)), click_pos);
-    //        }
-    //        ImGui::EndMenu();
-    //    }
-
-    //    if (ImGui::MenuItem("Rendering")) {
-    //        AddNode(Node::PrefabRendering(std::bind(&Graph::NextId, this)), click_pos);
-    //    }
-
-    //    ImGui::EndPopup();
-    //}
 
         // check if a link was created
         let mut start_attribute_id: AttributeID = -1;
@@ -544,6 +633,26 @@ impl NodeGraph {
             }
         } else {
             None
+        }
+    }
+
+    // TODO: this is kinda bad as well. A rework on matrix attributes might be needed.
+    pub fn get_attribute_as_multistring(&self, attribute_id: AttributeID) -> Vec<String> {
+        // first, we need to check if the attribute_id actually exists in our attributes map
+        if let Some(Some(attribute)) = self.attributes.get(attribute_id as usize) {
+            // if it exists, then we need to check if it is an input pin
+            if let AttributeContents::MatrixRow{ col_1, col_2, col_3, col_4, } = &attribute.contents {
+                vec![
+                    col_1.to_string(),
+                    col_2.to_string(),
+                    col_3.to_string(),
+                    col_4.to_string(),
+                ]
+            } else {
+                vec![]
+            }
+        } else {
+            vec![]
         }
     }
 
@@ -641,6 +750,10 @@ impl NodeGraph {
                 label: String::from("  end"),
                 string: String::from(""),
             },
+            AttributeContents::QualitySlider {
+                label: String::from("quality"),
+                quality: 4,
+            },
             AttributeContents::OutputPin {
                 label: String::from("interval"),
                 kind: DataKind::Interval,
@@ -653,7 +766,8 @@ impl NodeGraph {
                 variable: 0,
                 begin: 1,
                 end: 2,
-                output: 3,
+                quality: 3,
+                output: 4,
             }
         };
         self.insert_node(node, attributes_contents)
@@ -750,6 +864,76 @@ impl NodeGraph {
             error: None,
             contents: NodeContents::Rendering {
                 geometry: 0,
+            }
+        };
+        self.insert_node(node, attributes_contents)
+    }
+
+    pub fn add_transform_node(&mut self) -> NodeID {
+        let attributes_contents = vec![
+            AttributeContents::InputPin {
+                label: String::from("geometry"),
+                kind: DataKind::Geometry,
+            },
+            AttributeContents::InputPin {
+                label: String::from("matrix"),
+                kind: DataKind::Matrix,
+            },
+            AttributeContents::OutputPin {
+                label: String::from("output"),
+                kind: DataKind::Geometry,
+            }
+        ];
+        let node = Node {
+            title: String::from("Transform"),
+            error: None,
+            contents: NodeContents::Transform {
+                geometry: 0,
+                matrix: 1,
+                output: 2,
+            }
+        };
+        self.insert_node(node, attributes_contents)
+    }
+
+    pub fn add_matrix_node(&mut self) -> NodeID {
+        let attributes_contents = vec![
+            AttributeContents::InputPin {
+                label: String::from("interval"),
+                kind: DataKind::Interval,
+            },
+            AttributeContents::MatrixRow {
+                col_1: "1.0".into(),
+                col_2: "0.0".into(),
+                col_3: "0.0".into(),
+                col_4: "0.0".into(),
+            },
+            AttributeContents::MatrixRow {
+                col_1: "0.0".into(),
+                col_2: "1.0".into(),
+                col_3: "0.0".into(),
+                col_4: "0.0".into(),
+            },
+            AttributeContents::MatrixRow {
+                col_1: "0.0".into(),
+                col_2: "0.0".into(),
+                col_3: "1.0".into(),
+                col_4: "0.0".into(),
+            },
+            AttributeContents::OutputPin {
+                label: String::from("output"),
+                kind: DataKind::Matrix,
+            },
+        ];
+        let node = Node {
+            title: String::from("Curve node"),
+            error: None,
+            contents: NodeContents::Matrix {
+                interval: 0,
+                row_1: 1,
+                row_2: 2,
+                row_3: 3,
+                output: 4,
             }
         };
         self.insert_node(node, attributes_contents)

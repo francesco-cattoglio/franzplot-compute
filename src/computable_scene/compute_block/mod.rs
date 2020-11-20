@@ -163,6 +163,27 @@ impl ComputeBlock {
                 };
                 curve_descriptor.to_block(device, globals, processed_blocks)
             },
+            &NodeContents::Transform {
+                geometry, matrix, ..
+            } => {
+                let transform_descriptor = TransformBlockDescriptor {
+                    geometry: graph.get_attribute_as_linked_node(geometry),
+                    matrix: graph.get_attribute_as_linked_node(matrix),
+                };
+                transform_descriptor.to_block(device, processed_blocks)
+            },
+            &NodeContents::Matrix {
+                interval, row_1, row_2, row_3, ..
+            } => {
+                use std::convert::TryInto;
+                let matrix_descriptor = MatrixBlockDescriptor {
+                    interval: graph.get_attribute_as_linked_node(interval),
+                    row_1: graph.get_attribute_as_multistring(row_1).try_into().unwrap(),
+                    row_2: graph.get_attribute_as_multistring(row_2).try_into().unwrap(),
+                    row_3: graph.get_attribute_as_multistring(row_3).try_into().unwrap(),
+                };
+                matrix_descriptor.to_block(device, globals, processed_blocks)
+            },
             &NodeContents::Rendering {
                 geometry,
             } => {
@@ -170,7 +191,7 @@ impl ComputeBlock {
                     geometry: graph.get_attribute_as_linked_node(geometry)
                 };
                 rendering_descriptor.to_block(device, processed_blocks)
-            }
+            },
             _ => unimplemented!(),
             //DescriptorData::Interval(desc) => desc.to_block(device, globals),
             //DescriptorData::Curve(desc) => desc.to_block(device, globals, processed_blocks),
