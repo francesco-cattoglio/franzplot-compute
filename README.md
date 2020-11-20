@@ -1,9 +1,25 @@
 # franzplot-compute
 
-Le due dipendenze per compilare il contenuto del repository sotto linux sono:
-- la toolchain per il linguaggio di programmazione Rust, incluso il package manager ufficiale `cargo`
+## Stato attuale
+
+La struttura base dell'interfaccia è pronta. È possibile aggiungere e rimuovere nodi dal grafo,
+impostare variabili globali, renderizzare la scena. Le principali feature da implementare sono:
+- save e load del grafo da file
+- vari fix, in particolare uno riguardo il rendering delle curve
+- movimento della telecamera
+
+Sviluppi futuri:
+- trovare un modo per catturare il mouse che funzioni senza dare problemi
+- undo/redo nel grafo
+- copiaincolla dei nodi
+- gestione della scena: luci e assi cartesiani
+
+## Come compilare il progetto
+
+Le tre dipendenze per compilare il contenuto del repository sotto linux sono:
+- la toolchain per il linguaggio Rust, *versione minima 1.48*
 - le librerie per lo sviluppo della API grafica vulkan
-- un compilatore con supporto a C++17
+- un compilatore C++11
 
 ### Toolchain Rust
 Il consiglio è quello di seguire le istruzioni che trovate sul sito ufficiale: https://www.rust-lang.org/tools/install
