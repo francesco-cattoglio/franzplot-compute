@@ -25,7 +25,6 @@ impl DataKind {
 }
 
 pub struct Attribute {
-    id: AttributeID,
     node_id: NodeID,
     contents: AttributeContents,
 }
@@ -49,26 +48,26 @@ pub enum AttributeContents {
 }
 
 impl Attribute {
-    pub fn render(&mut self, ui: &imgui::Ui<'_>) {
+    pub fn render(&mut self, ui: &imgui::Ui<'_>, id: AttributeID) {
         match &mut self.contents {
             AttributeContents::InputPin {
                 label, kind,
             } => {
-                imnodes::BeginInputAttribute(self.id, kind.to_pin_shape());
+                imnodes::BeginInputAttribute(id, kind.to_pin_shape());
                 ui.text(label);
                 imnodes::EndInputAttribute();
             },
             AttributeContents::OutputPin {
                 label, kind,
             } => {
-                imnodes::BeginOutputAttribute(self.id, kind.to_pin_shape());
+                imnodes::BeginOutputAttribute(id, kind.to_pin_shape());
                 ui.text(label);
                 imnodes::EndOutputAttribute();
             },
             AttributeContents::Text{
                 label, string,
             } => {
-                imnodes::BeginStaticAttribute(self.id);
+                imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
                 ui.same_line(0.0);
                 ui.set_next_item_width(80.0);
@@ -86,7 +85,6 @@ impl Attribute {
 }
 
 pub struct Node {
-    id: i32,
     title: String,
     error: Option<GraphError>,
     contents: NodeContents,
@@ -121,7 +119,6 @@ impl Node {
     }
 
     pub fn render(&mut self, ui: &imgui::Ui<'_>, attributes: &mut BTreeMap<AttributeID, Attribute>) {
-        imnodes::BeginNode(self.id);
             imnodes::BeginNodeTitleBar();
                 ui.text(&self.title);
                 // handle error reporting
@@ -144,28 +141,27 @@ impl Node {
                 NodeContents::Interval {
                     variable, begin, end, output,
                 } => {
-                    attributes.get_mut(output).unwrap().render(ui);
-                    attributes.get_mut(variable).unwrap().render(ui);
-                    attributes.get_mut(begin).unwrap().render(ui);
-                    attributes.get_mut(end).unwrap().render(ui);
+                    attributes.get_mut(output).unwrap().render(ui, *output);
+                    attributes.get_mut(variable).unwrap().render(ui, *variable);
+                    attributes.get_mut(begin).unwrap().render(ui, *begin);
+                    attributes.get_mut(end).unwrap().render(ui, *end);
                 },
                 NodeContents::Curve {
                     interval, fx, fy, fz, output,
                 } => {
-                    attributes.get_mut(output).unwrap().render(ui);
-                    attributes.get_mut(interval).unwrap().render(ui);
-                    attributes.get_mut(fx).unwrap().render(ui);
-                    attributes.get_mut(fy).unwrap().render(ui);
-                    attributes.get_mut(fz).unwrap().render(ui);
+                    attributes.get_mut(output).unwrap().render(ui, *output);
+                    attributes.get_mut(interval).unwrap().render(ui, *interval);
+                    attributes.get_mut(fx).unwrap().render(ui, *fx);
+                    attributes.get_mut(fy).unwrap().render(ui, *fy);
+                    attributes.get_mut(fz).unwrap().render(ui, *fz);
                 },
                 NodeContents::Rendering {
                     geometry,
                 } => {
-                    attributes.get_mut(geometry).unwrap().render(ui);
+                    attributes.get_mut(geometry).unwrap().render(ui, *geometry);
                 }
                 _ => {}
             }
-        imnodes::EndNode();
     }
 
     pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<Option<NodeID>> {
@@ -230,6 +226,12 @@ pub struct NodeGraph {
     last_hovered_link: AttributeID,
 }
 
+enum PairInfo {
+    FirstInputSecondOutput,
+    FirstOutputSecondInput,
+    NonCompatible
+}
+
 impl NodeGraph {
     pub fn new() -> Self {
         Self {
@@ -253,8 +255,10 @@ impl NodeGraph {
         }
 
         // render all nodes
-        for node in self.nodes.values_mut() {
-            node.render(ui, &mut self.attributes);
+        for id_node_pair in self.nodes.iter_mut() {
+            imnodes::BeginNode(*id_node_pair.0);
+            id_node_pair.1.render(ui, &mut self.attributes);
+            imnodes::EndNode();
         }
 
         // we need to end the node editor before doing any interaction
@@ -375,7 +379,7 @@ impl NodeGraph {
             // if it exists, then we need to check if it is an input pin
             if let AttributeContents::InputPin{..} = &attribute.contents {
                 // and then we can finally check if it is actually linked to something!
-                if let Some(output_attribute_id) = self.links.get(&attribute.id) {
+                if let Some(output_attribute_id) = self.links.get(&input_attribute_id) {
                     // we can assert that if there is a link, then the linked one exists
                     let linked_node_id = self.attributes.get(output_attribute_id).unwrap().node_id;
                     Some(linked_node_id)
@@ -390,36 +394,37 @@ impl NodeGraph {
         }
     }
 
-    fn check_pin_compatibility(first_attribute: &Attribute, second_attribute: &Attribute) -> Option<(AttributeID, AttributeID)> {
+    fn check_pair_info(first_attribute: &Attribute, second_attribute: &Attribute) -> PairInfo {
         // sort them and match them based on the first content
         // this match is probably over complicated and might be reworked to be easier to follow.
         // Also, when we re-introduce the idea of a "value" as a possible input to a matrix, we will have to change it for sure.
+        // TODO: there is a lot of rightwards drift in this match, perhaps early returns are better?
         match &first_attribute.contents {
             AttributeContents::InputPin { kind: first_kind, .. } => {
                 if let AttributeContents::OutputPin { kind: ref second_kind, .. } = second_attribute.contents {
                     // note: rust automatically derefs when doing comparisons!
                     if first_kind == second_kind {
-                        Some((first_attribute.id, second_attribute.id))
+                        PairInfo::FirstInputSecondOutput
                     } else {
-                        None
+                        PairInfo::NonCompatible
                     }
                 } else {
-                    None
+                    PairInfo::NonCompatible
                 }
             },
             AttributeContents::OutputPin { kind: first_kind, .. } => {
                 if let AttributeContents::InputPin { kind: ref second_kind, .. } = second_attribute.contents {
                     // note: rust automatically derefs when doing comparisons!
                     if first_kind == second_kind {
-                        Some((second_attribute.id, first_attribute.id))
+                        PairInfo::FirstOutputSecondInput
                     } else {
-                        None
+                        PairInfo::NonCompatible
                     }
                 } else {
-                    None
+                    PairInfo::NonCompatible
                 }
             },
-            _ => None
+            _ => PairInfo::NonCompatible
         }
 
     }
@@ -432,7 +437,12 @@ impl NodeGraph {
         match (first_attribute_opt, second_attribute_opt) {
             // if both attributes actually exist, check if they are compatible
             (Some(first_attribute), Some(second_attribute)) => {
-                Self::check_pin_compatibility(first_attribute, second_attribute)
+                let pair_info = Self::check_pair_info(first_attribute, second_attribute);
+                match pair_info {
+                    PairInfo::FirstInputSecondOutput => Some((first_id, second_id)),
+                    PairInfo::FirstOutputSecondInput => Some((second_id, first_id)),
+                    PairInfo::NonCompatible => None,
+                }
             },
             // TODO: maybe log a warning instead of panic?
             (None, Some(_)) => unreachable!("When attempting to create a link, the first attribute was not found in the map"),
@@ -443,8 +453,11 @@ impl NodeGraph {
 
     pub fn add_interval_node(&mut self) {
         let node_id = self.get_next_id();
+        let variable_id = self.get_next_id();
+        let begin_id = self.get_next_id();
+        let end_id = self.get_next_id();
+        let output_id = self.get_next_id();
         let variable = Attribute {
-            id: self.get_next_id(),
             node_id,
             contents: AttributeContents::Text {
                 label: String::from(" name"),
@@ -452,7 +465,6 @@ impl NodeGraph {
             }
         };
         let begin = Attribute {
-            id: self.get_next_id(),
             node_id,
             contents: AttributeContents::Text {
                 label: String::from("begin"),
@@ -460,7 +472,6 @@ impl NodeGraph {
             }
         };
         let end = Attribute {
-            id: self.get_next_id(),
             node_id,
             contents: AttributeContents::Text {
                 label: String::from("  end"),
@@ -468,7 +479,6 @@ impl NodeGraph {
             }
         };
         let output = Attribute {
-            id: self.get_next_id(),
             node_id,
             contents: AttributeContents::OutputPin {
                 label: String::from("interval"),
@@ -476,27 +486,30 @@ impl NodeGraph {
             }
         };
         let node = Node {
-            id: node_id,
             title: String::from("Interval node"),
             error: None,
             contents: NodeContents::Interval {
-                variable: variable.id,
-                begin: begin.id,
-                end: end.id,
-                output: output.id,
+                variable: variable_id,
+                begin: begin_id,
+                end: end_id,
+                output: output_id,
             }
         };
         self.nodes.insert(node_id, node);
-        self.attributes.insert(variable.id, variable);
-        self.attributes.insert(begin.id, begin);
-        self.attributes.insert(end.id, end);
-        self.attributes.insert(output.id, output);
+        self.attributes.insert(variable_id, variable);
+        self.attributes.insert(begin_id, begin);
+        self.attributes.insert(end_id, end);
+        self.attributes.insert(output_id, output);
     }
 
     pub fn add_curve_node(&mut self) {
         let node_id = self.get_next_id();
+        let fx_id = self.get_next_id();
+        let fy_id = self.get_next_id();
+        let fz_id = self.get_next_id();
+        let interval_id = self.get_next_id();
+        let output_id = self.get_next_id();
         let fx = Attribute {
-            id: self.get_next_id(),
             node_id,
             contents: AttributeContents::Text {
                 label: String::from("fx"),
@@ -504,7 +517,6 @@ impl NodeGraph {
             }
         };
         let fy = Attribute {
-            id: self.get_next_id(),
             node_id,
             contents: AttributeContents::Text {
                 label: String::from("fy"),
@@ -512,7 +524,6 @@ impl NodeGraph {
             }
         };
         let fz = Attribute {
-            id: self.get_next_id(),
             node_id,
             contents: AttributeContents::Text {
                 label: String::from("fz"),
@@ -520,7 +531,6 @@ impl NodeGraph {
             }
         };
         let interval = Attribute {
-            id: self.get_next_id(),
             node_id,
             contents: AttributeContents::InputPin {
                 label: String::from("interval"),
@@ -528,7 +538,6 @@ impl NodeGraph {
             }
         };
         let output = Attribute {
-            id: self.get_next_id(),
             node_id,
             contents: AttributeContents::OutputPin {
                 label: String::from("geometry"),
@@ -536,29 +545,28 @@ impl NodeGraph {
             }
         };
         let node = Node {
-            id: node_id,
             title: String::from("Curve node"),
             error: None,
             contents: NodeContents::Curve {
-                fx: fx.id,
-                fy: fy.id,
-                fz: fz.id,
-                interval: interval.id,
-                output: output.id,
+                fx: fx_id,
+                fy: fy_id,
+                fz: fz_id,
+                interval: interval_id,
+                output: output_id,
             }
         };
         self.nodes.insert(node_id, node);
-        self.attributes.insert(fx.id, fx);
-        self.attributes.insert(fy.id, fy);
-        self.attributes.insert(fz.id, fz);
-        self.attributes.insert(interval.id, interval);
-        self.attributes.insert(output.id, output);
+        self.attributes.insert(fx_id, fx);
+        self.attributes.insert(fy_id, fy);
+        self.attributes.insert(fz_id, fz);
+        self.attributes.insert(interval_id, interval);
+        self.attributes.insert(output_id, output);
     }
 
     pub fn add_rendering_node(&mut self) {
         let node_id = self.get_next_id();
+        let geometry_id = self.get_next_id();
         let geometry = Attribute {
-            id: self.get_next_id(),
             node_id,
             contents: AttributeContents::InputPin {
                 label: String::from("geometry"),
@@ -566,15 +574,14 @@ impl NodeGraph {
             }
         };
         let node = Node {
-            id: node_id,
             title: String::from("Curve node"),
             error: None,
             contents: NodeContents::Rendering {
-                geometry: geometry.id,
+                geometry: geometry_id,
             }
         };
         self.nodes.insert(node_id, node);
-        self.attributes.insert(geometry.id, geometry);
+        self.attributes.insert(geometry_id, geometry);
     }
 
     pub fn get_next_id(&mut self) -> i32 {
