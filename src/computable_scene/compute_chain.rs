@@ -85,13 +85,13 @@ impl<'a> ComputeChain {
         // a map from BlockId to all the inputs that a block has
         use std::collections::BTreeMap;
         let mut node_inputs = BTreeMap::<NodeID, Vec<NodeID>>::new();
-        for (node_id, node) in graph.nodes.iter() {
+        for (node_id, node) in graph.get_nodes() {
             let existing_inputs: Vec<NodeID> = node
                 .get_input_nodes(graph)
                 .into_iter()
                 .filter_map(|x| x)
                 .collect();
-            node_inputs.insert(*node_id, existing_inputs);
+            node_inputs.insert(node_id, existing_inputs);
             // TODO: we should also error out here if we find out that two block descriptors have
             // the same BlockId
         }
@@ -112,7 +112,7 @@ impl<'a> ComputeChain {
         // with the rendering commands first and the intervals last.
         // Therefore we process the descriptors in the reversed order
         for id in sorted_ids.into_iter().rev() {
-            if let Some(node) = graph.nodes.get(&id) {
+            if let Some(node) = graph.get_node(id) {
                 let block_result = ComputeBlock::from_node(device, globals, &processed_blocks, node, graph);
                 processed_blocks.insert(id, block_result);
             }

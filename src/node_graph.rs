@@ -82,6 +82,14 @@ impl Attribute {
             }
         }
     }
+
+    pub fn render_list(ui: &imgui::Ui<'_>, attributes: &mut Vec<Option<Attribute>>, attribute_id_list: Vec<AttributeID>) {
+        for id in attribute_id_list.into_iter() {
+            if let Some(Some(attribute)) = attributes.get_mut(id as usize) {
+                attribute.render(ui, id);
+            }
+        }
+    }
 }
 
 pub struct Node {
@@ -118,7 +126,7 @@ impl Node {
         &self.contents
     }
 
-    pub fn render(&mut self, ui: &imgui::Ui<'_>, attributes: &mut BTreeMap<AttributeID, Attribute>) {
+    pub fn render(&mut self, ui: &imgui::Ui<'_>, attributes: &mut Vec<Option<Attribute>>) {
             imnodes::BeginNodeTitleBar();
                 ui.text(&self.title);
                 // handle error reporting
@@ -137,28 +145,24 @@ impl Node {
                     }
                 }
             imnodes::EndNodeTitleBar();
-            match &self.contents {
+            // TODO: macro? NodeContents-to-render-list function?
+            // we cannot reuse the get_owned_nodes because there will be a Group kind
+            // of node in the future...
+            match self.contents {
                 NodeContents::Interval {
                     variable, begin, end, output,
                 } => {
-                    attributes.get_mut(output).unwrap().render(ui, *output);
-                    attributes.get_mut(variable).unwrap().render(ui, *variable);
-                    attributes.get_mut(begin).unwrap().render(ui, *begin);
-                    attributes.get_mut(end).unwrap().render(ui, *end);
+                    Attribute::render_list(ui, attributes, vec![variable, begin, end, output,]);
                 },
                 NodeContents::Curve {
                     interval, fx, fy, fz, output,
                 } => {
-                    attributes.get_mut(output).unwrap().render(ui, *output);
-                    attributes.get_mut(interval).unwrap().render(ui, *interval);
-                    attributes.get_mut(fx).unwrap().render(ui, *fx);
-                    attributes.get_mut(fy).unwrap().render(ui, *fy);
-                    attributes.get_mut(fz).unwrap().render(ui, *fz);
+                    Attribute::render_list(ui, attributes, vec![interval, fx, fy, fz, output,]);
                 },
                 NodeContents::Rendering {
                     geometry,
                 } => {
-                    attributes.get_mut(geometry).unwrap().render(ui, *geometry);
+                    Attribute::render_list(ui, attributes, vec![geometry,]);
                 }
                 _ => {}
             }
@@ -181,8 +185,8 @@ impl Node {
         }
     }
 
-    pub fn get_owned_attributes(&mut self) -> Vec::<&AttributeID> {
-        match &self.contents {
+    pub fn get_owned_attributes(&mut self) -> Vec::<&mut AttributeID> {
+        match &mut self.contents {
             NodeContents::Interval {
                 variable, begin, end, output,
             } => {
@@ -217,10 +221,11 @@ pub struct GraphError {
 
 // TODO: maybe make more fields private!
 pub struct NodeGraph {
-    pub nodes: BTreeMap::<NodeID, Node>,
-    pub attributes: BTreeMap::<AttributeID, Attribute>,
+    nodes: Vec<Option<Node>>,
+    attributes: Vec<Option<Attribute>>,
     pub links: BTreeMap::<AttributeID, AttributeID>,
-    next_id: i32,
+    free_nodes_list: Vec<NodeID>,
+    free_attributes_list: Vec<AttributeID>,
     last_hovered_node: NodeID,
     last_hovered_link: AttributeID,
 }
@@ -234,13 +239,75 @@ enum PairInfo {
 impl NodeGraph {
     pub fn new() -> Self {
         Self {
-            nodes: std::collections::BTreeMap::new(),
-            attributes: std::collections::BTreeMap::new(),
+            nodes: Vec::new(),
+            attributes: Vec::new(),
             links: std::collections::BTreeMap::new(),
-            next_id: 0,
+            free_nodes_list: Vec::new(),
+            free_attributes_list: Vec::new(),
             last_hovered_node: -1,
             last_hovered_link: -1,
         }
+    }
+
+    fn get_new_node_id(&mut self) -> NodeID {
+        if let Some(id) = self.free_nodes_list.pop() {
+            // if there is any free slot in the nodes, then use that slot
+            id
+        } else {
+            // otherwise, push a new, empty slot onto the nodes vec and use that one
+            let id = self.nodes.len() as NodeID;
+            self.nodes.push(None);
+            id
+        }
+    }
+
+    fn get_new_attribute_id(&mut self) -> AttributeID {
+        if let Some(id) = self.free_attributes_list.pop() {
+            // if there is any free slot in the nodes, then use that slot
+            id
+        } else {
+            // otherwise, push a new, empty slot onto the nodes vec and use that one
+            let id = self.attributes.len() as NodeID;
+            self.attributes.push(None);
+            id
+        }
+    }
+
+    pub fn insert_node(&mut self, mut node: Node, attributes_contents: Vec<AttributeContents>) {
+        // make a check: the list of owned attributes must have the same
+        // length as the attributes vector
+        let owned_attributes = node.get_owned_attributes();
+        assert!(owned_attributes.len() == attributes_contents.len());
+        // first, get an id for the to-be-inserted node
+        let node_id = self.get_new_node_id();
+
+        // we now need to insert all the attributes in our graph.
+        // This is tricky because we need to remap the AttributeContents indices
+        // to the new ids that the attributes will have!
+        let mut new_id_map = Vec::<AttributeID>::new();
+        for contents in attributes_contents.into_iter() {
+            let attribute_id = self.get_new_attribute_id();
+            // store the new attribute id in our map
+            new_id_map.push(attribute_id);
+            // and push the attribute to that location. Also check that we are not overwriting
+            // some existing attribute, that would mean something is off!
+            assert!(self.attributes[attribute_id as usize].is_none());
+            self.attributes[attribute_id as usize] = Some(Attribute{ node_id, contents });
+        }
+
+        // now, before pushing our node to the graph, we need to modify all the attribute_ids it
+        // contains!
+        // into iter returns a reference to each attribute stored in our node.\
+        // we take the original attribute id, pass it through our map and then
+        // overwrite the content of the reference (i.e: the integer contained
+        // inside our node structure) with the mapped output.
+        for id_reference in owned_attributes.into_iter() {
+            *id_reference = new_id_map[*id_reference as usize];
+        }
+        // we can finally push the node. Also check that we are not overwriting
+        // some existing attribute, that would mean something is off!
+        assert!(self.nodes[node_id as usize].is_none());
+        self.nodes[node_id as usize] = Some(node);
     }
 
     pub fn render(&mut self, ui: &imgui::Ui<'_>) {
@@ -254,10 +321,12 @@ impl NodeGraph {
         }
 
         // render all nodes
-        for id_node_pair in self.nodes.iter_mut() {
-            imnodes::BeginNode(*id_node_pair.0);
-            id_node_pair.1.render(ui, &mut self.attributes);
-            imnodes::EndNode();
+        for (idx, maybe_node) in self.nodes.iter_mut().enumerate() {
+            if let Some(node) = maybe_node.as_mut() {
+                imnodes::BeginNode(idx as NodeID);
+                node.render(ui, &mut self.attributes);
+                imnodes::EndNode();
+            }
         }
 
         // we need to end the node editor before doing any interaction
@@ -314,57 +383,80 @@ impl NodeGraph {
         }
     }
 
+    pub fn get_nodes(&self) -> impl Iterator<Item = (NodeID, &Node)> {
+        self.nodes
+            .iter()
+            .enumerate()
+            .filter_map(|pair| {
+                if let Some(node) = pair.1.as_ref() {
+                    Some((pair.0 as NodeID, node))
+                } else {
+                    None
+                }
+            })
+    }
+
+    pub fn get_node(&self, id: NodeID) -> Option<&Node> {
+        if let Some(maybe_node) = self.nodes.get(id as usize) {
+            maybe_node.as_ref()
+        } else {
+            None
+        }
+    }
+
     pub fn mark_error(&mut self, error: GraphError) {
-         if let Some(node) = self.nodes.get_mut(&error.node_id) {
+         if let Some(Some(node)) = self.nodes.get_mut(error.node_id as usize) {
             node.error = Some(error);
          }
     }
 
     pub fn clear_all_errors(&mut self) {
-        for node in self.nodes.values_mut() {
-            node.error = None;
+        for slot in self.nodes.iter_mut() {
+            if let Some(node) = slot {
+                node.error = None;
+            }
         }
     }
 
     fn remove_node(&mut self, node_id: NodeID) {
-        // try to remove this node_id from the map
-        let maybe_node = self.nodes.remove(&node_id);
-        // if the node existed, get a list of all the attributes belonging to it
-        let list_of_attributes = if let Some(mut node) = maybe_node {
-            node
-                .get_owned_attributes()
-                .into_iter()
-                .map(|x| *x)
-                .collect()
-        } else {
-            vec![]
-        };
+    //    // try to remove this node_id from the map
+    //    let maybe_node = self.nodes.remove(&node_id);
+    //    // if the node existed, get a list of all the attributes belonging to it
+    //    let list_of_attributes = if let Some(mut node) = maybe_node {
+    //        node
+    //            .get_owned_attributes()
+    //            .into_iter()
+    //            .map(|x| *x)
+    //            .collect()
+    //    } else {
+    //        vec![]
+    //    };
 
-        // remove all the attributes of the attributes map.
-        for id in list_of_attributes.iter() {
-            self.attributes.remove(id);
-        }
+    //    // remove all the attributes of the attributes map.
+    //    for id in list_of_attributes.iter() {
+    //        self.attributes.remove(id);
+    //    }
 
-        // remove all the inbound AND outbound links.
-        // the quickest way of doing it is just by rebuilding the link map
-        // TODO: when BTreeMap::drain_filter is implemented, just use that
-        // swap self.links with a temporary
-        let mut new_links = BTreeMap::<AttributeID, AttributeID>::new();
-        new_links.append(&mut self.links);
-        // rebuild the temporary by filtering the ones contained in other elements
-        new_links = new_links
-            .into_iter()
-            .filter(|pair| {
-                !list_of_attributes.contains(&pair.0) && !list_of_attributes.contains(&pair.1)
-            })
-            .collect();
-        // swap back the temporary into self.links
-        self.links.append(&mut new_links);
+    //    // remove all the inbound AND outbound links.
+    //    // the quickest way of doing it is just by rebuilding the link map
+    //    // TODO: when BTreeMap::drain_filter is implemented, just use that
+    //    // swap self.links with a temporary
+    //    let mut new_links = BTreeMap::<AttributeID, AttributeID>::new();
+    //    new_links.append(&mut self.links);
+    //    // rebuild the temporary by filtering the ones contained in other elements
+    //    new_links = new_links
+    //        .into_iter()
+    //        .filter(|pair| {
+    //            !list_of_attributes.contains(&pair.0) && !list_of_attributes.contains(&pair.1)
+    //        })
+    //        .collect();
+    //    // swap back the temporary into self.links
+    //    self.links.append(&mut new_links);
     }
 
     pub fn get_attribute_as_string(&self, attribute_id: AttributeID) -> Option<String> {
         // first, we need to check if the attribute_id actually exists in our attributes map
-        if let Some(attribute) = self.attributes.get(&attribute_id) {
+        if let Some(Some(attribute)) = self.attributes.get(attribute_id as usize) {
             // if it exists, then we need to check if it is an input pin
             if let AttributeContents::Text{ string, .. } = &attribute.contents {
                 Some(string.to_string())
@@ -378,13 +470,13 @@ impl NodeGraph {
 
     pub fn get_attribute_as_linked_node(&self, input_attribute_id: AttributeID) -> Option<NodeID> {
         // first, we need to check if the input_attribute_id actually exists in our attributes map
-        if let Some(attribute) = self.attributes.get(&input_attribute_id) {
+        if let Some(Some(attribute)) = self.attributes.get(input_attribute_id as usize) {
             // if it exists, then we need to check if it is an input pin
             if let AttributeContents::InputPin{..} = &attribute.contents {
                 // and then we can finally check if it is actually linked to something!
                 if let Some(output_attribute_id) = self.links.get(&input_attribute_id) {
                     // we can assert that if there is a link, then the linked one exists
-                    let linked_node_id = self.attributes.get(output_attribute_id).unwrap().node_id;
+                    let linked_node_id = self.attributes[*output_attribute_id as usize].as_ref().unwrap().node_id;
                     Some(linked_node_id)
                 } else {
                     None
@@ -434,12 +526,12 @@ impl NodeGraph {
 
     // checks if the two pins are compatible and if they are, return a sorted pair:
     // the first id is the one belonging to the input attribute.
-    fn check_link_creation(attributes: &BTreeMap::<AttributeID, Attribute>, first_id: AttributeID, second_id: AttributeID) -> Option<(AttributeID, AttributeID)> {
-        let first_attribute_opt = attributes.get(&first_id);
-        let second_attribute_opt = attributes.get(&second_id);
+    fn check_link_creation(attributes: &Vec<Option<Attribute>>, first_id: AttributeID, second_id: AttributeID) -> Option<(AttributeID, AttributeID)> {
+        let first_attribute_opt = attributes.get(first_id as usize);
+        let second_attribute_opt = attributes.get(second_id as usize);
         match (first_attribute_opt, second_attribute_opt) {
             // if both attributes actually exist, check if they are compatible
-            (Some(first_attribute), Some(second_attribute)) => {
+            (Some(Some(first_attribute)), Some(Some(second_attribute))) => {
                 let pair_info = Self::check_pair_info(first_attribute, second_attribute);
                 match pair_info {
                     PairInfo::FirstInputSecondOutput => Some((first_id, second_id)),
@@ -448,148 +540,98 @@ impl NodeGraph {
                 }
             },
             // TODO: maybe log a warning instead of panic?
+            (Some(None), Some(_)) => unreachable!("When attempting to create a link, the first attribute was not found in the map"),
             (None, Some(_)) => unreachable!("When attempting to create a link, the first attribute was not found in the map"),
+            (Some(_), Some(None)) => unreachable!("When attempting to create a link, the second attribute was not found in the map"),
             (Some(_), None) => unreachable!("When attempting to create a link, the second attribute was not found in the map"),
             (None, None) => unreachable!("When attempting to create a link, none of the two attributes was found in the map"),
         }
     }
 
     pub fn add_interval_node(&mut self) {
-        let node_id = self.get_next_id();
-        let variable_id = self.get_next_id();
-        let begin_id = self.get_next_id();
-        let end_id = self.get_next_id();
-        let output_id = self.get_next_id();
-        let variable = Attribute {
-            node_id,
-            contents: AttributeContents::Text {
+        let attributes_contents = vec![
+            AttributeContents::Text {
                 label: String::from(" name"),
                 string: String::from(""),
-            }
-        };
-        let begin = Attribute {
-            node_id,
-            contents: AttributeContents::Text {
+            },
+            AttributeContents::Text {
                 label: String::from("begin"),
                 string: String::from(""),
-            }
-        };
-        let end = Attribute {
-            node_id,
-            contents: AttributeContents::Text {
+            },
+            AttributeContents::Text {
                 label: String::from("  end"),
                 string: String::from(""),
-            }
-        };
-        let output = Attribute {
-            node_id,
-            contents: AttributeContents::OutputPin {
+            },
+            AttributeContents::OutputPin {
                 label: String::from("interval"),
                 kind: DataKind::Interval,
             }
-        };
+        ];
         let node = Node {
             title: String::from("Interval node"),
             error: None,
             contents: NodeContents::Interval {
-                variable: variable_id,
-                begin: begin_id,
-                end: end_id,
-                output: output_id,
+                variable: 0,
+                begin: 1,
+                end: 2,
+                output: 3,
             }
         };
-        self.nodes.insert(node_id, node);
-        self.attributes.insert(variable_id, variable);
-        self.attributes.insert(begin_id, begin);
-        self.attributes.insert(end_id, end);
-        self.attributes.insert(output_id, output);
+        self.insert_node(node, attributes_contents);
     }
 
     pub fn add_curve_node(&mut self) {
-        let node_id = self.get_next_id();
-        let fx_id = self.get_next_id();
-        let fy_id = self.get_next_id();
-        let fz_id = self.get_next_id();
-        let interval_id = self.get_next_id();
-        let output_id = self.get_next_id();
-        let fx = Attribute {
-            node_id,
-            contents: AttributeContents::Text {
+        let attributes_contents = vec![
+            AttributeContents::Text {
                 label: String::from("fx"),
                 string: String::from(""),
-            }
-        };
-        let fy = Attribute {
-            node_id,
-            contents: AttributeContents::Text {
+            },
+            AttributeContents::Text {
                 label: String::from("fy"),
                 string: String::from(""),
-            }
-        };
-        let fz = Attribute {
-            node_id,
-            contents: AttributeContents::Text {
+            },
+            AttributeContents::Text {
                 label: String::from("fz"),
                 string: String::from(""),
-            }
-        };
-        let interval = Attribute {
-            node_id,
-            contents: AttributeContents::InputPin {
+            },
+            AttributeContents::InputPin {
                 label: String::from("interval"),
                 kind: DataKind::Interval,
-            }
-        };
-        let output = Attribute {
-            node_id,
-            contents: AttributeContents::OutputPin {
+            },
+            AttributeContents::OutputPin {
                 label: String::from("geometry"),
                 kind: DataKind::Geometry,
             }
-        };
+        ];
         let node = Node {
             title: String::from("Curve node"),
             error: None,
             contents: NodeContents::Curve {
-                fx: fx_id,
-                fy: fy_id,
-                fz: fz_id,
-                interval: interval_id,
-                output: output_id,
+                fx: 0,
+                fy: 1,
+                fz: 2,
+                interval: 3,
+                output: 4,
             }
         };
-        self.nodes.insert(node_id, node);
-        self.attributes.insert(fx_id, fx);
-        self.attributes.insert(fy_id, fy);
-        self.attributes.insert(fz_id, fz);
-        self.attributes.insert(interval_id, interval);
-        self.attributes.insert(output_id, output);
+        self.insert_node(node, attributes_contents);
     }
 
     pub fn add_rendering_node(&mut self) {
-        let node_id = self.get_next_id();
-        let geometry_id = self.get_next_id();
-        let geometry = Attribute {
-            node_id,
-            contents: AttributeContents::InputPin {
+        let attributes_contents = vec![
+            AttributeContents::InputPin {
                 label: String::from("geometry"),
                 kind: DataKind::Geometry,
             }
-        };
+        ];
         let node = Node {
             title: String::from("Curve node"),
             error: None,
             contents: NodeContents::Rendering {
-                geometry: geometry_id,
+                geometry: 0,
             }
         };
-        self.nodes.insert(node_id, node);
-        self.attributes.insert(geometry_id, geometry);
+        self.insert_node(node, attributes_contents);
     }
 
-    pub fn get_next_id(&mut self) -> i32 {
-        let temp = self.next_id;
-        self.next_id += 1;
-        temp
-    }
 }
