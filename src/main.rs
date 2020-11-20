@@ -4,7 +4,6 @@ use winit::{
 };
 
 use imgui::{FontSource, FontGlyphRanges};
-use serde::{Deserialize, Serialize};
 
 mod util;
 mod rendering;
@@ -124,8 +123,6 @@ fn main() {
         }),
     }]);
 
-    //cpp_gui::ffi::init_imnodes();
-    //let mut gui_unique_ptr = cpp_gui::ffi::create_gui_instance();
     cpp_gui::imnodes::Initialize();
 
     let mut renderer = imgui_wgpu::RendererConfig::new()
@@ -137,7 +134,6 @@ fn main() {
         .set_usage(TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED | TextureUsage::COPY_DST)
         .build(&device_manager.device, &renderer);
     let scene_texture_id = renderer.textures.insert(scene_texture);
-    //gui_unique_ptr.as_mut().unwrap().UpdateSceneTexture(scene_texture_id.id());
 
     let mut node_graph = node_graph::NodeGraph::new();
     node_graph.add_interval_node();
@@ -203,8 +199,7 @@ fn main() {
 
     let mut frame_duration = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
-    let mut frozen_mouse_position = winit::dpi::PhysicalPosition::new(0, 0);
-    let mut freeze_mouse_position = false;
+
     event_loop.run(move |event, _, control_flow| {
         // BEWARE: keep in mind that if you go multi-window
         // you need to redo the whole handling of the events!
@@ -266,14 +261,7 @@ fn main() {
                 let ui = imgui.frame();
                 let size = window.inner_size().to_logical(hidpi_factor);
                 rust_gui.render(&ui, [size.width, size.height], &mut app_state);
-                //node_graph.render(&ui);
-                //let gui_requests = gui_unique_ptr.as_mut().unwrap().Render(&mut app_state, size.width, size.height);
-                //if gui_requests.freeze_mouse {
-                //    freeze_mouse_position = true;
-                //    frozen_mouse_position = winit::dpi::LogicalPosition::new(gui_requests.frozen_mouse_x, gui_requests.frozen_mouse_y).to_physical(hidpi_factor);
-                //} else {
-                //    freeze_mouse_position = false;
-                //}
+
                 platform.prepare_render(&ui, &window);
                 renderer
                     .render(ui.render(), &app_state.manager.queue, &app_state.manager.device, &mut rpass)
@@ -289,9 +277,6 @@ fn main() {
             Event::RedrawEventsCleared => {
                 // If we are dragging onto something that requires the mouse pointer to stay fixed,
                 // this is the moment in which we move it back to its old position.
-                if freeze_mouse_position {
-                    window.set_cursor_position(frozen_mouse_position);
-                }
             }
             // Emitted when an event is sent from EventLoopProxy::send_event
             // We are not currently using it, but this might become useful for issuing commands
@@ -322,12 +307,8 @@ fn main() {
                     Event::WindowEvent{ event: WindowEvent::Resized(physical_size), .. } => {
                         app_state.manager.resize(physical_size);
                     }
-                    Event::WindowEvent{ event: WindowEvent::MouseInput { button, state, .. }, ..} => {
-                        // safety un-freeze feature, in case the cpp gui messes something up really bad
-                        if button == MouseButton::Left && state == ElementState::Released {
-                            freeze_mouse_position = false;
-                            window.set_cursor_visible(true);
-                        }
+                    Event::WindowEvent{ event: WindowEvent::MouseInput { .. }, ..} => {
+                        // put a safety un-freeze feature, in case we mess something up wrt releasing the mouse
                     }
                     Event::WindowEvent{ event: WindowEvent::KeyboardInput { input, .. }, .. } => {
                         if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Escape) {

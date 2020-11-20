@@ -24,8 +24,7 @@ pub use matrix::{MatrixData, MatrixBlockDescriptor};
 
 use serde::{Deserialize, Serialize};
 use super::Globals;
-use crate::node_graph::{ Node, NodeContents, NodeGraph, AttributeID };
-use std::collections::BTreeMap;
+use crate::node_graph::{ Node, NodeContents, NodeGraph, };
 
 pub type BlockId = i32;
 pub type ProcessingResult = Result<ComputeBlock, BlockCreationError>;
