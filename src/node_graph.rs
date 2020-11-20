@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 use crate::cpp_gui::imnodes;
 use crate::cpp_gui::PinShape;
 use imgui::*;
@@ -223,7 +223,7 @@ pub struct GraphError {
 pub struct NodeGraph {
     nodes: Vec<Option<Node>>,
     attributes: Vec<Option<Attribute>>,
-    pub links: BTreeMap::<AttributeID, AttributeID>,
+    pub links: HashMap::<AttributeID, AttributeID>,
     free_nodes_list: Vec<NodeID>,
     free_attributes_list: Vec<AttributeID>,
     last_hovered_node: NodeID,
@@ -241,7 +241,7 @@ impl NodeGraph {
         Self {
             nodes: Vec::new(),
             attributes: Vec::new(),
-            links: std::collections::BTreeMap::new(),
+            links: HashMap::new(),
             free_nodes_list: Vec::new(),
             free_attributes_list: Vec::new(),
             last_hovered_node: -1,
@@ -442,19 +442,13 @@ impl NodeGraph {
 
             // remove all the inbound AND outbound links.
             // the quickest way of doing it is just by rebuilding the link map
-            // TODO: when BTreeMap::drain_filter is implemented, just use that
-            // swap self.links with a temporary
-            let mut new_links = BTreeMap::<AttributeID, AttributeID>::new();
-            new_links.append(&mut self.links);
-            // rebuild the temporary by filtering the ones contained in other elements
-            new_links = new_links
-                .into_iter()
+            // we do that by draining the map, filtering and collecting() it back.
+            self.links = self.links
+                .drain()
                 .filter(|pair| {
                     !list_of_attributes.contains(&pair.0) && !list_of_attributes.contains(&pair.1)
                 })
                 .collect();
-            // swap back the temporary into self.links
-            self.links.append(&mut new_links);
         }
     }
 
