@@ -419,39 +419,43 @@ impl NodeGraph {
     }
 
     fn remove_node(&mut self, node_id: NodeID) {
-    //    // try to remove this node_id from the map
-    //    let maybe_node = self.nodes.remove(&node_id);
-    //    // if the node existed, get a list of all the attributes belonging to it
-    //    let list_of_attributes = if let Some(mut node) = maybe_node {
-    //        node
-    //            .get_owned_attributes()
-    //            .into_iter()
-    //            .map(|x| *x)
-    //            .collect()
-    //    } else {
-    //        vec![]
-    //    };
+        // try to remove this node_id from the map
+        if let Some(slot) = self.nodes.get_mut(node_id as usize) {
+            // slot is a reference to the option! By taking() it, we effectively
+            // remove the old node from the graph's nodes
+            let mut old_node = slot.take().unwrap(); // this unwrap asserts that the old node is Some(thing)
+            self.free_nodes_list.push(node_id);
+            // if the node exists, get a list of all the attributes belonging to it
+            // remove all the attributes of the attributes map.
+            let list_of_attributes: Vec<AttributeID> = old_node
+                    .get_owned_attributes()
+                    .into_iter()
+                    .map(|x| *x)
+                    .collect();
 
-    //    // remove all the attributes of the attributes map.
-    //    for id in list_of_attributes.iter() {
-    //        self.attributes.remove(id);
-    //    }
+            // remove the attributes from our vector by marking the spot as None
+            // and pushing that id to the free slots list
+            for id in list_of_attributes.iter() {
+                self.attributes[*id as usize] = None;
+                self.free_attributes_list.push(*id);
+            }
 
-    //    // remove all the inbound AND outbound links.
-    //    // the quickest way of doing it is just by rebuilding the link map
-    //    // TODO: when BTreeMap::drain_filter is implemented, just use that
-    //    // swap self.links with a temporary
-    //    let mut new_links = BTreeMap::<AttributeID, AttributeID>::new();
-    //    new_links.append(&mut self.links);
-    //    // rebuild the temporary by filtering the ones contained in other elements
-    //    new_links = new_links
-    //        .into_iter()
-    //        .filter(|pair| {
-    //            !list_of_attributes.contains(&pair.0) && !list_of_attributes.contains(&pair.1)
-    //        })
-    //        .collect();
-    //    // swap back the temporary into self.links
-    //    self.links.append(&mut new_links);
+            // remove all the inbound AND outbound links.
+            // the quickest way of doing it is just by rebuilding the link map
+            // TODO: when BTreeMap::drain_filter is implemented, just use that
+            // swap self.links with a temporary
+            let mut new_links = BTreeMap::<AttributeID, AttributeID>::new();
+            new_links.append(&mut self.links);
+            // rebuild the temporary by filtering the ones contained in other elements
+            new_links = new_links
+                .into_iter()
+                .filter(|pair| {
+                    !list_of_attributes.contains(&pair.0) && !list_of_attributes.contains(&pair.1)
+                })
+                .collect();
+            // swap back the temporary into self.links
+            self.links.append(&mut new_links);
+        }
     }
 
     pub fn get_attribute_as_string(&self, attribute_id: AttributeID) -> Option<String> {
