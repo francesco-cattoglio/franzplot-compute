@@ -12,7 +12,7 @@ anyhow = "1.0"
 futures = "0.3"
 glam = { version = "0.10", features = ["debug-glam-assert"] }
 maplit = "1.0"
-winit = "0.22"
+winit = "0.23"
 tobj = "2.0"
 image = "0.23"
 smol_str = { version = "0.1", features = ["serde"] }
@@ -20,17 +20,17 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_jsonrc = "0.1"
 getopts = "0.2"
-imgui = "0.5.0"
-imgui-wgpu = "0.11.0"
+imgui = "0.6.0"
+imgui-wgpu = "0.12.0"
 wgpu-subscriber = "0.1"
 cxx = "1.0"
 pathfinding = "2.0"
 indexmap = "1.6"
 
 [dependencies.imgui-winit-support]
-version = "0.5"
+version = "0.6"
 default-features = false
-features = ["winit-22"]
+features = ["winit-23"]
 
 [build-dependencies]
 cxx-build = "1.0"

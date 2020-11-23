@@ -67,7 +67,7 @@ impl Texture {
     }
 
     pub fn from_image(device: &wgpu::Device, queue: &wgpu::Queue, img: &image::DynamicImage, tex_label: Option<&str>) -> Result<Self> {
-        let diffuse_rgba = img.to_rgba();
+        let diffuse_rgba = img.to_rgba8();
         let image_size = img.dimensions();
 
         let wsize = wgpu::Extent3d {

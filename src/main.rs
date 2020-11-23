@@ -125,14 +125,27 @@ fn main() {
 
     cpp_gui::imnodes::Initialize();
 
-    let mut renderer = imgui_wgpu::RendererConfig::new()
-        .set_texture_format(rendering::SWAPCHAIN_FORMAT)
-        .build(&mut imgui, &device_manager.device, &device_manager.queue);
+    let renderer_config = imgui_wgpu::RendererConfig {
+        texture_format: rendering::SWAPCHAIN_FORMAT,
+        .. Default::default()
+    };
+    let mut renderer = imgui_wgpu::Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, renderer_config);
     use wgpu::TextureUsage;
-    let scene_texture = imgui_wgpu::TextureConfig::new(1280, 800)
-        .set_label("scene texture config")
-        .set_usage(TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED | TextureUsage::COPY_DST)
-        .build(&device_manager.device, &renderer);
+    let scene_texture_config = imgui_wgpu::TextureConfig {
+        dimension: wgpu::TextureDimension::D2,
+        size: wgpu::Extent3d {
+            width: 1280,
+            height: 800,
+            depth: 1,
+        },
+        usage: TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED | TextureUsage::COPY_DST,
+        mip_level_count: 1,
+        sample_count: 1,
+        label: Some("Scene rendering texture"),
+        format: None, // when set to None, this will use the same format as the renderer
+    };
+
+    let scene_texture = imgui_wgpu::Texture::new(&device_manager.device, &renderer, scene_texture_config);
     let scene_texture_id = renderer.textures.insert(scene_texture);
 
     let mut node_graph = node_graph::NodeGraph::new();
