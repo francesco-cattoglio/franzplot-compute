@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use crate::cpp_gui::imnodes;
 use crate::cpp_gui::PinShape;
+use serde::{Serialize, Deserialize};
 use imgui::*;
 
 pub type AttributeID = i32;
 pub type NodeID = i32;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Deserialize, Serialize)]
 pub enum DataKind {
     Interval,
     Geometry,
@@ -24,11 +25,13 @@ impl DataKind {
     }
 }
 
+#[derive(Deserialize, Serialize)]
 pub struct Attribute {
     node_id: NodeID,
     contents: AttributeContents,
 }
 
+#[derive(Deserialize, Serialize)]
 pub enum AttributeContents {
     InputPin {
         label: String,
@@ -157,12 +160,14 @@ impl Attribute {
     }
 }
 
+#[derive(Deserialize, Serialize)]
 pub struct Node {
     title: String,
     error: Option<GraphError>,
     contents: NodeContents,
 }
 
+#[derive(Deserialize, Serialize)]
 pub enum NodeContents {
     Interval {
         variable: AttributeID,
@@ -342,23 +347,28 @@ impl Node {
     }
 }
 
+#[derive(Deserialize, Serialize)]
 pub enum Severity {
     Warning,
     Error
 }
+#[derive(Deserialize, Serialize)]
 pub struct GraphError {
     pub node_id: NodeID,
     pub severity: Severity,
     pub message: String,
 }
 
+#[derive(Deserialize, Serialize)]
 pub struct NodeGraph {
     nodes: Vec<Option<Node>>,
     attributes: Vec<Option<Attribute>>,
     links: HashMap::<AttributeID, AttributeID>,
     free_nodes_list: Vec<NodeID>,
     free_attributes_list: Vec<AttributeID>,
+    #[serde(skip)]
     last_hovered_node: NodeID,
+    #[serde(skip)]
     last_hovered_link: AttributeID,
 }
 

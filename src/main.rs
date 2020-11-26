@@ -14,6 +14,7 @@ mod shader_processing;
 mod node_graph;
 mod rust_gui;
 mod cpp_gui;
+mod file_io;
 #[cfg(test)]
 mod tests;
 
@@ -31,6 +32,8 @@ fn print_usage(program: &str, opts: Options) {
 #[allow(unused)]
 #[derive(Debug)]
 pub enum CustomEvent {
+    OpenFile(std::path::PathBuf),
+    SaveFile(std::path::PathBuf),
     CurrentlyUnused,
 }
 
@@ -152,7 +155,7 @@ fn main() {
     node_graph.add_interval_node();
     node_graph.add_rendering_node();
     node_graph.add_curve_node();
-    let mut rust_gui = rust_gui::Gui::new(scene_texture_id);
+    let mut rust_gui = rust_gui::Gui::new(scene_texture_id, event_loop.create_proxy());
     //dbg!(&all_descriptors);
     let mut chain = computable_scene::compute_chain::ComputeChain::new();
     let globals;
@@ -296,6 +299,12 @@ fn main() {
             // to winit that have to be executed during the next frame.
             Event::UserEvent(user_event) => {
                 match user_event {
+                    CustomEvent::SaveFile(path_buf) => {
+                        rust_gui.write_to_file(&path_buf);
+                    },
+                    CustomEvent::OpenFile(path_buf) => {
+                        rust_gui.read_from_file(&path_buf);
+                    },
                     CustomEvent::CurrentlyUnused => println!("received a custom user event")
                 }
             }

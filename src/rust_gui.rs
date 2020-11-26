@@ -1,5 +1,6 @@
 use imgui::*;
 use crate::node_graph;
+use crate::file_io;
 use crate::state::State;
 use crate::computable_scene::globals::Globals;
 
@@ -9,17 +10,29 @@ pub struct Gui {
     pub globals_names: Vec<String>,
     pub globals_init_values: Vec<f32>,
     pub new_global_buffer: ImString,
+    winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
 }
 
 impl Gui {
-    pub fn new(scene_texture_id: TextureId) -> Self {
+    pub fn new(scene_texture_id: TextureId, winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>) -> Self {
         Self {
             new_global_buffer: ImString::with_capacity(8),
             graph: node_graph::NodeGraph::new(),
             scene_texture_id,
             globals_init_values: Vec::new(),
             globals_names: Vec::new(),
+            winit_proxy,
         }
+    }
+
+    pub fn write_to_file(&self, path: &std::path::PathBuf) {
+        let file = std::fs::File::create(path).unwrap();
+        serde_json::to_writer_pretty(file, &self.graph).unwrap();
+    }
+
+    pub fn read_from_file(&mut self, path: &std::path::PathBuf) {
+        let file = std::fs::File::open(path).unwrap();
+        self.graph = serde_json::from_reader(file).unwrap();
     }
 
     pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State) {
@@ -35,17 +48,26 @@ impl Gui {
         if let Some(window_token) = window_begun {
             // menu bar
             if let Some(menu_bar_token) = ui.begin_menu_bar() {
-                MenuItem::new(im_str!("File"))
-                    .build(ui);
-                MenuItem::new(im_str!("About"))
-                    .build(ui);
-
+                ui.menu(im_str!("File"), true, || {
+                    if MenuItem::new(im_str!("Save")).build(ui) {
+                        println!("save file entry clicked");
+                        file_io::background_file_save(self.winit_proxy.clone());
+                    }
+                    if MenuItem::new(im_str!("Open")).build(ui) {
+                        println!("open file entry clicked");
+                        file_io::background_file_open(self.winit_proxy.clone());
+                    }
+                });
+                if MenuItem::new(im_str!("About")).build(ui) {
+                    println!("\"About\" entry clicked");
+                }
                 menu_bar_token.end(ui);
             }
 
             // main tabs for graph, rendering and settings
             let tab_bar_begun = TabBar::new(im_str!("main tab bar"))
                 .begin(ui);
+
             if let Some(tab_bar_token) = tab_bar_begun {
                 TabItem::new(im_str!("Node editor"))
                     .build(ui, || {

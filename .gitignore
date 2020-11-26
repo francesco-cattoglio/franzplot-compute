@@ -13,3 +13,6 @@
 #Added by cargo
 
 /target
+
+# Folder used for all kind of temporary tests
+/garbage
