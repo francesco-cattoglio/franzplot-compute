@@ -190,7 +190,19 @@ impl ComputeBlock {
                 };
                 rendering_descriptor.to_block(device, processed_blocks)
             },
-            _ => unimplemented!(),
+            &NodeContents::Point{
+                x, y, z, ..
+            } => {
+                let point_descriptor = PointBlockDescriptor {
+                    fx: graph.get_attribute_as_string(x).unwrap(),
+                    fy: graph.get_attribute_as_string(y).unwrap(),
+                    fz: graph.get_attribute_as_string(z).unwrap(),
+                };
+                point_descriptor.to_block(device, globals)
+            },
+            &NodeContents::Group => {
+                unimplemented!()
+            }
             //DescriptorData::Interval(desc) => desc.to_block(device, globals),
             //DescriptorData::Curve(desc) => desc.to_block(device, globals, processed_blocks),
             //DescriptorData::Surface(desc) => desc.to_block(device, globals, processed_blocks),

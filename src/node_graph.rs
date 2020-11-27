@@ -145,7 +145,9 @@ impl Attribute {
                 imnodes::EndStaticAttribute();
                 width_token.pop(ui);
             },
-            _ => {
+            AttributeContents::Unknown {
+                label
+            } => {
                 unimplemented!()
             }
         }
@@ -174,6 +176,12 @@ pub enum NodeContents {
         begin: AttributeID,
         end: AttributeID,
         quality: AttributeID,
+        output: AttributeID,
+    },
+    Point {
+        x: AttributeID,
+        y: AttributeID,
+        z: AttributeID,
         output: AttributeID,
     },
     Curve {
@@ -206,7 +214,7 @@ pub enum NodeContents {
     Rendering {
         geometry: AttributeID,
     },
-    Other
+    Group
 }
 
 impl Node {
@@ -242,6 +250,11 @@ impl Node {
                 } => {
                     Attribute::render_list(ui, attributes, vec![variable, begin, end, quality, output,]);
                 },
+                NodeContents::Point {
+                    x, y, z, output,
+                } => {
+                    Attribute::render_list(ui, attributes, vec![x, y, z, output,]);
+                },
                 NodeContents::Curve {
                     interval, fx, fy, fz, output,
                 } => {
@@ -267,13 +280,16 @@ impl Node {
                 } => {
                     Attribute::render_list(ui, attributes, vec![geometry,]);
                 },
-                _ => { unimplemented!() }
+                NodeContents::Group => { unimplemented!() }
             }
     }
 
     pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<Option<NodeID>> {
         match self.contents {
             NodeContents::Interval { .. } => {
+                vec![]
+            },
+            NodeContents::Point { .. } => {
                 vec![]
             },
             NodeContents::Curve { interval, .. } => {
@@ -301,7 +317,7 @@ impl Node {
                     graph.get_attribute_as_linked_node(geometry)
                 ]
             },
-            _ => {
+            NodeContents::Group => {
                 unimplemented!()
             }
         }
@@ -314,6 +330,11 @@ impl Node {
                 variable, begin, end, quality, output,
             } => {
                 vec![variable, begin, end, quality, output]
+            },
+            NodeContents::Point {
+                x, y, z, output
+            } => {
+                vec![x, y, z, output]
             },
             NodeContents::Curve {
                 interval, fx, fy, fz, output
@@ -340,7 +361,7 @@ impl Node {
             } => {
                 vec![geometry]
             },
-            _ => {
+            NodeContents::Group => {
                 unimplemented!()
             }
         }
@@ -531,7 +552,7 @@ impl NodeGraph {
                     let new_node_id = self.add_surface_node();
                     imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
                 }
-            }); // "Geometries closure ends here"
+            }); // Geometries menu ends here
 
             ui.menu(im_str!("Transformations"), true, || {
                 if MenuItem::new(im_str!("Matrix")).build(ui) {
@@ -542,8 +563,12 @@ impl NodeGraph {
                     let new_node_id = self.add_transform_node();
                     imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
                 }
-            }); // "Geometries closure ends here"
+            }); // Transformations menu ends here
 
+            if MenuItem::new(im_str!("Point")).build(ui) {
+                let new_node_id = self.add_point_node();
+                imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+            }
             if MenuItem::new(im_str!("Rendering")).build(ui) {
                 let new_node_id = self.add_rendering_node();
                 imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
@@ -719,7 +744,6 @@ impl NodeGraph {
             },
             _ => PairInfo::NonCompatible
         }
-
     }
 
     // checks if the two pins are compatible and if they are, return a sorted pair:
@@ -778,6 +802,38 @@ impl NodeGraph {
                 end: 2,
                 quality: 3,
                 output: 4,
+            }
+        };
+        self.insert_node(node, attributes_contents)
+    }
+
+    pub fn add_point_node(&mut self) -> NodeID {
+        let attributes_contents = vec![
+            AttributeContents::Text {
+                label: String::from("x"),
+                string: String::from("0.0"),
+            },
+            AttributeContents::Text {
+                label: String::from("y"),
+                string: String::from("0.0"),
+            },
+            AttributeContents::Text {
+                label: String::from("z"),
+                string: String::from("0.0"),
+            },
+            AttributeContents::OutputPin {
+                label: String::from("geometry"),
+                kind: DataKind::Geometry,
+            }
+        ];
+        let node = Node {
+            title: String::from("Point node"),
+            error: None,
+            contents: NodeContents::Point {
+                x: 0,
+                y: 1,
+                z: 2,
+                output: 3,
             }
         };
         self.insert_node(node, attributes_contents)
