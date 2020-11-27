@@ -28,7 +28,7 @@ impl Globals {
         true
     }
 
-    pub fn get_variables_iter<'a>(&'a mut self) -> impl Iterator<Item = (&'a String, &'a mut f32)> {
+    pub fn get_variables_iter(&mut self) -> impl Iterator<Item = (&String, &mut f32)> {
         self.names.iter().zip(self.values.iter_mut())
     }
 

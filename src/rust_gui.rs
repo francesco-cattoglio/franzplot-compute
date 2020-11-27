@@ -1,7 +1,6 @@
 use imgui::*;
 use crate::file_io;
 use crate::state::State;
-use crate::computable_scene::globals::Globals;
 
 pub struct Gui {
     pub scene_texture_id: TextureId,
@@ -95,7 +94,7 @@ impl Gui {
             } else {
                 // to make each slider unique, we are gonna push an invisible unique imgui label
                 let imgui_name = ImString::new("##".to_string() + &globals_names[i]);
-                Drag::new(&ImString::from(imgui_name))
+                Drag::new(&imgui_name)
                     .speed(0.01)
                     .build(ui, &mut globals_init_values[i]);
                 i += 1;

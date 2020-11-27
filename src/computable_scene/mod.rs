@@ -10,13 +10,6 @@ use compute_block::BlockCreationError;
 use crate::node_graph::NodeGraph;
 use crate::node_graph::{ GraphError, Severity };
 
-#[derive(Debug)]
-pub struct Descriptor {
-    pub global_names: Vec<String>,
-    pub global_init_values: Vec<f32>,
-    pub descriptors: Vec<compute_block::BlockDescriptor>,
-}
-
 pub struct ComputableScene{
     pub globals: Globals,
     pub chain: ComputeChain,

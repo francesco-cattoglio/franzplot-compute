@@ -51,7 +51,7 @@ fn main() {
         return;
     }
 
-    let input_file = matches.opt_str("i");
+    let _input_file = matches.opt_str("i");
 
     wgpu_subscriber::initialize_default_subscriber(None);
 

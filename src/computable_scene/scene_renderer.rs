@@ -38,7 +38,6 @@ impl Uniforms {
 // the issues for normal computation for a parametrix sphere or for z=sqrt(x + y))
 
 pub struct SceneRenderer {
-    camera: Camera,
     pipeline_2d: wgpu::RenderPipeline,
     renderables: Vec<wgpu::RenderBundle>,
     texture: texture::Texture,
@@ -103,7 +102,6 @@ impl SceneRenderer {
         let renderables = Vec::<wgpu::RenderBundle>::new();
 
         Self {
-            camera,
             clear_color,
             renderables,
             texture: diffuse_texture,

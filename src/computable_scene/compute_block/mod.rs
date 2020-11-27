@@ -97,22 +97,7 @@ impl Dimensions {
     }
 }
 
-//TODO: maybe remove the get_dimensions functions.
-//Whenever we use a computeblock we have to match on its type anyway
 impl ComputeBlock {
-    #[allow(unused)]
-    pub fn get_dimensions(&self) -> &Dimensions {
-        match self {
-            Self::Point(data) => &data.out_dim,
-            Self::Interval(data) => &data.out_dim,
-            Self::Curve(data) => &data.out_dim,
-            Self::Surface(data) => &data.out_dim,
-            Self::Transform(data) => &data.out_dim,
-            Self::Matrix(data) => &data.out_dim,
-            Self::Rendering(data) => &data.out_dim,
-        }
-    }
-
     pub fn encode(&self, globals_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
         match self {
             Self::Point(data) => data.encode(globals_bind_group, encoder),
@@ -126,8 +111,8 @@ impl ComputeBlock {
     }
 
     pub fn from_node(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, node: &Node, graph: &NodeGraph) -> ProcessingResult {
-        match node.contents() {
-            &NodeContents::Interval {
+        match *node.contents() {
+            NodeContents::Interval {
                 variable, begin, end, ..
             } => {
                 let interval_descriptor = IntervalBlockDescriptor {
@@ -138,7 +123,17 @@ impl ComputeBlock {
                 };
                 interval_descriptor.to_block(device, globals)
             },
-            &NodeContents::Curve {
+            NodeContents::Point{
+                x, y, z, ..
+            } => {
+                let point_descriptor = PointBlockDescriptor {
+                    fx: graph.get_attribute_as_string(x).unwrap(),
+                    fy: graph.get_attribute_as_string(y).unwrap(),
+                    fz: graph.get_attribute_as_string(z).unwrap(),
+                };
+                point_descriptor.to_block(device, globals)
+            },
+            NodeContents::Curve {
                 interval, fx, fy, fz, ..
             } => {
                 let curve_descriptor = CurveBlockDescriptor {
@@ -149,7 +144,7 @@ impl ComputeBlock {
                 };
                 curve_descriptor.to_block(device, globals, processed_blocks)
             },
-            &NodeContents::Surface {
+            NodeContents::Surface {
                 interval_1, interval_2, fx, fy, fz, ..
             } => {
                 let curve_descriptor = SurfaceBlockDescriptor {
@@ -161,7 +156,7 @@ impl ComputeBlock {
                 };
                 curve_descriptor.to_block(device, globals, processed_blocks)
             },
-            &NodeContents::Transform {
+            NodeContents::Transform {
                 geometry, matrix, ..
             } => {
                 let transform_descriptor = TransformBlockDescriptor {
@@ -170,7 +165,7 @@ impl ComputeBlock {
                 };
                 transform_descriptor.to_block(device, processed_blocks)
             },
-            &NodeContents::Matrix {
+            NodeContents::Matrix {
                 interval, row_1, row_2, row_3, ..
             } => {
                 use std::convert::TryInto;
@@ -182,7 +177,7 @@ impl ComputeBlock {
                 };
                 matrix_descriptor.to_block(device, globals, processed_blocks)
             },
-            &NodeContents::Rendering {
+            NodeContents::Rendering {
                 geometry,
             } => {
                 let rendering_descriptor = RenderingBlockDescriptor {
@@ -190,72 +185,11 @@ impl ComputeBlock {
                 };
                 rendering_descriptor.to_block(device, processed_blocks)
             },
-            &NodeContents::Point{
-                x, y, z, ..
-            } => {
-                let point_descriptor = PointBlockDescriptor {
-                    fx: graph.get_attribute_as_string(x).unwrap(),
-                    fy: graph.get_attribute_as_string(y).unwrap(),
-                    fz: graph.get_attribute_as_string(z).unwrap(),
-                };
-                point_descriptor.to_block(device, globals)
-            },
-            &NodeContents::Group => {
+            NodeContents::Group => {
                 unimplemented!()
             }
-            //DescriptorData::Interval(desc) => desc.to_block(device, globals),
-            //DescriptorData::Curve(desc) => desc.to_block(device, globals, processed_blocks),
-            //DescriptorData::Surface(desc) => desc.to_block(device, globals, processed_blocks),
-            //DescriptorData::Matrix(desc) => desc.to_block(device, globals, processed_blocks),
-            //DescriptorData::Transform(desc) => desc.to_block(device, processed_blocks),
-            //DescriptorData::Rendering(desc) => desc.to_block(device, processed_blocks),
         }
     }
 }
 
-#[derive(Debug)]
-pub struct BlockDescriptor {
-    pub id: BlockId,
-    pub data: DescriptorData,
-}
 
-#[derive(Debug)]
-pub enum DescriptorData {
-    Point (PointBlockDescriptor),
-    Curve (CurveBlockDescriptor),
-    Interval (IntervalBlockDescriptor),
-    Surface (SurfaceBlockDescriptor),
-    Matrix (MatrixBlockDescriptor),
-    Transform (TransformBlockDescriptor),
-    Rendering (RenderingBlockDescriptor),
-}
-
-impl DescriptorData {
-    //pub fn get_input_ids(&self) -> Vec<BlockId> {
-    //    match &self {
-    //        // we know that some nodes have no input at all, so we can always return an empty vec
-    //        DescriptorData::Point(_) => vec![],
-    //        DescriptorData::Interval(_) => vec![],
-    //        DescriptorData::Curve(desc) => desc.get_input_ids(),
-    //        DescriptorData::Surface(desc) => desc.get_input_ids(),
-    //        DescriptorData::Matrix(desc) => desc.get_input_ids(),
-    //        DescriptorData::Transform(desc) => desc.get_input_ids(),
-    //        DescriptorData::Rendering(desc) => desc.get_input_ids(),
-    //    }
-    //}
-
-    // Not all the blocks require the same inputs at creation time.
-    // As an example, a Transform block does not use any global variable,
-    // while an Interval cannot depend on any other already-processed block
-    pub fn to_block(&self, device: &wgpu::Device, globals: &super::globals::Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
-        match &self {
-            DescriptorData::Point(desc) => desc.to_block(device, globals),
-            DescriptorData::Interval(desc) => desc.to_block(device, globals),
-            DescriptorData::Curve(desc) => desc.to_block(device, globals, processed_blocks),
-            DescriptorData::Surface(desc) => desc.to_block(device, globals, processed_blocks),
-            DescriptorData::Matrix(desc) => desc.to_block(device, globals, processed_blocks),
-            DescriptorData::Transform(desc) => desc.to_block(device, processed_blocks),
-            DescriptorData::Rendering(desc) => desc.to_block(device, processed_blocks),
-        }
-    }
-}

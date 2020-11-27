@@ -146,7 +146,7 @@ impl Attribute {
                 width_token.pop(ui);
             },
             AttributeContents::Unknown {
-                label
+                ..
             } => {
                 unimplemented!()
             }
@@ -380,7 +380,7 @@ pub struct GraphError {
     pub message: String,
 }
 
-#[derive(Default, Deserialize, Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct NodeGraph {
     nodes: Vec<Option<Node>>,
     attributes: Vec<Option<Attribute>>,
@@ -399,8 +399,8 @@ enum PairInfo {
     NonCompatible
 }
 
-impl NodeGraph {
-    pub fn new() -> Self {
+impl Default for NodeGraph {
+    fn default() -> Self {
         Self {
             nodes: Vec::new(),
             attributes: Vec::new(),
@@ -411,7 +411,9 @@ impl NodeGraph {
             last_hovered_link: -1,
         }
     }
+}
 
+impl NodeGraph {
     fn get_new_node_id(&mut self) -> NodeID {
         if let Some(id) = self.free_nodes_list.pop() {
             // if there is any free slot in the nodes, then use that slot
@@ -748,7 +750,7 @@ impl NodeGraph {
 
     // checks if the two pins are compatible and if they are, return a sorted pair:
     // the first id is the one belonging to the input attribute.
-    fn check_link_creation(attributes: &Vec<Option<Attribute>>, first_id: AttributeID, second_id: AttributeID) -> Option<(AttributeID, AttributeID)> {
+    fn check_link_creation(attributes: &[Option<Attribute>], first_id: AttributeID, second_id: AttributeID) -> Option<(AttributeID, AttributeID)> {
         let first_attribute_opt = attributes.get(first_id as usize);
         let second_attribute_opt = attributes.get(second_id as usize);
         match (first_attribute_opt, second_attribute_opt) {
