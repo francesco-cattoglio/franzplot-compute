@@ -7,7 +7,7 @@ use imgui::*;
 pub type AttributeID = i32;
 pub type NodeID = i32;
 
-#[derive(PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
 pub enum DataKind {
     Interval,
     Geometry,
@@ -31,7 +31,7 @@ pub struct Attribute {
     contents: AttributeContents,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub enum AttributeContents {
     InputPin {
         label: String,
@@ -162,14 +162,14 @@ impl Attribute {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Node {
     title: String,
     error: Option<GraphError>,
     contents: NodeContents,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub enum NodeContents {
     Interval {
         variable: AttributeID,
@@ -368,12 +368,12 @@ impl Node {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub enum Severity {
     Warning,
     Error
 }
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct GraphError {
     pub node_id: NodeID,
     pub severity: Severity,
@@ -436,6 +436,24 @@ impl NodeGraph {
             self.attributes.push(None);
             id
         }
+    }
+
+    pub fn clone_node(&self, node_id: NodeID) -> Option<(Node, Vec<AttributeContents>)> {
+        // to clone a node, we need to clone its kind, clone its attributes
+        // and then remap all its attributes to the newly-created "local attributes array"
+        let mut cloned_node = self.get_node(node_id)?.clone();
+        let owned_attributes = cloned_node.get_owned_attributes();
+
+        let mut cloned_attributes = Vec::<AttributeContents>::with_capacity(owned_attributes.len());
+        // for each (index, reference to the attribute_id contained in our node)
+        for (i, attribute_id) in owned_attributes.into_iter().enumerate() {
+            // clone the attribute originally pointed at by attribute_id
+            let attribute = self.attributes.get(*attribute_id as usize).unwrap().as_ref().unwrap();
+            cloned_attributes.push(attribute.contents.clone());
+            // and then modify the attribute_id inside the node with the current index
+            *attribute_id = i as AttributeID;
+        }
+        Some((cloned_node, cloned_attributes))
     }
 
     pub fn insert_node(&mut self, mut node: Node, attributes_contents: Vec<AttributeContents>) -> NodeID {
@@ -521,9 +539,15 @@ impl NodeGraph {
         }
 
         ui.popup(im_str!("Node menu"), || {
+            let clicked_pos = ui.mouse_pos_on_opening_current_popup();
             if MenuItem::new(im_str!("delete node")).build(ui) {
                 println!("need to remove {}", self.last_hovered_node);
                 self.remove_node(self.last_hovered_node);
+            }
+            if MenuItem::new(im_str!("duplicate node")).build(ui) {
+                let (cloned_node, cloned_attributes) = self.clone_node(self.last_hovered_node).unwrap();
+                let new_node_id = self.insert_node(cloned_node, cloned_attributes);
+                imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0]+20.0, clicked_pos[1]+20.0);
             }
             if MenuItem::new(im_str!("rename node")).build(ui) {
                 println!("need to rename {}", self.last_hovered_node);
@@ -796,7 +820,7 @@ impl NodeGraph {
             }
         ];
         let node = Node {
-            title: String::from("Interval node"),
+            title: String::from("Interval"),
             error: None,
             contents: NodeContents::Interval {
                 variable: 0,
@@ -829,7 +853,7 @@ impl NodeGraph {
             }
         ];
         let node = Node {
-            title: String::from("Point node"),
+            title: String::from("Point"),
             error: None,
             contents: NodeContents::Point {
                 x: 0,
@@ -865,7 +889,7 @@ impl NodeGraph {
             }
         ];
         let node = Node {
-            title: String::from("Curve node"),
+            title: String::from("Curve"),
             error: None,
             contents: NodeContents::Curve {
                 fx: 0,
@@ -906,7 +930,7 @@ impl NodeGraph {
             }
         ];
         let node = Node {
-            title: String::from("Surface node"),
+            title: String::from("Surface"),
             error: None,
             contents: NodeContents::Surface {
                 fx: 0,
@@ -928,7 +952,7 @@ impl NodeGraph {
             }
         ];
         let node = Node {
-            title: String::from("Curve node"),
+            title: String::from("Curve"),
             error: None,
             contents: NodeContents::Rendering {
                 geometry: 0,
@@ -994,7 +1018,7 @@ impl NodeGraph {
             },
         ];
         let node = Node {
-            title: String::from("Curve node"),
+            title: String::from("Matrix"),
             error: None,
             contents: NodeContents::Matrix {
                 interval: 0,
