@@ -13,17 +13,26 @@ pub struct Camera {
     pub z_far: f32,
 }
 
-impl Camera {
-    pub fn new( position: Vec3, yaw: f32, pitch: f32, aspect: f32, fov_y: f32, z_near: f32, z_far: f32) -> Self {
-        Self {
-            position,
-            yaw,
+impl Default for Camera {
+    fn default() -> Camera {
+        Camera {
+            position: Vec3::new(-1.0, 0.0, 0.0),
+            yaw: 0.0,
+            pitch: 0.0,
+            aspect: 1.0,
             up: Vec3::new(0.0, 0.0, 1.0),
-            pitch,
-            aspect,
-            fov_y,
-            z_near,
-            z_far,
+            fov_y: 45.0,
+            z_near: 0.1,
+            z_far: 100.0,
+        }
+    }
+}
+
+impl Camera {
+    pub fn from_height_width(height: f32, width: f32) -> Self {
+        Self {
+            aspect: width/height,
+            .. Default::default()
         }
     }
 
@@ -46,6 +55,10 @@ impl Camera {
     }
 }
 
+// TODO: camera controller movement currently depends on the frame dt. However,
+// rotation should NOT depend on it, since it depends on how many pixel I dragged
+// over the rendered scene, which kinda makes it already framerate-agnostic
+// OTOH, we might want to make it frame *dimension* agnostic!
 #[derive(Debug)]
 pub struct CameraController {
     amount_left: f32,

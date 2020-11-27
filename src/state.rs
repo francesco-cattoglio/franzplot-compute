@@ -1,14 +1,115 @@
 use crate::computable_scene::*;
 use crate::device_manager::Manager;
 use crate::rendering::camera::{ Camera, CameraController };
+use crate::node_graph;
+use serde::{Serialize, Deserialize};
 
-// this struct encapsulates the whole application state, and doubles as an entry point
-// for the C++ side of the code: the GUI will take a reference to the state, thus allowing
-// the gui to have some control over the Rust side.
-pub struct State {
-    pub computable_scene: ComputableScene,
-    pub manager: Manager,
-    pub camera: Camera,
-    pub camera_controller: CameraController,
+// The State struct encapsulates the whole application state,
+// the GUI takes a mutable reference to the state and modifies it
+// according to user input. The state contains both the data
+// that the user is constantly editing (UserState) and the "rendered result"
+// of that data (AppState). This distinction is very important w.r.t
+// saving to file: we don't want to serialize compute shaders,
+// we only want to save the graph, the variables and the scene settings.
+
+#[derive(Default, Deserialize, Serialize)]
+pub struct UserState {
+    pub graph: node_graph::NodeGraph,
+    pub globals_names: Vec<String>,
+    pub globals_init_values: Vec<f32>,
 }
 
+impl UserState {
+    pub fn write_to_file(&self, path: &std::path::PathBuf) {
+        let file = std::fs::File::create(path).unwrap();
+        serde_json::to_writer_pretty(file, &self).unwrap();
+    }
+
+    pub fn write_to_lz4(&self, path: &std::path::PathBuf) {
+        let file = std::fs::File::create(path).unwrap();
+        let lz4_encoder = lz4::EncoderBuilder::new()
+            .auto_flush(true)
+            .build(file)
+            .unwrap();
+
+        serde_json::to_writer_pretty(lz4_encoder, &self).unwrap();
+    }
+
+    pub fn read_from_file(&mut self, path: &std::path::PathBuf) {
+        let file = std::fs::File::open(path).unwrap();
+        let maybe_user_state = serde_json::from_reader(file);
+        *self = maybe_user_state.unwrap();
+    }
+
+    pub fn read_from_lz4(&mut self, path: &std::path::PathBuf) {
+        let lz4_file = std::fs::File::open(path).unwrap();
+        let file = lz4::Decoder::new(lz4_file).unwrap();
+        let maybe_user_state = serde_json::from_reader(file);
+        *self = maybe_user_state.unwrap();
+    }
+}
+
+pub struct AppState {
+    pub camera_controller: CameraController,
+    pub camera: Camera, // we might want to store camera position in user state
+    pub manager: Manager,
+    pub computable_scene: ComputableScene,
+}
+
+impl AppState {
+    pub fn update_scene(&mut self, target_texture: &wgpu::TextureView, frame_duration: std::time::Duration) {
+        // TODO: make sure this is done only when it is really needed!
+        self.computable_scene.globals.update_buffer(&self.manager.queue);
+        self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
+        self.camera_controller.update_camera(&mut self.camera, frame_duration);
+        // after updating everything, redraw the scene to the texture
+        self.computable_scene.renderer.render(&self.manager, target_texture, &self.camera);
+    }
+}
+
+pub struct State {
+    pub app: AppState,
+    pub user: UserState,
+}
+
+impl State {
+    // this function will likely be called only once, at program start
+    pub fn new(manager: Manager) -> Self {
+        // at program start, we can just set the user data to its default value
+        let user: UserState = Default::default();
+
+            // construct the AppState part from the passed-in manager
+        let computable_scene = ComputableScene {
+            globals: globals::Globals::new(&manager.device, vec![], vec![]),
+            chain: compute_chain::ComputeChain::new(),
+            renderer: scene_renderer::SceneRenderer::new(&manager),
+        };
+        let camera = Camera::from_height_width(manager.sc_desc.height as f32, manager.sc_desc.width as f32);
+        let camera_controller = CameraController::new(4.0, 1.0);
+        let app = AppState {
+            computable_scene,
+            camera,
+            camera_controller,
+            manager
+        };
+
+        Self {
+            app,
+            user,
+        }
+    }
+
+    pub fn process_user_state(&mut self) {
+        // try to build a new compute chain.
+        // clear all errors
+        self.user.graph.clear_all_errors();
+        // TODO: refactor some of this perhaps? I feel like a
+        // ComputableScene::process_user_state would be easier to read and reason about
+        // create a new Globals from the user defined names
+        let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
+        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &mut self.user.graph, globals);
+        for error in graph_errors.into_iter() {
+            self.user.graph.mark_error(error);
+        }
+    }
+}

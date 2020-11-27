@@ -18,11 +18,9 @@ mod file_io;
 #[cfg(test)]
 mod tests;
 
-use rendering::camera::{ Camera, CameraController };
 use getopts::Options;
 use std::env;
 
-use computable_scene::compute_block::BlockCreationError;
 
 fn print_usage(program: &str, opts: Options) {
     let brief = format!("Usage: {} [options]", program);
@@ -37,7 +35,6 @@ pub enum CustomEvent {
     CurrentlyUnused,
 }
 
-use std::io::prelude::*;
 fn main() {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
@@ -77,20 +74,6 @@ fn main() {
 
     let device_manager = device_manager::Manager::new(&window);
 
-    let camera = Camera::new(
-        (-3.0, 0.0, 0.0).into(),
-        0.0,
-        0.0,
-        device_manager.sc_desc.width as f32 / device_manager.sc_desc.height as f32,
-        45.0,
-        0.1,
-        100.0,
-    );
-    // TODO: camera controller movement currently depends on the frame dt. However,
-    // rotation should NOT depend on it, since it depends on how many pixel I dragged
-    // over the rendered scene, which kinda makes it already framerate-agnostic
-    // OTOH, we might want to make it frame *dimension* agnostic!
-    let camera_controller = CameraController::new(4.0, 0.1);
     // Set up dear imgui
     let mut imgui = imgui::Context::create();
     imgui.style_mut().window_rounding = 0.0;
@@ -106,7 +89,6 @@ fn main() {
 
     let font_size = (12.0 * hidpi_factor) as f32;
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
-
 
     let glyph_range = FontGlyphRanges::from_slice(&[
         0x0020, 0x00FF, // Basic Latin + Latin Supplement
@@ -151,67 +133,9 @@ fn main() {
     let scene_texture = imgui_wgpu::Texture::new(&device_manager.device, &renderer, scene_texture_config);
     let scene_texture_id = renderer.textures.insert(scene_texture);
 
-    let mut node_graph = node_graph::NodeGraph::new();
-    node_graph.add_interval_node();
-    node_graph.add_rendering_node();
-    node_graph.add_curve_node();
     let mut rust_gui = rust_gui::Gui::new(scene_texture_id, event_loop.create_proxy());
-    //dbg!(&all_descriptors);
-    let mut chain = computable_scene::compute_chain::ComputeChain::new();
-    let globals;
-    if let Some(filename) = input_file {
-        let mut json_contents = String::new();
-        let mut file = std::fs::File::open(&filename).unwrap();
-        file.read_to_string(&mut json_contents).unwrap();
-        let json_scene: computable_scene::Descriptor = serde_json::from_str(&json_contents).unwrap();
-        globals = computable_scene::globals::Globals::new(&device_manager.device, json_scene.global_names, json_scene.global_init_values);
-                    let scene_result = chain.set_scene(&device_manager.device, &globals, json_scene.descriptors);
-                    for (block_id, error) in scene_result.iter() {
-                        let id = *block_id;
-                        match error {
-                            BlockCreationError::IncorrectAttributes(message) => {
-                                println!("incorrect attributes error for {}: {}", id, &message);
-                            },
-                            BlockCreationError::InputNotBuilt(message) => {
-                                println!("input not build warning for {}: {}", id, &message);
-                            },
-                            BlockCreationError::InputMissing(message) => {
-                                println!("missing input error for {}: {}", id, &message);
-                            },
-                            BlockCreationError::InputInvalid(message) => {
-                                println!("invalid input error for {}: {}", id, &message);
-                            },
-                            BlockCreationError::InternalError(message) => {
-                                println!("internal error: {}", &message);
-                                panic!();
-                            },
-                        }
-                    }
-    } else {
-        globals = computable_scene::globals::Globals::new(&device_manager.device, vec![], vec![]);
-        print_usage(&program, opts);
-    };
-    chain.run_chain(&device_manager.device, &device_manager.queue, &globals);
 
-    //let dbg_buff = chain.chain.get("").expect("wrong block name for dbg printout").output_renderer.get_buffer();
-    //let dbg_vect = copy_buffer_as_f32(out_buff, &device_manager.device);
-    //println!("debugged buffer contains {:?}", dbg_vect);
-
-    let mut scene_renderer = computable_scene::scene_renderer::SceneRenderer::new(&device_manager);
-    scene_renderer.update_renderables(&device_manager.device, &chain);
-
-    let computable_scene = computable_scene::ComputableScene {
-        chain,
-        renderer: scene_renderer,
-        globals
-    };
-    // assemble the application state by moving all the variables inside it
-    let mut app_state = state::State {
-        camera,
-        camera_controller,
-        computable_scene,
-        manager: device_manager,
-    };
+    let mut state = state::State::new(device_manager);
 
     let mut frame_duration = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
@@ -233,13 +157,10 @@ fn main() {
             }
             // Emitted when all of the event loop's input events have been processed and redraw processing is about to begin.
             Event::MainEventsCleared => {
-                // update the chain
-                // TODO: move this functionality somewhere inside computable_scene, and make sure
-                // this is done only when it is really needed!
-                app_state.computable_scene.globals.update_buffer(&app_state.manager.queue);
-                app_state.computable_scene.chain.run_chain(&app_state.manager.device, &app_state.manager.queue, &app_state.computable_scene.globals);
+                // update the computable scene
+                let scene_texture_view = renderer.textures.get(scene_texture_id).unwrap().view();
+                state.app.update_scene(scene_texture_view, frame_duration);
                 // prepare gui rendering
-                app_state.camera_controller.update_camera(&mut app_state.camera, frame_duration);
                 platform
                     .prepare_frame(imgui.io_mut(), &window)
                     .expect("Failed to prepare frame");
@@ -248,18 +169,12 @@ fn main() {
             // Begin rendering. During each iteration of the event loop, Winit will aggregate duplicate redraw requests
             // into a single event, to help avoid duplicating rendering work.
             Event::RedrawRequested(_window_id) => {
-                // redraw the scene to the texture
-                if let Some(scene_texture) = renderer.textures.get(scene_texture_id) {
-                    app_state.computable_scene.renderer.render(&app_state.manager, scene_texture.view(), &app_state.camera);
-                } else {
-                    panic!("no texture for rendering!");
-                }
-
-                let frame = app_state.manager.get_frame_or_update(&window);
+                // acquire next frame, or update the swapchain if a resize occurred
+                let frame = state.app.manager.get_frame_or_update(&window);
 
                 // use the acquired frame for a rendering pass, which will clear the screen and render the gui
                 let mut encoder: wgpu::CommandEncoder =
-                    app_state.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+                    state.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
@@ -276,17 +191,17 @@ fn main() {
                 // actual imgui rendering
                 let ui = imgui.frame();
                 let size = window.inner_size().to_logical(hidpi_factor);
-                rust_gui.render(&ui, [size.width, size.height], &mut app_state);
+                rust_gui.render(&ui, [size.width, size.height], &mut state);
 
                 platform.prepare_render(&ui, &window);
                 renderer
-                    .render(ui.render(), &app_state.manager.queue, &app_state.manager.device, &mut rpass)
+                    .render(ui.render(), &state.app.manager.queue, &state.app.manager.device, &mut rpass)
                     .expect("Imgui rendering failed");
 
                 drop(rpass); // dropping the render pass is required for the encoder.finish() command
 
                 // submit the framebuffer rendering pass
-                app_state.manager.queue.submit(Some(encoder.finish()));
+                state.app.manager.queue.submit(Some(encoder.finish()));
             }
             // Emitted after all RedrawRequested events have been processed and control flow is about to be taken away from the program.
             // If there are no RedrawRequested events, it is emitted immediately after MainEventsCleared.
@@ -300,10 +215,10 @@ fn main() {
             Event::UserEvent(user_event) => {
                 match user_event {
                     CustomEvent::SaveFile(path_buf) => {
-                        rust_gui.write_to_lz4(&path_buf);
+                        state.user.write_to_lz4(&path_buf);
                     },
                     CustomEvent::OpenFile(path_buf) => {
-                        rust_gui.read_from_lz4(&path_buf);
+                        state.user.read_from_lz4(&path_buf);
                     },
                     CustomEvent::CurrentlyUnused => println!("received a custom user event")
                 }
@@ -327,7 +242,7 @@ fn main() {
                 match other_event {
                     // if the window was resized, we need to resize the swapchain as well!
                     Event::WindowEvent{ event: WindowEvent::Resized(physical_size), .. } => {
-                        app_state.manager.resize(physical_size);
+                        state.app.manager.resize(physical_size);
                     }
                     Event::WindowEvent{ event: WindowEvent::MouseInput { .. }, ..} => {
                         // put a safety un-freeze feature, in case we mess something up wrt releasing the mouse

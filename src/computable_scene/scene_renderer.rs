@@ -51,15 +51,7 @@ pub struct SceneRenderer {
 
 impl SceneRenderer {
     pub fn new(manager: &device_manager::Manager) -> Self {
-        let camera = Camera::new(
-            (-3.5, -3.5, 3.5).into(),
-            0.0,
-            0.0,
-            manager.sc_desc.width as f32 / manager.sc_desc.height as f32,
-            45.0,
-            0.1,
-            100.0,
-        );
+        let camera = Camera::from_height_width(manager.sc_desc.width as f32, manager.sc_desc.height as f32);
 
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(&camera);

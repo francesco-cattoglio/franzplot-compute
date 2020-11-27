@@ -1,14 +1,10 @@
 use imgui::*;
-use crate::node_graph;
 use crate::file_io;
 use crate::state::State;
 use crate::computable_scene::globals::Globals;
 
 pub struct Gui {
-    pub graph: node_graph::NodeGraph,
     pub scene_texture_id: TextureId,
-    pub globals_names: Vec<String>,
-    pub globals_init_values: Vec<f32>,
     pub new_global_buffer: ImString,
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
 }
@@ -17,38 +13,9 @@ impl Gui {
     pub fn new(scene_texture_id: TextureId, winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>) -> Self {
         Self {
             new_global_buffer: ImString::with_capacity(8),
-            graph: node_graph::NodeGraph::new(),
             scene_texture_id,
-            globals_init_values: Vec::new(),
-            globals_names: Vec::new(),
             winit_proxy,
         }
-    }
-
-    pub fn write_to_file(&self, path: &std::path::PathBuf) {
-        let file = std::fs::File::create(path).unwrap();
-        serde_json::to_writer_pretty(file, &self.graph).unwrap();
-    }
-
-    pub fn write_to_lz4(&self, path: &std::path::PathBuf) {
-        let file = std::fs::File::create(path).unwrap();
-        let lz4_encoder = lz4::EncoderBuilder::new()
-            .auto_flush(true)
-            .build(file)
-            .unwrap();
-
-        serde_json::to_writer_pretty(lz4_encoder, &self.graph).unwrap();
-    }
-
-    pub fn read_from_file(&mut self, path: &std::path::PathBuf) {
-        let file = std::fs::File::open(path).unwrap();
-        self.graph = serde_json::from_reader(file).unwrap();
-    }
-
-    pub fn read_from_lz4(&mut self, path: &std::path::PathBuf) {
-        let lz4_file = std::fs::File::open(path).unwrap();
-        let file = lz4::Decoder::new(lz4_file).unwrap();
-        self.graph = serde_json::from_reader(file).unwrap();
     }
 
     pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State) {
@@ -108,15 +75,7 @@ impl Gui {
 
     fn render_editor_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
         if ui.button(im_str!("Render"), [0.0, 0.0]) {
-            // try to build a new compute chain.
-            // clear all errors
-            self.graph.clear_all_errors();
-            // create a new Globals from the user defined names
-            let globals = Globals::new(&state.manager.device, self.globals_names.clone(), self.globals_init_values.clone());
-            let graph_errors = state.computable_scene.process_graph(&state.manager.device, &mut self.graph, globals);
-            for error in graph_errors.into_iter() {
-                self.graph.mark_error(error);
-            }
+            state.process_user_state();
         }
         ui.columns(2, im_str!("editor columns"), false);
         ui.set_current_column_width(120.0);
@@ -124,19 +83,21 @@ impl Gui {
         // the following code is similar to what a Vec::drain_filter would do,
         // but operates on 2 vectors at the same time.
         let mut i = 0;
-        while i != self.globals_names.len() {
+        let globals_names = &mut state.user.globals_names;
+        let globals_init_values = &mut state.user.globals_init_values;
+        while i != globals_names.len() {
             ui.set_next_item_width(80.0);
-            ui.text(&self.globals_names[i]);
+            ui.text(&globals_names[i]);
             ui.same_line(0.0);
             if ui.small_button(im_str!("X")) {
-                self.globals_init_values.remove(i);
-                self.globals_names.remove(i);
+                globals_init_values.remove(i);
+                globals_names.remove(i);
             } else {
                 // to make each slider unique, we are gonna push an invisible unique imgui label
-                let imgui_name = ImString::new("##".to_string() + &self.globals_names[i]);
+                let imgui_name = ImString::new("##".to_string() + &globals_names[i]);
                 Drag::new(&ImString::from(imgui_name))
                     .speed(0.01)
-                    .build(ui, &mut self.globals_init_values[i]);
+                    .build(ui, &mut globals_init_values[i]);
                 i += 1;
             }
         }
@@ -147,14 +108,14 @@ impl Gui {
             .build();
         ui.same_line(0.0);
         if ui.button(im_str!("New"), [0.0, 0.0]) { // TODO: we need a check: the name must be valid!
-            self.globals_names.push(self.new_global_buffer.to_string());
-            self.globals_init_values.push(0.0);
+            globals_names.push(self.new_global_buffer.to_string());
+            globals_init_values.push(0.0);
             self.new_global_buffer.clear();
         }
 
         ui.next_column();
         ui.text(im_str!("Right side"));
-        self.graph.render(ui);
+        state.user.graph.render(ui);
         ui.columns(1, im_str!("editor columns"), false);
     }
 
@@ -166,9 +127,9 @@ impl Gui {
 
         // and add the UI for updating them
         let width_token = ui.push_item_width(80.0);
-        let zip = state.computable_scene.globals.get_variables_iter();
+        let zip_iter = state.app.computable_scene.globals.get_variables_iter();
         let mut requested_cursor = MouseCursor::Arrow;
-        for (name, value) in zip {
+        for (name, value) in zip_iter {
             // to make each slider unique, we are gonna push an invisible unique imgui label
             let imgui_name = ImString::new("##".to_string() + name);
             ui.text(name);
@@ -191,7 +152,7 @@ impl Gui {
         if ui.is_item_active() {
             let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Left, 0.0);
             ui.reset_mouse_drag_delta(MouseButton::Left);
-            state.camera_controller.process_mouse(mouse_delta[0], mouse_delta[1]);
+            state.app.camera_controller.process_mouse(mouse_delta[0], mouse_delta[1]);
 
         }
         ui.columns(1, im_str!("scene columns"), false);
