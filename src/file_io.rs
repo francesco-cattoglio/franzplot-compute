@@ -3,17 +3,20 @@ use winit::event_loop::EventLoopProxy;
 use super::CustomEvent;
 // TODO: Check if there is proper support for utf-8 under windows.
 // and if we can get an updated C lib, there are important fixes.
+// Also, see if save file filters are handled correctly on every platform.
 // If not, maybe find another equivalent library to do dialogs.
 // Possible alternatives:
 // - wrap https://github.com/mlabbe/nativefiledialog
 // - wrap https://github.com/AndrewBelt/osdialog
 // - wait for https://github.com/balthild/native-dialog-rs to add support for save dialogs
+// - embed a kdialog-like application which handles save file filters correctly in your binary,
+//   unpackage it at a temp location and use std::process::Command to run it.
 fn show_save_dialog(proxy: EventLoopProxy<CustomEvent>) {
-    if let Some(filename) = tinyfiledialogs::save_file_dialog("Save", "") {
+    if let Some(filename) = tinyfiledialogs::save_file_dialog_with_filter("Save", "", &["*.lz4"], "franzplot json") {
         if !filename.is_empty() {
             dbg!(&filename);
             let mut file_path = std::path::PathBuf::from(filename);
-            file_path.set_extension("json");
+            file_path.set_extension("lz4");
             proxy.send_event(CustomEvent::SaveFile(file_path)).unwrap();
         }
     }
@@ -21,7 +24,7 @@ fn show_save_dialog(proxy: EventLoopProxy<CustomEvent>) {
 }
 
 fn show_open_dialog(proxy: EventLoopProxy<CustomEvent>) {
-    if let Some(filename) = tinyfiledialogs::open_file_dialog("Open", "", Some((&["*.json"], "franzplot json"))) {
+    if let Some(filename) = tinyfiledialogs::open_file_dialog("Open", "", Some((&["*.lz4"], "franzplot json"))) {
         if !filename.is_empty() {
             dbg!(&filename);
             let file_path = std::path::PathBuf::from(filename);

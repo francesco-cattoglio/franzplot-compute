@@ -300,10 +300,10 @@ fn main() {
             Event::UserEvent(user_event) => {
                 match user_event {
                     CustomEvent::SaveFile(path_buf) => {
-                        rust_gui.write_to_file(&path_buf);
+                        rust_gui.write_to_lz4(&path_buf);
                     },
                     CustomEvent::OpenFile(path_buf) => {
-                        rust_gui.read_from_file(&path_buf);
+                        rust_gui.read_from_lz4(&path_buf);
                     },
                     CustomEvent::CurrentlyUnused => println!("received a custom user event")
                 }

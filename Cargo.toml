@@ -26,6 +26,7 @@ cxx = "1.0"
 pathfinding = "2.0"
 indexmap = "1.6"
 tinyfiledialogs = "3"
+lz4 = "1"
 
 [dependencies.imgui-winit-support]
 version = "0.6"

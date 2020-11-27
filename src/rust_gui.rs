@@ -30,8 +30,24 @@ impl Gui {
         serde_json::to_writer_pretty(file, &self.graph).unwrap();
     }
 
+    pub fn write_to_lz4(&self, path: &std::path::PathBuf) {
+        let file = std::fs::File::create(path).unwrap();
+        let lz4_encoder = lz4::EncoderBuilder::new()
+            .auto_flush(true)
+            .build(file)
+            .unwrap();
+
+        serde_json::to_writer_pretty(lz4_encoder, &self.graph).unwrap();
+    }
+
     pub fn read_from_file(&mut self, path: &std::path::PathBuf) {
         let file = std::fs::File::open(path).unwrap();
+        self.graph = serde_json::from_reader(file).unwrap();
+    }
+
+    pub fn read_from_lz4(&mut self, path: &std::path::PathBuf) {
+        let lz4_file = std::fs::File::open(path).unwrap();
+        let file = lz4::Decoder::new(lz4_file).unwrap();
         self.graph = serde_json::from_reader(file).unwrap();
     }
 
