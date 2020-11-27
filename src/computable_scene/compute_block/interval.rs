@@ -2,9 +2,8 @@ use crate::computable_scene::globals::Globals;
 use crate::shader_processing::*;
 use super::{ ComputeBlock, BlockCreationError, Dimensions, Parameter };
 use super::ProcessingResult;
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub struct IntervalBlockDescriptor {
     pub begin: String,
     pub end: String,

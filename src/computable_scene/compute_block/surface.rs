@@ -4,12 +4,11 @@ use super::{ComputeBlock, BlockId};
 use super::BlockCreationError;
 use super::Dimensions;
 use super::{ProcessedMap, ProcessingResult};
-use serde::{Deserialize, Serialize};
 
 const LOCAL_SIZE_X: usize = 16;
 const LOCAL_SIZE_Y: usize = 16;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub struct SurfaceBlockDescriptor {
     pub interval_first: Option<BlockId>,
     pub interval_second: Option<BlockId>,
@@ -20,15 +19,6 @@ pub struct SurfaceBlockDescriptor {
 impl SurfaceBlockDescriptor {
     pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
         Ok(ComputeBlock::Surface(SurfaceData::new(device, globals, processed_blocks, &self)?))
-    }
-
-    pub fn get_input_ids(&self) -> Vec<BlockId> {
-        match (self.interval_first, self.interval_second) {
-            (Some(id_1), Some(id_2)) => vec![id_1, id_2],
-            (Some(id_1), None) => vec![id_1],
-            (None, Some(id_2)) => vec![id_2],
-            (None, None) => vec![],
-        }
     }
 }
 

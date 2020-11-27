@@ -22,7 +22,6 @@ pub use transform::{TransformData, TransformBlockDescriptor};
 pub mod matrix;
 pub use matrix::{MatrixData, MatrixBlockDescriptor};
 
-use serde::{Deserialize, Serialize};
 use super::Globals;
 use crate::node_graph::{ Node, NodeContents, NodeGraph, };
 
@@ -202,13 +201,13 @@ impl ComputeBlock {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub struct BlockDescriptor {
     pub id: BlockId,
     pub data: DescriptorData,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub enum DescriptorData {
     Point (PointBlockDescriptor),
     Curve (CurveBlockDescriptor),
@@ -220,18 +219,18 @@ pub enum DescriptorData {
 }
 
 impl DescriptorData {
-    pub fn get_input_ids(&self) -> Vec<BlockId> {
-        match &self {
-            // we know that some nodes have no input at all, so we can always return an empty vec
-            DescriptorData::Point(_) => vec![],
-            DescriptorData::Interval(_) => vec![],
-            DescriptorData::Curve(desc) => desc.get_input_ids(),
-            DescriptorData::Surface(desc) => desc.get_input_ids(),
-            DescriptorData::Matrix(desc) => desc.get_input_ids(),
-            DescriptorData::Transform(desc) => desc.get_input_ids(),
-            DescriptorData::Rendering(desc) => desc.get_input_ids(),
-        }
-    }
+    //pub fn get_input_ids(&self) -> Vec<BlockId> {
+    //    match &self {
+    //        // we know that some nodes have no input at all, so we can always return an empty vec
+    //        DescriptorData::Point(_) => vec![],
+    //        DescriptorData::Interval(_) => vec![],
+    //        DescriptorData::Curve(desc) => desc.get_input_ids(),
+    //        DescriptorData::Surface(desc) => desc.get_input_ids(),
+    //        DescriptorData::Matrix(desc) => desc.get_input_ids(),
+    //        DescriptorData::Transform(desc) => desc.get_input_ids(),
+    //        DescriptorData::Rendering(desc) => desc.get_input_ids(),
+    //    }
+    //}
 
     // Not all the blocks require the same inputs at creation time.
     // As an example, a Transform block does not use any global variable,

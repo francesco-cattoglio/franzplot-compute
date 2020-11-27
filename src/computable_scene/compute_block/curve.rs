@@ -5,9 +5,8 @@ use super::BlockId;
 use super::Dimensions;
 use super::BlockCreationError;
 use super::{ProcessedMap, ProcessingResult};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub struct CurveBlockDescriptor {
     pub interval: Option<BlockId>,
     pub fx: String,
@@ -17,13 +16,6 @@ pub struct CurveBlockDescriptor {
 impl CurveBlockDescriptor {
     pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
         Ok(ComputeBlock::Curve(CurveData::new(device, globals, processed_blocks, &self)?))
-    }
-
-    pub fn get_input_ids(&self) -> Vec<BlockId> {
-        match self.interval {
-            Some(id) => vec![id],
-            None => vec![]
-        }
     }
 }
 

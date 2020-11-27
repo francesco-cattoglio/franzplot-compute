@@ -1,12 +1,11 @@
 use crate::shader_processing::*;
 use super::{ProcessedMap, ProcessingResult};
 use super::{ComputeBlock, BlockCreationError, BlockId, Dimensions};
-use serde::{Deserialize, Serialize};
 
 const LOCAL_SIZE_X: usize = 16;
 const LOCAL_SIZE_Y: usize = 16;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub struct TransformBlockDescriptor {
     pub geometry: Option<BlockId>,
     pub matrix: Option<BlockId>,
@@ -15,15 +14,6 @@ pub struct TransformBlockDescriptor {
 impl TransformBlockDescriptor {
     pub fn to_block(&self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
         Ok(ComputeBlock::Transform(TransformData::new(device, processed_blocks, &self)?))
-    }
-
-    pub fn get_input_ids(&self) -> Vec<BlockId> {
-        match (self.geometry, self.matrix) {
-            (Some(id_1), Some(id_2)) => vec![id_1, id_2],
-            (Some(id_1), None) => vec![id_1],
-            (None, Some(id_2)) => vec![id_2],
-            (None, None) => vec![],
-        }
     }
 }
 

@@ -1,12 +1,11 @@
 use crate::rendering::{StandardVertexData, GLSL_STANDARD_VERTEX_STRUCT};
 use super::{ComputeBlock, BlockCreationError, Dimensions, BlockId};
-use serde::{Deserialize, Serialize};
 use super::{ProcessedMap, ProcessingResult};
 
 const LOCAL_SIZE_X: usize = 16;
 const LOCAL_SIZE_Y: usize = 16;
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub struct RenderingBlockDescriptor {
     // TODO: rename this to Geometry,
     // start adding more input options like curve radius and such
@@ -15,13 +14,6 @@ pub struct RenderingBlockDescriptor {
 impl RenderingBlockDescriptor {
     pub fn to_block(&self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
         Ok(ComputeBlock::Rendering(RenderingData::new(device, processed_blocks, &self)?))
-    }
-
-    pub fn get_input_ids(&self) -> Vec<BlockId> {
-        match self.geometry {
-            Some(id) => vec![id],
-            None => vec![]
-        }
     }
 }
 

@@ -2,9 +2,8 @@ use crate::computable_scene::globals::Globals;
 use crate::shader_processing::*;
 use super::{ComputeBlock, BlockCreationError, Dimensions};
 use super::{ProcessingResult};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub struct PointBlockDescriptor {
     pub fx: String,
     pub fy: String,

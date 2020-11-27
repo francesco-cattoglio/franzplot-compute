@@ -3,8 +3,6 @@ pub mod compute_chain;
 pub mod globals;
 pub mod scene_renderer;
 
-use serde::{Deserialize, Serialize};
-
 use globals::Globals;
 use compute_chain::ComputeChain;
 use scene_renderer::SceneRenderer;
@@ -12,7 +10,7 @@ use compute_block::BlockCreationError;
 use crate::node_graph::NodeGraph;
 use crate::node_graph::{ GraphError, Severity };
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub struct Descriptor {
     pub global_names: Vec<String>,
     pub global_init_values: Vec<f32>,

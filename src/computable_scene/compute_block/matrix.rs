@@ -5,9 +5,8 @@ use super::BlockId;
 use super::BlockCreationError;
 use super::{ProcessedMap, ProcessingResult};
 use super::Dimensions;
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug)]
 pub struct MatrixBlockDescriptor {
     pub interval: Option<BlockId>,
     pub row_1: [String; 4], // matrix elements, row-major order
@@ -18,13 +17,6 @@ pub struct MatrixBlockDescriptor {
 impl MatrixBlockDescriptor {
     pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
         Ok(ComputeBlock::Matrix(MatrixData::new(device, globals, processed_blocks, &self)?))
-    }
-
-    pub fn get_input_ids(&self) -> Vec<BlockId> {
-        match self.interval {
-            Some(id) => vec![id],
-            None => vec![]
-        }
     }
 }
 
