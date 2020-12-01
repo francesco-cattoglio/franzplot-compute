@@ -143,6 +143,11 @@ struct NodeData
           pin_indices(), draggable(true)
     {
     }
+
+    ~NodeData()
+    {
+        id = -1;
+    }
 };
 
 struct PinData
@@ -863,6 +868,8 @@ void object_pool_update(ObjectPool<NodeData>& nodes)
         else
         {
             const int previous_id = nodes.pool[i].id;
+            if (previous_id == -1)
+                continue;
             const int previous_idx = nodes.id_map.GetInt(previous_id, -1);
             if (previous_idx != -1)
             {
