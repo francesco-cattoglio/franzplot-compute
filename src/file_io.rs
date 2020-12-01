@@ -12,11 +12,11 @@ use super::CustomEvent;
 // - embed a kdialog-like application which handles save file filters correctly in your binary,
 //   unpackage it at a temp location and use std::process::Command to run it.
 fn show_save_dialog(proxy: EventLoopProxy<CustomEvent>) {
-    if let Some(filename) = tinyfiledialogs::save_file_dialog_with_filter("Save", "", &["*.lz4"], "franzplot json") {
+    if let Some(filename) = tinyfiledialogs::save_file_dialog_with_filter("Save", "", &["*.json"], "franzplot json") {
         if !filename.is_empty() {
             dbg!(&filename);
             let mut file_path = std::path::PathBuf::from(filename);
-            file_path.set_extension("lz4");
+            file_path.set_extension("json");
             proxy.send_event(CustomEvent::SaveFile(file_path)).unwrap();
         }
     }
@@ -24,7 +24,7 @@ fn show_save_dialog(proxy: EventLoopProxy<CustomEvent>) {
 }
 
 fn show_open_dialog(proxy: EventLoopProxy<CustomEvent>) {
-    if let Some(filename) = tinyfiledialogs::open_file_dialog("Open", "", Some((&["*.lz4"], "franzplot json"))) {
+    if let Some(filename) = tinyfiledialogs::open_file_dialog("Open", "", Some((&["*.json"], "franzplot json"))) {
         if !filename.is_empty() {
             dbg!(&filename);
             let file_path = std::path::PathBuf::from(filename);

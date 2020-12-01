@@ -215,10 +215,10 @@ fn main() {
             Event::UserEvent(user_event) => {
                 match user_event {
                     CustomEvent::SaveFile(path_buf) => {
-                        state.user.write_to_lz4(&path_buf);
+                        state.user.write_to_file(&path_buf);
                     },
                     CustomEvent::OpenFile(path_buf) => {
-                        state.user.read_from_lz4(&path_buf);
+                        state.user.read_from_file(&path_buf);
                     },
                     CustomEvent::CurrentlyUnused => println!("received a custom user event")
                 }
