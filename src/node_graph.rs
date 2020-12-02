@@ -163,13 +163,6 @@ impl Attribute {
 }
 
 #[derive(Clone, Deserialize, Serialize)]
-pub struct Node {
-    title: String,
-    error: Option<GraphError>,
-    contents: NodeContents,
-}
-
-#[derive(Clone, Deserialize, Serialize)]
 pub enum NodeContents {
     Interval {
         variable: AttributeID,
@@ -217,6 +210,197 @@ pub enum NodeContents {
     Group
 }
 
+impl NodeContents {
+    pub fn default_same_kind(&self) -> Self {
+        match self {
+            NodeContents::Interval {..} => Self::default_interval(),
+            NodeContents::Point {..} => Self::default_point(),
+            NodeContents::Curve {..} => Self::default_curve(),
+            NodeContents::Surface {..} => Self::default_surface(),
+            NodeContents::Matrix {..} => Self::default_matrix(),
+            NodeContents::Transform {..} => Self::default_transform(),
+            NodeContents::Rendering {..} => Self::default_rendering(),
+            NodeContents::Group => unimplemented!(),
+        }
+    }
+
+    // NOTE: it is very important that we keep the order in which we return the attributes
+    // with the order of attributes returned in the NodeContents::default_*() functions!
+    pub fn get_attribute_list_mut(&mut self) -> Vec<&mut AttributeID> {
+        match self {
+            NodeContents::Interval {
+                variable, begin, end, quality, output,
+            } => {
+                vec![variable, begin, end, quality, output]
+            },
+            NodeContents::Point {
+                x, y, z, output
+            } => {
+                vec![x, y, z, output]
+            },
+            NodeContents::Curve {
+                interval, fx, fy, fz, output
+            } => {
+                vec![interval, fx, fy, fz, output]
+            },
+            NodeContents::Surface {
+                interval_1, interval_2, fx, fy, fz, output
+            } => {
+                vec![interval_1, interval_2, fx, fy, fz, output]
+            },
+            NodeContents::Transform {
+                geometry, matrix, output
+            } => {
+                vec![geometry, matrix, output]
+            },
+            NodeContents::Matrix {
+                interval, row_1, row_2, row_3, output,
+            } => {
+                vec![interval, row_1, row_2, row_3, output,]
+            },
+            NodeContents::Rendering {
+                geometry,
+            } => {
+                vec![geometry]
+            },
+            NodeContents::Group => {
+                unimplemented!()
+            }
+        }
+    }
+
+    // NOTE: it is very important that we keep the order in which we return the attributes
+    // with the order of attributes returned in the NodeContents::default_*() functions!
+    pub fn get_attribute_list(&self) -> Vec<AttributeID> {
+        match *self {
+            NodeContents::Interval {
+                variable, begin, end, quality, output,
+            } => {
+                vec![variable, begin, end, quality, output]
+            },
+            NodeContents::Point {
+                x, y, z, output
+            } => {
+                vec![x, y, z, output]
+            },
+            NodeContents::Curve {
+                interval, fx, fy, fz, output
+            } => {
+                vec![interval, fx, fy, fz, output]
+            },
+            NodeContents::Surface {
+                interval_1, interval_2, fx, fy, fz, output
+            } => {
+                vec![interval_1, interval_2, fx, fy, fz, output]
+            },
+            NodeContents::Transform {
+                geometry, matrix, output
+            } => {
+                vec![geometry, matrix, output]
+            },
+            NodeContents::Matrix {
+                interval, row_1, row_2, row_3, output,
+            } => {
+                vec![interval, row_1, row_2, row_3, output,]
+            },
+            NodeContents::Rendering {
+                geometry,
+            } => {
+                vec![geometry]
+            },
+            NodeContents::Group => {
+                unimplemented!()
+            }
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_interval() -> Self {
+        NodeContents::Interval {
+            variable: 0,
+            begin: 1,
+            end: 2,
+            quality: 3,
+            output: 4,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_point() -> Self {
+        NodeContents::Point {
+            x: 0,
+            y: 1,
+            z: 2,
+            output: 3,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_curve() -> Self {
+        NodeContents::Curve {
+            interval: 0,
+            fx: 1,
+            fy: 2,
+            fz: 3,
+            output: 4,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_surface() -> Self {
+        NodeContents::Surface {
+            interval_1: 0,
+            interval_2: 1,
+            fx: 2,
+            fy: 3,
+            fz: 4,
+            output: 5,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_matrix() -> Self {
+        NodeContents::Matrix {
+            interval: 0,
+            row_1: 1,
+            row_2: 2,
+            row_3: 3,
+            output: 4,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_transform() -> Self {
+        NodeContents::Transform {
+            geometry: 0,
+            matrix: 1,
+            output: 2,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_rendering() -> Self {
+        NodeContents::Rendering {
+            geometry: 0,
+        }
+    }
+}
+
+
+#[derive(Clone, Deserialize, Serialize)]
+pub struct Node {
+    title: String,
+    error: Option<GraphError>,
+    contents: NodeContents,
+}
+
 impl Node {
     pub fn contents(&self) -> &NodeContents {
         &self.contents
@@ -241,47 +425,9 @@ impl Node {
                     }
                 }
             imnodes::EndNodeTitleBar();
-            // TODO: macro? NodeContents-to-render-list function?
-            // we cannot reuse the get_owned_nodes because there will be a Group kind
-            // of node in the future...
-            match self.contents {
-                NodeContents::Interval {
-                    variable, begin, end, quality, output,
-                } => {
-                    Attribute::render_list(ui, attributes, vec![variable, begin, end, quality, output,]);
-                },
-                NodeContents::Point {
-                    x, y, z, output,
-                } => {
-                    Attribute::render_list(ui, attributes, vec![x, y, z, output,]);
-                },
-                NodeContents::Curve {
-                    interval, fx, fy, fz, output,
-                } => {
-                    Attribute::render_list(ui, attributes, vec![interval, fx, fy, fz, output,]);
-                },
-                NodeContents::Surface {
-                    interval_1, interval_2, fx, fy, fz, output,
-                } => {
-                    Attribute::render_list(ui, attributes, vec![interval_1, interval_2, fx, fy, fz, output,]);
-                },
-                NodeContents::Transform {
-                    geometry, matrix, output,
-                } => {
-                    Attribute::render_list(ui, attributes, vec![geometry, matrix, output,]);
-                },
-                NodeContents::Matrix {
-                    interval, row_1, row_2, row_3, output,
-                } => {
-                    Attribute::render_list(ui, attributes, vec![interval, row_1, row_2, row_3, output,]);
-                },
-                NodeContents::Rendering {
-                    geometry,
-                } => {
-                    Attribute::render_list(ui, attributes, vec![geometry,]);
-                },
-                NodeContents::Group => { unimplemented!() }
-            }
+            // TODO: not sure if we will be able to use the get_attribute_list()
+            // when we introduce the Group kind node in the future...
+            Attribute::render_list(ui, attributes, self.contents.get_attribute_list());
     }
 
     pub fn get_input_attributes(&self) -> Vec::<AttributeID> {
@@ -334,92 +480,12 @@ impl Node {
             .collect()
     }
 
-    // TODO: macro? NodeContents-to-attributes-list function?
     pub fn get_owned_attributes_mut(&mut self) -> Vec::<&mut AttributeID> {
-        match &mut self.contents {
-            NodeContents::Interval {
-                variable, begin, end, quality, output,
-            } => {
-                vec![variable, begin, end, quality, output]
-            },
-            NodeContents::Point {
-                x, y, z, output
-            } => {
-                vec![x, y, z, output]
-            },
-            NodeContents::Curve {
-                interval, fx, fy, fz, output
-            } => {
-                vec![interval, fx, fy, fz, output]
-            },
-            NodeContents::Surface {
-                interval_1, interval_2, fx, fy, fz, output
-            } => {
-                vec![interval_1, interval_2, fx, fy, fz, output]
-            },
-            NodeContents::Transform {
-                geometry, matrix, output
-            } => {
-                vec![geometry, matrix, output]
-            },
-            NodeContents::Matrix {
-                interval, row_1, row_2, row_3, output,
-            } => {
-                vec![interval, row_1, row_2, row_3, output,]
-            },
-            NodeContents::Rendering {
-                geometry,
-            } => {
-                vec![geometry]
-            },
-            NodeContents::Group => {
-                unimplemented!()
-            }
-        }
+        self.contents.get_attribute_list_mut()
     }
 
-    // TODO: macro? NodeContents-to-attributes-list function?
     pub fn get_owned_attributes(&self) -> Vec::<AttributeID> {
-        match self.contents {
-            NodeContents::Interval {
-                variable, begin, end, quality, output,
-            } => {
-                vec![variable, begin, end, quality, output]
-            },
-            NodeContents::Point {
-                x, y, z, output
-            } => {
-                vec![x, y, z, output]
-            },
-            NodeContents::Curve {
-                interval, fx, fy, fz, output
-            } => {
-                vec![interval, fx, fy, fz, output]
-            },
-            NodeContents::Surface {
-                interval_1, interval_2, fx, fy, fz, output
-            } => {
-                vec![interval_1, interval_2, fx, fy, fz, output]
-            },
-            NodeContents::Transform {
-                geometry, matrix, output
-            } => {
-                vec![geometry, matrix, output]
-            },
-            NodeContents::Matrix {
-                interval, row_1, row_2, row_3, output,
-            } => {
-                vec![interval, row_1, row_2, row_3, output,]
-            },
-            NodeContents::Rendering {
-                geometry,
-            } => {
-                vec![geometry]
-            },
-            NodeContents::Group => {
-                unimplemented!()
-            }
-        }
+        self.contents.get_attribute_list()
     }
 }
 
@@ -493,7 +559,12 @@ impl NodeGraph {
         }
     }
 
-    pub fn insert_node(&mut self, mut node: Node, attributes_contents: Vec<AttributeContents>) -> NodeID {
+    pub fn insert_node(&mut self, title: String, node_contents: NodeContents, attributes_contents: Vec<AttributeContents>) -> NodeID {
+        let mut node = Node {
+            title,
+            error: None,
+            contents: node_contents
+        };
         // make a check: the list of owned attributes must have the same
         // length as the attributes vector
         let owned_attributes = node.get_owned_attributes_mut();
@@ -588,8 +659,7 @@ impl NodeGraph {
                 }
                 // TODO: decide if non-selected single node clone should still clone the links
                 if MenuItem::new(im_str!("duplicate node")).build(ui) {
-                    let (cloned_node, cloned_attributes) = self.clone_node(self.last_hovered_node).unwrap();
-                    let new_node_id = self.insert_node(cloned_node, cloned_attributes);
+                    let new_node_id = self.duplicate_node_no_links(self.last_hovered_node);
                     imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0]+20.0, clicked_pos[1]+20.0);
                 }
             } else {
@@ -713,36 +783,32 @@ impl NodeGraph {
     }
 
     // "clone" a node means "get all the data that we might need to insert a copy
-    // of this node into the graph". We do not actually insert it just yet.
-    pub fn clone_node(&self, node_id: NodeID) -> Option<(Node, Vec<AttributeContents>)> {
-        // to clone a node, we need to clone its kind, clone its attributes
-        // and then remap all its attributes to the newly-created "local attributes array"
-        let mut cloned_node = self.get_node(node_id)?.clone();
-        let owned_attributes = cloned_node.get_owned_attributes_mut();
+    // of this node into the graph". We do NOT insert it in the graph.
+    pub fn clone_node(&self, node_id: NodeID) -> Option<(String, NodeContents, Vec<AttributeContents>)> {
+        let node = self.get_node(node_id)?;
+        let attributes_list = node.get_owned_attributes();
 
-        let mut cloned_attributes = Vec::<AttributeContents>::with_capacity(owned_attributes.len());
-        // for each (index, reference to the attribute_id contained in our node)
-        for (i, attribute_id) in owned_attributes.into_iter().enumerate() {
-            // clone the attribute originally pointed at by attribute_id
-            let attribute = self.attributes.get(*attribute_id as usize).unwrap().as_ref().unwrap();
-            cloned_attributes.push(attribute.contents.clone());
-            // and then modify the attribute_id inside the node with the current index
-            *attribute_id = i as AttributeID;
-        }
-        Some((cloned_node, cloned_attributes))
+        let title = node.title.clone();
+        let cloned_contents = node.contents.default_same_kind();
+        let cloned_attributes = attributes_list
+            .into_iter()
+            .filter_map(|id| -> Option<AttributeContents> {
+                Some(
+                    self.attributes.get(id as usize)?
+                    .as_ref()?
+                    .contents.clone()
+                )
+            })
+            .collect();
+
+        Some((title, cloned_contents, cloned_attributes))
     }
 
-    // When we clone a node we get a new Node struct with a list of AttributeContents to go with it.
-    // If we are duplicating a lot of nodes, then just copy-pasting them is not enough, because we
-    // would like to also insert all the links between them! We need to do the following:
-    // 1 - Start by cloning each node in the list:
-    //      a - for each original attribute map the id of the cloned attribute.
-    //      b - for each original attribute that was linked to something, put it in a list
-    //
-    // 2 - Go through the lists of all the attributes that were linked to something,
-    //     make sure that the cloned attributes get linked to something as well!
-    //      a - if the thing it was linked to was cloned, then link to the clone
-    //      b - if the thing it was linked to was NOT cloned, then link to the original
+    fn duplicate_node_no_links(&mut self, node_id: NodeID) -> NodeID {
+        let (title, cloned_contents, cloned_attributes) = self.clone_node(node_id).unwrap();
+        self.insert_node(title, cloned_contents, cloned_attributes)
+    }
+
     fn duplicate_nodes(&mut self, nodes_ids: &[NodeID]) {
         let mut original_to_cloned_id = std::collections::BTreeMap::<AttributeID, AttributeID>::new();
         let mut linked_inputs_list = Vec::<AttributeID>::new();
@@ -753,8 +819,8 @@ impl NodeGraph {
             }
 
             // clone the node, insert it in the graph
-            let (cloned_node, cloned_attributes) = self.clone_node(*original_node_id).unwrap();
-            let cloned_node_id = self.insert_node(cloned_node, cloned_attributes);
+            let (title, cloned_node, cloned_attributes) = self.clone_node(*original_node_id).unwrap();
+            let cloned_node_id = self.insert_node(title, cloned_node, cloned_attributes);
 
             // Get the list of owned attributes. Node that due to the way the list is generated,
             // the order in which the attributes will appear is the same for the original and the clone.
@@ -968,18 +1034,8 @@ impl NodeGraph {
                 kind: DataKind::Interval,
             }
         ];
-        let node = Node {
-            title: String::from("Interval"),
-            error: None,
-            contents: NodeContents::Interval {
-                variable: 0,
-                begin: 1,
-                end: 2,
-                quality: 3,
-                output: 4,
-            }
-        };
-        self.insert_node(node, attributes_contents)
+        let node_contents = NodeContents::default_interval();
+        self.insert_node("Interval".into(), node_contents, attributes_contents)
     }
 
     pub fn add_point_node(&mut self) -> NodeID {
@@ -1001,17 +1057,8 @@ impl NodeGraph {
                 kind: DataKind::Geometry,
             }
         ];
-        let node = Node {
-            title: String::from("Point"),
-            error: None,
-            contents: NodeContents::Point {
-                x: 0,
-                y: 1,
-                z: 2,
-                output: 3,
-            }
-        };
-        self.insert_node(node, attributes_contents)
+        let node_contents = NodeContents::default_point();
+        self.insert_node("Point".into(), node_contents, attributes_contents)
     }
 
     pub fn add_curve_node(&mut self) -> NodeID {
@@ -1037,18 +1084,8 @@ impl NodeGraph {
                 kind: DataKind::Geometry,
             }
         ];
-        let node = Node {
-            title: String::from("Curve"),
-            error: None,
-            contents: NodeContents::Curve {
-                fx: 0,
-                fy: 1,
-                fz: 2,
-                interval: 3,
-                output: 4,
-            }
-        };
-        self.insert_node(node, attributes_contents)
+        let node_contents = NodeContents::default_curve();
+        self.insert_node("Curve".into(), node_contents, attributes_contents)
     }
 
     pub fn add_surface_node(&mut self) -> NodeID {
@@ -1078,19 +1115,8 @@ impl NodeGraph {
                 kind: DataKind::Geometry,
             }
         ];
-        let node = Node {
-            title: String::from("Surface"),
-            error: None,
-            contents: NodeContents::Surface {
-                fx: 0,
-                fy: 1,
-                fz: 2,
-                interval_1: 3,
-                interval_2: 4,
-                output: 5,
-            }
-        };
-        self.insert_node(node, attributes_contents)
+        let node_contents = NodeContents::default_surface();
+        self.insert_node("Surface".into(), node_contents, attributes_contents)
     }
 
     pub fn add_rendering_node(&mut self) -> NodeID {
@@ -1100,14 +1126,8 @@ impl NodeGraph {
                 kind: DataKind::Geometry,
             }
         ];
-        let node = Node {
-            title: String::from("Curve"),
-            error: None,
-            contents: NodeContents::Rendering {
-                geometry: 0,
-            }
-        };
-        self.insert_node(node, attributes_contents)
+        let node_contents = NodeContents::default_rendering();
+        self.insert_node("Rendering".into(), node_contents, attributes_contents)
     }
 
     pub fn add_transform_node(&mut self) -> NodeID {
@@ -1125,16 +1145,8 @@ impl NodeGraph {
                 kind: DataKind::Geometry,
             }
         ];
-        let node = Node {
-            title: String::from("Transform"),
-            error: None,
-            contents: NodeContents::Transform {
-                geometry: 0,
-                matrix: 1,
-                output: 2,
-            }
-        };
-        self.insert_node(node, attributes_contents)
+        let node_contents = NodeContents::default_transform();
+        self.insert_node("Transform".into(), node_contents, attributes_contents)
     }
 
     pub fn add_matrix_node(&mut self) -> NodeID {
@@ -1166,18 +1178,8 @@ impl NodeGraph {
                 kind: DataKind::Matrix,
             },
         ];
-        let node = Node {
-            title: String::from("Matrix"),
-            error: None,
-            contents: NodeContents::Matrix {
-                interval: 0,
-                row_1: 1,
-                row_2: 2,
-                row_3: 3,
-                output: 4,
-            }
-        };
-        self.insert_node(node, attributes_contents)
+        let node_contents = NodeContents::default_matrix();
+        self.insert_node("Matrix".into(), node_contents, attributes_contents)
     }
 
 }
