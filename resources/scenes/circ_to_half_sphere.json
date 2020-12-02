@@ -3,6 +3,10 @@
     "nodes": [
       {
         "title": "Interval",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Interval": {
@@ -16,6 +20,10 @@
       },
       {
         "title": "Curve",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Curve": {
@@ -29,6 +37,10 @@
       },
       {
         "title": "Matrix",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Matrix": {
@@ -42,6 +54,10 @@
       },
       {
         "title": "Transform",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Transform": {
@@ -53,6 +69,10 @@
       },
       {
         "title": "Curve",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Rendering": {
@@ -62,6 +82,10 @@
       },
       {
         "title": "Curve",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Rendering": {
@@ -71,6 +95,10 @@
       },
       {
         "title": "Interval",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Interval": {
@@ -319,12 +347,12 @@
       null
     ],
     "links": {
-      "16": 14,
-      "15": 9,
-      "8": 4,
-      "19": 17,
       "18": 9,
-      "10": 24
+      "19": 17,
+      "15": 9,
+      "10": 24,
+      "16": 14,
+      "8": 4
     },
     "free_nodes_list": [
       7

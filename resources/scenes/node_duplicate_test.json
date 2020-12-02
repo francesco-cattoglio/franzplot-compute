@@ -3,6 +3,10 @@
     "nodes": [
       {
         "title": "Interval",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Interval": {
@@ -16,6 +20,10 @@
       },
       {
         "title": "Curve",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Curve": {
@@ -29,6 +37,10 @@
       },
       {
         "title": "Surface",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Surface": {
@@ -43,6 +55,10 @@
       },
       {
         "title": "Interval",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Interval": {
@@ -56,6 +72,10 @@
       },
       {
         "title": "Curve",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Rendering": {
@@ -65,6 +85,10 @@
       },
       {
         "title": "Curve",
+        "position": [
+          0.0,
+          0.0
+        ],
         "error": null,
         "contents": {
           "Rendering": {
@@ -283,11 +307,11 @@
       }
     ],
     "links": {
-      "22": 15,
       "14": 20,
-      "13": 4,
       "21": 9,
-      "8": 4
+      "8": 4,
+      "13": 4,
+      "22": 15
     },
     "free_nodes_list": [],
     "free_attributes_list": []
