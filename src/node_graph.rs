@@ -564,9 +564,26 @@ impl NodeGraph {
         assert!(self.nodes[node_id as usize].is_none());
         self.nodes[node_id as usize] = Some(node);
         // and change the position of the node in imnodes
-        imnodes::SetNodeScreenSpacePos(node_id, position[0], position[1]);
+        imnodes::SetNodePosition(node_id, position);
         node_id
     }
+
+    pub fn push_positions_to_imnodes(&self) {
+        for (idx, maybe_node) in self.nodes.iter().enumerate() {
+            if let Some(node) = maybe_node.as_ref() {
+                imnodes::SetNodePosition(idx as NodeID, node.position);
+            }
+        }
+    }
+
+    pub fn read_positions_from_imnodes(&mut self) {
+        for (idx, maybe_node) in self.nodes.iter_mut().enumerate() {
+            if let Some(node) = maybe_node.as_mut() {
+                node.position = imnodes::GetNodePosition(idx as NodeID);
+            }
+        }
+    }
+
 
     pub fn render(&mut self, ui: &imgui::Ui<'_>) {
         imnodes::BeginNodeEditor();
@@ -590,6 +607,9 @@ impl NodeGraph {
         // we need to end the node editor before doing any interaction
         // (e.g: right clicks, node creation)
         imnodes::EndNodeEditor();
+
+        // update all our nodes with the last node positions.
+        self.read_positions_from_imnodes();
 
         // Process right click
         let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Right, 4.0);
@@ -626,7 +646,7 @@ impl NodeGraph {
                 // TODO: decide if non-selected single node clone should still clone the links
                 if MenuItem::new(im_str!("duplicate node")).build(ui) {
                     let position = [clicked_pos[0]+30.0, clicked_pos[1]+30.0];
-                    let new_node_id = self.duplicate_node_no_links(self.last_hovered_node, position);
+                    self.duplicate_node_no_links(self.last_hovered_node, position);
                 }
             } else {
                 // multiple node selection, operates on all selected nodes
@@ -656,32 +676,32 @@ impl NodeGraph {
         ui.popup(im_str!("Add menu"), || {
             let clicked_pos = ui.mouse_pos_on_opening_current_popup();
             if MenuItem::new(im_str!("Interval")).build(ui) {
-                let new_node_id = self.add_interval_node([clicked_pos[0], clicked_pos[1]]);
+                self.add_interval_node([clicked_pos[0], clicked_pos[1]]);
             }
 
             ui.menu(im_str!("Geometries"), true, || {
                 if MenuItem::new(im_str!("Curve")).build(ui) {
-                    let new_node_id = self.add_curve_node([clicked_pos[0], clicked_pos[1]]);
+                    self.add_curve_node([clicked_pos[0], clicked_pos[1]]);
                 }
                 if MenuItem::new(im_str!("Surface")).build(ui) {
-                    let new_node_id = self.add_surface_node([clicked_pos[0], clicked_pos[1]]);
+                    self.add_surface_node([clicked_pos[0], clicked_pos[1]]);
                 }
             }); // Geometries menu ends here
 
             ui.menu(im_str!("Transformations"), true, || {
                 if MenuItem::new(im_str!("Matrix")).build(ui) {
-                    let new_node_id = self.add_matrix_node([clicked_pos[0], clicked_pos[1]]);
+                    self.add_matrix_node([clicked_pos[0], clicked_pos[1]]);
                 }
                 if MenuItem::new(im_str!("Transform")).build(ui) {
-                    let new_node_id = self.add_transform_node([clicked_pos[0], clicked_pos[1]]);
+                    self.add_transform_node([clicked_pos[0], clicked_pos[1]]);
                 }
             }); // Transformations menu ends here
 
             if MenuItem::new(im_str!("Point")).build(ui) {
-                let new_node_id = self.add_point_node([clicked_pos[0], clicked_pos[1]]);
+                self.add_point_node([clicked_pos[0], clicked_pos[1]]);
             }
             if MenuItem::new(im_str!("Rendering")).build(ui) {
-                let new_node_id = self.add_rendering_node([clicked_pos[0], clicked_pos[1]]);
+                self.add_rendering_node([clicked_pos[0], clicked_pos[1]]);
             }
         }); // "Add" closure ends here
         style_token.pop(ui);
@@ -779,13 +799,11 @@ impl NodeGraph {
 
             // clone the node, insert it in the graph seting its position of the cloned node
             // to be the same as the original one, plus a little delta.
-            let mut x = 0.0;
-            let mut y = 0.0;
-            imnodes::GetNodeScreenSpacePos(*original_node_id, &mut x, &mut y);
-            x += 40.0;
-            y += 140.0;
+            let mut position = imnodes::GetNodePosition(*original_node_id);
+            position[0] += 40.0;
+            position[1] += 140.0;
             let (title, cloned_node, cloned_attributes) = self.clone_node(*original_node_id).unwrap();
-            let cloned_node_id = self.insert_node(title, [x, y], cloned_node, cloned_attributes);
+            let cloned_node_id = self.insert_node(title, position, cloned_node, cloned_attributes);
 
             // Get the list of owned attributes. Node that due to the way the list is generated,
             // the order in which the attributes will appear is the same for the original and the clone.

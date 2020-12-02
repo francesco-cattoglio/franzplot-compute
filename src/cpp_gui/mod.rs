@@ -37,8 +37,8 @@ pub mod imnodes {
         fn IsLinkCreated(first_id: &mut i32, second_id: &mut i32) -> bool;
         fn IsNodeHovered(id: &mut i32) -> bool;
         fn IsLinkHovered(id: &mut i32) -> bool;
-        fn GetNodeScreenSpacePos(node_id: i32, x: &mut f32, y: &mut f32);
-        fn SetNodeScreenSpacePos(node_id: i32, x: f32, y: f32);
+        fn GetNodePosition(node_id: i32) -> [f32; 2];
+        fn SetNodePosition(node_id: i32, position: [f32; 2]);
         fn GetSelectedNodes() -> Vec<i32>;
     }
 }

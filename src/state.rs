@@ -29,6 +29,7 @@ impl UserState {
         let file = std::fs::File::open(path).unwrap();
         let maybe_user_state = serde_json::from_reader(file);
         *self = maybe_user_state.unwrap();
+        self.graph.push_positions_to_imnodes();
     }
 }
 

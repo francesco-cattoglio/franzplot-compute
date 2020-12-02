@@ -18,15 +18,13 @@ namespace imnodes {
         return IsNodeHovered(&id);
     }
 
-    void GetNodeScreenSpacePos(const int node_id, float& x, float& y) {
+    std::array<float, 2> GetNodePosition(const int node_id) {
         ImVec2 pos = GetNodeScreenSpacePos(node_id);
-        x = pos.x;
-        y = pos.y;
-        return;
+        return {pos.x, pos.y};
     }
 
-    void SetNodeScreenSpacePos(int node_id, float x, float y) {
-        ImVec2 pos = ImVec2{x, y};
+    void SetNodePosition(int node_id, std::array<float, 2> position) {
+        ImVec2 pos = ImVec2{position[0], position[1]};
         return SetNodeScreenSpacePos(node_id, pos);
     }
 

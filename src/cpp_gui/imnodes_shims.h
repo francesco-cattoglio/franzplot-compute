@@ -21,7 +21,7 @@ namespace imnodes {
     bool IsLinkCreated(int& started_at_attribute_id, int& ended_at_attribute_id);
     bool IsLinkHovered(int& id);
     bool IsNodeHovered(int& id);
-    void SetNodeScreenSpacePos(int node_id, float x, float y);
-    void GetNodeScreenSpacePos(int node_id, float& x, float& y);
+    void SetNodePosition(int node_id, std::array<float, 2> position);
+    std::array<float, 2> GetNodePosition(int node_id);
     rust::Vec<int> GetSelectedNodes();
 }
