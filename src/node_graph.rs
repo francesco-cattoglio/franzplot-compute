@@ -284,7 +284,7 @@ impl Node {
             }
     }
 
-    pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<Option<NodeID>> {
+    pub fn get_input_attributes(&self) -> Vec::<AttributeID> {
         match self.contents {
             NodeContents::Interval { .. } => {
                 vec![]
@@ -293,28 +293,30 @@ impl Node {
                 vec![]
             },
             NodeContents::Curve { interval, .. } => {
-                vec![graph.get_attribute_as_linked_node(interval)]
+                vec![
+                    interval
+                ]
             },
             NodeContents::Surface { interval_1, interval_2, .. } => {
                 vec![
-                    graph.get_attribute_as_linked_node(interval_1),
-                    graph.get_attribute_as_linked_node(interval_2),
+                    interval_1,
+                    interval_2,
                 ]
             },
             NodeContents::Transform { geometry, matrix, .. } => {
                 vec![
-                    graph.get_attribute_as_linked_node(geometry),
-                    graph.get_attribute_as_linked_node(matrix),
+                    geometry,
+                    matrix,
                 ]
             },
             NodeContents::Matrix { interval, .. } => {
                 vec![
-                    graph.get_attribute_as_linked_node(interval),
+                    interval,
                 ]
             },
             NodeContents::Rendering { geometry, } => {
                 vec![
-                    graph.get_attribute_as_linked_node(geometry)
+                    geometry
                 ]
             },
             NodeContents::Group => {
@@ -323,9 +325,62 @@ impl Node {
         }
     }
 
+    pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<Option<NodeID>> {
+        self.get_input_attributes()
+            .into_iter()
+            .map(|attribute_id| {
+                graph.get_attribute_as_linked_node(attribute_id)
+            })
+            .collect()
+    }
+
     // TODO: macro? NodeContents-to-attributes-list function?
-    pub fn get_owned_attributes(&mut self) -> Vec::<&mut AttributeID> {
+    pub fn get_owned_attributes_mut(&mut self) -> Vec::<&mut AttributeID> {
         match &mut self.contents {
+            NodeContents::Interval {
+                variable, begin, end, quality, output,
+            } => {
+                vec![variable, begin, end, quality, output]
+            },
+            NodeContents::Point {
+                x, y, z, output
+            } => {
+                vec![x, y, z, output]
+            },
+            NodeContents::Curve {
+                interval, fx, fy, fz, output
+            } => {
+                vec![interval, fx, fy, fz, output]
+            },
+            NodeContents::Surface {
+                interval_1, interval_2, fx, fy, fz, output
+            } => {
+                vec![interval_1, interval_2, fx, fy, fz, output]
+            },
+            NodeContents::Transform {
+                geometry, matrix, output
+            } => {
+                vec![geometry, matrix, output]
+            },
+            NodeContents::Matrix {
+                interval, row_1, row_2, row_3, output,
+            } => {
+                vec![interval, row_1, row_2, row_3, output,]
+            },
+            NodeContents::Rendering {
+                geometry,
+            } => {
+                vec![geometry]
+            },
+            NodeContents::Group => {
+                unimplemented!()
+            }
+        }
+    }
+
+    // TODO: macro? NodeContents-to-attributes-list function?
+    pub fn get_owned_attributes(&self) -> Vec::<AttributeID> {
+        match self.contents {
             NodeContents::Interval {
                 variable, begin, end, quality, output,
             } => {
@@ -438,28 +493,10 @@ impl NodeGraph {
         }
     }
 
-    pub fn clone_node(&self, node_id: NodeID) -> Option<(Node, Vec<AttributeContents>)> {
-        // to clone a node, we need to clone its kind, clone its attributes
-        // and then remap all its attributes to the newly-created "local attributes array"
-        let mut cloned_node = self.get_node(node_id)?.clone();
-        let owned_attributes = cloned_node.get_owned_attributes();
-
-        let mut cloned_attributes = Vec::<AttributeContents>::with_capacity(owned_attributes.len());
-        // for each (index, reference to the attribute_id contained in our node)
-        for (i, attribute_id) in owned_attributes.into_iter().enumerate() {
-            // clone the attribute originally pointed at by attribute_id
-            let attribute = self.attributes.get(*attribute_id as usize).unwrap().as_ref().unwrap();
-            cloned_attributes.push(attribute.contents.clone());
-            // and then modify the attribute_id inside the node with the current index
-            *attribute_id = i as AttributeID;
-        }
-        Some((cloned_node, cloned_attributes))
-    }
-
     pub fn insert_node(&mut self, mut node: Node, attributes_contents: Vec<AttributeContents>) -> NodeID {
         // make a check: the list of owned attributes must have the same
         // length as the attributes vector
-        let owned_attributes = node.get_owned_attributes();
+        let owned_attributes = node.get_owned_attributes_mut();
         assert!(owned_attributes.len() == attributes_contents.len());
         // first, get an id for the to-be-inserted node
         let node_id = self.get_new_node_id();
@@ -540,14 +577,32 @@ impl NodeGraph {
 
         ui.popup(im_str!("Node menu"), || {
             let clicked_pos = ui.mouse_pos_on_opening_current_popup();
-            if MenuItem::new(im_str!("delete node")).build(ui) {
-                println!("need to remove {}", self.last_hovered_node);
-                self.remove_node(self.last_hovered_node);
-            }
-            if MenuItem::new(im_str!("duplicate node")).build(ui) {
-                let (cloned_node, cloned_attributes) = self.clone_node(self.last_hovered_node).unwrap();
-                let new_node_id = self.insert_node(cloned_node, cloned_attributes);
-                imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0]+20.0, clicked_pos[1]+20.0);
+            // The right-click menu changes contents depending
+            // on how many nodes the user selected
+            let selected_nodes_ids = imnodes::GetSelectedNodes();
+            if selected_nodes_ids.is_empty() {
+                // single node selection, using the last_hovered_node id
+                if MenuItem::new(im_str!("delete node")).build(ui) {
+                    println!("need to remove {}", self.last_hovered_node);
+                    self.remove_node(self.last_hovered_node);
+                }
+                // TODO: decide if non-selected single node clone should still clone the links
+                if MenuItem::new(im_str!("duplicate node")).build(ui) {
+                    let (cloned_node, cloned_attributes) = self.clone_node(self.last_hovered_node).unwrap();
+                    let new_node_id = self.insert_node(cloned_node, cloned_attributes);
+                    imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0]+20.0, clicked_pos[1]+20.0);
+                }
+            } else {
+                // multiple node selection, operates on all selected nodes
+                if MenuItem::new(im_str!("delete selected nodes")).build(ui) {
+                    for node_id in selected_nodes_ids.iter() {
+                        println!("need to remove {}", *node_id);
+                        self.remove_node(*node_id);
+                    }
+                }
+                if MenuItem::new(im_str!("duplicate nodes and links")).build(ui) {
+                    self.duplicate_nodes(&selected_nodes_ids);
+                }
             }
             if MenuItem::new(im_str!("rename node")).build(ui) {
                 println!("need to rename {}", self.last_hovered_node);
@@ -635,6 +690,14 @@ impl NodeGraph {
         }
     }
 
+    pub fn get_node_mut(&mut self, id: NodeID) -> Option<&mut Node> {
+        if let Some(maybe_node) = self.nodes.get_mut(id as usize) {
+            maybe_node.as_mut()
+        } else {
+            None
+        }
+    }
+
     pub fn mark_error(&mut self, error: GraphError) {
          if let Some(Some(node)) = self.nodes.get_mut(error.node_id as usize) {
             node.error = Some(error);
@@ -649,20 +712,97 @@ impl NodeGraph {
         }
     }
 
+    // "clone" a node means "get all the data that we might need to insert a copy
+    // of this node into the graph". We do not actually insert it just yet.
+    pub fn clone_node(&self, node_id: NodeID) -> Option<(Node, Vec<AttributeContents>)> {
+        // to clone a node, we need to clone its kind, clone its attributes
+        // and then remap all its attributes to the newly-created "local attributes array"
+        let mut cloned_node = self.get_node(node_id)?.clone();
+        let owned_attributes = cloned_node.get_owned_attributes_mut();
+
+        let mut cloned_attributes = Vec::<AttributeContents>::with_capacity(owned_attributes.len());
+        // for each (index, reference to the attribute_id contained in our node)
+        for (i, attribute_id) in owned_attributes.into_iter().enumerate() {
+            // clone the attribute originally pointed at by attribute_id
+            let attribute = self.attributes.get(*attribute_id as usize).unwrap().as_ref().unwrap();
+            cloned_attributes.push(attribute.contents.clone());
+            // and then modify the attribute_id inside the node with the current index
+            *attribute_id = i as AttributeID;
+        }
+        Some((cloned_node, cloned_attributes))
+    }
+
+    // When we clone a node we get a new Node struct with a list of AttributeContents to go with it.
+    // If we are duplicating a lot of nodes, then just copy-pasting them is not enough, because we
+    // would like to also insert all the links between them! We need to do the following:
+    // 1 - Start by cloning each node in the list:
+    //      a - for each original attribute map the id of the cloned attribute.
+    //      b - for each original attribute that was linked to something, put it in a list
+    //
+    // 2 - Go through the lists of all the attributes that were linked to something,
+    //     make sure that the cloned attributes get linked to something as well!
+    //      a - if the thing it was linked to was cloned, then link to the clone
+    //      b - if the thing it was linked to was NOT cloned, then link to the original
+    fn duplicate_nodes(&mut self, nodes_ids: &[NodeID]) {
+        let mut original_to_cloned_id = std::collections::BTreeMap::<AttributeID, AttributeID>::new();
+        let mut linked_inputs_list = Vec::<AttributeID>::new();
+        for original_node_id in nodes_ids.iter() {
+            // if there is no such a node, just continue
+            if self.nodes.get(*original_node_id as usize).is_none() {
+                continue;
+            }
+
+            // clone the node, insert it in the graph
+            let (cloned_node, cloned_attributes) = self.clone_node(*original_node_id).unwrap();
+            let cloned_node_id = self.insert_node(cloned_node, cloned_attributes);
+
+            // Get the list of owned attributes. Node that due to the way the list is generated,
+            // the order in which the attributes will appear is the same for the original and the clone.
+            let original_attributes_id = self.get_node(*original_node_id).unwrap().get_owned_attributes();
+            let cloned_attributes_id = self.get_node(cloned_node_id).unwrap().get_owned_attributes();
+            // now go through all the pairs of cloned-original attributes, add them to the map.
+            // Also, if the original was linked to something, add it to the list of "needs to be linked in the end".
+            let zipped_iterator = original_attributes_id.into_iter().zip(cloned_attributes_id.into_iter());
+            for pair in zipped_iterator {
+                original_to_cloned_id.insert(pair.0, pair.1);
+                if self.links.contains_key(&pair.0) {
+                    linked_inputs_list.push(pair.0);
+                }
+            }
+
+            // final touches: set the position of the cloned node to be the same as the original
+            // one, plus something.
+            let mut x = 0.0;
+            let mut y = 0.0;
+            imnodes::GetNodeScreenSpacePos(*original_node_id, &mut x, &mut y);
+            imnodes::SetNodeScreenSpacePos(cloned_node_id, x+40.0, y+140.0);
+        }
+
+        // after this loop ends, we have cloned all the nodes that we wanted to clone, now we need
+        // to add all the links. Go through the "needs to be linked in the end" and process it
+        for original_input_id in linked_inputs_list.into_iter() {
+            let cloned_input_id : i32 = *original_to_cloned_id.get(&original_input_id).unwrap();
+            let original_output_id : i32 = *self.links.get(&original_input_id).unwrap();
+            // if the original was cloned, then we want to link to the cloned one,
+            // otherwise, link to the original one
+            if let Some(cloned_output_id) = original_to_cloned_id.get(&original_output_id) {
+                self.links.insert(cloned_input_id, *cloned_output_id);
+            } else {
+                self.links.insert(cloned_input_id, original_output_id);
+            }
+        }
+    }
+
     fn remove_node(&mut self, node_id: NodeID) {
         // try to remove this node_id from the map
         if let Some(slot) = self.nodes.get_mut(node_id as usize) {
             // slot is a reference to the option! By taking() it, we effectively
             // remove the old node from the graph's nodes
-            let mut old_node = slot.take().unwrap(); // this unwrap asserts that the old node is Some(thing)
+            let old_node = slot.take().unwrap(); // this unwrap asserts that the old node is Some(thing)
             self.free_nodes_list.push(node_id);
             // if the node exists, get a list of all the attributes belonging to it
             // remove all the attributes of the attributes map.
-            let list_of_attributes: Vec<AttributeID> = old_node
-                    .get_owned_attributes()
-                    .into_iter()
-                    .map(|x| *x)
-                    .collect();
+            let list_of_attributes: Vec<AttributeID> = old_node.get_owned_attributes();
 
             // remove the attributes from our vector by marking the spot as None
             // and pushing that id to the free slots list
@@ -717,7 +857,7 @@ impl NodeGraph {
         }
     }
 
-    pub fn get_attribute_as_linked_node(&self, input_attribute_id: AttributeID) -> Option<NodeID> {
+    pub fn get_attribute_as_linked_output(&self, input_attribute_id: AttributeID) -> Option<AttributeID> {
         // first, we need to check if the input_attribute_id actually exists in our attributes map
         if let Some(Some(attribute)) = self.attributes.get(input_attribute_id as usize) {
             // if it exists, then we need to check if it is an input pin
@@ -725,14 +865,23 @@ impl NodeGraph {
                 // and then we can finally check if it is actually linked to something!
                 if let Some(output_attribute_id) = self.links.get(&input_attribute_id) {
                     // we can assert that if there is a link, then the linked one exists
-                    let linked_node_id = self.attributes[*output_attribute_id as usize].as_ref().unwrap().node_id;
-                    Some(linked_node_id)
+                    Some(*output_attribute_id)
                 } else {
                     None
                 }
             } else {
                 None
             }
+        } else {
+            None
+        }
+    }
+
+    pub fn get_attribute_as_linked_node(&self, input_attribute_id: AttributeID) -> Option<NodeID> {
+        // this could probably be written as a option::and_then() or something similar
+        if let Some(output_attribute_id) = self.get_attribute_as_linked_output(input_attribute_id) {
+            let linked_node_id = self.attributes[output_attribute_id as usize].as_ref().unwrap().node_id;
+            Some(linked_node_id)
         } else {
             None
         }
