@@ -171,9 +171,9 @@ impl ComputeBlock {
                 use std::convert::TryInto;
                 let matrix_descriptor = MatrixBlockDescriptor {
                     interval: graph.get_attribute_as_linked_node(interval),
-                    row_1: graph.get_attribute_as_multistring(row_1).try_into().unwrap(),
-                    row_2: graph.get_attribute_as_multistring(row_2).try_into().unwrap(),
-                    row_3: graph.get_attribute_as_multistring(row_3).try_into().unwrap(),
+                    row_1: graph.get_attribute_as_matrix_row(row_1).unwrap(),
+                    row_2: graph.get_attribute_as_matrix_row(row_2).unwrap(),
+                    row_3: graph.get_attribute_as_matrix_row(row_3).unwrap(),
                 };
                 matrix_descriptor.to_block(device, globals, processed_blocks)
             },

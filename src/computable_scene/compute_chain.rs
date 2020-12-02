@@ -56,11 +56,7 @@ impl<'a> ComputeChain {
         use std::collections::BTreeMap;
         let mut node_inputs = BTreeMap::<NodeID, Vec<NodeID>>::new();
         for (node_id, node) in graph.get_nodes() {
-            let existing_inputs: Vec<NodeID> = node
-                .get_input_nodes(graph)
-                .into_iter()
-                .filter_map(|x| x)
-                .collect();
+            let existing_inputs: Vec<NodeID> = node.get_input_nodes(graph);
             node_inputs.insert(node_id, existing_inputs);
             // TODO: we should also error out here if we find out that two block descriptors have
             // the same BlockId

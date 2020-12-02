@@ -430,51 +430,13 @@ impl Node {
             Attribute::render_list(ui, attributes, self.contents.get_attribute_list());
     }
 
-    pub fn get_input_attributes(&self) -> Vec::<AttributeID> {
-        match self.contents {
-            NodeContents::Interval { .. } => {
-                vec![]
-            },
-            NodeContents::Point { .. } => {
-                vec![]
-            },
-            NodeContents::Curve { interval, .. } => {
-                vec![
-                    interval
-                ]
-            },
-            NodeContents::Surface { interval_1, interval_2, .. } => {
-                vec![
-                    interval_1,
-                    interval_2,
-                ]
-            },
-            NodeContents::Transform { geometry, matrix, .. } => {
-                vec![
-                    geometry,
-                    matrix,
-                ]
-            },
-            NodeContents::Matrix { interval, .. } => {
-                vec![
-                    interval,
-                ]
-            },
-            NodeContents::Rendering { geometry, } => {
-                vec![
-                    geometry
-                ]
-            },
-            NodeContents::Group => {
-                unimplemented!()
-            }
-        }
-    }
-
-    pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<Option<NodeID>> {
-        self.get_input_attributes()
+    pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<NodeID> {
+        self.contents.get_attribute_list()
             .into_iter()
-            .map(|attribute_id| {
+            .filter_map(|attribute_id| {
+                // this function will return None if the attribute is not an InputPin,
+                // or if the InputPin is not connected to anything, so we can just
+                // feed it the entire list of attributes.
                 graph.get_attribute_as_linked_node(attribute_id)
             })
             .collect()
@@ -891,53 +853,45 @@ impl NodeGraph {
 
     pub fn get_attribute_as_string(&self, attribute_id: AttributeID) -> Option<String> {
         // first, we need to check if the attribute_id actually exists in our attributes map
-        if let Some(Some(attribute)) = self.attributes.get(attribute_id as usize) {
-            // if it exists, then we need to check if it is an input pin
-            if let AttributeContents::Text{ string, .. } = &attribute.contents {
-                Some(string.to_string())
-            } else {
-                None
-            }
+        let attribute_slot = self.attributes.get(attribute_id as usize)?;
+        // then, if the slot is here, we need to check if something is in the slot.
+        let attribute = attribute_slot.as_ref()?;
+        // finally, if the attribute exists, we need to check if it is a Text one
+        if let AttributeContents::Text{ string, .. } = &attribute.contents {
+            Some(string.to_string())
         } else {
             None
         }
     }
 
-    // TODO: this is kinda bad as well. A rework on matrix attributes might be needed.
-    pub fn get_attribute_as_multistring(&self, attribute_id: AttributeID) -> Vec<String> {
+    pub fn get_attribute_as_matrix_row(&self, attribute_id: AttributeID) -> Option<[String; 4]> {
         // first, we need to check if the attribute_id actually exists in our attributes map
-        if let Some(Some(attribute)) = self.attributes.get(attribute_id as usize) {
-            // if it exists, then we need to check if it is an input pin
-            if let AttributeContents::MatrixRow{ col_1, col_2, col_3, col_4, } = &attribute.contents {
-                vec![
-                    col_1.to_string(),
-                    col_2.to_string(),
-                    col_3.to_string(),
-                    col_4.to_string(),
-                ]
-            } else {
-                vec![]
-            }
+        let attribute_slot = self.attributes.get(attribute_id as usize)?;
+        // then, if the slot is here, we need to check if something is in the slot.
+        let attribute = attribute_slot.as_ref()?;
+        // if it exists, then we need to check if it is a MatrixRow attribute.
+        if let AttributeContents::MatrixRow{ col_1, col_2, col_3, col_4, } = &attribute.contents {
+            Some([
+                col_1.to_string(),
+                col_2.to_string(),
+                col_3.to_string(),
+                col_4.to_string(),
+            ])
         } else {
-            vec![]
+            None
         }
     }
 
-    pub fn get_attribute_as_linked_output(&self, input_attribute_id: AttributeID) -> Option<AttributeID> {
-        // first, we need to check if the input_attribute_id actually exists in our attributes map
-        if let Some(Some(attribute)) = self.attributes.get(input_attribute_id as usize) {
-            // if it exists, then we need to check if it is an input pin
-            if let AttributeContents::InputPin{..} = &attribute.contents {
-                // and then we can finally check if it is actually linked to something!
-                if let Some(output_attribute_id) = self.links.get(&input_attribute_id) {
-                    // we can assert that if there is a link, then the linked one exists
-                    Some(*output_attribute_id)
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
+    pub fn get_attribute_as_linked_output(&self, attribute_id: AttributeID) -> Option<AttributeID> {
+        // first, we need to check if the attribute_id actually exists in our attributes map
+        let attribute_slot = self.attributes.get(attribute_id as usize)?;
+        // then, if the slot is here, we need to check if something is in the slot.
+        let attribute = attribute_slot.as_ref()?;
+        // if it exists, then we need to check if it is an input pin
+        if let AttributeContents::InputPin{..} = &attribute.contents {
+            // and then we can finally check if it is actually linked to something!
+            let linked_output_id = self.links.get(&attribute_id)?;
+            Some(*linked_output_id)
         } else {
             None
         }
