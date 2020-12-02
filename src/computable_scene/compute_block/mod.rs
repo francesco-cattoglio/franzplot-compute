@@ -168,7 +168,6 @@ impl ComputeBlock {
             NodeContents::Matrix {
                 interval, row_1, row_2, row_3, ..
             } => {
-                use std::convert::TryInto;
                 let matrix_descriptor = MatrixBlockDescriptor {
                     interval: graph.get_attribute_as_linked_node(interval),
                     row_1: graph.get_attribute_as_matrix_row(row_1).unwrap(),

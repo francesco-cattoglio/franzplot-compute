@@ -397,6 +397,7 @@ impl NodeContents {
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Node {
     title: String,
+    position: [f32; 2],
     error: Option<GraphError>,
     contents: NodeContents,
 }
@@ -521,9 +522,10 @@ impl NodeGraph {
         }
     }
 
-    pub fn insert_node(&mut self, title: String, node_contents: NodeContents, attributes_contents: Vec<AttributeContents>) -> NodeID {
+    pub fn insert_node(&mut self, title: String, position: [f32; 2], node_contents: NodeContents, attributes_contents: Vec<AttributeContents>) -> NodeID {
         let mut node = Node {
             title,
+            position,
             error: None,
             contents: node_contents
         };
@@ -550,7 +552,7 @@ impl NodeGraph {
 
         // now, before pushing our node to the graph, we need to modify all the attribute_ids it
         // contains!
-        // into iter returns a reference to each attribute stored in our node.\
+        // into iter returns a reference to each attribute stored in our node.
         // we take the original attribute id, pass it through our map and then
         // overwrite the content of the reference (i.e: the integer contained
         // inside our node structure) with the mapped output.
@@ -561,6 +563,8 @@ impl NodeGraph {
         // some existing attribute, that would mean something is off!
         assert!(self.nodes[node_id as usize].is_none());
         self.nodes[node_id as usize] = Some(node);
+        // and change the position of the node in imnodes
+        imnodes::SetNodeScreenSpacePos(node_id, position[0], position[1]);
         node_id
     }
 
@@ -621,8 +625,8 @@ impl NodeGraph {
                 }
                 // TODO: decide if non-selected single node clone should still clone the links
                 if MenuItem::new(im_str!("duplicate node")).build(ui) {
-                    let new_node_id = self.duplicate_node_no_links(self.last_hovered_node);
-                    imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0]+20.0, clicked_pos[1]+20.0);
+                    let position = [clicked_pos[0]+30.0, clicked_pos[1]+30.0];
+                    let new_node_id = self.duplicate_node_no_links(self.last_hovered_node, position);
                 }
             } else {
                 // multiple node selection, operates on all selected nodes
@@ -652,39 +656,32 @@ impl NodeGraph {
         ui.popup(im_str!("Add menu"), || {
             let clicked_pos = ui.mouse_pos_on_opening_current_popup();
             if MenuItem::new(im_str!("Interval")).build(ui) {
-                let new_node_id = self.add_interval_node();
-                imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+                let new_node_id = self.add_interval_node([clicked_pos[0], clicked_pos[1]]);
             }
 
             ui.menu(im_str!("Geometries"), true, || {
                 if MenuItem::new(im_str!("Curve")).build(ui) {
-                    let new_node_id = self.add_curve_node();
-                    imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+                    let new_node_id = self.add_curve_node([clicked_pos[0], clicked_pos[1]]);
                 }
                 if MenuItem::new(im_str!("Surface")).build(ui) {
-                    let new_node_id = self.add_surface_node();
-                    imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+                    let new_node_id = self.add_surface_node([clicked_pos[0], clicked_pos[1]]);
                 }
             }); // Geometries menu ends here
 
             ui.menu(im_str!("Transformations"), true, || {
                 if MenuItem::new(im_str!("Matrix")).build(ui) {
-                    let new_node_id = self.add_matrix_node();
-                    imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+                    let new_node_id = self.add_matrix_node([clicked_pos[0], clicked_pos[1]]);
                 }
                 if MenuItem::new(im_str!("Transform")).build(ui) {
-                    let new_node_id = self.add_transform_node();
-                    imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+                    let new_node_id = self.add_transform_node([clicked_pos[0], clicked_pos[1]]);
                 }
             }); // Transformations menu ends here
 
             if MenuItem::new(im_str!("Point")).build(ui) {
-                let new_node_id = self.add_point_node();
-                imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+                let new_node_id = self.add_point_node([clicked_pos[0], clicked_pos[1]]);
             }
             if MenuItem::new(im_str!("Rendering")).build(ui) {
-                let new_node_id = self.add_rendering_node();
-                imnodes::SetNodeScreenSpacePos(new_node_id, clicked_pos[0], clicked_pos[1]);
+                let new_node_id = self.add_rendering_node([clicked_pos[0], clicked_pos[1]]);
             }
         }); // "Add" closure ends here
         style_token.pop(ui);
@@ -766,9 +763,9 @@ impl NodeGraph {
         Some((title, cloned_contents, cloned_attributes))
     }
 
-    fn duplicate_node_no_links(&mut self, node_id: NodeID) -> NodeID {
+    fn duplicate_node_no_links(&mut self, node_id: NodeID, position: [f32; 2]) -> NodeID {
         let (title, cloned_contents, cloned_attributes) = self.clone_node(node_id).unwrap();
-        self.insert_node(title, cloned_contents, cloned_attributes)
+        self.insert_node(title, position, cloned_contents, cloned_attributes)
     }
 
     fn duplicate_nodes(&mut self, nodes_ids: &[NodeID]) {
@@ -780,9 +777,15 @@ impl NodeGraph {
                 continue;
             }
 
-            // clone the node, insert it in the graph
+            // clone the node, insert it in the graph seting its position of the cloned node
+            // to be the same as the original one, plus a little delta.
+            let mut x = 0.0;
+            let mut y = 0.0;
+            imnodes::GetNodeScreenSpacePos(*original_node_id, &mut x, &mut y);
+            x += 40.0;
+            y += 140.0;
             let (title, cloned_node, cloned_attributes) = self.clone_node(*original_node_id).unwrap();
-            let cloned_node_id = self.insert_node(title, cloned_node, cloned_attributes);
+            let cloned_node_id = self.insert_node(title, [x, y], cloned_node, cloned_attributes);
 
             // Get the list of owned attributes. Node that due to the way the list is generated,
             // the order in which the attributes will appear is the same for the original and the clone.
@@ -798,12 +801,6 @@ impl NodeGraph {
                 }
             }
 
-            // final touches: set the position of the cloned node to be the same as the original
-            // one, plus something.
-            let mut x = 0.0;
-            let mut y = 0.0;
-            imnodes::GetNodeScreenSpacePos(*original_node_id, &mut x, &mut y);
-            imnodes::SetNodeScreenSpacePos(cloned_node_id, x+40.0, y+140.0);
         }
 
         // after this loop ends, we have cloned all the nodes that we wanted to clone, now we need
@@ -965,7 +962,9 @@ impl NodeGraph {
         }
     }
 
-    pub fn add_interval_node(&mut self) -> NodeID {
+    pub fn add_interval_node(&mut self, position: [f32; 2]) -> NodeID {
+        // NOTE: the order here is important: the attributes here
+        // must appear in the same order as they do in the default_interval() function!
         let attributes_contents = vec![
             AttributeContents::Text {
                 label: String::from(" name"),
@@ -989,10 +988,12 @@ impl NodeGraph {
             }
         ];
         let node_contents = NodeContents::default_interval();
-        self.insert_node("Interval".into(), node_contents, attributes_contents)
+        self.insert_node("Interval".into(), position, node_contents, attributes_contents)
     }
 
-    pub fn add_point_node(&mut self) -> NodeID {
+    pub fn add_point_node(&mut self, position: [f32; 2]) -> NodeID {
+        // NOTE: the order here is important: the attributes here
+        // must appear in the same order as they do in the default_point() function!
         let attributes_contents = vec![
             AttributeContents::Text {
                 label: String::from("x"),
@@ -1012,11 +1013,17 @@ impl NodeGraph {
             }
         ];
         let node_contents = NodeContents::default_point();
-        self.insert_node("Point".into(), node_contents, attributes_contents)
+        self.insert_node("Point".into(), position, node_contents, attributes_contents)
     }
 
-    pub fn add_curve_node(&mut self) -> NodeID {
+    pub fn add_curve_node(&mut self, position: [f32; 2]) -> NodeID {
+        // NOTE: the order here is important: the attributes here
+        // must appear in the same order as they do in the default_curve() function!
         let attributes_contents = vec![
+            AttributeContents::InputPin {
+                label: String::from("interval"),
+                kind: DataKind::Interval,
+            },
             AttributeContents::Text {
                 label: String::from("fx"),
                 string: String::from(""),
@@ -1028,10 +1035,6 @@ impl NodeGraph {
             AttributeContents::Text {
                 label: String::from("fz"),
                 string: String::from(""),
-            },
-            AttributeContents::InputPin {
-                label: String::from("interval"),
-                kind: DataKind::Interval,
             },
             AttributeContents::OutputPin {
                 label: String::from("geometry"),
@@ -1039,23 +1042,13 @@ impl NodeGraph {
             }
         ];
         let node_contents = NodeContents::default_curve();
-        self.insert_node("Curve".into(), node_contents, attributes_contents)
+        self.insert_node("Curve".into(), position, node_contents, attributes_contents)
     }
 
-    pub fn add_surface_node(&mut self) -> NodeID {
+    pub fn add_surface_node(&mut self, position: [f32; 2]) -> NodeID {
+        // NOTE: the order here is important: the attributes here
+        // must appear in the same order as they do in the default_surface function!
         let attributes_contents = vec![
-            AttributeContents::Text {
-                label: String::from("fx"),
-                string: String::from(""),
-            },
-            AttributeContents::Text {
-                label: String::from("fy"),
-                string: String::from(""),
-            },
-            AttributeContents::Text {
-                label: String::from("fz"),
-                string: String::from(""),
-            },
             AttributeContents::InputPin {
                 label: String::from("interval 1"),
                 kind: DataKind::Interval,
@@ -1064,16 +1057,28 @@ impl NodeGraph {
                 label: String::from("interval 2"),
                 kind: DataKind::Interval,
             },
+            AttributeContents::Text {
+                label: String::from("fx"),
+                string: String::from(""),
+            },
+            AttributeContents::Text {
+                label: String::from("fy"),
+                string: String::from(""),
+            },
+            AttributeContents::Text {
+                label: String::from("fz"),
+                string: String::from(""),
+            },
             AttributeContents::OutputPin {
                 label: String::from("geometry"),
                 kind: DataKind::Geometry,
             }
         ];
         let node_contents = NodeContents::default_surface();
-        self.insert_node("Surface".into(), node_contents, attributes_contents)
+        self.insert_node("Surface".into(), position, node_contents, attributes_contents)
     }
 
-    pub fn add_rendering_node(&mut self) -> NodeID {
+    pub fn add_rendering_node(&mut self, position: [f32; 2]) -> NodeID {
         let attributes_contents = vec![
             AttributeContents::InputPin {
                 label: String::from("geometry"),
@@ -1081,10 +1086,10 @@ impl NodeGraph {
             }
         ];
         let node_contents = NodeContents::default_rendering();
-        self.insert_node("Rendering".into(), node_contents, attributes_contents)
+        self.insert_node("Rendering".into(), position, node_contents, attributes_contents)
     }
 
-    pub fn add_transform_node(&mut self) -> NodeID {
+    pub fn add_transform_node(&mut self, position: [f32; 2]) -> NodeID {
         let attributes_contents = vec![
             AttributeContents::InputPin {
                 label: String::from("geometry"),
@@ -1100,10 +1105,10 @@ impl NodeGraph {
             }
         ];
         let node_contents = NodeContents::default_transform();
-        self.insert_node("Transform".into(), node_contents, attributes_contents)
+        self.insert_node("Transform".into(), position, node_contents, attributes_contents)
     }
 
-    pub fn add_matrix_node(&mut self) -> NodeID {
+    pub fn add_matrix_node(&mut self, position: [f32; 2]) -> NodeID {
         let attributes_contents = vec![
             AttributeContents::InputPin {
                 label: String::from("interval"),
@@ -1133,7 +1138,7 @@ impl NodeGraph {
             },
         ];
         let node_contents = NodeContents::default_matrix();
-        self.insert_node("Matrix".into(), node_contents, attributes_contents)
+        self.insert_node("Matrix".into(), position, node_contents, attributes_contents)
     }
 
 }
