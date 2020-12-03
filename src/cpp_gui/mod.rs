@@ -46,3 +46,10 @@ pub mod imnodes {
     }
 }
 
+#[cxx::bridge(namespace = "ImGui")]
+pub mod ImGui {
+    unsafe extern "C++" {
+        include!("franzplot-compute/src/cpp_gui/imgui_shims.h");
+        fn ClearActiveID();
+    }
+}

@@ -139,6 +139,7 @@ fn main() {
 
     let mut frame_duration = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
+    let mut modifiers_state = winit::event::ModifiersState::default();
 
     event_loop.run(move |event, _, control_flow| {
         // BEWARE: keep in mind that if you go multi-window
@@ -238,7 +239,7 @@ fn main() {
                 // in here, imgui will process keyboard and mouse status!
                 platform.handle_event(imgui.io_mut(), &window, &other_event);
 
-                // "post-processing" of input
+                // additional processing of input
                 match other_event {
                     // if the window was resized, we need to resize the swapchain as well!
                     Event::WindowEvent{ event: WindowEvent::Resized(physical_size), .. } => {
@@ -247,9 +248,19 @@ fn main() {
                     Event::WindowEvent{ event: WindowEvent::MouseInput { .. }, ..} => {
                         // put a safety un-freeze feature, in case we mess something up wrt releasing the mouse
                     }
+                    Event::WindowEvent{ event: WindowEvent::ModifiersChanged(modifiers), ..} => {
+                        modifiers_state = modifiers;
+                    }
+                    // shortcuts processing goes here
                     Event::WindowEvent{ event: WindowEvent::KeyboardInput { input, .. }, .. } => {
                         if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Escape) {
                             *control_flow = ControlFlow::Exit;
+                        } else if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Z) {
+                            if modifiers_state.ctrl() && modifiers_state.shift() {
+                                rust_gui.issue_redo(&mut state);
+                            } else if modifiers_state.ctrl() {
+                                rust_gui.issue_undo(&mut state, imgui.time());
+                            }
                         }
                     }
 

@@ -26,6 +26,55 @@ impl Gui {
         }
     }
 
+    pub fn issue_undo(&mut self, state: &mut State, timestamp: f64) {
+        // if the user is actively editing a node, we want to stop the editing and issue a savestate!
+        if state.user.graph.currently_editing() {
+            // stop the editing on the imgui side
+            use crate::cpp_gui::ImGui;
+            ImGui::ClearActiveID();
+            // stop the editing on the rust side
+            state.user.graph.stop_editing();
+            // issue a savestate
+            self.issue_savestate(state, timestamp);
+        }
+        if self.undo_cursor != 0 {
+            self.undo_cursor -= 1;
+            let old_state = self.undo_stack.get(self.undo_cursor).unwrap();
+            // println!("Restored state from {} seconds ago", ui.time() - old_state.0);
+            state.user.graph = serde_json::from_str(&old_state.1).unwrap();
+            state.user.graph.push_positions_to_imnodes();
+        }
+    }
+
+    pub fn issue_savestate(&mut self, state: &mut State, timestamp: f64) {
+        if self.undo_stack.len() == MAX_UNDO_HISTORY {
+            // If the length is already equal to MAX_UNDO_HISTORY, pop the first element
+            // there is no need to manipulate the undo_cursor because the element that we will
+            // insert will become the one that the undo_cursor already points at.
+            self.undo_stack.pop_front();
+        } else {
+            // Otherwise truncate the stack so that the "Redo" history is not accessible anymore.
+            // The truncate() function takes the number of elements that we want to preserve.
+            // After truncate move the cursor forward, so that it will point to the element
+            // that we are about to add.
+            let preserved_elements = self.undo_cursor + 1;
+            self.undo_stack.truncate(preserved_elements);
+            self.undo_cursor += 1;
+        }
+        let serialized_graph = serde_json::to_string(&state.user.graph).unwrap();
+        self.undo_stack.push_back((timestamp, serialized_graph));
+    }
+
+    pub fn issue_redo(&mut self, state: &mut State) {
+        if self.undo_cursor != self.undo_stack.len()-1 {
+            self.undo_cursor += 1;
+            let restored_state = self.undo_stack.get(self.undo_cursor).unwrap();
+            // println!("Restored state from {} seconds ago", ui.time() - restored_state.0);
+            state.user.graph = serde_json::from_str(&restored_state.1).unwrap();
+            state.user.graph.push_positions_to_imnodes();
+        }
+    }
+
     pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State) {
         // create main window
         let window_begun = Window::new(im_str!("Rust window"))
@@ -87,24 +136,11 @@ impl Gui {
         }
         ui.same_line(0.0);
         if ui.button(im_str!("Undo"), [0.0, 0.0]) {
-            if self.undo_cursor != 0 {
-                self.undo_cursor -= 1;
-                let old_state = self.undo_stack.get(self.undo_cursor).unwrap();
-                println!("Restored state from {} seconds ago", ui.time() - old_state.0);
-                state.user.graph = serde_json::from_str(&old_state.1).unwrap();
-                state.user.graph.push_positions_to_imnodes();
-            }
+            self.issue_undo(state, ui.time());
         }
         ui.same_line(0.0);
         if ui.button(im_str!("Redo"), [0.0, 0.0]) {
-            // TODO: DRY? This is almost the same as the undo,
-            if self.undo_cursor != self.undo_stack.len()-1 {
-                self.undo_cursor += 1;
-                let restored_state = self.undo_stack.get(self.undo_cursor).unwrap();
-                println!("Restored state from {} seconds ago", ui.time() - restored_state.0);
-                state.user.graph = serde_json::from_str(&restored_state.1).unwrap();
-                state.user.graph.push_positions_to_imnodes();
-            }
+            self.issue_redo(state);
         }
         ui.columns(2, im_str!("editor columns"), false);
         ui.set_current_column_width(120.0);
@@ -151,22 +187,7 @@ impl Gui {
             // at which savestate the user currently is.
             let last_stamp = self.undo_stack.back().unwrap().0;
             if requested_stamp != last_stamp {
-                if self.undo_stack.len() == MAX_UNDO_HISTORY {
-                    // If the length is already equal to MAX_UNDO_HISTORY, pop the first element
-                    // there is no need to manipulate the undo_cursor because the element that we will
-                    // insert will become the one that the undo_cursor already points at.
-                    self.undo_stack.pop_front();
-                } else {
-                    // Otherwise truncate the stack so that the "Redo" history is not accessible anymore.
-                    // The truncate() function takes the number of elements that we want to preserve.
-                    // After truncate move the cursor forward, so that it will point to the element
-                    // that we are about to add.
-                    let preserved_elements = self.undo_cursor + 1;
-                    self.undo_stack.truncate(preserved_elements);
-                    self.undo_cursor += 1;
-                }
-                let serialized_graph = serde_json::to_string(&state.user.graph).unwrap();
-                self.undo_stack.push_back((requested_stamp, serialized_graph));
+                self.issue_savestate(state, ui.time());
             }
         }
         ui.columns(1, im_str!("editor columns"), false);

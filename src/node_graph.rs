@@ -89,6 +89,7 @@ impl Attribute {
                 ui.set_next_item_width(80.0);
                 let mut imstring = ImString::new(string.clone());
                 let value_changed = InputText::new(ui, im_str!(""), &mut imstring)
+                    .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
                 *string = imstring.to_string();
@@ -120,6 +121,7 @@ impl Attribute {
                 // TODO: this is kinda ugly
                 imstring = ImString::new(col_1.clone());
                 value_changed |= InputText::new(ui, im_str!("##1"), &mut imstring)
+                    .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
                 *col_1 = imstring.to_string();
@@ -128,6 +130,7 @@ impl Attribute {
 
                 imstring = ImString::new(col_2.clone());
                 value_changed |= InputText::new(ui, im_str!("##2"), &mut imstring)
+                    .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
                 *col_2 = imstring.to_string();
@@ -136,6 +139,7 @@ impl Attribute {
 
                 imstring = ImString::new(col_3.clone());
                 value_changed |= InputText::new(ui, im_str!("##3"), &mut imstring)
+                    .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
                 *col_3 = imstring.to_string();
@@ -144,6 +148,7 @@ impl Attribute {
 
                 imstring = ImString::new(col_4.clone());
                 value_changed |= InputText::new(ui, im_str!("##4"), &mut imstring)
+                    .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
                 *col_4 = imstring.to_string();
@@ -513,6 +518,14 @@ impl Default for NodeGraph {
 }
 
 impl NodeGraph {
+    pub fn currently_editing(&self) -> bool {
+        return self.editing_node.is_some()
+    }
+
+    pub fn stop_editing(&mut self) {
+        self.editing_node = None;
+    }
+
     fn get_new_node_id(&mut self) -> NodeID {
         if let Some(id) = self.free_nodes_list.pop() {
             // if there is any free slot in the nodes, then use that slot
@@ -635,6 +648,9 @@ impl NodeGraph {
             && ui.is_mouse_released(MouseButton::Right)
             && mouse_delta == [0.0, 0.0]; // exact comparison is fine due to GetMouseDragDelta threshold
 
+        // TODO: currently the right click menu is a bit bugged, because right-clicking on a node
+        // does not select it. This means that the node the user rightclicks on might not be the
+        // one they end up interacting with.
         if right_click_popup {
             println!("rcd");
             let mut hovered_id: i32 = -1;
