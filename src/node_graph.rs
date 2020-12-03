@@ -61,7 +61,8 @@ pub enum AttributeContents {
 }
 
 impl Attribute {
-    pub fn render(&mut self, ui: &imgui::Ui<'_>, id: AttributeID) {
+    // the render function shall return bool if anything has changed.
+    pub fn render(&mut self, ui: &imgui::Ui<'_>, id: AttributeID) -> bool {
         match &mut self.contents {
             AttributeContents::InputPin {
                 label, kind,
@@ -69,6 +70,7 @@ impl Attribute {
                 imnodes::BeginInputAttribute(id, kind.to_pin_shape());
                 ui.text(label);
                 imnodes::EndInputAttribute();
+                false
             },
             AttributeContents::OutputPin {
                 label, kind,
@@ -76,6 +78,7 @@ impl Attribute {
                 imnodes::BeginOutputAttribute(id, kind.to_pin_shape());
                 ui.text(label);
                 imnodes::EndOutputAttribute();
+                false
             },
             AttributeContents::Text{
                 label, string,
@@ -85,11 +88,12 @@ impl Attribute {
                 ui.same_line(0.0);
                 ui.set_next_item_width(80.0);
                 let mut imstring = ImString::new(string.clone());
-                InputText::new(ui, im_str!(""), &mut imstring)
+                let value_changed = InputText::new(ui, im_str!(""), &mut imstring)
                     .resize_buffer(true)
                     .build();
                 *string = imstring.to_string();
                 imnodes::EndStaticAttribute();
+                value_changed
             },
             AttributeContents::QualitySlider {
                 label, quality,
@@ -98,14 +102,16 @@ impl Attribute {
                 ui.text(&label);
                 ui.same_line(0.0);
                 ui.set_next_item_width(55.0);
-                Slider::new(im_str!(""))
+                let value_changed = Slider::new(im_str!(""))
                     .range(4 ..= 16)
                     .build(ui, quality);
                 imnodes::EndStaticAttribute();
+                value_changed
             },
             AttributeContents::MatrixRow {
                 col_1, col_2, col_3, col_4,
             } => {
+                let mut value_changed = false;
                 imnodes::BeginStaticAttribute(id);
 
                 let width_token = ui.push_item_width(50.0);
@@ -113,7 +119,7 @@ impl Attribute {
 
                 // TODO: this is kinda ugly
                 imstring = ImString::new(col_1.clone());
-                InputText::new(ui, im_str!("##1"), &mut imstring)
+                value_changed |= InputText::new(ui, im_str!("##1"), &mut imstring)
                     .resize_buffer(true)
                     .build();
                 *col_1 = imstring.to_string();
@@ -121,7 +127,7 @@ impl Attribute {
                 ui.same_line(0.0);
 
                 imstring = ImString::new(col_2.clone());
-                InputText::new(ui, im_str!("##2"), &mut imstring)
+                value_changed |= InputText::new(ui, im_str!("##2"), &mut imstring)
                     .resize_buffer(true)
                     .build();
                 *col_2 = imstring.to_string();
@@ -129,7 +135,7 @@ impl Attribute {
                 ui.same_line(0.0);
 
                 imstring = ImString::new(col_3.clone());
-                InputText::new(ui, im_str!("##3"), &mut imstring)
+                value_changed |= InputText::new(ui, im_str!("##3"), &mut imstring)
                     .resize_buffer(true)
                     .build();
                 *col_3 = imstring.to_string();
@@ -137,13 +143,14 @@ impl Attribute {
                 ui.same_line(0.0);
 
                 imstring = ImString::new(col_4.clone());
-                InputText::new(ui, im_str!("##4"), &mut imstring)
+                value_changed |= InputText::new(ui, im_str!("##4"), &mut imstring)
                     .resize_buffer(true)
                     .build();
                 *col_4 = imstring.to_string();
 
                 imnodes::EndStaticAttribute();
                 width_token.pop(ui);
+                value_changed
             },
             AttributeContents::Unknown {
                 ..
@@ -153,12 +160,14 @@ impl Attribute {
         }
     }
 
-    pub fn render_list(ui: &imgui::Ui<'_>, attributes: &mut Vec<Option<Attribute>>, attribute_id_list: Vec<AttributeID>) {
+    pub fn render_list(ui: &imgui::Ui<'_>, attributes: &mut Vec<Option<Attribute>>, attribute_id_list: Vec<AttributeID>) -> bool {
+        let mut value_changed = false;
         for id in attribute_id_list.into_iter() {
             if let Some(Some(attribute)) = attributes.get_mut(id as usize) {
-                attribute.render(ui, id);
+                value_changed |= attribute.render(ui, id);
             }
         }
+        value_changed
     }
 }
 
@@ -407,7 +416,7 @@ impl Node {
         &self.contents
     }
 
-    pub fn render(&mut self, ui: &imgui::Ui<'_>, attributes: &mut Vec<Option<Attribute>>) {
+    pub fn render(&mut self, ui: &imgui::Ui<'_>, attributes: &mut Vec<Option<Attribute>>) -> bool {
         imnodes::BeginNodeTitleBar();
             ui.text(&self.title);
             // handle error reporting
@@ -428,7 +437,7 @@ impl Node {
         imnodes::EndNodeTitleBar();
         // TODO: not sure if we will be able to use the get_attribute_list()
         // when we introduce the Group kind node in the future...
-        Attribute::render_list(ui, attributes, self.contents.get_attribute_list());
+        Attribute::render_list(ui, attributes, self.contents.get_attribute_list())
     }
 
     pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<NodeID> {
@@ -477,6 +486,8 @@ pub struct NodeGraph {
     right_clicked_link: Option<AttributeID>,
     #[serde(skip)]
     editing_node: Option<NodeID>,
+    #[serde(skip)]
+    last_edit_timestamp: f64,
 }
 
 enum PairInfo {
@@ -496,6 +507,7 @@ impl Default for NodeGraph {
             right_clicked_node: None,
             right_clicked_link: None,
             editing_node: None,
+            last_edit_timestamp: 0.0,
         }
     }
 }
@@ -587,7 +599,8 @@ impl NodeGraph {
         }
     }
 
-    pub fn render(&mut self, ui: &imgui::Ui<'_>) {
+    pub fn render(&mut self, ui: &imgui::Ui<'_>) -> Option<f64> {
+        let mut request_savestate: Option<f64> = None;
         imnodes::BeginNodeEditor();
         // render all links first. Remember that link ID is the same as the input attribute ID!
         for pair in self.links.iter() {
@@ -601,7 +614,9 @@ impl NodeGraph {
         for (idx, maybe_node) in self.nodes.iter_mut().enumerate() {
             if let Some(node) = maybe_node.as_mut() {
                 imnodes::BeginNode(idx as NodeID);
-                node.render(ui, &mut self.attributes);
+                if node.render(ui, &mut self.attributes) {
+                    self.last_edit_timestamp = ui.time();
+                }
                 imnodes::EndNode();
             }
         }
@@ -650,16 +665,20 @@ impl NodeGraph {
                     self.remove_node(clicked_node);
                     imnodes::ClearNodeSelection();
                     self.right_clicked_node = None;
+                    request_savestate = Some(ui.time());
                 }
                 // TODO: decide if non-selected single node clone should still clone the links
                 if MenuItem::new(im_str!("duplicate node")).build(ui) {
                     let position = [clicked_pos[0]+30.0, clicked_pos[1]+30.0];
                     self.duplicate_node_no_links(clicked_node, position);
                     self.right_clicked_node = None;
+                    request_savestate = Some(ui.time());
                 }
                 // TODO: should renaming be available even if multiple nodes are selected?
                 if MenuItem::new(im_str!("rename node")).build(ui) {
                     println!("need to rename {}", clicked_node);
+                    // TODO: when renaming is enabled, make sure to remove this line,
+                    // or you will unwrap a None
                     self.right_clicked_node = None;
                 }
             } else {
@@ -671,10 +690,12 @@ impl NodeGraph {
                     }
                     imnodes::ClearNodeSelection();
                     self.right_clicked_node = None;
+                    request_savestate = Some(ui.time());
                 }
                 if MenuItem::new(im_str!("duplicate nodes and links")).build(ui) {
                     self.duplicate_nodes(&selected_nodes_ids);
                     self.right_clicked_node = None;
+                    request_savestate = Some(ui.time());
                 }
             }
         });
@@ -686,6 +707,7 @@ impl NodeGraph {
                 self.links.remove(&clicked_link);
                 imnodes::ClearLinkSelection();
                 self.right_clicked_link = None;
+                request_savestate = Some(ui.time());
             }
         });
 
@@ -694,31 +716,38 @@ impl NodeGraph {
             let clicked_pos = ui.mouse_pos_on_opening_current_popup();
             if MenuItem::new(im_str!("Interval")).build(ui) {
                 self.add_interval_node([clicked_pos[0], clicked_pos[1]]);
+                request_savestate = Some(ui.time());
             }
 
             ui.menu(im_str!("Geometries"), true, || {
                 if MenuItem::new(im_str!("Curve")).build(ui) {
                     self.add_curve_node([clicked_pos[0], clicked_pos[1]]);
+                    request_savestate = Some(ui.time());
                 }
                 if MenuItem::new(im_str!("Surface")).build(ui) {
                     self.add_surface_node([clicked_pos[0], clicked_pos[1]]);
+                    request_savestate = Some(ui.time());
                 }
             }); // Geometries menu ends here
 
             ui.menu(im_str!("Transformations"), true, || {
                 if MenuItem::new(im_str!("Matrix")).build(ui) {
                     self.add_matrix_node([clicked_pos[0], clicked_pos[1]]);
+                    request_savestate = Some(ui.time());
                 }
                 if MenuItem::new(im_str!("Transform")).build(ui) {
                     self.add_transform_node([clicked_pos[0], clicked_pos[1]]);
+                    request_savestate = Some(ui.time());
                 }
             }); // Transformations menu ends here
 
             if MenuItem::new(im_str!("Point")).build(ui) {
                 self.add_point_node([clicked_pos[0], clicked_pos[1]]);
+                request_savestate = Some(ui.time());
             }
             if MenuItem::new(im_str!("Rendering")).build(ui) {
                 self.add_rendering_node([clicked_pos[0], clicked_pos[1]]);
+                request_savestate = Some(ui.time());
             }
         }); // "Add" closure ends here
         style_token.pop(ui);
@@ -731,6 +760,7 @@ impl NodeGraph {
             // check which one of the two attributes is the input attribute and which is the output
             if let Some((input_id, output_id)) = maybe_link {
                 self.links.insert(input_id, output_id);
+                request_savestate = Some(ui.time());
             }
         }
 
@@ -747,6 +777,7 @@ impl NodeGraph {
                 Some(old_id) if old_id != editing_node_id => {
                     // stopped editing a node, started editing a new one
                     self.editing_node = Some(editing_node_id);
+                    request_savestate = Some(self.last_edit_timestamp);
                 }
                 Some(_old_id) => { // if old_id == editing_node_id
                     // we are still editing the same node, do nothing
@@ -760,10 +791,12 @@ impl NodeGraph {
                 Some(_old_id) => {
                     // stopped editing a node
                     self.editing_node = None;
+                    request_savestate = Some(self.last_edit_timestamp);
                 }
             }
         }
 
+        request_savestate
     }
 
     pub fn get_nodes(&self) -> impl Iterator<Item = (NodeID, &Node)> {

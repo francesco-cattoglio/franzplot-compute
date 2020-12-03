@@ -6,6 +6,7 @@ pub struct Gui {
     pub scene_texture_id: TextureId,
     pub new_global_buffer: ImString,
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
+    last_savestate_stamp: f64,
 }
 
 impl Gui {
@@ -14,6 +15,7 @@ impl Gui {
             new_global_buffer: ImString::with_capacity(8),
             scene_texture_id,
             winit_proxy,
+            last_savestate_stamp: 0.0,
         }
     }
 
@@ -114,7 +116,15 @@ impl Gui {
 
         ui.next_column();
         ui.text(im_str!("Right side"));
-        state.user.graph.render(ui);
+        let requested_savestate = state.user.graph.render(ui);
+        if let Some(timestamp) = requested_savestate {
+            if timestamp == self.last_savestate_stamp {
+                println!("requested a savestate: {}, but nothing changed!", timestamp);
+            } else {
+                println!("requested a savestate: {}, approved!", timestamp);
+                self.last_savestate_stamp = timestamp;
+            }
+        }
         ui.columns(1, im_str!("editor columns"), false);
     }
 
