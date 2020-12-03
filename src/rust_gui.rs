@@ -2,20 +2,27 @@ use imgui::*;
 use crate::file_io;
 use crate::state::State;
 
+const MAX_UNDO_HISTORY : usize = 10;
+
 pub struct Gui {
     pub scene_texture_id: TextureId,
     pub new_global_buffer: ImString,
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
-    undo_stack: Vec<(f64, String)>,
+    undo_stack: std::collections::VecDeque<(f64, String)>,
+    undo_cursor: usize,
 }
 
 impl Gui {
     pub fn new(scene_texture_id: TextureId, winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>) -> Self {
+        // when we initialize a GUI, we want to set the first undo_stack element to a completely empty graph
+        use super::node_graph::NodeGraph;
+        let empty_graph = NodeGraph::default();
         Self {
             new_global_buffer: ImString::with_capacity(8),
             scene_texture_id,
             winit_proxy,
-            undo_stack: Vec::new(),
+            undo_stack: vec![(0.0, serde_json::to_string(&empty_graph).unwrap())].into(),
+            undo_cursor: 0,
         }
     }
 
@@ -80,13 +87,24 @@ impl Gui {
         }
         ui.same_line(0.0);
         if ui.button(im_str!("Undo"), [0.0, 0.0]) {
-            let old_state = self.undo_stack.pop().unwrap();
-            state.user.graph = serde_json::from_str(&old_state.1).unwrap();
-            state.user.graph.push_positions_to_imnodes();
+            if self.undo_cursor != 0 {
+                self.undo_cursor -= 1;
+                let old_state = self.undo_stack.get(self.undo_cursor).unwrap();
+                println!("Restored state from {} seconds ago", ui.time() - old_state.0);
+                state.user.graph = serde_json::from_str(&old_state.1).unwrap();
+                state.user.graph.push_positions_to_imnodes();
+            }
         }
         ui.same_line(0.0);
         if ui.button(im_str!("Redo"), [0.0, 0.0]) {
-            unimplemented!();
+            // TODO: DRY? This is almost the same as the undo,
+            if self.undo_cursor != self.undo_stack.len()-1 {
+                self.undo_cursor += 1;
+                let restored_state = self.undo_stack.get(self.undo_cursor).unwrap();
+                println!("Restored state from {} seconds ago", ui.time() - restored_state.0);
+                state.user.graph = serde_json::from_str(&restored_state.1).unwrap();
+                state.user.graph.push_positions_to_imnodes();
+            }
         }
         ui.columns(2, im_str!("editor columns"), false);
         ui.set_current_column_width(120.0);
@@ -127,22 +145,28 @@ impl Gui {
         ui.next_column();
         ui.text(im_str!("Right side"));
         let requested_savestate = state.user.graph.render(ui);
-        if let Some(timestamp) = requested_savestate {
-            let last_savestate = self.undo_stack.last();
-            match last_savestate {
-                None => {
-                    println!("requested a savestate: {}, approved!", timestamp);
-                    let serialized_graph = serde_json::to_string(&state.user.graph).unwrap();
-                    self.undo_stack.push((timestamp, serialized_graph));
-                },
-                Some((last_savestate_time, _)) if *last_savestate_time != timestamp => {
-                    println!("requested a savestate: {}, approved!", timestamp);
-                    let serialized_graph = serde_json::to_string(&state.user.graph).unwrap();
-                    self.undo_stack.push((timestamp, serialized_graph));
-                },
-                Some(_) => {
-                    println!("requested a savestate: {}, but nothing changed!", timestamp);
+        if let Some(requested_stamp) = requested_savestate {
+            // first, get the timestamp for the last savestate. This is because if the user only moves some nodes around
+            // but changes nothing, the requested stamp will remain the same as the last in the stack, it does not matter
+            // at which savestate the user currently is.
+            let last_stamp = self.undo_stack.back().unwrap().0;
+            if requested_stamp != last_stamp {
+                if self.undo_stack.len() == MAX_UNDO_HISTORY {
+                    // If the length is already equal to MAX_UNDO_HISTORY, pop the first element
+                    // there is no need to manipulate the undo_cursor because the element that we will
+                    // insert will become the one that the undo_cursor already points at.
+                    self.undo_stack.pop_front();
+                } else {
+                    // Otherwise truncate the stack so that the "Redo" history is not accessible anymore.
+                    // The truncate() function takes the number of elements that we want to preserve.
+                    // After truncate move the cursor forward, so that it will point to the element
+                    // that we are about to add.
+                    let preserved_elements = self.undo_cursor + 1;
+                    self.undo_stack.truncate(preserved_elements);
+                    self.undo_cursor += 1;
                 }
+                let serialized_graph = serde_json::to_string(&state.user.graph).unwrap();
+                self.undo_stack.push_back((requested_stamp, serialized_graph));
             }
         }
         ui.columns(1, im_str!("editor columns"), false);
