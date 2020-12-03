@@ -6,7 +6,7 @@ pub struct Gui {
     pub scene_texture_id: TextureId,
     pub new_global_buffer: ImString,
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
-    last_savestate_stamp: f64,
+    undo_stack: Vec<(f64, String)>,
 }
 
 impl Gui {
@@ -15,7 +15,7 @@ impl Gui {
             new_global_buffer: ImString::with_capacity(8),
             scene_texture_id,
             winit_proxy,
-            last_savestate_stamp: 0.0,
+            undo_stack: Vec::new(),
         }
     }
 
@@ -78,6 +78,16 @@ impl Gui {
         if ui.button(im_str!("Render"), [0.0, 0.0]) {
             state.process_user_state();
         }
+        ui.same_line(0.0);
+        if ui.button(im_str!("Undo"), [0.0, 0.0]) {
+            let old_state = self.undo_stack.pop().unwrap();
+            state.user.graph = serde_json::from_str(&old_state.1).unwrap();
+            state.user.graph.push_positions_to_imnodes();
+        }
+        ui.same_line(0.0);
+        if ui.button(im_str!("Redo"), [0.0, 0.0]) {
+            unimplemented!();
+        }
         ui.columns(2, im_str!("editor columns"), false);
         ui.set_current_column_width(120.0);
         ui.text(im_str!("Left side"));
@@ -118,11 +128,21 @@ impl Gui {
         ui.text(im_str!("Right side"));
         let requested_savestate = state.user.graph.render(ui);
         if let Some(timestamp) = requested_savestate {
-            if timestamp == self.last_savestate_stamp {
-                println!("requested a savestate: {}, but nothing changed!", timestamp);
-            } else {
-                println!("requested a savestate: {}, approved!", timestamp);
-                self.last_savestate_stamp = timestamp;
+            let last_savestate = self.undo_stack.last();
+            match last_savestate {
+                None => {
+                    println!("requested a savestate: {}, approved!", timestamp);
+                    let serialized_graph = serde_json::to_string(&state.user.graph).unwrap();
+                    self.undo_stack.push((timestamp, serialized_graph));
+                },
+                Some((last_savestate_time, _)) if *last_savestate_time != timestamp => {
+                    println!("requested a savestate: {}, approved!", timestamp);
+                    let serialized_graph = serde_json::to_string(&state.user.graph).unwrap();
+                    self.undo_stack.push((timestamp, serialized_graph));
+                },
+                Some(_) => {
+                    println!("requested a savestate: {}, but nothing changed!", timestamp);
+                }
             }
         }
         ui.columns(1, im_str!("editor columns"), false);
