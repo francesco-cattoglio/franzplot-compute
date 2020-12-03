@@ -10,7 +10,7 @@ wgpu = "0.6"
 shaderc = "0.6"
 anyhow = "1.0"
 futures = "0.3"
-glam = { version = "0.10", features = ["debug-glam-assert"] }
+glam = "0.11"
 maplit = "1.0"
 winit = "0.23"
 tobj = "2.0"
@@ -29,8 +29,6 @@ tinyfiledialogs = "3"
 
 [dependencies.imgui-winit-support]
 version = "0.6"
-default-features = false
-features = ["winit-23"]
 
 [build-dependencies]
 cxx-build = "1.0"

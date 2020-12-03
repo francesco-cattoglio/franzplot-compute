@@ -9,8 +9,8 @@ fn main() {
         "src/cpp_gui/imgui-1.79/imconfig.h",
         "src/cpp_gui/imgui-1.79/imgui.h",
         "src/cpp_gui/imnodes-5959729/imnodes.h",
-        "imnodes_shims.h",
-        "imgui_shims.h",
+        "src/cpp_gui/imnodes_shims.h",
+        "src/cpp_gui/imgui_shims.h",
     ];
 
     cxx_build::bridge("src/cpp_gui/mod.rs")
