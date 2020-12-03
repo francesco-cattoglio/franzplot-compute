@@ -408,27 +408,27 @@ impl Node {
     }
 
     pub fn render(&mut self, ui: &imgui::Ui<'_>, attributes: &mut Vec<Option<Attribute>>) {
-            imnodes::BeginNodeTitleBar();
-                ui.text(&self.title);
-                // handle error reporting
-                if let Some(error) = &self.error {
-                    ui.same_line(0.0);
-                    match error.severity {
-                        Severity::Warning => {
-                            ui.text_colored( [1.0, 0.8, 0.0, 1.0], "⚠");
-                        },
-                        Severity::Error => {
-                            ui.text_colored( [1.0, 0.8, 0.0, 1.0], "⊗");
-                        }
-                    }
-                    if ui.is_item_hovered() {
-                        ui.tooltip_text(&error.message);
+        imnodes::BeginNodeTitleBar();
+            ui.text(&self.title);
+            // handle error reporting
+            if let Some(error) = &self.error {
+                ui.same_line(0.0);
+                match error.severity {
+                    Severity::Warning => {
+                        ui.text_colored( [1.0, 0.8, 0.0, 1.0], "⚠");
+                    },
+                    Severity::Error => {
+                        ui.text_colored( [1.0, 0.8, 0.0, 1.0], "⊗");
                     }
                 }
-            imnodes::EndNodeTitleBar();
-            // TODO: not sure if we will be able to use the get_attribute_list()
-            // when we introduce the Group kind node in the future...
-            Attribute::render_list(ui, attributes, self.contents.get_attribute_list());
+                if ui.is_item_hovered() {
+                    ui.tooltip_text(&error.message);
+                }
+            }
+        imnodes::EndNodeTitleBar();
+        // TODO: not sure if we will be able to use the get_attribute_list()
+        // when we introduce the Group kind node in the future...
+        Attribute::render_list(ui, attributes, self.contents.get_attribute_list());
     }
 
     pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<NodeID> {
@@ -472,9 +472,11 @@ pub struct NodeGraph {
     free_nodes_list: Vec<NodeID>,
     free_attributes_list: Vec<AttributeID>,
     #[serde(skip)]
-    last_hovered_node: NodeID,
+    right_clicked_node: Option<NodeID>,
     #[serde(skip)]
-    last_hovered_link: AttributeID,
+    right_clicked_link: Option<AttributeID>,
+    #[serde(skip)]
+    editing_node: Option<NodeID>,
 }
 
 enum PairInfo {
@@ -491,8 +493,9 @@ impl Default for NodeGraph {
             links: HashMap::new(),
             free_nodes_list: Vec::new(),
             free_attributes_list: Vec::new(),
-            last_hovered_node: -1,
-            last_hovered_link: -1,
+            right_clicked_node: None,
+            right_clicked_link: None,
+            editing_node: None,
         }
     }
 }
@@ -584,7 +587,6 @@ impl NodeGraph {
         }
     }
 
-
     pub fn render(&mut self, ui: &imgui::Ui<'_>) {
         imnodes::BeginNodeEditor();
         // render all links first. Remember that link ID is the same as the input attribute ID!
@@ -608,6 +610,35 @@ impl NodeGraph {
         // (e.g: right clicks, node creation)
         imnodes::EndNodeEditor();
 
+        let mut active_attribute = 0;
+        if imnodes::IsAnyAttributeActive(&mut active_attribute) {
+            let attribute_slot = self.attributes.get(active_attribute as usize).unwrap();
+            let editing_node_id = attribute_slot.as_ref().unwrap().node_id;
+            match self.editing_node {
+                None => {
+                    // we started editing a node
+                    self.editing_node = Some(editing_node_id);
+                }
+                Some(old_id) if old_id != editing_node_id => {
+                    // we stopped editing the old_id node and started editing a new one
+                    self.editing_node = Some(editing_node_id);
+                }
+                Some(_old_id) => { // if old_id == editing_node_id
+                    // we are still editing the same node, do nothing
+                }
+            }
+        } else {
+            match self.editing_node {
+                None => {
+                    // we are still not editing any node, do nothing
+                }
+                Some(_old_id) => {
+                    // we stopped editing a node
+                    self.editing_node = None;
+                }
+            }
+        }
+
         // update all our nodes with the last node positions.
         self.read_positions_from_imnodes();
 
@@ -618,14 +649,14 @@ impl NodeGraph {
             && ui.is_mouse_released(MouseButton::Right)
             && mouse_delta == [0.0, 0.0]; // exact comparison is fine due to GetMouseDragDelta threshold
 
-        let mut hovered_id: i32 = -1;
         if right_click_popup {
             println!("rcd");
+            let mut hovered_id: i32 = -1;
             if imnodes::IsNodeHovered(&mut hovered_id) {
-                self.last_hovered_node = hovered_id;
+                self.right_clicked_node = Some(hovered_id);
                 ui.open_popup(im_str!("Node menu"));
             } else if imnodes::IsLinkHovered(&mut hovered_id) {
-                self.last_hovered_link = hovered_id;
+                self.right_clicked_link = Some(hovered_id);
                 ui.open_popup(im_str!("Link menu"));
             } else {
                 ui.open_popup(im_str!("Add menu"));
@@ -633,20 +664,28 @@ impl NodeGraph {
         }
 
         ui.popup(im_str!("Node menu"), || {
+            let clicked_node = self.right_clicked_node.unwrap();
             let clicked_pos = ui.mouse_pos_on_opening_current_popup();
             // The right-click menu changes contents depending
             // on how many nodes the user selected
             let selected_nodes_ids = imnodes::GetSelectedNodes();
             if selected_nodes_ids.is_empty() {
-                // single node selection, using the last_hovered_node id
+                // single node selection, using the self.right_clicked_node id
                 if MenuItem::new(im_str!("delete node")).build(ui) {
-                    println!("need to remove {}", self.last_hovered_node);
-                    self.remove_node(self.last_hovered_node);
+                    println!("need to remove {}", clicked_node);
+                    self.remove_node(clicked_node);
+                    self.right_clicked_node = None;
                 }
                 // TODO: decide if non-selected single node clone should still clone the links
                 if MenuItem::new(im_str!("duplicate node")).build(ui) {
                     let position = [clicked_pos[0]+30.0, clicked_pos[1]+30.0];
-                    self.duplicate_node_no_links(self.last_hovered_node, position);
+                    self.duplicate_node_no_links(clicked_node, position);
+                    self.right_clicked_node = None;
+                }
+                // TODO: should renaming be available even if multiple nodes are selected?
+                if MenuItem::new(im_str!("rename node")).build(ui) {
+                    println!("need to rename {}", clicked_node);
+                    self.right_clicked_node = None;
                 }
             } else {
                 // multiple node selection, operates on all selected nodes
@@ -655,20 +694,21 @@ impl NodeGraph {
                         println!("need to remove {}", *node_id);
                         self.remove_node(*node_id);
                     }
+                    self.right_clicked_node = None;
                 }
                 if MenuItem::new(im_str!("duplicate nodes and links")).build(ui) {
                     self.duplicate_nodes(&selected_nodes_ids);
+                    self.right_clicked_node = None;
                 }
-            }
-            if MenuItem::new(im_str!("rename node")).build(ui) {
-                println!("need to rename {}", self.last_hovered_node);
             }
         });
 
         ui.popup(im_str!("Link menu"), || {
+            let clicked_link = self.right_clicked_link.unwrap();
             if MenuItem::new(im_str!("delete link")).build(ui) {
-                println!("need to remove {}", self.last_hovered_link);
-                self.links.remove(&self.last_hovered_link);
+                println!("need to remove {}", clicked_link);
+                self.links.remove(&clicked_link);
+                self.right_clicked_link = None;
             }
         });
 

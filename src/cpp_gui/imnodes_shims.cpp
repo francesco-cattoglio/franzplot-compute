@@ -18,6 +18,10 @@ namespace imnodes {
         return IsNodeHovered(&id);
     }
 
+    bool IsAnyAttributeActive(int& id) {
+        return IsAnyAttributeActive(&id);
+    }
+
     std::array<float, 2> GetNodePosition(const int node_id) {
         ImVec2 pos = GetNodeScreenSpacePos(node_id);
         return {pos.x, pos.y};
