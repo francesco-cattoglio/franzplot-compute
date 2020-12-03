@@ -10,6 +10,7 @@ fn main() {
         "src/cpp_gui/imgui-1.79/imgui.h",
         "src/cpp_gui/imnodes-5959729/imnodes.h",
         "imnodes_shims.h",
+        "imgui_shims.h",
     ];
 
     cxx_build::bridge("src/cpp_gui/mod.rs")
@@ -17,7 +18,6 @@ fn main() {
         .include("src/cpp_gui/imgui-1.79/")
         .include("src/cpp_gui/imnodes-5959729/")
         .include("src/cpp_gui/include/")
-        .flag("-std=c++17")
         .compile("cxxbridge-gui");
 
     // instruct the build system to re-run cxx if any cpp file changes,
