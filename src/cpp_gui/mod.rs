@@ -25,6 +25,8 @@ pub mod imnodes {
         fn EndNodeEditor();
         fn BeginNode(id: i32);
         fn EndNode();
+        fn ClearNodeSelection();
+        fn ClearLinkSelection();
         fn IsAnyAttributeActive(attribute_id: &mut i32) -> bool;
         fn BeginNodeTitleBar();
         fn EndNodeTitleBar();

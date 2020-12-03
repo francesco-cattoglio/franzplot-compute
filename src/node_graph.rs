@@ -610,35 +610,6 @@ impl NodeGraph {
         // (e.g: right clicks, node creation)
         imnodes::EndNodeEditor();
 
-        let mut active_attribute = 0;
-        if imnodes::IsAnyAttributeActive(&mut active_attribute) {
-            let attribute_slot = self.attributes.get(active_attribute as usize).unwrap();
-            let editing_node_id = attribute_slot.as_ref().unwrap().node_id;
-            match self.editing_node {
-                None => {
-                    // we started editing a node
-                    self.editing_node = Some(editing_node_id);
-                }
-                Some(old_id) if old_id != editing_node_id => {
-                    // we stopped editing the old_id node and started editing a new one
-                    self.editing_node = Some(editing_node_id);
-                }
-                Some(_old_id) => { // if old_id == editing_node_id
-                    // we are still editing the same node, do nothing
-                }
-            }
-        } else {
-            match self.editing_node {
-                None => {
-                    // we are still not editing any node, do nothing
-                }
-                Some(_old_id) => {
-                    // we stopped editing a node
-                    self.editing_node = None;
-                }
-            }
-        }
-
         // update all our nodes with the last node positions.
         self.read_positions_from_imnodes();
 
@@ -653,7 +624,9 @@ impl NodeGraph {
             println!("rcd");
             let mut hovered_id: i32 = -1;
             if imnodes::IsNodeHovered(&mut hovered_id) {
+                println!("IsNodeHovered returned {}", &hovered_id);
                 self.right_clicked_node = Some(hovered_id);
+                dbg!(&self.right_clicked_node);
                 ui.open_popup(im_str!("Node menu"));
             } else if imnodes::IsLinkHovered(&mut hovered_id) {
                 self.right_clicked_link = Some(hovered_id);
@@ -669,11 +642,13 @@ impl NodeGraph {
             // The right-click menu changes contents depending
             // on how many nodes the user selected
             let selected_nodes_ids = imnodes::GetSelectedNodes();
+            // TODO: this should also probably be the case when only one node is selected...
             if selected_nodes_ids.is_empty() {
                 // single node selection, using the self.right_clicked_node id
                 if MenuItem::new(im_str!("delete node")).build(ui) {
                     println!("need to remove {}", clicked_node);
                     self.remove_node(clicked_node);
+                    imnodes::ClearNodeSelection();
                     self.right_clicked_node = None;
                 }
                 // TODO: decide if non-selected single node clone should still clone the links
@@ -691,9 +666,10 @@ impl NodeGraph {
                 // multiple node selection, operates on all selected nodes
                 if MenuItem::new(im_str!("delete selected nodes")).build(ui) {
                     for node_id in selected_nodes_ids.iter() {
-                        println!("need to remove {}", *node_id);
+                        println!("need to remove[] {}", *node_id);
                         self.remove_node(*node_id);
                     }
+                    imnodes::ClearNodeSelection();
                     self.right_clicked_node = None;
                 }
                 if MenuItem::new(im_str!("duplicate nodes and links")).build(ui) {
@@ -708,6 +684,7 @@ impl NodeGraph {
             if MenuItem::new(im_str!("delete link")).build(ui) {
                 println!("need to remove {}", clicked_link);
                 self.links.remove(&clicked_link);
+                imnodes::ClearLinkSelection();
                 self.right_clicked_link = None;
             }
         });
@@ -756,6 +733,37 @@ impl NodeGraph {
                 self.links.insert(input_id, output_id);
             }
         }
+
+        // check if we are actively editing a node or not.
+        let mut active_attribute = 0;
+        if imnodes::IsAnyAttributeActive(&mut active_attribute) {
+            let attribute_slot = self.attributes.get(active_attribute as usize).unwrap();
+            let editing_node_id = attribute_slot.as_ref().unwrap().node_id;
+            match self.editing_node {
+                None => {
+                    // started editing a new node
+                    self.editing_node = Some(editing_node_id);
+                }
+                Some(old_id) if old_id != editing_node_id => {
+                    // stopped editing a node, started editing a new one
+                    self.editing_node = Some(editing_node_id);
+                }
+                Some(_old_id) => { // if old_id == editing_node_id
+                    // we are still editing the same node, do nothing
+                }
+            }
+        } else {
+            match self.editing_node {
+                None => {
+                    // we are still not editing any node, do nothing
+                }
+                Some(_old_id) => {
+                    // stopped editing a node
+                    self.editing_node = None;
+                }
+            }
+        }
+
     }
 
     pub fn get_nodes(&self) -> impl Iterator<Item = (NodeID, &Node)> {
