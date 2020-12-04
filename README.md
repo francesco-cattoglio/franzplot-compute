@@ -7,6 +7,11 @@ Feature già implementate:
 - undo/redo nel grafo. Oltre ad avere i due tasti Undo/Redo, è possibile usare gli shortcut CTRL+Z e CTRL+SHIFT+Z.
 - duplicazione dei nodi.
 
+Known bugs:
+- Quando si seleziona un nodo nel grafo con click sinistro e poi si fa click destro su un nodo diverso, le azioni vengono eseguite sul nodo selezionato, non sull'ultimo che è stato clickato.
+- Curve perfettamente verticali (segmento parallelo all'asse z) non vengono renderizzate correttamente.
+- Se si riutilizza lo stesso parametro sia in una curva che in una matrice parametrica, il risultato calcolato è errato.
+
 Prossime feature:
 - controllo della telecamera
 - rendering dei punti
