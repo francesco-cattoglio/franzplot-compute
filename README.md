@@ -2,17 +2,30 @@
 
 ## Stato attuale
 
-La struttura base dell'interfaccia è pronta. È possibile aggiungere e rimuovere nodi dal grafo,
-impostare variabili globali, renderizzare la scena. Le principali feature da implementare sono:
-- save e load del grafo da file
-- vari fix, in particolare uno riguardo il rendering delle curve
-- movimento della telecamera
+Feature già implementate:
+- save e load del grafo da file, incluse le variabili globali usate.
+- undo/redo nel grafo. Oltre ad avere i due tasti Undo/Redo, è possibile usare gli shortcut CTRL+Z e CTRL+SHIFT+Z.
+- duplicazione dei nodi.
 
-Sviluppi futuri:
+Prossime feature:
+- controllo della telecamera
+- rendering dei punti
+- miglior rendering delle curve e delle superfici
+- gestione della scena (in particolare, le luci e gli assi cartesiani)
+- export di png
+
+Feature previste per Gennaio:
+- rendering & trasformazioni di primitive
+- import/export di mesh
+- curve di bezier
+- raggruppamento dei nodi nel grafo
+- visualizzazione delle curve u-v sulle superfici
+- scelta del formato file definitivo (attualmente uso un json, ma non può contenere commenti quindi va cambiato)
 - trovare un modo per catturare il mouse che funzioni senza dare problemi
-- undo/redo nel grafo
-- copiaincolla dei nodi
-- gestione della scena: luci e assi cartesiani
+
+Features non indispensabili per ora:
+- sample della curva (la visualizzazione delle famiglie u-v è più utile didatticamente!)
+- export di video
 
 ## Come compilare il progetto
 
