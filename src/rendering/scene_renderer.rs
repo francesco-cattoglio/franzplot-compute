@@ -1,9 +1,9 @@
 use crate::rendering::camera::Camera;
 use crate::rendering::texture;
-use crate::rendering::{ CAMERA_LAYOUT_DESCRIPTOR, TEXTURE_LAYOUT_DESCRIPTOR, DEPTH_FORMAT, SWAPCHAIN_FORMAT };
+use crate::rendering::*;
 use crate::device_manager;
-use super::compute_chain::ComputeChain;
-use super::compute_block::ComputeBlock;
+use crate::computable_scene::compute_chain::ComputeChain;
+use crate::computable_scene::compute_block::{ComputeBlock, RenderingData};
 use wgpu::util::DeviceExt;
 use glam::Mat4;
 
@@ -38,7 +38,8 @@ impl Uniforms {
 // the issues for normal computation for a parametrix sphere or for z=sqrt(x + y))
 
 pub struct SceneRenderer {
-    pipeline_2d: wgpu::RenderPipeline,
+    pipeline_solid: wgpu::RenderPipeline,
+    picking_buffer: wgpu::Buffer,
     renderables: Vec<wgpu::RenderBundle>,
     texture: texture::Texture,
     texture_bind_group: wgpu::BindGroup,
@@ -54,6 +55,16 @@ impl SceneRenderer {
 
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(&camera);
+
+        // the object picking buffer is null because the scene is empty
+        let picking_buffer = manager.device.create_buffer(&wgpu::BufferDescriptor {
+            mapped_at_creation: false,
+            label: None,
+            size: 0,
+            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::STORAGE,
+        });
+        let picking_bind_layout =
+            manager.device.create_bind_group_layout(&PICKING_LAYOUT_DESCRIPTOR);
 
         let camera_uniform_buffer = manager.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
@@ -93,8 +104,7 @@ impl SceneRenderer {
             label: Some("all_materials")
         });
 
-        use crate::rendering::create_2d_pipeline;
-        let pipeline_2d = create_2d_pipeline(&manager.device, &camera_bind_layout, &texture_bind_layout);
+        let pipeline_solid = create_solid_pipeline(&manager.device);
         let depth_texture = texture::Texture::create_depth_texture(&manager.device, &manager.sc_desc, "depth_texture");
 
         let clear_color = wgpu::Color::BLACK;
@@ -102,6 +112,7 @@ impl SceneRenderer {
         let renderables = Vec::<wgpu::RenderBundle>::new();
 
         Self {
+            picking_buffer,
             clear_color,
             renderables,
             texture: diffuse_texture,
@@ -109,18 +120,72 @@ impl SceneRenderer {
             depth_texture,
             camera_uniform_buffer,
             camera_bind_group,
-            pipeline_2d,
+            pipeline_solid,
         }
     }
 
-    pub fn update_renderables (&mut self, device: &wgpu::Device, chain: &ComputeChain,) {
+    pub fn update_renderables(&mut self, device: &wgpu::Device, chain: &ComputeChain,) {
         self.renderables.clear();
-        for compute_block in chain.valid_blocks() {
-            let maybe_renderable = block_to_renderable(device, compute_block, &self);
-            if let Some(renderable) = maybe_renderable {
-                self.renderables.push(renderable);
-            }
+        // go through all blocks, chose the rendering ones,
+        // turn their data into a renderable
+        let rendering_data: Vec<&RenderingData> = chain.valid_blocks()
+            .filter_map(|block| {
+                if let ComputeBlock::Rendering(data) = block {
+                    Some(data)
+                } else {
+                    None
+                }
+            })
+        .collect();
+        // resize the buffer that will be used for object picking
+        // the object picking buffer is null because the scene is empty
+        self.picking_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            mapped_at_creation: false,
+            label: None,
+            size: (rendering_data.len() * std::mem::size_of::<f32>()) as wgpu::BufferAddress,
+            usage: wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::STORAGE,
+        });
+        let picking_bind_layout = device.create_bind_group_layout(&PICKING_LAYOUT_DESCRIPTOR);
+        // no need to store it, we will need to rebuild it on next scene creation anyway
+        let picking_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
+            layout: &picking_bind_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(self.picking_buffer.slice(..)),
+                },
+            ],
+            label: Some("Camera bind group"),
+        });
+
+        for (id, data) in rendering_data.iter().enumerate() {
+            self.add_renderable(device, data, &picking_bind_group, id as u32);
         }
+    }
+
+    fn add_renderable(&mut self, device: &wgpu::Device, rendering_data: &RenderingData, picking_bind_group: &wgpu::BindGroup, object_id: u32) {
+        let mut render_bundle_encoder = device.create_render_bundle_encoder(
+            &wgpu::RenderBundleEncoderDescriptor{
+                label: Some("Render bundle encoder for RenderingData"),
+                color_formats: &[SWAPCHAIN_FORMAT],
+                depth_stencil_format: Some(DEPTH_FORMAT),
+                sample_count: 1,
+            }
+        );
+        render_bundle_encoder.set_pipeline(&self.pipeline_solid);
+        render_bundle_encoder.set_vertex_buffer(0, rendering_data.vertex_buffer.slice(..));
+        render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..));
+        render_bundle_encoder.set_bind_group(0, &self.camera_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(1, picking_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(2, &self.texture_bind_group, &[]);
+        // encode the object_id in the index used for the rendering. The shader will be able to
+        // recover the id by reading the gl_InstanceIndex variable
+        dbg!(object_id);
+        render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, object_id..object_id+1);
+        let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
+            label: Some("Render bundle for Rendering Block"),
+        });
+        self.renderables.push(render_bundle);
     }
 
     pub fn render(&self, manager: &device_manager::Manager, target_texture: &wgpu::TextureView, camera: &Camera) {
@@ -128,6 +193,9 @@ impl SceneRenderer {
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(&camera);
         manager.queue.write_buffer(&self.camera_uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+
+        let initialize_picking = vec![std::f32::NAN; self.renderables.len()];
+        manager.queue.write_buffer(&self.picking_buffer, 0, bytemuck::cast_slice(&initialize_picking));
 
         // run the render pipeline
         let mut encoder =
@@ -162,36 +230,13 @@ impl SceneRenderer {
         }
         let render_queue = encoder.finish();
         manager.queue.submit(std::iter::once(render_queue));
+
+        // after rendering: recover the contents of the picking vector
+        if !self.renderables.is_empty() {
+            use crate::util::copy_buffer_as_f32;
+            let picking_distances = copy_buffer_as_f32(&self.picking_buffer, &manager.device);
+            dbg!(picking_distances);
+        }
     }
 }
-
-// UTILITY FUNCTIONS
-// TODO: decide about moving this into the SceneRenderer impl block
-
-fn block_to_renderable(device: &wgpu::Device, compute_block: &ComputeBlock, renderer: &SceneRenderer) -> Option<wgpu::RenderBundle> {
-        match compute_block {
-            ComputeBlock::Rendering(data) => {
-                let mut render_bundle_encoder = device.create_render_bundle_encoder(
-                    &wgpu::RenderBundleEncoderDescriptor{
-                        label: Some("Render bundle encoder for Rendering Block"),
-                        color_formats: &[SWAPCHAIN_FORMAT],
-                        depth_stencil_format: Some(DEPTH_FORMAT),
-                        sample_count: 1,
-                    }
-                );
-                render_bundle_encoder.set_pipeline(&renderer.pipeline_2d);
-                render_bundle_encoder.set_vertex_buffer(0, data.vertex_buffer.slice(..));
-                render_bundle_encoder.set_index_buffer(data.index_buffer.slice(..));
-                render_bundle_encoder.set_bind_group(0, &renderer.camera_bind_group, &[]);
-                render_bundle_encoder.set_bind_group(1, &renderer.texture_bind_group, &[]);
-                render_bundle_encoder.draw_indexed(0..data.index_count, 0, 0..1);
-                let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
-                    label: Some("Render bundle for Rendering Block"),
-                });
-                Some(render_bundle)
-            },
-            _ => None,
-        }
-
-    }
 

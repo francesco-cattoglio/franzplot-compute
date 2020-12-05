@@ -1,5 +1,10 @@
 pub mod camera;
 pub mod texture;
+pub mod scene_renderer;
+
+// TODO: just copy-paste the entire scene_renderer in here? Or move all these constants
+// in that module and pub use the useful ones
+pub use scene_renderer::SceneRenderer;
 
 // BEWARE: whenever you do any change at the following structure, also remember to modify
 // the corresponding VertexStateDescriptor that is used at pipeline creation stage
@@ -66,23 +71,43 @@ wgpu::BindGroupLayoutDescriptor {
     label: Some("camera bind group layout"),
 };
 
-pub fn create_2d_pipeline(device: &wgpu::Device, camera_bind_layout: &wgpu::BindGroupLayout, texture_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
+pub const PICKING_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
+wgpu::BindGroupLayoutDescriptor {
+    entries: &[
+        wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            count: None,
+            visibility: wgpu::ShaderStage::FRAGMENT,
+            ty: wgpu::BindingType::StorageBuffer {
+                readonly: false,
+                dynamic: false,
+                min_binding_size: None,
+            },
+        },
+    ],
+    label: Some("object picking bind group layout"),
+};
+
+pub fn create_solid_pipeline(device: &wgpu::Device) -> wgpu::RenderPipeline {
     // shader compiling
     let mut shader_compiler = shaderc::Compiler::new().unwrap();
-    let vert_src = include_str!("surface_shader.vert");
-    let frag_src = include_str!("surface_shader.frag");
-    let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "surface_shader.vert", "main", None).unwrap();
-    let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "surface_shader.frag", "main", None).unwrap();
+    let vert_src = include_str!("solid.vert");
+    let frag_src = include_str!("solid.frag");
+    let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "solid.vert", "main", None).unwrap();
+    let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "solid.frag", "main", None).unwrap();
     let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
     let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
     let vert_module = device.create_shader_module(vert_data);
     let frag_module = device.create_shader_module(frag_data);
 
+    let camera_bind_layout = device.create_bind_group_layout(&CAMERA_LAYOUT_DESCRIPTOR);
+    let picking_bind_layout = device.create_bind_group_layout(&PICKING_LAYOUT_DESCRIPTOR);
+    let texture_bind_layout = device.create_bind_group_layout(&TEXTURE_LAYOUT_DESCRIPTOR);
     let render_pipeline_layout =
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             push_constant_ranges: &[],
-            bind_group_layouts: &[&camera_bind_layout, &texture_bind_layout]
+            bind_group_layouts: &[&camera_bind_layout, &picking_bind_layout, &texture_bind_layout]
         });
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{

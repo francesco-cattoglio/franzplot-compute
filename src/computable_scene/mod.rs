@@ -1,11 +1,10 @@
 pub mod compute_block;
 pub mod compute_chain;
 pub mod globals;
-pub mod scene_renderer;
 
 use globals::Globals;
 use compute_chain::ComputeChain;
-use scene_renderer::SceneRenderer;
+use crate::rendering::SceneRenderer;
 use compute_block::BlockCreationError;
 use crate::node_graph::NodeGraph;
 use crate::node_graph::{ GraphError, Severity };

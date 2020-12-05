@@ -1,6 +1,7 @@
 use crate::computable_scene::*;
 use crate::device_manager::Manager;
 use crate::rendering::camera::{ Camera, CameraController };
+use crate::rendering::SceneRenderer;
 use crate::node_graph;
 use serde::{Serialize, Deserialize};
 
@@ -66,7 +67,7 @@ impl State {
         let computable_scene = ComputableScene {
             globals: globals::Globals::new(&manager.device, vec![], vec![]),
             chain: compute_chain::ComputeChain::new(),
-            renderer: scene_renderer::SceneRenderer::new(&manager),
+            renderer: SceneRenderer::new(&manager),
         };
         let camera = Camera::from_height_width(manager.sc_desc.height as f32, manager.sc_desc.width as f32);
         let camera_controller = CameraController::new(4.0, 1.0);
