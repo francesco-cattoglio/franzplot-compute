@@ -13,6 +13,7 @@ pub struct ComputableScene{
     pub globals: Globals,
     pub chain: ComputeChain,
     pub renderer: SceneRenderer,
+    pub mouse_pos: [f32; 2],
 }
 
 impl ComputableScene {

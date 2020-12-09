@@ -4,6 +4,7 @@
 layout(location=0) in vec2 v_uv_coords;
 layout(location=1) in vec3 v_n_vector;
 layout(location=2) flat in int object_id;
+layout(location=3) in vec2 mouse_pos;
 
 layout(location=0) out vec4 f_color;
 
@@ -17,7 +18,7 @@ layout(set = 1, binding = 0) buffer Picking {
 void main() {
     int pixel_x = int(gl_FragCoord.x);
     int pixel_y = int(gl_FragCoord.y);
-    if (pixel_x == 100 && pixel_y == 100) {
+    if (pixel_x == mouse_pos.x && pixel_y == mouse_pos.y) {
         picking[object_id] = gl_FragCoord.z;
     }
 //    f_color = texture(sampler2D(t_diffuse, s_diffuse), v_uv_coords);

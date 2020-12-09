@@ -5,12 +5,14 @@ use crate::device_manager;
 use crate::computable_scene::compute_chain::ComputeChain;
 use crate::computable_scene::compute_block::{ComputeBlock, RenderingData};
 use wgpu::util::DeviceExt;
-use glam::Mat4;
+use glam::{Mat4, Vec2};
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct Uniforms {
     view_proj: Mat4,
+    mouse_pos: Vec2,
+    _padding: Vec2,
 }
 
 unsafe impl bytemuck::Pod for Uniforms {}
@@ -20,11 +22,18 @@ impl Uniforms {
     fn new() -> Self {
         Self {
             view_proj: Mat4::identity(),
+            mouse_pos: Vec2::new(0.0, 0.0),
+            _padding: Vec2::new(0.0, 0.0),
         }
     }
 
     fn update_view_proj(&mut self, camera: &Camera) {
         self.view_proj = camera.build_view_projection_matrix();
+    }
+
+    fn update_mouse_pos(&mut self, mouse_pos: &[f32; 2]) {
+        self.mouse_pos.x = mouse_pos[0];
+        self.mouse_pos.y = mouse_pos[1];
     }
 }
 
@@ -51,10 +60,7 @@ impl SceneRenderer {
     // TODO: when we manage to get the diffuse texture in its own class,
     // change this to only take a &wgpu::Device as input
     pub fn new(manager: &device_manager::Manager) -> Self {
-        let camera = Camera::from_height_width(manager.sc_desc.width as f32, manager.sc_desc.height as f32);
-
-        let mut uniforms = Uniforms::new();
-        uniforms.update_view_proj(&camera);
+        let uniforms = Uniforms::new();
 
         // the object picking buffer is null because the scene is empty
         let picking_buffer = manager.device.create_buffer(&wgpu::BufferDescriptor {
@@ -104,7 +110,6 @@ impl SceneRenderer {
         //});
 
         let pipeline_solid = create_solid_pipeline(&manager.device);
-        let output_texture = texture::Texture::create_output_texture(&manager.device, wgpu::Extent3d::default());
         let depth_texture = texture::Texture::create_depth_texture(&manager.device, wgpu::Extent3d::default());
 
         let clear_color = wgpu::Color::BLACK;
@@ -190,10 +195,11 @@ impl SceneRenderer {
         self.renderables.push(render_bundle);
     }
 
-    pub fn render(&self, manager: &device_manager::Manager, target_texture: &wgpu::TextureView, camera: &Camera) {
+    pub fn render(&self, manager: &device_manager::Manager, target_texture: &wgpu::TextureView, camera: &Camera, mouse_pos: &[f32; 2]) {
         // update the uniform buffer containing the camera
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(&camera);
+        uniforms.update_mouse_pos(mouse_pos);
         manager.queue.write_buffer(&self.camera_uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
 
         let initialize_picking = vec![std::f32::NAN; self.renderables.len()];
@@ -237,7 +243,7 @@ impl SceneRenderer {
         if !self.renderables.is_empty() {
             use crate::util::copy_buffer_as_f32;
             let picking_distances = copy_buffer_as_f32(&self.picking_buffer, &manager.device);
-            //dbg!(picking_distances);
+            dbg!(picking_distances);
         }
     }
 }

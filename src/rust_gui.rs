@@ -224,6 +224,9 @@ impl Gui {
         ui.text(im_str!("Scene side"));
         // the scene shall use the whole remaining content space available
         let available_region = ui.content_region_avail();
+
+        // need a way to actually read and set the mouse position
+        state.app.computable_scene.mouse_pos = [300.0, 200.0];
         ImageButton::new(self.scene_texture_id, available_region)
             .frame_padding(0)
             .build(ui);
