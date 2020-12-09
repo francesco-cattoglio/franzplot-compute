@@ -75,7 +75,7 @@ impl Gui {
         }
     }
 
-    pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State) {
+    pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State) -> Option<[f32; 2]> {
         // create main window
         let window_begun = Window::new(im_str!("Rust window"))
             .no_decoration()
@@ -84,6 +84,8 @@ impl Gui {
             .size(size, Condition::Always)
             .position([0.0, 0.0], Condition::Always)
             .begin(ui);
+
+        let mut requested_scene_size = None;
 
         if let Some(window_token) = window_begun {
             // menu bar
@@ -116,7 +118,7 @@ impl Gui {
 
                 TabItem::new(im_str!("Scene"))
                     .build(ui, || {
-                        self.render_scene_tab(ui, state);
+                        requested_scene_size = Some(self.render_scene_tab(ui, state));
                     });
 
                 TabItem::new(im_str!("Settings"))
@@ -128,6 +130,7 @@ impl Gui {
             }
             window_token.end(ui);
         }
+        requested_scene_size
     }
 
     fn render_editor_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
@@ -193,7 +196,7 @@ impl Gui {
         ui.columns(1, im_str!("editor columns"), false);
     }
 
-    fn render_scene_tab(&self, ui: &Ui<'_>, state: &mut State) {
+    fn render_scene_tab(&self, ui: &Ui<'_>, state: &mut State) -> [f32; 2] {
         ui.columns(2, im_str!("scene columns"), false);
         ui.set_current_column_width(120.0);
         ui.text(im_str!("Globals side"));
@@ -219,6 +222,7 @@ impl Gui {
         width_token.pop(ui);
         ui.next_column();
         ui.text(im_str!("Scene side"));
+        // the scene shall use the whole remaining content space available
         let available_region = ui.content_region_avail();
         ImageButton::new(self.scene_texture_id, available_region)
             .frame_padding(0)
@@ -227,9 +231,9 @@ impl Gui {
             let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Left, 0.0);
             ui.reset_mouse_drag_delta(MouseButton::Left);
             state.app.camera_controller.process_mouse(mouse_delta[0], mouse_delta[1]);
-
         }
         ui.columns(1, im_str!("scene columns"), false);
+        available_region
     }
 
     fn render_settings_tab(&self, ui: &Ui<'_>) {

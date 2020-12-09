@@ -41,8 +41,6 @@ pub struct SceneRenderer {
     pipeline_solid: wgpu::RenderPipeline,
     picking_buffer: wgpu::Buffer,
     renderables: Vec<wgpu::RenderBundle>,
-    texture: texture::Texture,
-    texture_bind_group: wgpu::BindGroup,
     camera_uniform_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     depth_texture: texture::Texture,
@@ -50,6 +48,8 @@ pub struct SceneRenderer {
 }
 
 impl SceneRenderer {
+    // TODO: when we manage to get the diffuse texture in its own class,
+    // change this to only take a &wgpu::Device as input
     pub fn new(manager: &device_manager::Manager) -> Self {
         let camera = Camera::from_height_width(manager.sc_desc.width as f32, manager.sc_desc.height as f32);
 
@@ -83,29 +83,29 @@ impl SceneRenderer {
             ],
             label: Some("Camera bind group"),
         });
-        use anyhow::Context;
         let path = std::path::Path::new("./resources/grid_color.png");
-        let diffuse_texture = texture::Texture::load(&manager.device, &manager.queue, path, "cube-diffuse").context("failed to load texture").unwrap();
+        //let diffuse_texture = texture::Texture::load(&manager.device, &manager.queue, path, "cube-diffuse").context("failed to load texture").unwrap();
 
-        let texture_bind_layout =
-            manager.device.create_bind_group_layout(&TEXTURE_LAYOUT_DESCRIPTOR);
-        let texture_bind_group = manager.device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &texture_bind_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
-                },
-            ],
-            label: Some("all_materials")
-        });
+        //let texture_bind_layout =
+        //    manager.device.create_bind_group_layout(&TEXTURE_LAYOUT_DESCRIPTOR);
+        //let texture_bind_group = manager.device.create_bind_group(&wgpu::BindGroupDescriptor {
+        //    layout: &texture_bind_layout,
+        //    entries: &[
+        //        wgpu::BindGroupEntry {
+        //            binding: 0,
+        //            resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
+        //        },
+        //        wgpu::BindGroupEntry {
+        //            binding: 1,
+        //            resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
+        //        },
+        //    ],
+        //    label: Some("all_materials")
+        //});
 
         let pipeline_solid = create_solid_pipeline(&manager.device);
-        let depth_texture = texture::Texture::create_depth_texture(&manager.device, &manager.sc_desc, "depth_texture");
+        let output_texture = texture::Texture::create_output_texture(&manager.device, wgpu::Extent3d::default());
+        let depth_texture = texture::Texture::create_depth_texture(&manager.device, wgpu::Extent3d::default());
 
         let clear_color = wgpu::Color::BLACK;
 
@@ -115,13 +115,15 @@ impl SceneRenderer {
             picking_buffer,
             clear_color,
             renderables,
-            texture: diffuse_texture,
-            texture_bind_group,
             depth_texture,
             camera_uniform_buffer,
             camera_bind_group,
             pipeline_solid,
         }
+    }
+
+    pub fn update_depth_buffer_size(&mut self, device: &wgpu::Device, size: wgpu::Extent3d) {
+        self.depth_texture = texture::Texture::create_depth_texture(device, size);
     }
 
     pub fn update_renderables(&mut self, device: &wgpu::Device, chain: &ComputeChain,) {
@@ -177,7 +179,7 @@ impl SceneRenderer {
         render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..));
         render_bundle_encoder.set_bind_group(0, &self.camera_bind_group, &[]);
         render_bundle_encoder.set_bind_group(1, picking_bind_group, &[]);
-        render_bundle_encoder.set_bind_group(2, &self.texture_bind_group, &[]);
+//        render_bundle_encoder.set_bind_group(2, &self.texture_bind_group, &[]);
         // encode the object_id in the index used for the rendering. The shader will be able to
         // recover the id by reading the gl_InstanceIndex variable
         dbg!(object_id);
@@ -235,7 +237,7 @@ impl SceneRenderer {
         if !self.renderables.is_empty() {
             use crate::util::copy_buffer_as_f32;
             let picking_distances = copy_buffer_as_f32(&self.picking_buffer, &manager.device);
-            dbg!(picking_distances);
+            //dbg!(picking_distances);
         }
     }
 }

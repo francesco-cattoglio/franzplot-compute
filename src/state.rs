@@ -42,6 +42,9 @@ pub struct AppState {
 }
 
 impl AppState {
+    pub fn update_depth_buffer(&mut self, size: wgpu::Extent3d) {
+        self.computable_scene.renderer.update_depth_buffer_size(&self.manager.device, size);
+    }
     pub fn update_scene(&mut self, target_texture: &wgpu::TextureView, frame_duration: std::time::Duration) {
         // TODO: make sure this is done only when it is really needed!
         self.computable_scene.globals.update_buffer(&self.manager.queue);

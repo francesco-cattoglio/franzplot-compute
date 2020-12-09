@@ -115,31 +115,16 @@ fn main() {
         .. Default::default()
     };
     let mut renderer = imgui_wgpu::Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, renderer_config);
-    use wgpu::TextureUsage;
-    let scene_texture_config = imgui_wgpu::TextureConfig {
-        dimension: wgpu::TextureDimension::D2,
-        size: wgpu::Extent3d {
-            width: 1280,
-            height: 800,
-            depth: 1,
-        },
-        usage: TextureUsage::OUTPUT_ATTACHMENT | TextureUsage::SAMPLED | TextureUsage::COPY_DST,
-        mip_level_count: 1,
-        sample_count: 1,
-        label: Some("Scene rendering texture"),
-        format: None, // when set to None, this will use the same format as the renderer
-    };
-
-    let scene_texture = imgui_wgpu::Texture::new(&device_manager.device, &renderer, scene_texture_config);
-    let scene_texture_id = renderer.textures.insert(scene_texture);
+    let scene_texture = rendering::texture::Texture::create_output_texture(&device_manager.device, wgpu::Extent3d::default());
+    let scene_texture_id = renderer.textures.insert(scene_texture.into());
 
     let mut rust_gui = rust_gui::Gui::new(scene_texture_id, event_loop.create_proxy());
-
-    let mut state = state::State::new(device_manager);
 
     let mut frame_duration = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
     let mut modifiers_state = winit::event::ModifiersState::default();
+
+    let mut state = state::State::new(device_manager);
 
     event_loop.run(move |event, _, control_flow| {
         // BEWARE: keep in mind that if you go multi-window
@@ -158,9 +143,6 @@ fn main() {
             }
             // Emitted when all of the event loop's input events have been processed and redraw processing is about to begin.
             Event::MainEventsCleared => {
-                // update the computable scene
-                let scene_texture_view = renderer.textures.get(scene_texture_id).unwrap().view();
-                state.app.update_scene(scene_texture_view, frame_duration);
                 // prepare gui rendering
                 platform
                     .prepare_frame(imgui.io_mut(), &window)
@@ -192,7 +174,33 @@ fn main() {
                 // actual imgui rendering
                 let ui = imgui.frame();
                 let size = window.inner_size().to_logical(hidpi_factor);
-                rust_gui.render(&ui, [size.width, size.height], &mut state);
+                let requested_logical_size = rust_gui.render(&ui, [size.width, size.height], &mut state);
+                let requested_physical_size : Option<winit::dpi::PhysicalSize<u32>> = requested_logical_size
+                    .map(|imgui_size| {
+                        let logical_size = winit::dpi::LogicalSize::new(imgui_size[0], imgui_size[1]);
+                        logical_size.to_physical(hidpi_factor)
+                    });
+                // after the GUI render command, we know if we need to render the scene or not
+                if let Some(physical_size) = requested_physical_size {
+                    let scene_texture = renderer.textures.get(scene_texture_id).unwrap();
+                    // first, check if the scene size has changed. If so, re-create the scene
+                    // texture and depth buffer
+                    if physical_size.width != scene_texture.width() || physical_size.height != scene_texture.height() {
+                        let texture_size = wgpu::Extent3d {
+                            height: physical_size.height,
+                            width: physical_size.width,
+                            depth: 1,
+                        };
+                        dbg!(texture_size);
+                        dbg!(requested_logical_size);
+                        state.app.update_depth_buffer(texture_size);
+                        let new_scene_texture = rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size);
+                        renderer.textures.replace(scene_texture_id, new_scene_texture.into()).unwrap();
+                    }
+                    // update the scene
+                    let scene_texture_view = renderer.textures.get(scene_texture_id).unwrap().view();
+                    state.app.update_scene(scene_texture_view, frame_duration);
+                }
 
                 platform.prepare_render(&ui, &window);
                 renderer
