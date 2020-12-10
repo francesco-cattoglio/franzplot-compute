@@ -32,6 +32,7 @@ fn print_usage(program: &str, opts: Options) {
 pub enum CustomEvent {
     OpenFile(std::path::PathBuf),
     SaveFile(std::path::PathBuf),
+    MouseFreeze,
     CurrentlyUnused,
 }
 
@@ -88,6 +89,8 @@ fn main() {
     imgui.set_ini_filename(None);
 
     let mut camera_inputs = rendering::camera::InputState::default();
+    let mut cursor_position = winit::dpi::PhysicalPosition::<f64>::new(0.0, 0.0);
+    let mut mouse_frozen = false;
 
     let font_size = (12.0 * hidpi_factor) as f32;
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
@@ -219,6 +222,9 @@ fn main() {
             Event::RedrawEventsCleared => {
                 // If we are dragging onto something that requires the mouse pointer to stay fixed,
                 // this is the moment in which we move it back to its old position.
+                if mouse_frozen {
+                    window.set_cursor_position(cursor_position).unwrap();
+                }
                 camera_inputs.reset_deltas();
             }
             // Emitted when an event is sent from EventLoopProxy::send_event
@@ -232,6 +238,9 @@ fn main() {
                     CustomEvent::OpenFile(path_buf) => {
                         state.user.read_from_file(&path_buf);
                     },
+                    CustomEvent::MouseFreeze => {
+                        mouse_frozen = true;
+                    }
                     CustomEvent::CurrentlyUnused => println!("received a custom user event")
                 }
             }
@@ -255,6 +264,12 @@ fn main() {
                     // if the window was resized, we need to resize the swapchain as well!
                     Event::WindowEvent{ event: WindowEvent::Resized(physical_size), .. } => {
                         state.app.manager.resize(physical_size);
+                    }
+                    Event::WindowEvent{ event: WindowEvent::CursorMoved { position, .. }, ..} => {
+                        // put a safety un-freeze feature, in case we mess something up wrt releasing the mouse
+                        if !mouse_frozen {
+                            cursor_position = position;
+                        }
                     }
                     Event::WindowEvent{ event: WindowEvent::MouseInput { .. }, ..} => {
                         // put a safety un-freeze feature, in case we mess something up wrt releasing the mouse

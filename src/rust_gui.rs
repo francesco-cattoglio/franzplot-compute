@@ -230,10 +230,10 @@ impl Gui {
         ImageButton::new(self.scene_texture_id, available_region)
             .frame_padding(0)
             .build(ui);
-        if ui.is_item_active() {
-            let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Left, 0.0);
-            ui.reset_mouse_drag_delta(MouseButton::Left);
+        if ui.is_item_activated() {
+            self.winit_proxy.send_event(super::CustomEvent::MouseFreeze).unwrap();
         }
+        state.app.camera_enabled = ui.is_item_hovered();
         ui.columns(1, im_str!("scene columns"), false);
         available_region
     }

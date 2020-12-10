@@ -36,6 +36,7 @@ impl UserState {
 
 pub struct AppState {
     pub camera_controller: Box<dyn camera::Controller>,
+    pub camera_enabled: bool,
     pub camera: camera::Camera, // we might want to store camera position in user state
     pub manager: Manager,
     pub computable_scene: ComputableScene,
@@ -49,7 +50,9 @@ impl AppState {
         // TODO: make sure this is done only when it is really needed!
         self.computable_scene.globals.update_buffer(&self.manager.queue);
         self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
-        self.camera_controller.update_camera(&mut self.camera, camera_inputs);
+        if self.camera_enabled {
+            self.camera_controller.update_camera(&mut self.camera, camera_inputs);
+        }
         self.computable_scene.renderer.update_view_proj(self.camera.build_view_projection_matrix());
         // after updating everything, redraw the scene to the texture
         self.computable_scene.renderer.render(&self.manager, target_texture);
@@ -79,6 +82,7 @@ impl State {
         let app = AppState {
             computable_scene,
             camera,
+            camera_enabled: false,
             camera_controller,
             manager
         };
