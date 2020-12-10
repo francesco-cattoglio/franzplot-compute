@@ -233,7 +233,6 @@ impl Gui {
         if ui.is_item_active() {
             let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Left, 0.0);
             ui.reset_mouse_drag_delta(MouseButton::Left);
-            state.app.camera_controller.process_mouse(mouse_delta[0], mouse_delta[1]);
         }
         ui.columns(1, im_str!("scene columns"), false);
         available_region

@@ -130,7 +130,7 @@ impl SceneRenderer {
 
         // if the buffer used for object picking is not big enough, resize it (i.e create a new one)
         if rendering_data.len() > self.picking_buffer_length {
-            let (picking_buffer, picking_bind_layout, picking_bind_group) = create_picking_buffer(device, rendering_data.len());
+            let (picking_buffer, _picking_bind_layout, picking_bind_group) = create_picking_buffer(device, rendering_data.len());
             self.picking_buffer_length = rendering_data.len();
             self.picking_buffer = picking_buffer;
             self.picking_bind_group = picking_bind_group;
@@ -221,7 +221,7 @@ impl SceneRenderer {
         if !self.renderables.is_empty() {
             use crate::util::copy_buffer_as_f32;
             let picking_distances = copy_buffer_as_f32(&self.picking_buffer, &manager.device);
-            dbg!(picking_distances);
+            //dbg!(picking_distances);
         }
     }
 }

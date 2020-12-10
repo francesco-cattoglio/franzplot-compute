@@ -1,6 +1,6 @@
 use crate::computable_scene::*;
 use crate::device_manager::Manager;
-use crate::rendering::camera::{ Camera, CameraController };
+use crate::rendering::camera;
 use crate::rendering::SceneRenderer;
 use crate::node_graph;
 use serde::{Serialize, Deserialize};
@@ -35,8 +35,8 @@ impl UserState {
 }
 
 pub struct AppState {
-    pub camera_controller: CameraController,
-    pub camera: Camera, // we might want to store camera position in user state
+    pub camera_controller: Box<dyn camera::Controller>,
+    pub camera: camera::Camera, // we might want to store camera position in user state
     pub manager: Manager,
     pub computable_scene: ComputableScene,
 }
@@ -45,11 +45,11 @@ impl AppState {
     pub fn update_depth_buffer(&mut self, size: wgpu::Extent3d) {
         self.computable_scene.renderer.update_depth_buffer_size(&self.manager.device, size);
     }
-    pub fn update_scene(&mut self, target_texture: &wgpu::TextureView, frame_duration: std::time::Duration) {
+    pub fn update_scene(&mut self, target_texture: &wgpu::TextureView, camera_inputs: &camera::InputState) {
         // TODO: make sure this is done only when it is really needed!
         self.computable_scene.globals.update_buffer(&self.manager.queue);
         self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
-        self.camera_controller.update_camera(&mut self.camera, frame_duration);
+        self.camera_controller.update_camera(&mut self.camera, camera_inputs);
         self.computable_scene.renderer.update_view_proj(self.camera.build_view_projection_matrix());
         // after updating everything, redraw the scene to the texture
         self.computable_scene.renderer.render(&self.manager, target_texture);
@@ -74,8 +74,8 @@ impl State {
             renderer: SceneRenderer::new(&manager.device),
             mouse_pos: [0.0, 0.0],
         };
-        let camera = Camera::from_height_width(manager.sc_desc.height as f32, manager.sc_desc.width as f32);
-        let camera_controller = CameraController::new(4.0, 1.0);
+        let camera = camera::Camera::from_height_width(manager.sc_desc.height as f32, manager.sc_desc.width as f32);
+        let camera_controller = Box::new(camera::VTKController::new(0.015, 0.015, 0.03));
         let app = AppState {
             computable_scene,
             camera,

@@ -87,6 +87,8 @@ fn main() {
     );
     imgui.set_ini_filename(None);
 
+    let mut camera_inputs = rendering::camera::InputState::default();
+
     let font_size = (12.0 * hidpi_factor) as f32;
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
 
@@ -199,7 +201,7 @@ fn main() {
                     }
                     // update the scene
                     let scene_texture_view = renderer.textures.get(scene_texture_id).unwrap().view();
-                    state.app.update_scene(scene_texture_view, frame_duration);
+                    state.app.update_scene(scene_texture_view, &camera_inputs);
                 }
 
                 platform.prepare_render(&ui, &window);
@@ -217,6 +219,7 @@ fn main() {
             Event::RedrawEventsCleared => {
                 // If we are dragging onto something that requires the mouse pointer to stay fixed,
                 // this is the moment in which we move it back to its old position.
+                camera_inputs.reset_deltas();
             }
             // Emitted when an event is sent from EventLoopProxy::send_event
             // We are not currently using it, but this might become useful for issuing commands
@@ -269,6 +272,20 @@ fn main() {
                             } else if modifiers_state.ctrl() {
                                 rust_gui.issue_undo(&mut state, imgui.time());
                             }
+                        }
+                    }
+                    Event::DeviceEvent{ event: DeviceEvent::MouseMotion { delta }, ..} => {
+                        camera_inputs.mouse_motion = delta;
+                    }
+                    Event::DeviceEvent{ event: DeviceEvent::MouseWheel { delta }, ..} => {
+                        camera_inputs.mouse_wheel = delta;
+                    }
+                    Event::DeviceEvent{ event: DeviceEvent::Button {button, state }, .. } => {
+                        let pressed = state == ElementState::Pressed;
+                        match button {
+                            1 => camera_inputs.mouse_left_click = pressed,
+                            3 => camera_inputs.mouse_right_click = pressed,
+                            _ => {},
                         }
                     }
 

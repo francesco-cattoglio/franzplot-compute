@@ -3,10 +3,9 @@ use winit::event::*;
 
 #[derive(Debug)]
 pub struct Camera {
-    pub position: Vec3,
-    yaw: f32,
-    pitch: f32,
-    pub up: Vec3,
+    eye: Vec3,
+    target: Vec3,
+    up: Vec3,
     pub aspect: f32,
     pub fov_y: f32,
     pub z_near: f32,
@@ -16,9 +15,8 @@ pub struct Camera {
 impl Default for Camera {
     fn default() -> Camera {
         Camera {
-            position: Vec3::new(-1.0, 0.0, 0.0),
-            yaw: 0.0,
-            pitch: 0.0,
+            eye: Vec3::new(3.0, 1.5, 1.5),
+            target: Vec3::new(0.0, 0.0, 0.0),
             aspect: 1.0,
             up: Vec3::new(0.0, 0.0, 1.0),
             fov_y: 45.0,
@@ -37,15 +35,9 @@ impl Camera {
     }
 
     pub fn build_view_projection_matrix(&self) -> Mat4 {
-        let direction =
-            Vec3::new(
-                self.yaw.cos()*self.pitch.cos(),
-                self.yaw.sin()*self.pitch.cos(),
-                self.pitch.sin(),
-            ).normalize();
         let lookat_matrix = Mat4::look_at_lh(
-            self.position,
-            self.position + direction,
+            self.eye,
+            self.target,
             self.up,
         );
         let proj_matrix = Mat4::perspective_lh(self.fov_y, self.aspect, self.z_near, self.z_far);
@@ -55,100 +47,93 @@ impl Camera {
     }
 }
 
-// TODO: camera controller movement currently depends on the frame dt. However,
-// rotation should NOT depend on it, since it depends on how many pixel I dragged
-// over the rendered scene, which kinda makes it already framerate-agnostic
-// OTOH, we might want to make it frame *dimension* agnostic!
 #[derive(Debug)]
-pub struct CameraController {
-    amount_left: f32,
-    amount_right: f32,
-    amount_forward: f32,
-    amount_backward: f32,
-    amount_up: f32,
-    amount_down: f32,
-    rotate_horizontal: f32,
-    rotate_vertical: f32,
-    speed: f32,
-    sensitivity: f32,
+pub struct InputState {
+    pub forward: bool,
+    pub back: bool,
+    pub up: bool,
+    pub down: bool,
+    pub left: bool,
+    pub right: bool,
+    pub mouse_right_click: bool,
+    pub mouse_left_click: bool,
+    pub mouse_motion: (f64, f64),
+    pub mouse_wheel: MouseScrollDelta,
 }
 
-impl CameraController {
-    pub fn new(speed: f32, sensitivity: f32) -> Self {
+impl InputState {
+    pub fn reset_deltas(&mut self) {
+        self.mouse_motion = (0.0, 0.0);
+        self.mouse_wheel = MouseScrollDelta::LineDelta(0.0, 0.0);
+    }
+}
+
+impl Default for InputState {
+    fn default() -> Self {
+        InputState {
+            mouse_wheel: MouseScrollDelta::LineDelta(0.0, 0.0),
+            forward: false,
+            back: false,
+            up: false,
+            down: false,
+            left: false,
+            right: false,
+            mouse_left_click: false,
+            mouse_right_click: false,
+            mouse_motion: (0.0, 0.0),
+        }
+    }
+}
+
+pub trait Controller {
+    fn update_camera(&self, camera: &mut Camera, inputs: &InputState);
+}
+
+#[derive(Debug)]
+pub struct VTKController {
+    sensitivity_vertical: f32,
+    sensitivity_horizontal: f32,
+    sensitivity_zoom: f32,
+    min_distance: f32,
+}
+
+impl VTKController {
+    pub fn new(sensitivity_vertical: f32, sensitivity_horizontal: f32, sensitivity_zoom: f32) -> Self {
         Self {
-            amount_left: 0.0,
-            amount_right: 0.0,
-            amount_forward: 0.0,
-            amount_backward: 0.0,
-            amount_up: 0.0,
-            amount_down: 0.0,
-            rotate_horizontal: 0.0,
-            rotate_vertical: 0.0,
-            speed,
-            sensitivity,
-        }
-    }
-
-    pub fn process_keyboard(&mut self, key: VirtualKeyCode, state: ElementState) {
-        let amount = if state == ElementState::Pressed { 1.0 } else { 0.0 };
-        match key {
-            VirtualKeyCode::W | VirtualKeyCode::Up => {
-                self.amount_forward = amount;
-            }
-            VirtualKeyCode::S | VirtualKeyCode::Down => {
-                self.amount_backward = amount;
-            }
-            VirtualKeyCode::A | VirtualKeyCode::Left => {
-                self.amount_left = amount;
-            }
-            VirtualKeyCode::D | VirtualKeyCode::Right => {
-                self.amount_right = amount;
-            }
-            VirtualKeyCode::Space => {
-                self.amount_up = amount;
-            }
-            VirtualKeyCode::LShift => {
-                self.amount_down = amount;
-            }
-            _ => {},
-        }
-    }
-
-    pub fn process_mouse(&mut self, mouse_dx: f32, mouse_dy: f32) {
-        self.rotate_horizontal = mouse_dx;
-        self.rotate_vertical = mouse_dy;
-    }
-
-    pub fn update_camera(&mut self, camera: &mut Camera, dt: std::time::Duration) {
-        let dt = dt.as_secs_f32();
-
-        // Move forward/backward and left/right
-        let (yaw_sin, yaw_cos) = camera.yaw.sin_cos();
-        let forward = Vec3::new(yaw_cos, yaw_sin, 0.0).normalize();
-        let right = Vec3::new(-yaw_sin, yaw_cos, 0.0).normalize();
-        camera.position += forward * (self.amount_forward - self.amount_backward) * self.speed * dt;
-        camera.position += right * (self.amount_right - self.amount_left) * self.speed * dt;
-
-        // Move up/down. Since we don't use roll, we can just
-        // modify the y coordinate directly.
-        camera.position.z += (self.amount_up - self.amount_down) * self.speed * dt;
-
-        // Rotate
-        camera.yaw += self.rotate_horizontal * self.sensitivity * dt;
-        camera.pitch += -self.rotate_vertical * self.sensitivity * dt;
-
-        // If process_mouse isn't called every frame, these values
-        // will not get set to zero, and the camera will rotate
-        // when moving in a non cardinal direction.
-        self.rotate_horizontal = 0.0;
-        self.rotate_vertical = 0.0;
-
-        // Keep the camera's angle from going too high/low.
-        if camera.pitch < -std::f32::consts::FRAC_PI_2 {
-            camera.pitch = -std::f32::consts::FRAC_PI_2;
-        } else if camera.pitch > std::f32::consts::FRAC_PI_2 {
-            camera.pitch = std::f32::consts::FRAC_PI_2;
+            sensitivity_horizontal,
+            sensitivity_vertical,
+            sensitivity_zoom,
+            min_distance: 0.25,
         }
     }
 }
+
+impl Controller for VTKController {
+    fn update_camera(&self, camera: &mut Camera, inputs: &InputState) {
+        let relative_pos = camera.eye - camera.target;
+        let mut distance = relative_pos.length();
+        let mut pos_on_sphere = relative_pos.normalize();
+        match inputs.mouse_wheel {
+            MouseScrollDelta::LineDelta(_x, y) => {
+                distance += y * self.sensitivity_zoom;
+                distance = distance.max(self.min_distance);
+            },
+            MouseScrollDelta::PixelDelta(physical_position) => {
+                distance += physical_position.y as f32 * self.sensitivity_zoom;
+                distance = distance.max(self.min_distance);
+            }
+        }
+        if inputs.mouse_left_click {
+            let x_delta = inputs.mouse_motion.0 as f32 * self.sensitivity_horizontal;
+            let y_delta = inputs.mouse_motion.1 as f32 * self.sensitivity_vertical;
+            let camera_right = camera.up.cross(pos_on_sphere.normalize());
+            let position_delta =  y_delta * camera.up + x_delta * camera_right;
+            // for small angles, sin(theta) = theta!
+            pos_on_sphere = (pos_on_sphere + position_delta).normalize();
+            camera.up = camera_right.cross(-pos_on_sphere).normalize();
+        }
+        camera.eye = pos_on_sphere * distance;
+    }
+}
+
 
