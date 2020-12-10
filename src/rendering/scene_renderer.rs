@@ -15,6 +15,8 @@ struct Uniforms {
     _padding: Vec2,
 }
 
+const SAMPLE_COUNT: u32 = 4;
+
 unsafe impl bytemuck::Pod for Uniforms {}
 unsafe impl bytemuck::Zeroable for Uniforms {}
 
@@ -53,6 +55,7 @@ pub struct SceneRenderer {
     camera_uniform_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     depth_texture: texture::Texture,
+    output_texture: texture::Texture,
     clear_color: wgpu::Color,
 }
 
@@ -110,7 +113,8 @@ impl SceneRenderer {
         //});
 
         let pipeline_solid = create_solid_pipeline(&manager.device);
-        let depth_texture = texture::Texture::create_depth_texture(&manager.device, wgpu::Extent3d::default());
+        let depth_texture = texture::Texture::create_depth_texture(&manager.device, wgpu::Extent3d::default(), SAMPLE_COUNT);
+        let output_texture = texture::Texture::create_output_texture(&manager.device, wgpu::Extent3d::default(), SAMPLE_COUNT);
 
         let clear_color = wgpu::Color::BLACK;
 
@@ -121,6 +125,7 @@ impl SceneRenderer {
             clear_color,
             renderables,
             depth_texture,
+            output_texture,
             camera_uniform_buffer,
             camera_bind_group,
             pipeline_solid,
@@ -128,7 +133,8 @@ impl SceneRenderer {
     }
 
     pub fn update_depth_buffer_size(&mut self, device: &wgpu::Device, size: wgpu::Extent3d) {
-        self.depth_texture = texture::Texture::create_depth_texture(device, size);
+        self.output_texture = texture::Texture::create_output_texture(device, size, SAMPLE_COUNT);
+        self.depth_texture = texture::Texture::create_depth_texture(device, size, SAMPLE_COUNT);
     }
 
     pub fn update_renderables(&mut self, device: &wgpu::Device, chain: &ComputeChain,) {
@@ -176,7 +182,7 @@ impl SceneRenderer {
                 label: Some("Render bundle encoder for RenderingData"),
                 color_formats: &[SWAPCHAIN_FORMAT],
                 depth_stencil_format: Some(DEPTH_FORMAT),
-                sample_count: 1,
+                sample_count: SAMPLE_COUNT,
             }
         );
         render_bundle_encoder.set_pipeline(&self.pipeline_solid);
@@ -195,7 +201,7 @@ impl SceneRenderer {
         self.renderables.push(render_bundle);
     }
 
-    pub fn render(&self, manager: &device_manager::Manager, target_texture: &wgpu::TextureView, camera: &Camera, mouse_pos: &[f32; 2]) {
+    pub fn render(&self, manager: &device_manager::Manager, target_view: &wgpu::TextureView, camera: &Camera, mouse_pos: &[f32; 2]) {
         // update the uniform buffer containing the camera
         let mut uniforms = Uniforms::new();
         uniforms.update_view_proj(&camera);
@@ -215,8 +221,8 @@ impl SceneRenderer {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[
                     wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment: target_texture,
-                        resolve_target: None,
+                        attachment: &self.output_texture.view,
+                        resolve_target: Some(target_view),
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(self.clear_color),
                             store: true,
@@ -248,3 +254,78 @@ impl SceneRenderer {
     }
 }
 
+
+pub fn create_solid_pipeline(device: &wgpu::Device) -> wgpu::RenderPipeline {
+    // shader compiling
+    let mut shader_compiler = shaderc::Compiler::new().unwrap();
+    let vert_src = include_str!("solid.vert");
+    let frag_src = include_str!("solid.frag");
+    let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "solid.vert", "main", None).unwrap();
+    let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "solid.frag", "main", None).unwrap();
+    let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
+    let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
+    let vert_module = device.create_shader_module(vert_data);
+    let frag_module = device.create_shader_module(frag_data);
+
+    let camera_bind_layout = device.create_bind_group_layout(&CAMERA_LAYOUT_DESCRIPTOR);
+    let picking_bind_layout = device.create_bind_group_layout(&PICKING_LAYOUT_DESCRIPTOR);
+    let texture_bind_layout = device.create_bind_group_layout(&TEXTURE_LAYOUT_DESCRIPTOR);
+    let render_pipeline_layout =
+        device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None,
+            push_constant_ranges: &[],
+            bind_group_layouts: &[&camera_bind_layout, &picking_bind_layout, &texture_bind_layout]
+        });
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
+        layout: Some(&render_pipeline_layout),
+        label: None,
+        vertex_stage: wgpu::ProgrammableStageDescriptor {
+            module: &vert_module,
+            entry_point: "main",
+        },
+        fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+            module: &frag_module,
+            entry_point: "main",
+        }),
+        rasterization_state: Some(wgpu::RasterizationStateDescriptor {
+            front_face: wgpu::FrontFace::Ccw,
+            clamp_depth: false,
+            cull_mode: wgpu::CullMode::None,
+            depth_bias: 0,
+            depth_bias_slope_scale: 0.0,
+            depth_bias_clamp: 0.0,
+        }),
+        primitive_topology: wgpu::PrimitiveTopology::TriangleList,
+        color_states: &[wgpu::ColorStateDescriptor{
+            format: SWAPCHAIN_FORMAT,
+            color_blend: wgpu::BlendDescriptor::REPLACE,
+            alpha_blend: wgpu::BlendDescriptor::REPLACE,
+            write_mask: wgpu::ColorWrite::ALL
+        }],
+        depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Less,
+            stencil: wgpu::StencilStateDescriptor {
+                front: wgpu::StencilStateFaceDescriptor::IGNORE,
+                back: wgpu::StencilStateFaceDescriptor::IGNORE,
+                read_mask: 0,
+                write_mask: 0,
+            }
+        }),
+        sample_count: SAMPLE_COUNT,
+        sample_mask: !0,
+        alpha_to_coverage_enabled: false,
+        vertex_state: wgpu::VertexStateDescriptor {
+            index_format: wgpu::IndexFormat::Uint32,
+            vertex_buffers: &[
+                wgpu::VertexBufferDescriptor {
+                    stride: std::mem::size_of::<StandardVertexData>() as wgpu::BufferAddress,
+                    step_mode: wgpu::InputStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![0 => Float4, 1 => Float4, 2 => Float2],
+                },
+            ],
+        },
+    })
+}

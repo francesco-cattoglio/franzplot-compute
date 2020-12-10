@@ -115,7 +115,7 @@ fn main() {
         .. Default::default()
     };
     let mut renderer = imgui_wgpu::Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, renderer_config);
-    let scene_texture = rendering::texture::Texture::create_output_texture(&device_manager.device, wgpu::Extent3d::default());
+    let scene_texture = rendering::texture::Texture::create_output_texture(&device_manager.device, wgpu::Extent3d::default(), 1);
     let scene_texture_id = renderer.textures.insert(scene_texture.into());
 
     let mut rust_gui = rust_gui::Gui::new(scene_texture_id, event_loop.create_proxy());
@@ -194,7 +194,7 @@ fn main() {
                         dbg!(texture_size);
                         dbg!(requested_logical_size);
                         state.app.update_depth_buffer(texture_size);
-                        let new_scene_texture = rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size);
+                        let new_scene_texture = rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
                         renderer.textures.replace(scene_texture_id, new_scene_texture.into()).unwrap();
                     }
                     // update the scene

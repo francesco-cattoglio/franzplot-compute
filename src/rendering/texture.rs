@@ -15,9 +15,9 @@ impl Texture {
     //    Self::from_image(device, queue, &img, Some(label))
     //}
 
-    pub fn create_depth_texture(device: &wgpu::Device, size: wgpu::Extent3d) -> Self {
+    pub fn create_depth_texture(device: &wgpu::Device, size: wgpu::Extent3d, sample_count: u32) -> Self {
         let descriptor = wgpu::TextureDescriptor {
-            sample_count: 1,
+            sample_count,
             dimension: wgpu::TextureDimension::D2,
             size,
             format: super::DEPTH_FORMAT,
@@ -70,9 +70,9 @@ impl Texture {
         }
     }
 
-    pub fn create_output_texture(device: &wgpu::Device, size: wgpu::Extent3d) -> Self {
+    pub fn create_output_texture(device: &wgpu::Device, size: wgpu::Extent3d, sample_count: u32) -> Self {
         let descriptor = wgpu::TextureDescriptor {
-            sample_count: 1,
+            sample_count,
             dimension: wgpu::TextureDimension::D2,
             size,
             format: super::SWAPCHAIN_FORMAT,
@@ -100,8 +100,27 @@ impl Texture {
             compare: None,
         });
 
-        let texture_bind_layout =
-            device.create_bind_group_layout(&super::TEXTURE_LAYOUT_DESCRIPTOR);
+        let texture_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    count: None,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::SampledTexture {
+                        multisampled: sample_count > 1,
+                        component_type: wgpu::TextureComponentType::Float,
+                        dimension: wgpu::TextureViewDimension::D2,
+                    },
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    count: None,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler { comparison: false },
+                },
+            ],
+            label: Some("texture bind group layout"),
+        });
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Depth texture bind group"),
             layout: &texture_bind_layout,
