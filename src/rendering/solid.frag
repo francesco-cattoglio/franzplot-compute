@@ -4,7 +4,7 @@
 layout(location=0) in vec2 v_uv_coords;
 layout(location=1) in vec3 v_n_vector;
 layout(location=2) flat in int object_id;
-layout(location=3) in vec2 mouse_pos;
+layout(location=3) flat in ivec2 mouse_pos;
 
 layout(location=0) out vec4 f_color;
 

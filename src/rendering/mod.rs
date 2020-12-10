@@ -32,36 +32,4 @@ unsafe impl bytemuck::Zeroable for StandardVertexData {}
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const SWAPCHAIN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
 
-pub const CAMERA_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
-wgpu::BindGroupLayoutDescriptor {
-    entries: &[
-        wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            count: None,
-            visibility: wgpu::ShaderStage::VERTEX,
-            ty: wgpu::BindingType::UniformBuffer {
-                dynamic: false,
-                min_binding_size: None,
-            },
-        },
-    ],
-    label: Some("camera bind group layout"),
-};
-
-pub const PICKING_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
-wgpu::BindGroupLayoutDescriptor {
-    entries: &[
-        wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            count: None,
-            visibility: wgpu::ShaderStage::FRAGMENT,
-            ty: wgpu::BindingType::StorageBuffer {
-                readonly: false,
-                dynamic: false,
-                min_binding_size: None,
-            },
-        },
-    ],
-    label: Some("object picking bind group layout"),
-};
 

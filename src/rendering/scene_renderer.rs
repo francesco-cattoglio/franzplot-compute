@@ -1,18 +1,17 @@
-use crate::rendering::camera::Camera;
 use crate::rendering::texture;
 use crate::rendering::*;
 use crate::device_manager;
 use crate::computable_scene::compute_chain::ComputeChain;
 use crate::computable_scene::compute_block::{ComputeBlock, RenderingData};
 use wgpu::util::DeviceExt;
-use glam::{Mat4, Vec2};
+use glam::Mat4;
 
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct Uniforms {
     view_proj: Mat4,
-    mouse_pos: Vec2,
-    _padding: Vec2,
+    mouse_pos: [i32; 2],
+    _padding: [f32; 2],
 }
 
 const SAMPLE_COUNT: u32 = 4;
@@ -24,110 +23,87 @@ impl Uniforms {
     fn new() -> Self {
         Self {
             view_proj: Mat4::identity(),
-            mouse_pos: Vec2::new(0.0, 0.0),
-            _padding: Vec2::new(0.0, 0.0),
+            mouse_pos: [0, 0],
+            _padding: [0.0, 0.0],
         }
-    }
-
-    fn update_view_proj(&mut self, camera: &Camera) {
-        self.view_proj = camera.build_view_projection_matrix();
-    }
-
-    fn update_mouse_pos(&mut self, mouse_pos: &[f32; 2]) {
-        self.mouse_pos.x = mouse_pos[0];
-        self.mouse_pos.y = mouse_pos[1];
     }
 }
 
-// Approximative code structure:
-// we get a "surface model" object which will contain:
-// - the index buffer for out surface
-// - a material to use
-// - either the output of our surface compute node used as a vertex buffer,
-//   plus some normals informations
-// - or a shader that computes normals on the fly (can be tricky, just imagine
-// the issues for normal computation for a parametrix sphere or for z=sqrt(x + y))
-
+/// The SceneRenderer is the structure responsible for rendeding the results
+/// provided by a ComputeChain.
+///
+/// This is meant to be as much self-sufficient as possible. It holds its own
+/// multisampled depth buffer and target buffer, its own rendering pipeline
+/// and everything else that is needed for producing the image of the scene
+/// that imgui picks up and shows to the user.
+///
 pub struct SceneRenderer {
     pipeline_solid: wgpu::RenderPipeline,
+    picking_buffer_length: usize,
     picking_buffer: wgpu::Buffer,
+    picking_bind_group: wgpu::BindGroup,
     renderables: Vec<wgpu::RenderBundle>,
-    camera_uniform_buffer: wgpu::Buffer,
-    camera_bind_group: wgpu::BindGroup,
+    uniforms: Uniforms,
+    uniforms_buffer: wgpu::Buffer,
+    uniforms_bind_group: wgpu::BindGroup,
     depth_texture: texture::Texture,
     output_texture: texture::Texture,
-    clear_color: wgpu::Color,
 }
 
 impl SceneRenderer {
-    // TODO: when we manage to get the diffuse texture in its own class,
-    // change this to only take a &wgpu::Device as input
-    pub fn new(manager: &device_manager::Manager) -> Self {
+    pub fn new(device: &wgpu::Device) -> Self {
+        // the object picking buffer is initially created with a reasonable default length
+        // If the user displays more than this many objects, the buffer will get resized.
+        let picking_buffer_length = 16;
+        let (picking_buffer, picking_bind_layout, picking_bind_group) = create_picking_buffer(device, picking_buffer_length);
+
+        // set up uniforms
         let uniforms = Uniforms::new();
-
-        // the object picking buffer is null because the scene is empty
-        let picking_buffer = manager.device.create_buffer(&wgpu::BufferDescriptor {
-            mapped_at_creation: false,
-            label: None,
-            size: 0,
-            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::STORAGE,
-        });
-        let picking_bind_layout =
-            manager.device.create_bind_group_layout(&PICKING_LAYOUT_DESCRIPTOR);
-
-        let camera_uniform_buffer = manager.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let uniforms_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&[uniforms]),
             usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
         });
-        let camera_bind_layout =
-            manager.device.create_bind_group_layout(&CAMERA_LAYOUT_DESCRIPTOR);
-        let camera_bind_group = manager.device.create_bind_group(&wgpu::BindGroupDescriptor{
-            layout: &camera_bind_layout,
+        let uniforms_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    count: None,
+                    visibility: wgpu::ShaderStage::VERTEX,
+                    ty: wgpu::BindingType::UniformBuffer {
+                        dynamic: false,
+                        min_binding_size: None,
+                    },
+                },
+            ],
+            label: Some("uniforms bind group layout"),
+        });
+        let uniforms_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
+            layout: &uniforms_bind_layout,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer(camera_uniform_buffer.slice(..)),
+                    resource: wgpu::BindingResource::Buffer(uniforms_buffer.slice(..)),
                 },
             ],
-            label: Some("Camera bind group"),
+            label: Some("Uniforms bind group"),
         });
-        let path = std::path::Path::new("./resources/grid_color.png");
-        //let diffuse_texture = texture::Texture::load(&manager.device, &manager.queue, path, "cube-diffuse").context("failed to load texture").unwrap();
 
-        //let texture_bind_layout =
-        //    manager.device.create_bind_group_layout(&TEXTURE_LAYOUT_DESCRIPTOR);
-        //let texture_bind_group = manager.device.create_bind_group(&wgpu::BindGroupDescriptor {
-        //    layout: &texture_bind_layout,
-        //    entries: &[
-        //        wgpu::BindGroupEntry {
-        //            binding: 0,
-        //            resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
-        //        },
-        //        wgpu::BindGroupEntry {
-        //            binding: 1,
-        //            resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
-        //        },
-        //    ],
-        //    label: Some("all_materials")
-        //});
-
-        let pipeline_solid = create_solid_pipeline(&manager.device);
-        let depth_texture = texture::Texture::create_depth_texture(&manager.device, wgpu::Extent3d::default(), SAMPLE_COUNT);
-        let output_texture = texture::Texture::create_output_texture(&manager.device, wgpu::Extent3d::default(), SAMPLE_COUNT);
-
-        let clear_color = wgpu::Color::BLACK;
-
-        let renderables = Vec::<wgpu::RenderBundle>::new();
+        // set up pipeline and render targets
+        let pipeline_solid = create_solid_pipeline(&device, &uniforms_bind_layout, &picking_bind_layout);
+        let depth_texture = texture::Texture::create_depth_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
+        let output_texture = texture::Texture::create_output_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
 
         Self {
+            picking_buffer_length,
             picking_buffer,
-            clear_color,
-            renderables,
+            picking_bind_group,
+            renderables: Vec::new(),
             depth_texture,
             output_texture,
-            camera_uniform_buffer,
-            camera_bind_group,
+            uniforms,
+            uniforms_buffer,
+            uniforms_bind_group,
             pipeline_solid,
         }
     }
@@ -139,7 +115,8 @@ impl SceneRenderer {
 
     pub fn update_renderables(&mut self, device: &wgpu::Device, chain: &ComputeChain,) {
         self.renderables.clear();
-        // go through all blocks, chose the rendering ones,
+        // go through all blocks,
+        // chose the "Rendering" ones,
         // turn their data into a renderable
         let rendering_data: Vec<&RenderingData> = chain.valid_blocks()
             .filter_map(|block| {
@@ -150,33 +127,21 @@ impl SceneRenderer {
                 }
             })
         .collect();
-        // resize the buffer that will be used for object picking
-        // the object picking buffer is null because the scene is empty
-        self.picking_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            mapped_at_creation: false,
-            label: None,
-            size: (rendering_data.len() * std::mem::size_of::<f32>()) as wgpu::BufferAddress,
-            usage: wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::STORAGE,
-        });
-        let picking_bind_layout = device.create_bind_group_layout(&PICKING_LAYOUT_DESCRIPTOR);
-        // no need to store it, we will need to rebuild it on next scene creation anyway
-        let picking_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
-            layout: &picking_bind_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Buffer(self.picking_buffer.slice(..)),
-                },
-            ],
-            label: Some("Camera bind group"),
-        });
+
+        // if the buffer used for object picking is not big enough, resize it (i.e create a new one)
+        if rendering_data.len() > self.picking_buffer_length {
+            let (picking_buffer, picking_bind_layout, picking_bind_group) = create_picking_buffer(device, rendering_data.len());
+            self.picking_buffer_length = rendering_data.len();
+            self.picking_buffer = picking_buffer;
+            self.picking_bind_group = picking_bind_group;
+        }
 
         for (id, data) in rendering_data.iter().enumerate() {
-            self.add_renderable(device, data, &picking_bind_group, id as u32);
+            self.add_renderable(device, data, id as u32);
         }
     }
 
-    fn add_renderable(&mut self, device: &wgpu::Device, rendering_data: &RenderingData, picking_bind_group: &wgpu::BindGroup, object_id: u32) {
+    fn add_renderable(&mut self, device: &wgpu::Device, rendering_data: &RenderingData, object_id: u32) {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for RenderingData"),
@@ -188,27 +153,34 @@ impl SceneRenderer {
         render_bundle_encoder.set_pipeline(&self.pipeline_solid);
         render_bundle_encoder.set_vertex_buffer(0, rendering_data.vertex_buffer.slice(..));
         render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..));
-        render_bundle_encoder.set_bind_group(0, &self.camera_bind_group, &[]);
-        render_bundle_encoder.set_bind_group(1, picking_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
 //        render_bundle_encoder.set_bind_group(2, &self.texture_bind_group, &[]);
-        // encode the object_id in the index used for the rendering. The shader will be able to
-        // recover the id by reading the gl_InstanceIndex variable
-        dbg!(object_id);
-        render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, object_id..object_id+1);
+        // encode the object_id in the instance used for indexed rendering, so that the shader
+        // will be able to recover the id by reading the gl_InstanceIndex variable
+        let instance_id = object_id;
+        render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, instance_id..instance_id+1);
         let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
-            label: Some("Render bundle for Rendering Block"),
+            label: Some("Render bundle for a single scene object"),
         });
         self.renderables.push(render_bundle);
     }
 
-    pub fn render(&self, manager: &device_manager::Manager, target_view: &wgpu::TextureView, camera: &Camera, mouse_pos: &[f32; 2]) {
-        // update the uniform buffer containing the camera
-        let mut uniforms = Uniforms::new();
-        uniforms.update_view_proj(&camera);
-        uniforms.update_mouse_pos(mouse_pos);
-        manager.queue.write_buffer(&self.camera_uniform_buffer, 0, bytemuck::cast_slice(&[uniforms]));
+    pub fn update_view_proj(&mut self, view_proj: Mat4) {
+        self.uniforms.view_proj = view_proj;
+    }
 
-        let initialize_picking = vec![std::f32::NAN; self.renderables.len()];
+    pub fn update_mouse_pos(&mut self, mouse_pos: &[f32; 2]) {
+        self.uniforms.mouse_pos[0] = mouse_pos[0] as i32;
+        self.uniforms.mouse_pos[1] = mouse_pos[1] as i32;
+    }
+
+    pub fn render(&self, manager: &device_manager::Manager, target_view: &wgpu::TextureView) {
+        let clear_color = wgpu::Color::BLACK;
+        // update the uniforms buffer
+        manager.queue.write_buffer(&self.uniforms_buffer, 0, bytemuck::cast_slice(&[self.uniforms]));
+
+        let initialize_picking = vec![std::f32::NAN; self.picking_buffer_length];
         manager.queue.write_buffer(&self.picking_buffer, 0, bytemuck::cast_slice(&initialize_picking));
 
         // run the render pipeline
@@ -224,7 +196,7 @@ impl SceneRenderer {
                         attachment: &self.output_texture.view,
                         resolve_target: Some(target_view),
                         ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(self.clear_color),
+                            load: wgpu::LoadOp::Clear(clear_color),
                             store: true,
                         },
                     }
@@ -254,8 +226,44 @@ impl SceneRenderer {
     }
 }
 
+fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer, wgpu::BindGroupLayout, wgpu::BindGroup) {
+        let picking_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            mapped_at_creation: false,
+            label: None,
+            size: (length * std::mem::size_of::<f32>()) as wgpu::BufferAddress,
+            usage: wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::STORAGE,
+        });
+        let picking_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    count: None,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::StorageBuffer {
+                        readonly: false,
+                        dynamic: false,
+                        min_binding_size: None,
+                    },
+                },
+            ],
+            label: Some("object picking bind group layout"),
+        });
+        // no need to store it, we will need to rebuild it on next scene creation anyway
+        let picking_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
+            layout: &picking_bind_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::Buffer(picking_buffer.slice(..)),
+                },
+            ],
+            label: Some("Camera bind group"),
+        });
 
-pub fn create_solid_pipeline(device: &wgpu::Device) -> wgpu::RenderPipeline {
+        (picking_buffer, picking_bind_layout, picking_bind_group)
+}
+
+fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::BindGroupLayout, picking_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
     // shader compiling
     let mut shader_compiler = shaderc::Compiler::new().unwrap();
     let vert_src = include_str!("solid.vert");
@@ -267,13 +275,11 @@ pub fn create_solid_pipeline(device: &wgpu::Device) -> wgpu::RenderPipeline {
     let vert_module = device.create_shader_module(vert_data);
     let frag_module = device.create_shader_module(frag_data);
 
-    let camera_bind_layout = device.create_bind_group_layout(&CAMERA_LAYOUT_DESCRIPTOR);
-    let picking_bind_layout = device.create_bind_group_layout(&PICKING_LAYOUT_DESCRIPTOR);
     let render_pipeline_layout =
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             push_constant_ranges: &[],
-            bind_group_layouts: &[&camera_bind_layout, &picking_bind_layout]
+            bind_group_layouts: &[uniforms_bind_layout, picking_bind_layout]
         });
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
