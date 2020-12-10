@@ -32,52 +32,6 @@ unsafe impl bytemuck::Zeroable for StandardVertexData {}
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const SWAPCHAIN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
 
-pub const TEXTURE_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
-wgpu::BindGroupLayoutDescriptor {
-    entries: &[
-        wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            count: None,
-            visibility: wgpu::ShaderStage::FRAGMENT,
-            ty: wgpu::BindingType::SampledTexture {
-                multisampled: false,
-                component_type: wgpu::TextureComponentType::Float,
-                dimension: wgpu::TextureViewDimension::D2,
-            },
-        },
-        wgpu::BindGroupLayoutEntry {
-            binding: 1,
-            count: None,
-            visibility: wgpu::ShaderStage::FRAGMENT,
-            ty: wgpu::BindingType::Sampler { comparison: false },
-        },
-    ],
-    label: Some("texture bind group layout"),
-};
-
-pub const DEPTH_BUFFER_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
-wgpu::BindGroupLayoutDescriptor {
-    entries: &[
-        wgpu::BindGroupLayoutEntry {
-            binding: 0,
-            count: None,
-            visibility: wgpu::ShaderStage::FRAGMENT,
-            ty: wgpu::BindingType::SampledTexture {
-                multisampled: false,
-                component_type: wgpu::TextureComponentType::Float,
-                dimension: wgpu::TextureViewDimension::D2,
-            },
-        },
-        wgpu::BindGroupLayoutEntry {
-            binding: 1,
-            count: None,
-            visibility: wgpu::ShaderStage::FRAGMENT,
-            ty: wgpu::BindingType::Sampler { comparison: true },
-        },
-    ],
-    label: Some("texture bind group layout"),
-};
-
 pub const CAMERA_LAYOUT_DESCRIPTOR: wgpu::BindGroupLayoutDescriptor =
 wgpu::BindGroupLayoutDescriptor {
     entries: &[

@@ -45,8 +45,27 @@ impl Texture {
             compare: Some(wgpu::CompareFunction::LessEqual), // 5.
         });
 
-        let texture_bind_layout =
-            device.create_bind_group_layout(&super::DEPTH_BUFFER_LAYOUT_DESCRIPTOR);
+        let texture_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    count: None,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::SampledTexture {
+                        multisampled: false,
+                        component_type: wgpu::TextureComponentType::Float,
+                        dimension: wgpu::TextureViewDimension::D2,
+                    },
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    count: None,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler { comparison: true },
+                },
+            ],
+            label: Some("texture bind group layout"),
+        });
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Depth texture bind group"),
             layout: &texture_bind_layout,

@@ -269,12 +269,11 @@ pub fn create_solid_pipeline(device: &wgpu::Device) -> wgpu::RenderPipeline {
 
     let camera_bind_layout = device.create_bind_group_layout(&CAMERA_LAYOUT_DESCRIPTOR);
     let picking_bind_layout = device.create_bind_group_layout(&PICKING_LAYOUT_DESCRIPTOR);
-    let texture_bind_layout = device.create_bind_group_layout(&TEXTURE_LAYOUT_DESCRIPTOR);
     let render_pipeline_layout =
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             push_constant_ranges: &[],
-            bind_group_layouts: &[&camera_bind_layout, &picking_bind_layout, &texture_bind_layout]
+            bind_group_layouts: &[&camera_bind_layout, &picking_bind_layout]
         });
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
