@@ -55,10 +55,20 @@ pub enum AttributeContents {
         col_3: String,
         col_4: String,
     },
+    Color {
+        label: String,
+        color: [f32; 3],
+    },
+    SizeSlider {
+        label: String,
+        size: i32,
+    },
     Unknown {
         label: String,
     }
 }
+
+pub const AVAILABLE_SIZES: [f32; 9] = [0.02, 0.04, 0.06, 0.08, 0.10, 0.12, 0.16, 0.2, 0.4];
 
 impl Attribute {
     // the render function shall return bool if anything has changed.
@@ -157,6 +167,40 @@ impl Attribute {
                 width_token.pop(ui);
                 value_changed
             },
+            AttributeContents::Color {
+                label, color
+            } => {
+                imnodes::BeginStaticAttribute(id);
+                ui.text(&label);
+                ui.same_line(0.0);
+                let color_picker = ColorEdit::new(im_str!(""), EditableColor::Float3(color))
+                    .inputs(false)
+                    .options(true);
+
+                ui.set_next_item_width(80.0);
+                let value_changed = color_picker.build(ui);
+                imnodes::EndStaticAttribute();
+                value_changed
+            }
+            // TODO: decide if we want to use selectables to create sub-menu for the
+            // rendering options for each dimension.
+            AttributeContents::SizeSlider {
+                label, size
+            } => {
+                imnodes::BeginStaticAttribute(id);
+
+                ui.text(&label);
+                ui.same_line(0.0);
+                ui.set_next_item_width(55.0);
+                let display_string: ImString = format!("{}", AVAILABLE_SIZES[*size as usize]).into();
+                let value_changed = Slider::new(im_str!(""))
+                    .range(0 ..= AVAILABLE_SIZES.len() as i32 - 1)
+                    .display_format(&display_string)
+                    .flags(SliderFlags::NO_INPUT)
+                    .build(ui, size);
+                imnodes::EndStaticAttribute();
+                value_changed
+            }
             AttributeContents::Unknown {
                 ..
             } => {
@@ -220,6 +264,9 @@ pub enum NodeContents {
     },
     Rendering {
         geometry: AttributeID,
+        color: AttributeID,
+        size_0d: AttributeID,
+        size_1d: AttributeID,
     },
     Group
 }
@@ -273,9 +320,9 @@ impl NodeContents {
                 vec![interval, row_1, row_2, row_3, output,]
             },
             NodeContents::Rendering {
-                geometry,
+                geometry, color, size_0d, size_1d,
             } => {
-                vec![geometry]
+                vec![geometry, color, size_0d, size_1d]
             },
             NodeContents::Group => {
                 unimplemented!()
@@ -318,9 +365,9 @@ impl NodeContents {
                 vec![interval, row_1, row_2, row_3, output,]
             },
             NodeContents::Rendering {
-                geometry,
+                geometry, color, size_0d, size_1d,
             } => {
-                vec![geometry]
+                vec![geometry, color, size_0d, size_1d]
             },
             NodeContents::Group => {
                 unimplemented!()
@@ -403,6 +450,9 @@ impl NodeContents {
     pub fn default_rendering() -> Self {
         NodeContents::Rendering {
             geometry: 0,
+            color: 1,
+            size_0d: 2,
+            size_1d: 3,
         }
     }
 }
@@ -968,9 +1018,22 @@ impl NodeGraph {
         let attribute_slot = self.attributes.get(attribute_id as usize)?;
         // then, if the slot is here, we need to check if something is in the slot.
         let attribute = attribute_slot.as_ref()?;
-        // finally, if the attribute exists, we need to check if it is a Text one
-        if let AttributeContents::QualitySlider{ quality, .. } = &attribute.contents {
-            Some(*quality as usize)
+        // finally, if the attribute exists, we need to check if we can convert it is a usize
+        match attribute.contents {
+            AttributeContents::QualitySlider{ quality, .. } => Some(quality as usize),
+            AttributeContents::SizeSlider{ size, .. } => Some(size as usize),
+            _ => None
+        }
+    }
+
+    pub fn get_attribute_as_color(&self, attribute_id: AttributeID) -> Option<[f32; 3]> {
+        // first, we need to check if the attribute_id actually exists in our attributes map
+        let attribute_slot = self.attributes.get(attribute_id as usize)?;
+        // then, if the slot is here, we need to check if something is in the slot.
+        let attribute = attribute_slot.as_ref()?;
+        // finally, if the attribute exists, we need to check if it is a Color
+        if let AttributeContents::Color{ color, .. } = attribute.contents {
+            Some(color)
         } else {
             None
         }
@@ -1211,6 +1274,18 @@ impl NodeGraph {
             AttributeContents::InputPin {
                 label: String::from("geometry"),
                 kind: DataKind::Geometry,
+            },
+            AttributeContents::Color {
+                label: String::from("Color:"),
+                color: [1.0, 1.0, 1.0],
+            },
+            AttributeContents::SizeSlider {
+                label: String::from("Point size:"),
+                size: 5,
+            },
+            AttributeContents::SizeSlider {
+                label: String::from("Curve size:"),
+                size: 3,
             }
         ];
         let node_contents = NodeContents::default_rendering();

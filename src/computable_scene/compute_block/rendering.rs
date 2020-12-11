@@ -7,9 +7,10 @@ const LOCAL_SIZE_Y: usize = 16;
 
 #[derive(Debug)]
 pub struct RenderingBlockDescriptor {
-    // TODO: rename this to Geometry,
-    // start adding more input options like curve radius and such
     pub geometry: Option<BlockId>,
+    pub color: [f32; 3],
+    pub size_0d: usize,
+    pub size_1d: usize,
 }
 impl RenderingBlockDescriptor {
     pub fn make_block(self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
@@ -32,8 +33,9 @@ impl RenderingData {
         let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Renderer input does not exist in the block map"))?;
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
-        let curve_radius = 0.25;
-        let curve_section_points = 4usize;
+        use crate::node_graph;
+        let curve_radius = node_graph::AVAILABLE_SIZES[descriptor.size_1d];
+        let curve_section_points = (descriptor.size_1d + 2)*2;
         match input_block {
             ComputeBlock::Point(point_data) => {
                 Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim)
