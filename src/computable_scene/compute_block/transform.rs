@@ -12,8 +12,8 @@ pub struct TransformBlockDescriptor {
 }
 
 impl TransformBlockDescriptor {
-    pub fn to_block(&self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
-        Ok(ComputeBlock::Transform(TransformData::new(device, processed_blocks, &self)?))
+    pub fn make_block(self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Transform(TransformData::new(device, processed_blocks, self)?))
     }
 }
 
@@ -26,7 +26,7 @@ pub struct TransformData {
 }
 
 impl TransformData {
-    pub fn new(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: &TransformBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: TransformBlockDescriptor) -> Result<Self, BlockCreationError> {
         let geometry_id = descriptor.geometry.ok_or(BlockCreationError::InputMissing(" This Transform node \n is missing the Geometry input "))?;
         let found_element = processed_blocks.get(&geometry_id).ok_or(BlockCreationError::InternalError("Transform Geometry input does not exist in the block map"))?;
         let geometry_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;

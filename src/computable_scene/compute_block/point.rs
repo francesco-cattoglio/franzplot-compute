@@ -10,8 +10,8 @@ pub struct PointBlockDescriptor {
     pub fz: String,
 }
 impl PointBlockDescriptor {
-    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals) -> ProcessingResult {
-        Ok(ComputeBlock::Point(PointData::new(device, globals, &self)?))
+    pub fn make_block(self, device: &wgpu::Device, globals: &Globals) -> ProcessingResult {
+        Ok(ComputeBlock::Point(PointData::new(device, globals, self)?))
     }
 }
 
@@ -22,7 +22,7 @@ pub struct PointData {
     pub out_dim: Dimensions,
 }
 impl PointData {
-    pub fn new(device: &wgpu::Device, globals: &Globals, descriptor: &PointBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, globals: &Globals, descriptor: PointBlockDescriptor) -> Result<Self, BlockCreationError> {
         let out_dim = Dimensions::D0;
         let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
         let shader_source = format!(r##"

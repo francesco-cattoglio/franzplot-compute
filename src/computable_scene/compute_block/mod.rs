@@ -145,7 +145,7 @@ impl ComputeBlock {
                     end: graph.get_attribute_as_string(end).unwrap(),
                     quality: graph.get_attribute_as_usize(quality).unwrap(),
                 };
-                interval_descriptor.to_block(device, globals)
+                interval_descriptor.make_block(device, globals)
             },
             NodeContents::Point{
                 x, y, z, ..
@@ -155,7 +155,7 @@ impl ComputeBlock {
                     fy: graph.get_attribute_as_string(y).unwrap(),
                     fz: graph.get_attribute_as_string(z).unwrap(),
                 };
-                point_descriptor.to_block(device, globals)
+                point_descriptor.make_block(device, globals)
             },
             NodeContents::Curve {
                 interval, fx, fy, fz, ..
@@ -166,7 +166,7 @@ impl ComputeBlock {
                     fy: graph.get_attribute_as_string(fy).unwrap(),
                     fz: graph.get_attribute_as_string(fz).unwrap(),
                 };
-                curve_descriptor.to_block(device, globals, processed_blocks)
+                curve_descriptor.make_block(device, globals, processed_blocks)
             },
             NodeContents::Surface {
                 interval_1, interval_2, fx, fy, fz, ..
@@ -178,7 +178,7 @@ impl ComputeBlock {
                     fy: graph.get_attribute_as_string(fy).unwrap(),
                     fz: graph.get_attribute_as_string(fz).unwrap(),
                 };
-                curve_descriptor.to_block(device, globals, processed_blocks)
+                curve_descriptor.make_block(device, globals, processed_blocks)
             },
             NodeContents::Transform {
                 geometry, matrix, ..
@@ -187,7 +187,7 @@ impl ComputeBlock {
                     geometry: graph.get_attribute_as_linked_node(geometry),
                     matrix: graph.get_attribute_as_linked_node(matrix),
                 };
-                transform_descriptor.to_block(device, processed_blocks)
+                transform_descriptor.make_block(device, processed_blocks)
             },
             NodeContents::Matrix {
                 interval, row_1, row_2, row_3, ..
@@ -198,7 +198,7 @@ impl ComputeBlock {
                     row_2: graph.get_attribute_as_matrix_row(row_2).unwrap(),
                     row_3: graph.get_attribute_as_matrix_row(row_3).unwrap(),
                 };
-                matrix_descriptor.to_block(device, globals, processed_blocks)
+                matrix_descriptor.make_block(device, globals, processed_blocks)
             },
             NodeContents::Rendering {
                 geometry,
@@ -206,7 +206,7 @@ impl ComputeBlock {
                 let rendering_descriptor = RenderingBlockDescriptor {
                     geometry: graph.get_attribute_as_linked_node(geometry)
                 };
-                rendering_descriptor.to_block(device, processed_blocks)
+                rendering_descriptor.make_block(device, processed_blocks)
             },
             NodeContents::Group => {
                 unimplemented!()

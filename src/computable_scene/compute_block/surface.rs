@@ -17,8 +17,8 @@ pub struct SurfaceBlockDescriptor {
     pub fz: String,
 }
 impl SurfaceBlockDescriptor {
-    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
-        Ok(ComputeBlock::Surface(SurfaceData::new(device, globals, processed_blocks, &self)?))
+    pub fn make_block(self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Surface(SurfaceData::new(device, globals, processed_blocks, self)?))
     }
 }
 
@@ -30,7 +30,7 @@ pub struct SurfaceData {
 }
 
 impl SurfaceData {
-    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: &SurfaceBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: SurfaceBlockDescriptor) -> Result<Self, BlockCreationError> {
         let first_input_id = descriptor.interval_first.ok_or(BlockCreationError::InputMissing(" This Surface node \n is missing the first input "))?;
         let found_element = processed_blocks.get(&first_input_id).ok_or(BlockCreationError::InternalError("Surface first input does not exist in the block map"))?;
         let first_input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;

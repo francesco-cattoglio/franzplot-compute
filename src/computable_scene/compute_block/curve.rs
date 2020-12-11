@@ -14,8 +14,8 @@ pub struct CurveBlockDescriptor {
     pub fz: String,
 }
 impl CurveBlockDescriptor {
-    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
-        Ok(ComputeBlock::Curve(CurveData::new(device, globals, processed_blocks, &self)?))
+    pub fn make_block(self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Curve(CurveData::new(device, globals, processed_blocks, self)?))
     }
 }
 
@@ -29,7 +29,7 @@ pub struct CurveData {
 }
 
 impl CurveData {
-    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: &CurveBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: CurveBlockDescriptor) -> Result<Self, BlockCreationError> {
         let input_id = descriptor.interval.ok_or(BlockCreationError::InputMissing(" This Curve node \n is missing its input "))?;
         let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Curve input does not exist in the block map"))?;
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;

@@ -11,7 +11,7 @@ pub struct IntervalBlockDescriptor {
     pub name: String,
 }
 impl IntervalBlockDescriptor {
-    pub fn to_block(self, device: &wgpu::Device, globals: &Globals) -> ProcessingResult {
+    pub fn make_block(self, device: &wgpu::Device, globals: &Globals) -> ProcessingResult {
         Ok(ComputeBlock::Interval(IntervalData::new(device, globals, self)?))
     }
 }

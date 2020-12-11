@@ -15,8 +15,8 @@ pub struct MatrixBlockDescriptor {
 }
 
 impl MatrixBlockDescriptor {
-    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
-        Ok(ComputeBlock::Matrix(MatrixData::new(device, globals, processed_blocks, &self)?))
+    pub fn make_block(self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Matrix(MatrixData::new(device, globals, processed_blocks, self)?))
     }
 }
 
@@ -40,7 +40,7 @@ pub struct MatrixData {
 }
 
 impl MatrixData {
-    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
         if descriptor.interval.is_some() {
             Self::new_with_interval(device, globals, processed_blocks, descriptor)
         } else {
@@ -56,7 +56,7 @@ impl MatrixData {
             compute_pass.dispatch(1, 1, 1);
     }
 
-    fn new_with_interval(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, desc: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
+    fn new_with_interval(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, desc: MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
         let input_id = desc.interval.ok_or(BlockCreationError::InternalError("Matrix new_with_interval() called with no-interval descriptor"))?;
         let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Matrix interval input does not exist in the block map"))?;
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
@@ -134,7 +134,7 @@ void main() {{
         })
     }
 
-    fn new_without_interval(device: &wgpu::Device, globals: &Globals, desc: &MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
+    fn new_without_interval(device: &wgpu::Device, globals: &Globals, desc: MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
         let out_dim = Dimensions::D0;
         let output_buffer_size = 16 * std::mem::size_of::<f32>() as wgpu::BufferAddress;
         let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {

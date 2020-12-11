@@ -12,8 +12,8 @@ pub struct RenderingBlockDescriptor {
     pub geometry: Option<BlockId>,
 }
 impl RenderingBlockDescriptor {
-    pub fn to_block(&self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
-        Ok(ComputeBlock::Rendering(RenderingData::new(device, processed_blocks, &self)?))
+    pub fn make_block(self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Rendering(RenderingData::new(device, processed_blocks, self)?))
     }
 }
 
@@ -27,7 +27,7 @@ pub struct RenderingData {
 }
 
 impl RenderingData {
-    pub fn new(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: &RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
         let input_id = descriptor.geometry.ok_or(BlockCreationError::InputMissing(" This Renderer node \n has no input "))?;
         let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Renderer input does not exist in the block map"))?;
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
