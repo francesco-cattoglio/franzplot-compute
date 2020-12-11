@@ -33,6 +33,7 @@ pub enum CustomEvent {
     OpenFile(std::path::PathBuf),
     SaveFile(std::path::PathBuf),
     MouseFreeze,
+    MouseThaw,
     CurrentlyUnused,
 }
 
@@ -240,7 +241,10 @@ fn main() {
                     },
                     CustomEvent::MouseFreeze => {
                         mouse_frozen = true;
-                    }
+                    },
+                    CustomEvent::MouseThaw => {
+                        mouse_frozen = false;
+                    },
                     CustomEvent::CurrentlyUnused => println!("received a custom user event")
                 }
             }

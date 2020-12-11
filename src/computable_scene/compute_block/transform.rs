@@ -466,7 +466,7 @@ void main() {{
     uint index_1 = gl_GlobalInvocationID.x;
     uint index_2 = gl_GlobalInvocationID.y;
     // the only difference between the 1d->1d and the 2d->2d shader is the local_sizes and the indexing
-    uint index = gl_GlobalInvocationID.x + gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    uint index = gl_GlobalInvocationID.x + gl_NumWorkGroups.x * gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
     out_buff[index] = in_matrix[index_{which_idx}] * in_buff[index];
 }}
 "##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, which_idx=which_param);

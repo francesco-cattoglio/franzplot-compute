@@ -233,6 +233,9 @@ impl Gui {
         if ui.is_item_activated() {
             self.winit_proxy.send_event(super::CustomEvent::MouseFreeze).unwrap();
         }
+        if ui.is_item_deactivated() {
+            self.winit_proxy.send_event(super::CustomEvent::MouseThaw).unwrap();
+        }
         state.app.camera_enabled = ui.is_item_hovered();
         ui.columns(1, im_str!("scene columns"), false);
         available_region

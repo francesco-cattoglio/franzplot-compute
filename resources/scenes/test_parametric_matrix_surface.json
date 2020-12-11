@@ -1,0 +1,348 @@
+{
+  "graph": {
+    "nodes": [
+      {
+        "title": "Interval",
+        "position": [
+          165.0,
+          291.0
+        ],
+        "error": null,
+        "contents": {
+          "Interval": {
+            "variable": 0,
+            "begin": 1,
+            "end": 2,
+            "quality": 3,
+            "output": 4
+          }
+        }
+      },
+      {
+        "title": "Interval",
+        "position": [
+          193.0,
+          143.0
+        ],
+        "error": null,
+        "contents": {
+          "Interval": {
+            "variable": 9,
+            "begin": 8,
+            "end": 7,
+            "quality": 6,
+            "output": 5
+          }
+        }
+      },
+      {
+        "title": "Matrix",
+        "position": [
+          322.0,
+          375.0
+        ],
+        "error": null,
+        "contents": {
+          "Matrix": {
+            "interval": 10,
+            "row_1": 11,
+            "row_2": 12,
+            "row_3": 13,
+            "output": 14
+          }
+        }
+      },
+      {
+        "title": "Transform",
+        "position": [
+          636.0,
+          311.0
+        ],
+        "error": null,
+        "contents": {
+          "Transform": {
+            "geometry": 15,
+            "matrix": 16,
+            "output": 17
+          }
+        }
+      },
+      {
+        "title": "Surface",
+        "position": [
+          437.0,
+          168.0
+        ],
+        "error": null,
+        "contents": {
+          "Surface": {
+            "interval_1": 18,
+            "interval_2": 19,
+            "fx": 20,
+            "fy": 21,
+            "fz": 22,
+            "output": 23
+          }
+        }
+      },
+      {
+        "title": "Rendering",
+        "position": [
+          737.0,
+          189.0
+        ],
+        "error": null,
+        "contents": {
+          "Rendering": {
+            "geometry": 24
+          }
+        }
+      }
+    ],
+    "attributes": [
+      {
+        "node_id": 0,
+        "contents": {
+          "Text": {
+            "label": " name",
+            "string": "t"
+          }
+        }
+      },
+      {
+        "node_id": 0,
+        "contents": {
+          "Text": {
+            "label": "begin",
+            "string": "-1"
+          }
+        }
+      },
+      {
+        "node_id": 0,
+        "contents": {
+          "Text": {
+            "label": "  end",
+            "string": "1"
+          }
+        }
+      },
+      {
+        "node_id": 0,
+        "contents": {
+          "QualitySlider": {
+            "label": "quality",
+            "quality": 4
+          }
+        }
+      },
+      {
+        "node_id": 0,
+        "contents": {
+          "OutputPin": {
+            "label": "interval",
+            "kind": "Interval"
+          }
+        }
+      },
+      {
+        "node_id": 1,
+        "contents": {
+          "OutputPin": {
+            "label": "interval",
+            "kind": "Interval"
+          }
+        }
+      },
+      {
+        "node_id": 1,
+        "contents": {
+          "QualitySlider": {
+            "label": "quality",
+            "quality": 4
+          }
+        }
+      },
+      {
+        "node_id": 1,
+        "contents": {
+          "Text": {
+            "label": "  end",
+            "string": "1"
+          }
+        }
+      },
+      {
+        "node_id": 1,
+        "contents": {
+          "Text": {
+            "label": "begin",
+            "string": "-1"
+          }
+        }
+      },
+      {
+        "node_id": 1,
+        "contents": {
+          "Text": {
+            "label": " name",
+            "string": "s"
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "InputPin": {
+            "label": "interval",
+            "kind": "Interval"
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "MatrixRow": {
+            "col_1": "1.0",
+            "col_2": "0.0",
+            "col_3": "0.0",
+            "col_4": "0.0"
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "MatrixRow": {
+            "col_1": "0.0",
+            "col_2": "1.0",
+            "col_3": "0.0",
+            "col_4": "0.0"
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "MatrixRow": {
+            "col_1": "0.0",
+            "col_2": "0.0",
+            "col_3": "1.0",
+            "col_4": "t*t"
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "OutputPin": {
+            "label": "output",
+            "kind": "Matrix"
+          }
+        }
+      },
+      {
+        "node_id": 3,
+        "contents": {
+          "InputPin": {
+            "label": "geometry",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 3,
+        "contents": {
+          "InputPin": {
+            "label": "matrix",
+            "kind": "Matrix"
+          }
+        }
+      },
+      {
+        "node_id": 3,
+        "contents": {
+          "OutputPin": {
+            "label": "output",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 4,
+        "contents": {
+          "InputPin": {
+            "label": "interval 1",
+            "kind": "Interval"
+          }
+        }
+      },
+      {
+        "node_id": 4,
+        "contents": {
+          "InputPin": {
+            "label": "interval 2",
+            "kind": "Interval"
+          }
+        }
+      },
+      {
+        "node_id": 4,
+        "contents": {
+          "Text": {
+            "label": "fx",
+            "string": "s"
+          }
+        }
+      },
+      {
+        "node_id": 4,
+        "contents": {
+          "Text": {
+            "label": "fy",
+            "string": "t"
+          }
+        }
+      },
+      {
+        "node_id": 4,
+        "contents": {
+          "Text": {
+            "label": "fz",
+            "string": "0"
+          }
+        }
+      },
+      {
+        "node_id": 4,
+        "contents": {
+          "OutputPin": {
+            "label": "geometry",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 5,
+        "contents": {
+          "InputPin": {
+            "label": "geometry",
+            "kind": "Geometry"
+          }
+        }
+      }
+    ],
+    "links": {
+      "18": 5,
+      "16": 14,
+      "24": 17,
+      "15": 23,
+      "10": 4,
+      "19": 4
+    },
+    "free_nodes_list": [],
+    "free_attributes_list": []
+  },
+  "globals_names": [],
+  "globals_init_values": []
+}
