@@ -99,7 +99,7 @@ impl TransformData {
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
             },
-            (Dimensions::D1(geo_param), Dimensions::D1(mat_param)) if geo_param == mat_param => {
+            (Dimensions::D1(geo_param), Dimensions::D1(mat_param)) if geo_param.is_equal(&mat_param)? => {
                 out_dim = Dimensions::D1(geo_param.clone());
                 out_buffer = out_dim.create_storage_buffer(elem_size, &device);
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, 1);
@@ -138,7 +138,7 @@ impl TransformData {
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
             },
-            (Dimensions::D2(geo_p1, geo_p2), Dimensions::D1(mat_param)) if geo_p1 == mat_param => {
+            (Dimensions::D2(geo_p1, geo_p2), Dimensions::D1(mat_param)) if geo_p1.is_equal(&mat_param)? => {
                 out_dim = Dimensions::D2(geo_p1.clone(), geo_p2.clone());
                 out_buffer = out_dim.create_storage_buffer(elem_size, &device);
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
@@ -152,7 +152,7 @@ impl TransformData {
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
             },
-            (Dimensions::D2(geo_p1, geo_p2), Dimensions::D1(mat_param)) if geo_p2 == mat_param => {
+            (Dimensions::D2(geo_p1, geo_p2), Dimensions::D1(mat_param)) if geo_p2.is_equal(&mat_param)? => {
                 out_dim = Dimensions::D2(geo_p1.clone(), geo_p2.clone());
                 out_buffer = out_dim.create_storage_buffer(elem_size, &device);
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);

@@ -519,7 +519,7 @@ impl Default for NodeGraph {
 
 impl NodeGraph {
     pub fn currently_editing(&self) -> bool {
-        return self.editing_node.is_some()
+        self.editing_node.is_some()
     }
 
     pub fn stop_editing(&mut self) {
@@ -960,6 +960,19 @@ impl NodeGraph {
                     !list_of_attributes.contains(&pair.0) && !list_of_attributes.contains(&pair.1)
                 })
                 .collect();
+        }
+    }
+
+    pub fn get_attribute_as_usize(&self, attribute_id: AttributeID) -> Option<usize> {
+        // first, we need to check if the attribute_id actually exists in our attributes map
+        let attribute_slot = self.attributes.get(attribute_id as usize)?;
+        // then, if the slot is here, we need to check if something is in the slot.
+        let attribute = attribute_slot.as_ref()?;
+        // finally, if the attribute exists, we need to check if it is a Text one
+        if let AttributeContents::QualitySlider{ quality, .. } = &attribute.contents {
+            Some(*quality as usize)
+        } else {
+            None
         }
     }
 

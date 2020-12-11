@@ -189,6 +189,8 @@ impl Gui {
             // but changes nothing, the requested stamp will remain the same as the last in the stack, it does not matter
             // at which savestate the user currently is.
             let last_stamp = self.undo_stack.back().unwrap().0;
+            // directly comparing floats in this case is fine
+            #[allow(clippy::float_cmp)]
             if requested_stamp != last_stamp {
                 self.issue_savestate(state, ui.time());
             }

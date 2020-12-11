@@ -48,11 +48,35 @@ pub enum ComputeBlock {
     Rendering(RenderingData),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Parameter {
-    pub name: SmolStr,
+    pub name: String,
     pub size: usize,
+    pub begin: String,
+    pub end: String,
 }
+
+impl Parameter {
+    pub fn is_equal(&self, other: &Parameter) -> Result <bool, BlockCreationError> {
+        if self.name == other.name {
+            dbg!(self.size);
+            dbg!(other.size);
+            // having the same name but a different quality, begin or end attribute is an error.
+            if self.size != other.size {
+                Err(BlockCreationError::IncorrectAttributes(" The geometry and parametric matrix \n contain intervals with the same name \n but different quality "))
+            } else if self.begin != other.begin {
+                Err(BlockCreationError::IncorrectAttributes(" The geometry and parametric matrix \n contain intervals with the same name \n but different begin "))
+            } else if self.end != other.end {
+                Err(BlockCreationError::IncorrectAttributes(" The geometry and parametric matrix \n contain intervals with the same name \n but different end "))
+            } else {
+                Ok(true)
+            }
+        } else {
+            Ok(false)
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Dimensions {
     D0,
@@ -113,13 +137,13 @@ impl ComputeBlock {
     pub fn from_node(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, node: &Node, graph: &NodeGraph) -> ProcessingResult {
         match *node.contents() {
             NodeContents::Interval {
-                variable, begin, end, ..
+                variable, begin, end, quality, ..
             } => {
                 let interval_descriptor = IntervalBlockDescriptor {
                     name: graph.get_attribute_as_string(variable).unwrap(),
                     begin: graph.get_attribute_as_string(begin).unwrap(),
                     end: graph.get_attribute_as_string(end).unwrap(),
-                    quality: 4,
+                    quality: graph.get_attribute_as_usize(quality).unwrap(),
                 };
                 interval_descriptor.to_block(device, globals)
             },

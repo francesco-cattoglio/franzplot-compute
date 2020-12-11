@@ -11,8 +11,8 @@ pub struct IntervalBlockDescriptor {
     pub name: String,
 }
 impl IntervalBlockDescriptor {
-    pub fn to_block(&self, device: &wgpu::Device, globals: &Globals) -> ProcessingResult {
-        Ok(ComputeBlock::Interval(IntervalData::new(device, globals, &self)?))
+    pub fn to_block(self, device: &wgpu::Device, globals: &Globals) -> ProcessingResult {
+        Ok(ComputeBlock::Interval(IntervalData::new(device, globals, self)?))
     }
 }
 
@@ -26,16 +26,36 @@ pub struct IntervalData {
 }
 
 impl IntervalData {
-    pub fn new(device: &wgpu::Device, globals: &Globals, descriptor: &IntervalBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, globals: &Globals, mut descriptor: IntervalBlockDescriptor) -> Result<Self, BlockCreationError> {
         if descriptor.quality < 1 || descriptor.quality > 16 {
             return Err(BlockCreationError::IncorrectAttributes("Interval quality attribute must be an integer in the [1, 16] range"))
         }
         if descriptor.name.is_empty() {
             return Err(BlockCreationError::IncorrectAttributes(" please provide a name \n for the interval's variable "));
         }
+        if descriptor.begin.is_empty() {
+            return Err(BlockCreationError::IncorrectAttributes(" please provide an expression \n for the interval's begin "));
+        }
+        if descriptor.end.is_empty() {
+            return Err(BlockCreationError::IncorrectAttributes(" please provide an expression \n for the interval's end "));
+        }
         let n_evals = 16 * descriptor.quality;
+        // Make sure that the name does not contain any internal whitespace
+        if descriptor.name.split_whitespace().count() != 1 {
+            return Err(BlockCreationError::IncorrectAttributes(" an interval's name cannot \n contain spaces "))
+        }
+        // and then strip the leading and trailing ones
+        descriptor.name.retain(|c| !c.is_whitespace());
+        // Remove any leading and trailing whitespaces from the begin and end attributes.
+        // This is done here because Parameters can be compared, and if we strip all
+        // whitespaces here we are sure that the comparison will be succesful if the user
+        // inputs the same thing in two different nodes but adds an extra whitespace.
+        descriptor.begin.retain(|c| !c.is_whitespace());
+        descriptor.end.retain(|c| !c.is_whitespace());
         let param = Parameter {
-            name: descriptor.name.clone().into(),
+            name: descriptor.name.clone(),
+            begin: descriptor.begin.clone(),
+            end: descriptor.end.clone(),
             size: n_evals,
         };
         let out_dim = Dimensions::D1(param);
@@ -65,7 +85,7 @@ void main() {{
     float delta = ({interval_end} - {interval_begin}) / ({num_points} - 1.0);
     out_buff[index] = {interval_begin} + delta * index;
 }}
-"##, globals_header=&globals.shader_header, interval_begin=&descriptor.begin, interval_end=&descriptor.end, num_points=n_evals, dimx=n_evals
+"##, globals_header=&globals.shader_header, interval_begin=descriptor.begin, interval_end=descriptor.end, num_points=n_evals, dimx=n_evals
 );
 
         let bindings = [
@@ -83,7 +103,7 @@ void main() {{
             out_buffer,
             out_dim,
             buffer_size,
-            name: descriptor.name.clone(),
+            name: descriptor.name,
         })
     }
 
