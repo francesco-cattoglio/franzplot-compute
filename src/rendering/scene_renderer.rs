@@ -9,7 +9,8 @@ use glam::Mat4;
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct Uniforms {
-    view_proj: Mat4,
+    view: Mat4,
+    proj: Mat4,
     mouse_pos: [i32; 2],
     _padding: [f32; 2],
 }
@@ -22,7 +23,8 @@ unsafe impl bytemuck::Zeroable for Uniforms {}
 impl Uniforms {
     fn new() -> Self {
         Self {
-            view_proj: Mat4::identity(),
+            view: Mat4::identity(),
+            proj: Mat4::identity(),
             mouse_pos: [0, 0],
             _padding: [0.0, 0.0],
         }
@@ -166,8 +168,12 @@ impl SceneRenderer {
         self.renderables.push(render_bundle);
     }
 
-    pub fn update_view_proj(&mut self, view_proj: Mat4) {
-        self.uniforms.view_proj = view_proj;
+    pub fn update_view(&mut self, view: Mat4) {
+        self.uniforms.view = view;
+    }
+
+    pub fn update_proj(&mut self, proj: Mat4) {
+        self.uniforms.proj = proj;
     }
 
     pub fn update_mouse_pos(&mut self, mouse_pos: &[f32; 2]) {

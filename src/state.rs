@@ -46,6 +46,12 @@ impl AppState {
     pub fn update_depth_buffer(&mut self, size: wgpu::Extent3d) {
         self.computable_scene.renderer.update_depth_buffer_size(&self.manager.device, size);
     }
+
+    pub fn update_projection_matrix(&mut self, size: wgpu::Extent3d) {
+        self.camera.aspect = size.width as f32/size.height as f32;
+        self.computable_scene.renderer.update_proj(self.camera.build_projection_matrix());
+    }
+
     pub fn update_scene(&mut self, target_texture: &wgpu::TextureView, camera_inputs: &camera::InputState) {
         // TODO: make sure this is done only when it is really needed!
         self.computable_scene.globals.update_buffer(&self.manager.queue);
@@ -53,7 +59,7 @@ impl AppState {
         if self.camera_enabled {
             self.camera_controller.update_camera(&mut self.camera, camera_inputs);
         }
-        self.computable_scene.renderer.update_view_proj(self.camera.build_view_projection_matrix());
+        self.computable_scene.renderer.update_view(self.camera.build_view_matrix());
         // after updating everything, redraw the scene to the texture
         self.computable_scene.renderer.render(&self.manager, target_texture);
     }

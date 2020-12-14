@@ -10,7 +10,8 @@ layout(location=2) out int object_id;
 layout(location=3) out ivec2 mouse_pos;
 
 layout(set = 0, binding = 0) uniform Uniforms {
-    mat4 u_view_proj;
+    mat4 u_view;
+    mat4 u_proj;
     ivec2 u_mouse_pos;
     vec2 _padding;
 };
@@ -21,6 +22,6 @@ void main() {
     object_id = gl_InstanceIndex;
     v_n_vector = n_vectors.xyz;
     v_n_vector.x = gl_InstanceIndex * 0.25;
-    gl_Position = u_view_proj * a_position;
+    gl_Position = u_proj * u_view * a_position;
 }
 

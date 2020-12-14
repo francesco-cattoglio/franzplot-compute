@@ -200,6 +200,7 @@ fn main() {
                         dbg!(texture_size);
                         dbg!(requested_logical_size);
                         state.app.update_depth_buffer(texture_size);
+                        state.app.update_projection_matrix(texture_size);
                         let new_scene_texture = rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
                         renderer.textures.replace(scene_texture_id, new_scene_texture.into()).unwrap();
                     }
