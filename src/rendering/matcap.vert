@@ -6,7 +6,7 @@ layout(location=2) in vec2 uv_coords;
 layout(location=3) in vec2 _v_padding;
 
 layout(location=0) out vec2 v_uv_coords;
-layout(location=1) out vec3 v_n_vector;
+layout(location=1) out vec4 v_n_vector;
 layout(location=2) out int object_id;
 layout(location=3) out ivec2 mouse_pos;
 
@@ -21,8 +21,7 @@ void main() {
     v_uv_coords = uv_coords.xy;
     mouse_pos = u_mouse_pos;
     object_id = gl_InstanceIndex;
-    v_n_vector = n_vectors.xyz;
-    v_n_vector.x = gl_InstanceIndex * 0.25;
+    v_n_vector = n_vectors;
     gl_Position = u_proj * u_view * a_position;
 }
 

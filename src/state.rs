@@ -76,11 +76,12 @@ impl State {
         // at program start, we can just set the user data to its default value
         let user: UserState = Default::default();
 
+        let test_matcap = super::rendering::texture::Texture::load(&manager.device, &manager.queue, "./resources/matcap_test.png", "matcaptest").unwrap();
             // construct the AppState part from the passed-in manager
         let computable_scene = ComputableScene {
             globals: globals::Globals::new(&manager.device, vec![], vec![]),
             chain: compute_chain::ComputeChain::new(),
-            renderer: SceneRenderer::new(&manager.device),
+            renderer: SceneRenderer::new(&manager.device, vec![test_matcap]),
             mouse_pos: [0.0, 0.0],
         };
         let camera = camera::Camera::from_height_width(manager.sc_desc.height as f32, manager.sc_desc.width as f32);

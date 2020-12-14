@@ -48,12 +48,13 @@ pub struct SceneRenderer {
     uniforms: Uniforms,
     uniforms_buffer: wgpu::Buffer,
     uniforms_bind_group: wgpu::BindGroup,
+    avail_textures: Vec<texture::Texture>,
     depth_texture: texture::Texture,
     output_texture: texture::Texture,
 }
 
 impl SceneRenderer {
-    pub fn new(device: &wgpu::Device) -> Self {
+    pub fn new(device: &wgpu::Device, avail_textures: Vec<texture::Texture>) -> Self {
         // the object picking buffer is initially created with a reasonable default length
         // If the user displays more than this many objects, the buffer will get resized.
         let picking_buffer_length = 16;
@@ -71,7 +72,7 @@ impl SceneRenderer {
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     count: None,
-                    visibility: wgpu::ShaderStage::VERTEX,
+                    visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
                     ty: wgpu::BindingType::UniformBuffer {
                         dynamic: false,
                         min_binding_size: None,
@@ -97,6 +98,7 @@ impl SceneRenderer {
         let output_texture = texture::Texture::create_output_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
 
         Self {
+            avail_textures,
             picking_buffer_length,
             picking_buffer,
             picking_bind_group,
@@ -139,11 +141,11 @@ impl SceneRenderer {
         }
 
         for (id, data) in rendering_data.iter().enumerate() {
-            self.add_renderable(device, data, id as u32);
+            self.add_renderable(device, data, id as u32, 0);
         }
     }
 
-    fn add_renderable(&mut self, device: &wgpu::Device, rendering_data: &RenderingData, object_id: u32) {
+    fn add_renderable(&mut self, device: &wgpu::Device, rendering_data: &RenderingData, object_id: u32, texture_id: usize) {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for RenderingData"),
@@ -157,7 +159,7 @@ impl SceneRenderer {
         render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..));
         render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
         render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
-//        render_bundle_encoder.set_bind_group(2, &self.texture_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(2, &self.avail_textures[texture_id].bind_group, &[]);
         // encode the object_id in the instance used for indexed rendering, so that the shader
         // will be able to recover the id by reading the gl_InstanceIndex variable
         let instance_id = object_id;
@@ -272,20 +274,42 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
 fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::BindGroupLayout, picking_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
     // shader compiling
     let mut shader_compiler = shaderc::Compiler::new().unwrap();
-    let vert_src = include_str!("solid.vert");
-    let frag_src = include_str!("solid.frag");
-    let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "solid.vert", "main", None).unwrap();
-    let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "solid.frag", "main", None).unwrap();
+    let vert_src = include_str!("matcap.vert");
+    let frag_src = include_str!("matcap.frag");
+    let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "matcap.vert", "main", None).unwrap();
+    let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "matcap.frag", "main", None).unwrap();
     let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
     let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
     let vert_module = device.create_shader_module(vert_data);
     let frag_module = device.create_shader_module(frag_data);
 
+    // TODO: we need to have it somewhere else, right now this is copypasted from texture.rs
+    let texture_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+        entries: &[
+            wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                count: None,
+                visibility: wgpu::ShaderStage::FRAGMENT,
+                ty: wgpu::BindingType::SampledTexture {
+                    multisampled: false,
+                    component_type: wgpu::TextureComponentType::Float,
+                    dimension: wgpu::TextureViewDimension::D2,
+                },
+            },
+            wgpu::BindGroupLayoutEntry {
+                binding: 1,
+                count: None,
+                visibility: wgpu::ShaderStage::FRAGMENT,
+                ty: wgpu::BindingType::Sampler { comparison: false },
+            },
+        ],
+        label: Some("texture bind group layout"),
+    });
     let render_pipeline_layout =
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             push_constant_ranges: &[],
-            bind_group_layouts: &[uniforms_bind_layout, picking_bind_layout]
+            bind_group_layouts: &[uniforms_bind_layout, picking_bind_layout, &texture_bind_layout]
         });
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
@@ -334,7 +358,7 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
                 wgpu::VertexBufferDescriptor {
                     stride: std::mem::size_of::<StandardVertexData>() as wgpu::BufferAddress,
                     step_mode: wgpu::InputStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float4, 1 => Float4, 2 => Float2],
+                    attributes: &wgpu::vertex_attr_array![0 => Float4, 1 => Float4, 2 => Float2, 3 => Float2],
                 },
             ],
         },
