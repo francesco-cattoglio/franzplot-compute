@@ -2,6 +2,7 @@ use crate::computable_scene::*;
 use crate::device_manager::Manager;
 use crate::rendering::camera;
 use crate::rendering::SceneRenderer;
+use crate::rendering::texture::{Texture, Masks};
 use crate::node_graph;
 use serde::{Serialize, Deserialize};
 
@@ -39,6 +40,8 @@ pub struct AppState {
     pub camera_enabled: bool,
     pub camera: camera::Camera, // we might want to store camera position in user state
     pub manager: Manager,
+    pub textures: Vec<Texture>,
+    pub masks: Masks,
     pub computable_scene: ComputableScene,
 }
 
@@ -76,18 +79,26 @@ impl State {
         // at program start, we can just set the user data to its default value
         let user: UserState = Default::default();
 
-        let test_matcap = super::rendering::texture::Texture::load(&manager.device, &manager.queue, "./resources/matcap_test.png", "matcaptest").unwrap();
-            // construct the AppState part from the passed-in manager
+        // construct the AppState part from the passed-in manager
         let computable_scene = ComputableScene {
             globals: globals::Globals::new(&manager.device, vec![], vec![]),
             chain: compute_chain::ComputeChain::new(),
-            renderer: SceneRenderer::new(&manager.device, vec![test_matcap]),
+            renderer: SceneRenderer::new(&manager.device),
             mouse_pos: [0.0, 0.0],
         };
+
+        let checkerboard = Texture::load(&manager.device, &manager.queue, "./resources/checkerboard.png", "checkers").unwrap();
+        let test_matcap = Texture::load(&manager.device, &manager.queue, "./resources/matcap_test.png", "matcaptest").unwrap();
+        let test_matcap_2 = Texture::load(&manager.device, &manager.queue, "./resources/matcap_test_2.png", "matcaptest").unwrap();
+        let test_matcap_3 = Texture::load(&manager.device, &manager.queue, "./resources/matcap_test_3.png", "matcaptest").unwrap();
+
         let camera = camera::Camera::from_height_width(manager.sc_desc.height as f32, manager.sc_desc.width as f32);
         let camera_controller = Box::new(camera::VTKController::new(0.015, 0.015, 0.03));
+        use std::convert::TryInto;
         let app = AppState {
             computable_scene,
+            masks: vec![checkerboard].try_into().expect("wrong length"),
+            textures: vec![test_matcap, test_matcap_2, test_matcap_3],
             camera,
             camera_enabled: false,
             camera_controller,
@@ -108,7 +119,7 @@ impl State {
         // ComputableScene::process_user_state would be easier to read and reason about
         // create a new Globals from the user defined names
         let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &mut self.user.graph, globals);
+        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.masks, &self.app.textures, &mut self.user.graph, globals);
         for error in graph_errors.into_iter() {
             self.user.graph.mark_error(error);
         }

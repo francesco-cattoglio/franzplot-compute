@@ -22,6 +22,8 @@ pub struct RenderingData {
     pub vertex_buffer: wgpu::Buffer,
     pub index_buffer: wgpu::Buffer,
     pub index_count: u32,
+    pub mask_id: usize,
+    pub texture_id: usize,
     pub compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
     pub out_dim: Dimensions,
@@ -35,7 +37,7 @@ impl RenderingData {
 
         use crate::node_graph;
         let curve_radius = node_graph::AVAILABLE_SIZES[descriptor.size_1d];
-        let curve_section_points = (descriptor.size_1d + 2)*2;
+        let curve_section_points = (descriptor.size_1d + 3)*2;
         match input_block {
             ComputeBlock::Point(point_data) => {
                 Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim)
@@ -148,7 +150,7 @@ void main() {{
         vec3 section_point = vec3(0.0, section_points[i].x, section_points[i].y);
         out_buff[out_idx].position = new_basis * vec4(section_point, 1.0);
         out_buff[out_idx].normal = vec4(normalize(section_point), 0.0);
-        out_buff[out_idx].uv_coords = vec2(0.4, 0.5);
+        out_buff[out_idx].uv_coords = vec2(idx/(x_size-1.0), i/({n_points}-1.0));
         out_buff[out_idx]._padding = vec2(0.123, 0.456);
     }}
 }}
@@ -171,6 +173,8 @@ void main() {{
         let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Curve Normals"))?;
 
         Ok(Self {
+            mask_id: 0,
+            texture_id: 0,
             compute_pipeline,
             compute_bind_group,
             out_dim: dimensions.clone(),
@@ -282,6 +286,8 @@ void main() {{
         let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Surface Normals"))?;
 
         Ok(Self {
+            mask_id: 0,
+            texture_id: 0,
             compute_pipeline,
             compute_bind_group,
             out_dim: dimensions.clone(),
@@ -316,7 +322,7 @@ void main() {{
 // those are needed to create the index buffers for both the point, curve and surface rendering
 // plus the reference section points for the curve rendering.
 fn create_curve_buffer_index(device: &wgpu::Device, x_size: usize, circle_points: usize) -> (wgpu::Buffer, u32) {
-    assert!(circle_points > 2);
+    assert!(circle_points > 3);
     let mut index_vector = Vec::<u32>::new();
 
     for i in 0 .. x_size - 1 {
@@ -364,7 +370,7 @@ fn create_curve_shader_constants(radius: f32, n_section_points: usize) -> String
     let mut shader_consts = String::new();
     shader_consts += &format!("const vec2 section_points[{n}] = {{\n", n=n_section_points);
     for i in 0 .. n_section_points {
-        let theta = 2.0 * std::f32::consts::PI * i as f32 / n_section_points as f32;
+        let theta = 2.0 * std::f32::consts::PI * i as f32 / (n_section_points - 1) as f32;
         shader_consts += &format!("\tvec2({x}, {y}),\n", x=radius*theta.cos(), y=radius*theta.sin() );
     }
     shader_consts += &format!("}};\n");

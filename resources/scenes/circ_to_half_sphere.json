@@ -38,16 +38,16 @@
       {
         "title": "Rendering",
         "position": [
-          590.0,
-          111.0
+          602.0,
+          96.0
         ],
         "error": null,
         "contents": {
           "Rendering": {
-            "geometry": 10,
-            "color": 11,
-            "size_0d": 12,
-            "size_1d": 13
+            "geometry": 13,
+            "color": 12,
+            "size_0d": 11,
+            "size_1d": 10
           }
         }
       },
@@ -132,7 +132,7 @@
         "contents": {
           "Text": {
             "label": "begin",
-            "string": "0"
+            "string": "-pi/2"
           }
         }
       },
@@ -141,7 +141,7 @@
         "contents": {
           "Text": {
             "label": "  end",
-            "string": "2*pi"
+            "string": "pi/2"
           }
         }
       },
@@ -211,9 +211,18 @@
       {
         "node_id": 2,
         "contents": {
-          "InputPin": {
-            "label": "geometry",
-            "kind": "Geometry"
+          "SizeSlider": {
+            "label": "Curve size:",
+            "size": 3
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "SizeSlider": {
+            "label": "Point size:",
+            "size": 5
           }
         }
       },
@@ -233,18 +242,9 @@
       {
         "node_id": 2,
         "contents": {
-          "SizeSlider": {
-            "label": "Point size:",
-            "size": 5
-          }
-        }
-      },
-      {
-        "node_id": 2,
-        "contents": {
-          "SizeSlider": {
-            "label": "Curve size:",
-            "size": 3
+          "InputPin": {
+            "label": "geometry",
+            "kind": "Geometry"
           }
         }
       },
@@ -413,12 +413,12 @@
       }
     ],
     "links": {
-      "10": 9,
-      "5": 4,
-      "19": 18,
+      "25": 23,
       "27": 26,
       "24": 9,
-      "25": 23
+      "5": 4,
+      "19": 18,
+      "13": 9
     },
     "free_nodes_list": [],
     "free_attributes_list": []
@@ -427,6 +427,6 @@
     "k"
   ],
   "globals_init_values": [
-    1.76
+    3.15
   ]
 }

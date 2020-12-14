@@ -239,6 +239,7 @@ fn main() {
                     },
                     CustomEvent::OpenFile(path_buf) => {
                         state.user.read_from_file(&path_buf);
+                        rust_gui.issue_savestate(&mut state, imgui.time());
                     },
                     CustomEvent::MouseFreeze => {
                         mouse_frozen = true;

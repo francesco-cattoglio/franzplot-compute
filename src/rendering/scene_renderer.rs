@@ -1,4 +1,4 @@
-use crate::rendering::texture;
+use crate::rendering::texture::{Texture, Masks};
 use crate::rendering::*;
 use crate::device_manager;
 use crate::computable_scene::compute_chain::ComputeChain;
@@ -48,13 +48,12 @@ pub struct SceneRenderer {
     uniforms: Uniforms,
     uniforms_buffer: wgpu::Buffer,
     uniforms_bind_group: wgpu::BindGroup,
-    avail_textures: Vec<texture::Texture>,
-    depth_texture: texture::Texture,
-    output_texture: texture::Texture,
+    depth_texture: Texture,
+    output_texture: Texture,
 }
 
 impl SceneRenderer {
-    pub fn new(device: &wgpu::Device, avail_textures: Vec<texture::Texture>) -> Self {
+    pub fn new(device: &wgpu::Device) -> Self {
         // the object picking buffer is initially created with a reasonable default length
         // If the user displays more than this many objects, the buffer will get resized.
         let picking_buffer_length = 16;
@@ -94,11 +93,10 @@ impl SceneRenderer {
 
         // set up pipeline and render targets
         let pipeline_solid = create_solid_pipeline(&device, &uniforms_bind_layout, &picking_bind_layout);
-        let depth_texture = texture::Texture::create_depth_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
-        let output_texture = texture::Texture::create_output_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
+        let depth_texture = Texture::create_depth_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
+        let output_texture = Texture::create_output_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
 
         Self {
-            avail_textures,
             picking_buffer_length,
             picking_buffer,
             picking_bind_group,
@@ -113,11 +111,11 @@ impl SceneRenderer {
     }
 
     pub fn update_depth_buffer_size(&mut self, device: &wgpu::Device, size: wgpu::Extent3d) {
-        self.output_texture = texture::Texture::create_output_texture(device, size, SAMPLE_COUNT);
-        self.depth_texture = texture::Texture::create_depth_texture(device, size, SAMPLE_COUNT);
+        self.output_texture = Texture::create_output_texture(device, size, SAMPLE_COUNT);
+        self.depth_texture = Texture::create_depth_texture(device, size, SAMPLE_COUNT);
     }
 
-    pub fn update_renderables(&mut self, device: &wgpu::Device, chain: &ComputeChain,) {
+    pub fn update_renderables(&mut self, device: &wgpu::Device, avail_masks: &Masks, avail_textures: &Vec<Texture>, chain: &ComputeChain) {
         self.renderables.clear();
         // go through all blocks,
         // chose the "Rendering" ones,
@@ -141,11 +139,11 @@ impl SceneRenderer {
         }
 
         for (id, data) in rendering_data.iter().enumerate() {
-            self.add_renderable(device, data, id as u32, 0);
+            self.add_renderable(device, avail_masks, avail_textures, data, id as u32);
         }
     }
 
-    fn add_renderable(&mut self, device: &wgpu::Device, rendering_data: &RenderingData, object_id: u32, texture_id: usize) {
+    fn add_renderable(&mut self, device: &wgpu::Device, masks: &Masks, textures: &Vec<Texture>, rendering_data: &RenderingData, object_id: u32) {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for RenderingData"),
@@ -159,7 +157,8 @@ impl SceneRenderer {
         render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..));
         render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
         render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
-        render_bundle_encoder.set_bind_group(2, &self.avail_textures[texture_id].bind_group, &[]);
+        render_bundle_encoder.set_bind_group(2, &masks[rendering_data.mask_id].bind_group, &[]);
+        render_bundle_encoder.set_bind_group(3, &textures[rendering_data.texture_id].bind_group, &[]);
         // encode the object_id in the instance used for indexed rendering, so that the shader
         // will be able to recover the id by reading the gl_InstanceIndex variable
         let instance_id = object_id;
@@ -283,33 +282,12 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
     let vert_module = device.create_shader_module(vert_data);
     let frag_module = device.create_shader_module(frag_data);
 
-    // TODO: we need to have it somewhere else, right now this is copypasted from texture.rs
-    let texture_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-        entries: &[
-            wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                count: None,
-                visibility: wgpu::ShaderStage::FRAGMENT,
-                ty: wgpu::BindingType::SampledTexture {
-                    multisampled: false,
-                    component_type: wgpu::TextureComponentType::Float,
-                    dimension: wgpu::TextureViewDimension::D2,
-                },
-            },
-            wgpu::BindGroupLayoutEntry {
-                binding: 1,
-                count: None,
-                visibility: wgpu::ShaderStage::FRAGMENT,
-                ty: wgpu::BindingType::Sampler { comparison: false },
-            },
-        ],
-        label: Some("texture bind group layout"),
-    });
+    let texture_bind_layout = Texture::default_bind_layout(device);
     let render_pipeline_layout =
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: None,
             push_constant_ranges: &[],
-            bind_group_layouts: &[uniforms_bind_layout, picking_bind_layout, &texture_bind_layout]
+            bind_group_layouts: &[uniforms_bind_layout, picking_bind_layout, &texture_bind_layout, &texture_bind_layout]
         });
 
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{

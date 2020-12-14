@@ -1,11 +1,14 @@
 use image::GenericImageView;
 
+#[derive(Debug)]
 pub struct Texture {
     pub texture: wgpu::Texture,
     pub view: wgpu::TextureView,
     pub bind_group: wgpu::BindGroup,
     pub size: wgpu::Extent3d,
 }
+
+pub type Masks = [Texture; 1];
 
 impl Texture {
 
@@ -168,6 +171,30 @@ impl Texture {
     //    Self::from_image(device, queue, &img, Some(label))
     //}
 
+    pub fn default_bind_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    count: None,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::SampledTexture {
+                        multisampled: false,
+                        component_type: wgpu::TextureComponentType::Float,
+                        dimension: wgpu::TextureViewDimension::D2,
+                    },
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    count: None,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler { comparison: false },
+                },
+            ],
+            label: Some("default texture bind group layout"),
+        })
+    }
+
     pub fn from_image(device: &wgpu::Device, queue: &wgpu::Queue, img: &image::DynamicImage, tex_label: Option<&str>) -> anyhow::Result<Self> {
         let diffuse_rgba = img.to_rgba8();
         let image_size = img.dimensions();
@@ -221,27 +248,7 @@ impl Texture {
             compare: None,
         });
 
-        let texture_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    count: None,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::SampledTexture {
-                        multisampled: false,
-                        component_type: wgpu::TextureComponentType::Float,
-                        dimension: wgpu::TextureViewDimension::D2,
-                    },
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    count: None,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler { comparison: false },
-                },
-            ],
-            label: Some("texture bind group layout"),
-        });
+        let texture_bind_layout = Self::default_bind_layout(device);
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("Depth texture bind group"),
             layout: &texture_bind_layout,
