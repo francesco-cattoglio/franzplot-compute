@@ -3,6 +3,7 @@ use crate::file_io;
 use crate::state::State;
 
 const MAX_UNDO_HISTORY : usize = 10;
+pub type MaskIds = [TextureId; 2];
 
 pub struct Gui {
     pub scene_texture_id: TextureId,
@@ -10,10 +11,11 @@ pub struct Gui {
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
     undo_stack: std::collections::VecDeque<(f64, String)>,
     undo_cursor: usize,
+    mask_ids: MaskIds,
 }
 
 impl Gui {
-    pub fn new(scene_texture_id: TextureId, winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>) -> Self {
+    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>, scene_texture_id: TextureId, mask_ids: MaskIds) -> Self {
         // when we initialize a GUI, we want to set the first undo_stack element to a completely empty graph
         use super::node_graph::NodeGraph;
         let empty_graph = NodeGraph::default();
@@ -23,6 +25,7 @@ impl Gui {
             winit_proxy,
             undo_stack: vec![(0.0, serde_json::to_string(&empty_graph).unwrap())].into(),
             undo_cursor: 0,
+            mask_ids,
         }
     }
 

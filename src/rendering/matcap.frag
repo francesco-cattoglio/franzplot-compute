@@ -32,7 +32,7 @@ void main() {
     if (pixel_x == mouse_pos.x && pixel_y == mouse_pos.y) {
         picking[object_id] = gl_FragCoord.z;
     }
-    vec4 mask_color = texture(sampler2D(mask_texture, mask_sampler), v_uv_coords);
+    float mask_color = texture(sampler2D(mask_texture, mask_sampler), v_uv_coords).r;
     mask_color = 0.5* mask_color + 0.5;
     f_color = texture(sampler2D(t_diffuse, s_diffuse), vec2(muv.x, 1.0-muv.y));
     f_color = mask_color * f_color;

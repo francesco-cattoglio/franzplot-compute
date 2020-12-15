@@ -8,13 +8,13 @@ pub struct Texture {
     pub size: wgpu::Extent3d,
 }
 
-pub type Masks = [Texture; 1];
+pub type Masks = [Texture; 2];
 
 impl Texture {
 
-    pub fn load<P: AsRef<std::path::Path>>(device: &wgpu::Device, queue: &wgpu::Queue, path: P, label: &str) -> anyhow::Result<Self> {
+    pub fn load<P: AsRef<std::path::Path>>(device: &wgpu::Device, queue: &wgpu::Queue, path: P, label: Option<&str>) -> anyhow::Result<Self> {
         let img = image::open(path)?;
-        Self::from_image(device, queue, &img, Some(label))
+        Self::from_image(device, queue, &img, label)
     }
 
     pub fn create_depth_texture(device: &wgpu::Device, size: wgpu::Extent3d, sample_count: u32) -> Self {

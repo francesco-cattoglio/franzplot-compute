@@ -121,16 +121,30 @@ fn main() {
         .. Default::default()
     };
     let mut renderer = imgui_wgpu::Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, renderer_config);
+
+    use rendering::texture::Texture;
+    // first, create a texture that will be used to render the scene and display it inside of imgui
     let scene_texture = rendering::texture::Texture::create_output_texture(&device_manager.device, wgpu::Extent3d::default(), 1);
     let scene_texture_id = renderer.textures.insert(scene_texture.into());
 
-    let mut rust_gui = rust_gui::Gui::new(scene_texture_id, event_loop.create_proxy());
+    // then, load all masks that will be available in the rendering node and push them to imgui
+    let mask_paths: [&str; 2] = ["./resources/masks/checker_8.png", "./resources/masks/h_stripes_16.png"];
+    let imgui_mask_ids: Vec<imgui::TextureId> = mask_paths.iter()
+    .map(|path| {
+        let texture = Texture::load(&device_manager.device, &device_manager.queue, path, None).unwrap();
+        renderer.textures.insert(texture.into())
+    })
+    .collect();
+
+    // last, initialize the rust_gui and the state with the list of available masks.
+    use std::convert::TryInto;
+    let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, imgui_mask_ids.try_into().unwrap());
+    let mut state = state::State::new(device_manager, &mask_paths);
 
     let mut frame_duration = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
     let mut modifiers_state = winit::event::ModifiersState::default();
 
-    let mut state = state::State::new(device_manager);
 
     event_loop.run(move |event, _, control_flow| {
         // BEWARE: keep in mind that if you go multi-window

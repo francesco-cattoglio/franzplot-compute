@@ -75,7 +75,7 @@ pub struct State {
 
 impl State {
     // this function will likely be called only once, at program start
-    pub fn new(manager: Manager) -> Self {
+    pub fn new<P: AsRef<std::path::Path>>(manager: Manager, mask_paths: &[P; 2]) -> Self {
         // at program start, we can just set the user data to its default value
         let user: UserState = Default::default();
 
@@ -86,18 +86,23 @@ impl State {
             renderer: SceneRenderer::new(&manager.device),
             mouse_pos: [0.0, 0.0],
         };
+        let masks_vec: Vec<Texture> = mask_paths
+            .iter()
+            .map(|path| {
+                Texture::load(&manager.device, &manager.queue, path, None).unwrap()
+            })
+            .collect();
 
-        let checkerboard = Texture::load(&manager.device, &manager.queue, "./resources/checkerboard.png", "checkers").unwrap();
-        let test_matcap = Texture::load(&manager.device, &manager.queue, "./resources/matcap_test.png", "matcaptest").unwrap();
-        let test_matcap_2 = Texture::load(&manager.device, &manager.queue, "./resources/matcap_test_2.png", "matcaptest").unwrap();
-        let test_matcap_3 = Texture::load(&manager.device, &manager.queue, "./resources/matcap_test_3.png", "matcaptest").unwrap();
+        let test_matcap = Texture::load(&manager.device, &manager.queue, "./resources/matcap_test.png", Some("matcaptest")).unwrap();
+        let test_matcap_2 = Texture::load(&manager.device, &manager.queue, "./resources/matcap_test_2.png", Some("matcaptest")).unwrap();
+        let test_matcap_3 = Texture::load(&manager.device, &manager.queue, "./resources/matcap_test_3.png", Some("matcaptest")).unwrap();
 
         let camera = camera::Camera::from_height_width(manager.sc_desc.height as f32, manager.sc_desc.width as f32);
         let camera_controller = Box::new(camera::VTKController::new(0.015, 0.015, 0.03));
         use std::convert::TryInto;
         let app = AppState {
             computable_scene,
-            masks: vec![checkerboard].try_into().expect("wrong length"),
+            masks: masks_vec.try_into().expect("wrong length"),
             textures: vec![test_matcap, test_matcap_2, test_matcap_3],
             camera,
             camera_enabled: false,
