@@ -195,43 +195,81 @@ impl Texture {
         })
     }
 
-    pub fn from_image(device: &wgpu::Device, queue: &wgpu::Queue, img: &image::DynamicImage, tex_label: Option<&str>) -> anyhow::Result<Self> {
-        let diffuse_rgba = img.to_rgba8();
-        let image_size = img.dimensions();
-
+    pub fn from_image(device: &wgpu::Device, queue: &wgpu::Queue, image: &image::DynamicImage, tex_label: Option<&str>) -> anyhow::Result<Self> {
+        let image_size = image.dimensions();
         let size = wgpu::Extent3d {
             depth: 1,
             height: image_size.1,
             width: image_size.0,
         };
 
-        let texture = device.create_texture(&wgpu::TextureDescriptor{
-            size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: wgpu::TextureFormat::Rgba8UnormSrgb,
-            usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
-            label: tex_label,
-        });
+        // depending on the image color, we create a texture with a different format
+        let texture = match image.color() {
+            image::ColorType::L8 | image::ColorType::L16 => {
+                let grayscale_img = image.to_luma8();
+                let texture = device.create_texture(&wgpu::TextureDescriptor{
+                    size,
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::R8Unorm,
+                    usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
+                    label: tex_label,
+                });
 
-        queue.write_texture(
-            // Tells wgpu where to copy the pixel data
-            wgpu::TextureCopyView {
-                texture: &texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
+                queue.write_texture(
+                    // Tells wgpu where to copy the pixel data
+                    wgpu::TextureCopyView {
+                        texture: &texture,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                    },
+                    // The actual pixel data
+                    bytemuck::cast_slice(&grayscale_img),
+                    // The layout of the texture
+                    wgpu::TextureDataLayout {
+                        offset: 0,
+                        bytes_per_row: 1 * image_size.0,
+                        rows_per_image: image_size.1,
+                    },
+                    size,
+                );
+                texture
             },
-            // The actual pixel data
-            bytemuck::cast_slice(&diffuse_rgba),
-            // The layout of the texture
-            wgpu::TextureDataLayout {
-                offset: 0,
-                bytes_per_row: 4 * image_size.0,
-                rows_per_image: image_size.1,
+            image::ColorType::Rgb8 | image::ColorType::Rgba8 => {
+                // TODO: Srgb or not?
+                let color_img = image.to_rgba8();
+                let texture = device.create_texture(&wgpu::TextureDescriptor{
+                    size,
+                    mip_level_count: 1,
+                    sample_count: 1,
+                    dimension: wgpu::TextureDimension::D2,
+                    format: wgpu::TextureFormat::Rgba8UnormSrgb,
+                    usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
+                    label: tex_label,
+                });
+
+                queue.write_texture(
+                    // Tells wgpu where to copy the pixel data
+                    wgpu::TextureCopyView {
+                        texture: &texture,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                    },
+                    // The actual pixel data
+                    bytemuck::cast_slice(&color_img),
+                    // The layout of the texture
+                    wgpu::TextureDataLayout {
+                        offset: 0,
+                        bytes_per_row: 4 * image_size.0,
+                        rows_per_image: image_size.1,
+                    },
+                    size,
+                );
+                texture
             },
-            size,
-        );
+            _ => unimplemented!("image format not yet supported"),
+        };
 
         let texture_view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
