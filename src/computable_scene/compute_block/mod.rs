@@ -201,11 +201,11 @@ impl ComputeBlock {
                 matrix_descriptor.make_block(device, globals, processed_blocks)
             },
             NodeContents::Rendering {
-                geometry, color, size_0d, size_1d,
+                geometry, mask, size_0d, size_1d,
             } => {
                 let rendering_descriptor = RenderingBlockDescriptor {
                     geometry: graph.get_attribute_as_linked_node(geometry),
-                    color: graph.get_attribute_as_color(color).unwrap(),
+                    mask: graph.get_attribute_as_usize(mask).unwrap(),
                     size_0d: graph.get_attribute_as_usize(size_0d).unwrap(),
                     size_1d: graph.get_attribute_as_usize(size_1d).unwrap(),
                 };

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use crate::cpp_gui::imnodes;
 use crate::cpp_gui::PinShape;
+use crate::rust_gui::Availables;
 use serde::{Serialize, Deserialize};
 use imgui::*;
 
@@ -59,6 +60,9 @@ pub enum AttributeContents {
         label: String,
         color: [f32; 3],
     },
+    Mask {
+        selected: usize,
+    },
     SizeSlider {
         label: String,
         size: i32,
@@ -72,7 +76,7 @@ pub const AVAILABLE_SIZES: [f32; 9] = [0.02, 0.04, 0.06, 0.08, 0.10, 0.12, 0.16,
 
 impl Attribute {
     // the render function shall return bool if anything has changed.
-    pub fn render(&mut self, ui: &imgui::Ui<'_>, id: AttributeID) -> bool {
+    pub fn render(&mut self, ui: &imgui::Ui<'_>, availables: &Availables, id: AttributeID) -> bool {
         match &mut self.contents {
             AttributeContents::InputPin {
                 label, kind,
@@ -181,9 +185,39 @@ impl Attribute {
                 let value_changed = color_picker.build(ui);
                 imnodes::EndStaticAttribute();
                 value_changed
+            },
+            AttributeContents::Mask {
+                selected
+            } => {
+                imnodes::BeginStaticAttribute(id);
+                ui.text(im_str!("Mask:"));
+                let mut value_changed = false;
+                let border = ui.push_style_var(StyleVar::FrameBorderSize(1.0));
+                for (i, mask) in availables.mask_ids.iter().enumerate() {
+                    ui.same_line(0.0);
+                    let maybe_color = match i {
+                        n if n == *selected => Some(ui.push_style_color(StyleColor::Border, [1.0; 4])),
+                        _ => None,
+                    };
+                    let button = ImageButton::new(*mask, [16.0, 16.0])
+                        .uv1([0.5, 0.5]) // the pattern will be zoomed in by only showing a quarter
+                        .frame_padding(2);
+                    if button.build(ui) {
+                        value_changed = true;
+                        *selected = i;
+                        dbg!(&selected);
+                    }
+                    if let Some(token) = maybe_color {
+                        token.pop(ui);
+                    }
+                }
+                border.pop(ui);
+                imnodes::EndStaticAttribute();
+                value_changed
             }
-            // TODO: decide if we want to use selectables to create sub-menu for the
-            // rendering options for each dimension.
+            // TODO: maybe we could unify the Quality and SizeSliders?
+            // The only real difference is that the SizeSlider uses a display string
+            // instead of showing the actual number selected.
             AttributeContents::SizeSlider {
                 label, size
             } => {
@@ -209,11 +243,11 @@ impl Attribute {
         }
     }
 
-    pub fn render_list(ui: &imgui::Ui<'_>, attributes: &mut Vec<Option<Attribute>>, attribute_id_list: Vec<AttributeID>) -> bool {
+    pub fn render_list(ui: &imgui::Ui<'_>, availables: &Availables, attributes: &mut Vec<Option<Attribute>>, attribute_id_list: Vec<AttributeID>) -> bool {
         let mut value_changed = false;
         for id in attribute_id_list.into_iter() {
             if let Some(Some(attribute)) = attributes.get_mut(id as usize) {
-                value_changed |= attribute.render(ui, id);
+                value_changed |= attribute.render(ui, availables, id);
             }
         }
         value_changed
@@ -264,7 +298,7 @@ pub enum NodeContents {
     },
     Rendering {
         geometry: AttributeID,
-        color: AttributeID,
+        mask: AttributeID,
         size_0d: AttributeID,
         size_1d: AttributeID,
     },
@@ -320,9 +354,9 @@ impl NodeContents {
                 vec![interval, row_1, row_2, row_3, output,]
             },
             NodeContents::Rendering {
-                geometry, color, size_0d, size_1d,
+                geometry, mask, size_0d, size_1d,
             } => {
-                vec![geometry, color, size_0d, size_1d]
+                vec![geometry, mask, size_0d, size_1d]
             },
             NodeContents::Group => {
                 unimplemented!()
@@ -365,9 +399,9 @@ impl NodeContents {
                 vec![interval, row_1, row_2, row_3, output,]
             },
             NodeContents::Rendering {
-                geometry, color, size_0d, size_1d,
+                geometry, mask, size_0d, size_1d,
             } => {
-                vec![geometry, color, size_0d, size_1d]
+                vec![geometry, mask, size_0d, size_1d]
             },
             NodeContents::Group => {
                 unimplemented!()
@@ -450,7 +484,7 @@ impl NodeContents {
     pub fn default_rendering() -> Self {
         NodeContents::Rendering {
             geometry: 0,
-            color: 1,
+            mask: 1,
             size_0d: 2,
             size_1d: 3,
         }
@@ -471,7 +505,7 @@ impl Node {
         &self.contents
     }
 
-    pub fn render(&mut self, ui: &imgui::Ui<'_>, attributes: &mut Vec<Option<Attribute>>) -> bool {
+    pub fn render(&mut self, ui: &imgui::Ui<'_>, availables: &Availables, attributes: &mut Vec<Option<Attribute>>) -> bool {
         imnodes::BeginNodeTitleBar();
             ui.text(&self.title);
             // handle error reporting
@@ -492,7 +526,7 @@ impl Node {
         imnodes::EndNodeTitleBar();
         // TODO: not sure if we will be able to use the get_attribute_list()
         // when we introduce the Group kind node in the future...
-        Attribute::render_list(ui, attributes, self.contents.get_attribute_list())
+        Attribute::render_list(ui, availables, attributes, self.contents.get_attribute_list())
     }
 
     pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<NodeID> {
@@ -662,7 +696,7 @@ impl NodeGraph {
         }
     }
 
-    pub fn render(&mut self, ui: &imgui::Ui<'_>) -> Option<f64> {
+    pub fn render(&mut self, ui: &imgui::Ui<'_>, availables: &Availables) -> Option<f64> {
         let mut request_savestate: Option<f64> = None;
         imnodes::BeginNodeEditor();
         // render all links first. Remember that link ID is the same as the input attribute ID!
@@ -677,7 +711,7 @@ impl NodeGraph {
         for (idx, maybe_node) in self.nodes.iter_mut().enumerate() {
             if let Some(node) = maybe_node.as_mut() {
                 imnodes::BeginNode(idx as NodeID);
-                if node.render(ui, &mut self.attributes) {
+                if node.render(ui, availables, &mut self.attributes) {
                     self.last_edit_timestamp = ui.time();
                 }
                 imnodes::EndNode();
@@ -1022,6 +1056,7 @@ impl NodeGraph {
         match attribute.contents {
             AttributeContents::QualitySlider{ quality, .. } => Some(quality as usize),
             AttributeContents::SizeSlider{ size, .. } => Some(size as usize),
+            AttributeContents::Mask{ selected } => Some(selected),
             _ => None
         }
     }
@@ -1275,9 +1310,8 @@ impl NodeGraph {
                 label: String::from("geometry"),
                 kind: DataKind::Geometry,
             },
-            AttributeContents::Color {
-                label: String::from("Color:"),
-                color: [1.0, 1.0, 1.0],
+            AttributeContents::Mask {
+                selected: 0,
             },
             AttributeContents::SizeSlider {
                 label: String::from("Point size:"),

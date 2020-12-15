@@ -5,13 +5,18 @@ use crate::state::State;
 const MAX_UNDO_HISTORY : usize = 10;
 pub type MaskIds = [TextureId; 2];
 
+pub struct Availables {
+    pub mask_ids: MaskIds,
+    pub texture_ids: Vec<TextureId>,
+}
+
 pub struct Gui {
     pub scene_texture_id: TextureId,
     pub new_global_buffer: ImString,
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
     undo_stack: std::collections::VecDeque<(f64, String)>,
     undo_cursor: usize,
-    mask_ids: MaskIds,
+    availables: Availables,
 }
 
 impl Gui {
@@ -19,13 +24,17 @@ impl Gui {
         // when we initialize a GUI, we want to set the first undo_stack element to a completely empty graph
         use super::node_graph::NodeGraph;
         let empty_graph = NodeGraph::default();
+        let availables = Availables {
+            mask_ids,
+            texture_ids: Vec::new(),
+        };
         Self {
             new_global_buffer: ImString::with_capacity(8),
             scene_texture_id,
             winit_proxy,
             undo_stack: vec![(0.0, serde_json::to_string(&empty_graph).unwrap())].into(),
             undo_cursor: 0,
-            mask_ids,
+            availables,
         }
     }
 
@@ -186,7 +195,7 @@ impl Gui {
 
         ui.next_column();
         ui.text(im_str!("Right side"));
-        let requested_savestate = state.user.graph.render(ui);
+        let requested_savestate = state.user.graph.render(ui, &self.availables);
         if let Some(requested_stamp) = requested_savestate {
             // first, get the timestamp for the last savestate. This is because if the user only moves some nodes around
             // but changes nothing, the requested stamp will remain the same as the last in the stack, it does not matter

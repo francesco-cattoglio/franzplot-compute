@@ -35,22 +35,7 @@
           }
         }
       },
-      {
-        "title": "Rendering",
-        "position": [
-          602.0,
-          96.0
-        ],
-        "error": null,
-        "contents": {
-          "Rendering": {
-            "geometry": 13,
-            "color": 12,
-            "size_0d": 11,
-            "size_1d": 10
-          }
-        }
-      },
+      null,
       {
         "title": "Interval",
         "position": [
@@ -100,22 +85,7 @@
           }
         }
       },
-      {
-        "title": "Rendering",
-        "position": [
-          684.0,
-          253.0
-        ],
-        "error": null,
-        "contents": {
-          "Rendering": {
-            "geometry": 27,
-            "color": 28,
-            "size_0d": 29,
-            "size_1d": 30
-          }
-        }
-      }
+      null
     ],
     "attributes": [
       {
@@ -208,46 +178,10 @@
           }
         }
       },
-      {
-        "node_id": 2,
-        "contents": {
-          "SizeSlider": {
-            "label": "Curve size:",
-            "size": 3
-          }
-        }
-      },
-      {
-        "node_id": 2,
-        "contents": {
-          "SizeSlider": {
-            "label": "Point size:",
-            "size": 5
-          }
-        }
-      },
-      {
-        "node_id": 2,
-        "contents": {
-          "Color": {
-            "label": "Color:",
-            "color": [
-              1.0,
-              1.0,
-              1.0
-            ]
-          }
-        }
-      },
-      {
-        "node_id": 2,
-        "contents": {
-          "InputPin": {
-            "label": "geometry",
-            "kind": "Geometry"
-          }
-        }
-      },
+      null,
+      null,
+      null,
+      null,
       {
         "node_id": 3,
         "contents": {
@@ -371,57 +305,31 @@
           }
         }
       },
-      {
-        "node_id": 6,
-        "contents": {
-          "InputPin": {
-            "label": "geometry",
-            "kind": "Geometry"
-          }
-        }
-      },
-      {
-        "node_id": 6,
-        "contents": {
-          "Color": {
-            "label": "Color:",
-            "color": [
-              1.0,
-              1.0,
-              1.0
-            ]
-          }
-        }
-      },
-      {
-        "node_id": 6,
-        "contents": {
-          "SizeSlider": {
-            "label": "Point size:",
-            "size": 5
-          }
-        }
-      },
-      {
-        "node_id": 6,
-        "contents": {
-          "SizeSlider": {
-            "label": "Curve size:",
-            "size": 3
-          }
-        }
-      }
+      null,
+      null,
+      null,
+      null
     ],
     "links": {
-      "25": 23,
-      "27": 26,
-      "24": 9,
-      "5": 4,
       "19": 18,
-      "13": 9
+      "25": 23,
+      "5": 4,
+      "24": 9
     },
-    "free_nodes_list": [],
-    "free_attributes_list": []
+    "free_nodes_list": [
+      2,
+      6
+    ],
+    "free_attributes_list": [
+      13,
+      12,
+      11,
+      30,
+      29,
+      28,
+      27,
+      10
+    ]
   },
   "globals_names": [
     "k"

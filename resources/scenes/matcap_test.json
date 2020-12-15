@@ -36,22 +36,7 @@
           }
         }
       },
-      {
-        "title": "Rendering",
-        "position": [
-          619.0,
-          183.0
-        ],
-        "error": null,
-        "contents": {
-          "Rendering": {
-            "geometry": 12,
-            "color": 11,
-            "size_0d": 10,
-            "size_1d": 30
-          }
-        }
-      },
+      null,
       {
         "title": "Interval",
         "position": [
@@ -164,37 +149,9 @@
           }
         }
       },
-      {
-        "node_id": 2,
-        "contents": {
-          "SizeSlider": {
-            "label": "Point size:",
-            "size": 5
-          }
-        }
-      },
-      {
-        "node_id": 2,
-        "contents": {
-          "Color": {
-            "label": "Color:",
-            "color": [
-              1.0,
-              1.0,
-              1.0
-            ]
-          }
-        }
-      },
-      {
-        "node_id": 2,
-        "contents": {
-          "InputPin": {
-            "label": "geometry",
-            "kind": "Geometry"
-          }
-        }
-      },
+      null,
+      null,
+      null,
       {
         "node_id": 1,
         "contents": {
@@ -260,25 +217,17 @@
       null,
       null,
       null,
-      {
-        "node_id": 2,
-        "contents": {
-          "SizeSlider": {
-            "label": "Curve size:",
-            "size": 3
-          }
-        }
-      }
+      null
     ],
     "links": {
       "9": 4,
-      "8": 18,
-      "12": 13
+      "8": 18
     },
     "free_nodes_list": [
       4,
       5,
-      6
+      6,
+      2
     ],
     "free_attributes_list": [
       19,
@@ -291,7 +240,11 @@
       26,
       27,
       28,
-      29
+      29,
+      12,
+      11,
+      10,
+      30
     ]
   },
   "globals_names": [

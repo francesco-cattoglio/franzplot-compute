@@ -8,7 +8,7 @@ const LOCAL_SIZE_Y: usize = 16;
 #[derive(Debug)]
 pub struct RenderingBlockDescriptor {
     pub geometry: Option<BlockId>,
-    pub color: [f32; 3],
+    pub mask: usize,
     pub size_0d: usize,
     pub size_1d: usize,
 }
@@ -43,7 +43,7 @@ impl RenderingData {
                 Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim)
             }
             ComputeBlock::Curve(curve_data) => {
-                Self::setup_1d_geometry(device, &curve_data.out_buffer, &curve_data.out_dim, curve_radius, curve_section_points)
+                Self::setup_1d_geometry(device, &curve_data.out_buffer, &curve_data.out_dim, curve_radius, curve_section_points, descriptor.mask)
             }
             ComputeBlock::Surface(surface_data) => {
                 Self::setup_2d_geometry(device, &surface_data.out_buffer, &surface_data.out_dim)
@@ -53,7 +53,7 @@ impl RenderingData {
                 let dimensions = &transformed_data.out_dim;
                 match dimensions {
                     Dimensions::D0 => Self::setup_0d_geometry(device, buffer, dimensions),
-                    Dimensions::D1(_) => Self::setup_1d_geometry(device, buffer, dimensions, curve_radius, curve_section_points),
+                    Dimensions::D1(_) => Self::setup_1d_geometry(device, buffer, dimensions, curve_radius, curve_section_points, descriptor.mask),
                     Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions),
                 }
             }
@@ -65,7 +65,7 @@ impl RenderingData {
         unimplemented!("point rendering not implemented yet")
     }
 
-    fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, section_radius: f32, n_section_points: usize) -> Result<Self, BlockCreationError> {
+    fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, section_radius: f32, n_section_points: usize, mask_id: usize) -> Result<Self, BlockCreationError> {
         let size = dimensions.as_1d().unwrap().size;
         let (index_buffer, index_count) = create_curve_buffer_index(device, size, n_section_points);
         let vertex_buffer = dimensions.create_storage_buffer(n_section_points*std::mem::size_of::<StandardVertexData>(), device);
@@ -173,7 +173,7 @@ void main() {{
         let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Curve Normals"))?;
 
         Ok(Self {
-            mask_id: 0,
+            mask_id,
             texture_id: 0,
             compute_pipeline,
             compute_bind_group,
