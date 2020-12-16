@@ -8,10 +8,9 @@ const LOCAL_SIZE_Y: usize = 16;
 #[derive(Debug)]
 pub struct RenderingBlockDescriptor {
     pub geometry: Option<BlockId>,
+    pub thickness: usize,
     pub mask: usize,
     pub material: usize,
-    pub size_0d: usize,
-    pub size_1d: usize,
 }
 impl RenderingBlockDescriptor {
     pub fn make_block(self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
@@ -37,8 +36,8 @@ impl RenderingData {
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         use crate::node_graph;
-        let curve_radius = node_graph::AVAILABLE_SIZES[descriptor.size_1d];
-        let curve_section_points = (descriptor.size_1d + 3)*2;
+        let curve_radius = node_graph::AVAILABLE_SIZES[descriptor.thickness];
+        let curve_section_points = (descriptor.thickness + 3)*2;
         match input_block {
             ComputeBlock::Point(point_data) => {
                 Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim)

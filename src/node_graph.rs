@@ -198,20 +198,22 @@ impl Attribute {
                 let border = ui.push_style_var(StyleVar::FrameBorderSize(1.0));
                 for (i, mask) in availables.mask_ids.iter().enumerate() {
                     ui.same_line(0.0);
-                    let maybe_color = match i {
-                        n if n == *selected => Some(ui.push_style_color(StyleColor::Border, [1.0; 4])),
-                        _ => None,
-                    };
+                    if i == *selected {
+                        let draw_list = ui.get_window_draw_list();
+                        let pos = ui.cursor_screen_pos();
+                        let upper_left = [pos[0], pos[1]];
+                        let lower_right = [pos[0] + 16.0, pos[1] + 16.0];
+                        draw_list.add_rect(upper_left, lower_right, [1., 1.0, 1.0, 1.0])
+                            .thickness(3.0)
+                            .build();
+                    }
                     let button = ImageButton::new(*mask, [16.0, 16.0])
                         .uv1([0.5, 0.5]) // the pattern will be zoomed in by only showing a quarter
-                        .frame_padding(2);
+                        .frame_padding(0);
                     if button.build(ui) {
                         value_changed = true;
                         *selected = i;
                         dbg!(&selected);
-                    }
-                    if let Some(token) = maybe_color {
-                        token.pop(ui);
                     }
                 }
                 border.pop(ui);
@@ -223,18 +225,23 @@ impl Attribute {
             } => {
                 imnodes::BeginStaticAttribute(id);
                 ui.text(im_str!("Material:"));
+                ui.same_line(0.0);
                 let mut value_changed = false;
                 let button = ImageButton::new(availables.material_ids[*selected], [16.0, 16.0])
-                    .frame_padding(2);
+                    .frame_padding(0);
                 if button.build(ui) {
                     ui.open_popup(im_str!("material selection"));
                 }
 
                 let mut new_selection: Option<usize> = None;
+                let token = ui.push_style_var(StyleVar::WindowPadding([4.0, 4.0]));
                 ui.popup(im_str!("material selection"), || {
                     for (i, texture) in availables.material_ids.iter().enumerate() {
-                        let button = ImageButton::new(*texture, [16.0, 16.0])
-                            .frame_padding(2);
+                        if i%4 != 0 {
+                            ui.same_line(0.0);
+                        }
+                        let button = ImageButton::new(*texture, [32.0, 32.0])
+                            .frame_padding(0);
                         if button.build(ui) {
                             new_selection = Some(i);
                             dbg!(&new_selection);
@@ -242,6 +249,7 @@ impl Attribute {
                         }
                     }
                 });
+                token.pop(ui);
                 if let Some(user_selection) = new_selection {
                     if *selected != user_selection {
                         *selected = user_selection;
@@ -334,10 +342,9 @@ pub enum NodeContents {
     },
     Rendering {
         geometry: AttributeID,
+        thickness: AttributeID,
         mask: AttributeID,
         material: AttributeID,
-        size_0d: AttributeID,
-        size_1d: AttributeID,
     },
     Group
 }
@@ -391,9 +398,9 @@ impl NodeContents {
                 vec![interval, row_1, row_2, row_3, output,]
             },
             NodeContents::Rendering {
-                geometry, mask, material, size_0d, size_1d,
+                geometry, thickness, mask, material,
             } => {
-                vec![geometry, mask, material, size_0d, size_1d]
+                vec![geometry, thickness, mask, material,]
             },
             NodeContents::Group => {
                 unimplemented!()
@@ -436,9 +443,9 @@ impl NodeContents {
                 vec![interval, row_1, row_2, row_3, output,]
             },
             NodeContents::Rendering {
-                geometry, mask, material, size_0d, size_1d,
+                geometry, thickness, mask, material,
             } => {
-                vec![geometry, mask, material, size_0d, size_1d]
+                vec![geometry, thickness, mask, material]
             },
             NodeContents::Group => {
                 unimplemented!()
@@ -521,10 +528,9 @@ impl NodeContents {
     pub fn default_rendering() -> Self {
         NodeContents::Rendering {
             geometry: 0,
-            mask: 1,
-            material: 2,
-            size_0d: 3,
-            size_1d: 4,
+            thickness: 1,
+            mask: 2,
+            material: 3,
         }
     }
 }
@@ -1349,20 +1355,16 @@ impl NodeGraph {
                 label: String::from("geometry"),
                 kind: DataKind::Geometry,
             },
+            AttributeContents::SizeSlider {
+                label: String::from("thickness:"),
+                size: 3,
+            },
             AttributeContents::Mask {
                 selected: 0,
             },
             AttributeContents::Material {
                 selected: 0,
             },
-            AttributeContents::SizeSlider {
-                label: String::from("Point size:"),
-                size: 5,
-            },
-            AttributeContents::SizeSlider {
-                label: String::from("Curve size:"),
-                size: 3,
-            }
         ];
         let node_contents = NodeContents::default_rendering();
         self.insert_node("Rendering".into(), position, node_contents, attributes_contents)

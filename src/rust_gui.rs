@@ -3,7 +3,7 @@ use crate::file_io;
 use crate::state::State;
 
 const MAX_UNDO_HISTORY : usize = 10;
-pub type MaskIds = [TextureId; 2];
+pub type MaskIds = [TextureId; 4];
 pub type MaterialIds = Vec<TextureId>;
 
 pub struct Availables {

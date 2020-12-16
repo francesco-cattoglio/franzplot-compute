@@ -201,14 +201,13 @@ impl ComputeBlock {
                 matrix_descriptor.make_block(device, globals, processed_blocks)
             },
             NodeContents::Rendering {
-                geometry, mask, material, size_0d, size_1d,
+                geometry, thickness, mask, material,
             } => {
                 let rendering_descriptor = RenderingBlockDescriptor {
                     geometry: graph.get_attribute_as_linked_node(geometry),
                     mask: graph.get_attribute_as_usize(mask).unwrap(),
                     material: graph.get_attribute_as_usize(material).unwrap(),
-                    size_0d: graph.get_attribute_as_usize(size_0d).unwrap(),
-                    size_1d: graph.get_attribute_as_usize(size_1d).unwrap(),
+                    thickness: graph.get_attribute_as_usize(thickness).unwrap(),
                 };
                 rendering_descriptor.make_block(device, processed_blocks)
             },

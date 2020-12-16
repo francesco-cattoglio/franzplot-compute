@@ -159,7 +159,6 @@ impl SceneRenderer {
         render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
         render_bundle_encoder.set_bind_group(2, &masks[rendering_data.mask_id].bind_group, &[]);
         render_bundle_encoder.set_bind_group(3, &textures[rendering_data.material_id].bind_group, &[]);
-        //render_bundle_encoder.set_bind_group(3, &textures[rendering_data.texture_id].bind_group, &[]);
         // encode the object_id in the instance used for indexed rendering, so that the shader
         // will be able to recover the id by reading the gl_InstanceIndex variable
         let instance_id = object_id;

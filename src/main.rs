@@ -127,7 +127,14 @@ fn main() {
     let scene_texture_id = renderer.textures.insert(scene_texture.into());
 
     // then, load all masks that will be available in the rendering node and push them to imgui
-    let mask_paths: [&str; 2] = ["./resources/masks/checker_8.png", "./resources/masks/h_stripes_16.png"];
+    // BEWARE: if you change the number of masks, you also need to modify the MaskIds in
+    // rust_gui.rs and the Masks in texture.rs!
+    let mask_paths: [&str; 4] = [
+        "./resources/masks/checker_8.png",
+        "./resources/masks/h_stripes_16.png",
+        "./resources/masks/v_stripes_16.png",
+        "./resources/masks/blank.png"
+    ];
     let material_paths = vec!["./resources/matcap_test.png", "./resources/matcap_test_2.png", "./resources/matcap_test_3.png"];
 
     let imgui_masks = util::load_imgui_masks(&device_manager, &mut renderer, &mask_paths);
@@ -140,7 +147,6 @@ fn main() {
     let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, imgui_masks, imgui_materials);
     let mut state = state::State::new(device_manager, masks, materials);
 
-    let mut frame_duration = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
     let mut modifiers_state = winit::event::ModifiersState::default();
 
@@ -155,7 +161,7 @@ fn main() {
             // This event type is useful as a place to put code that should be done before you start processing events
             Event::NewEvents(_start_cause) => {
                 let now = std::time::Instant::now();
-                frame_duration = now.duration_since(old_instant);
+                let frame_duration = now.duration_since(old_instant);
                 //println!("frame time: {} ms", frame_duration.as_millis());
                 imgui.io_mut().update_delta_time(frame_duration); // this function only computes imgui internal time delta
                 old_instant = now;

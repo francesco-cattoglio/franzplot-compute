@@ -8,7 +8,7 @@ pub struct Texture {
     pub size: wgpu::Extent3d,
 }
 
-pub type Masks = [Texture; 2];
+pub type Masks = [Texture; 4];
 pub type Materials = Vec<Texture>;
 
 impl Texture {
