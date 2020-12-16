@@ -196,7 +196,9 @@ impl Attribute {
                 ui.text(im_str!("Mask:"));
                 ui.same_line(0.0);
                 let mut value_changed = false;
-                let button = ImageButton::new(availables.mask_ids[*selected], [16.0, 16.0])
+                // for display purposes, clamp the value of "selected" to the mask length
+                let idx = std::cmp::min(*selected, availables.mask_ids.len() - 1);
+                let button = ImageButton::new(availables.mask_ids[idx], [16.0, 16.0])
                     .uv1([0.5, 0.5]) // the pattern will be zoomed in by showing only a small part
                     .frame_padding(0);
                 if button.build(ui) {
@@ -236,7 +238,9 @@ impl Attribute {
                 ui.text(im_str!("Material:"));
                 ui.same_line(0.0);
                 let mut value_changed = false;
-                let button = ImageButton::new(availables.material_ids[*selected], [16.0, 16.0])
+                // for display purposes, clamp the value of "selected" to the materials length
+                let idx = std::cmp::min(*selected, availables.material_ids.len() - 1);
+                let button = ImageButton::new(availables.material_ids[idx], [16.0, 16.0])
                     .frame_padding(0);
                 if button.build(ui) {
                     ui.open_popup(im_str!("material selection"));

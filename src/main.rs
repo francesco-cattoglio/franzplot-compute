@@ -55,7 +55,7 @@ fn main() {
 
     let _input_file = matches.opt_str("i");
 
-    wgpu_subscriber::initialize_default_subscriber(None);
+    // wgpu_subscriber::initialize_default_subscriber(None);
 
     let event_loop = EventLoop::<CustomEvent>::with_user_event();
     let mut builder = winit::window::WindowBuilder::new();
@@ -135,13 +135,34 @@ fn main() {
         "./resources/masks/v_stripes_16.png",
         "./resources/masks/blank.png"
     ];
-    let material_paths = vec!["./resources/matcap_test.png", "./resources/matcap_test_2.png", "./resources/matcap_test_3.png"];
+    let dir_files = std::fs::read_dir("./resources/materials/")
+        .unwrap(); // unwraps the dir reading, giving an iterator over its files
+
+    // process the dir files, returning only valid filenames that end in "png"
+    let mut material_files: Vec<std::path::PathBuf> = dir_files
+        .filter_map(|dir_result| {
+            let dir_entry = dir_result.ok()?;
+            let path = dir_entry.path();
+            if !path.is_file() {
+                return None;
+            }
+            let extension = path.extension()?.to_str()?.to_lowercase();
+            if extension == "png".to_string() {
+                Some(path)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    material_files.sort();
+    dbg!(&material_files);
 
     let imgui_masks = util::load_imgui_masks(&device_manager, &mut renderer, &mask_paths);
-    let imgui_materials = util::load_imgui_materials(&device_manager, &mut renderer, &material_paths);
+    let imgui_materials = util::load_imgui_materials(&device_manager, &mut renderer, &material_files);
 
     let masks = util::load_masks(&device_manager, &mask_paths);
-    let materials = util::load_materials(&device_manager, &material_paths);
+    let materials = util::load_materials(&device_manager, &material_files);
 
     // last, initialize the rust_gui and the state with the list of available masks and materials.
     let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, imgui_masks, imgui_materials);
