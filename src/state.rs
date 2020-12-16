@@ -40,7 +40,7 @@ pub struct AppState {
     pub camera_enabled: bool,
     pub camera: camera::Camera, // we might want to store camera position in user state
     pub manager: Manager,
-    pub textures: Vec<Texture>,
+    pub materials: Vec<Texture>,
     pub masks: Masks,
     pub computable_scene: ComputableScene,
 }
@@ -75,7 +75,7 @@ pub struct State {
 
 impl State {
     // this function will likely be called only once, at program start
-    pub fn new<P: AsRef<std::path::Path>>(manager: Manager, mask_paths: &[P; 2]) -> Self {
+    pub fn new<P: AsRef<std::path::Path>>(manager: Manager, mask_paths: &[P; 2], material_paths: &Vec<P>) -> Self {
         // at program start, we can just set the user data to its default value
         let user: UserState = Default::default();
 
@@ -93,9 +93,12 @@ impl State {
             })
             .collect();
 
-        let test_matcap = Texture::load(&manager.device, &manager.queue, "./resources/matcap_test.png", Some("matcaptest")).unwrap();
-        let test_matcap_2 = Texture::load(&manager.device, &manager.queue, "./resources/matcap_test_2.png", Some("matcaptest")).unwrap();
-        let test_matcap_3 = Texture::load(&manager.device, &manager.queue, "./resources/matcap_test_3.png", Some("matcaptest")).unwrap();
+        let materials: Vec<Texture> = material_paths
+            .iter()
+            .map(|path| {
+                Texture::load(&manager.device, &manager.queue, path, None).unwrap()
+            })
+            .collect();
 
         let camera = camera::Camera::from_height_width(manager.sc_desc.height as f32, manager.sc_desc.width as f32);
         let camera_controller = Box::new(camera::VTKController::new(0.015, 0.015, 0.03));
@@ -103,7 +106,7 @@ impl State {
         let app = AppState {
             computable_scene,
             masks: masks_vec.try_into().expect("wrong length"),
-            textures: vec![test_matcap, test_matcap_2, test_matcap_3],
+            materials,
             camera,
             camera_enabled: false,
             camera_controller,
@@ -124,7 +127,7 @@ impl State {
         // ComputableScene::process_user_state would be easier to read and reason about
         // create a new Globals from the user defined names
         let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.masks, &self.app.textures, &mut self.user.graph, globals);
+        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.masks, &self.app.materials, &mut self.user.graph, globals);
         for error in graph_errors.into_iter() {
             self.user.graph.mark_error(error);
         }

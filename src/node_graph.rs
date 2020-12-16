@@ -63,6 +63,9 @@ pub enum AttributeContents {
     Mask {
         selected: usize,
     },
+    Material {
+        selected: usize,
+    },
     SizeSlider {
         label: String,
         size: i32,
@@ -215,6 +218,39 @@ impl Attribute {
                 imnodes::EndStaticAttribute();
                 value_changed
             }
+            AttributeContents::Material {
+                selected
+            } => {
+                imnodes::BeginStaticAttribute(id);
+                ui.text(im_str!("Material:"));
+                let mut value_changed = false;
+                let button = ImageButton::new(availables.material_ids[*selected], [16.0, 16.0])
+                    .frame_padding(2);
+                if button.build(ui) {
+                    ui.open_popup(im_str!("material selection"));
+                }
+
+                let mut new_selection: Option<usize> = None;
+                ui.popup(im_str!("material selection"), || {
+                    for (i, texture) in availables.material_ids.iter().enumerate() {
+                        let button = ImageButton::new(*texture, [16.0, 16.0])
+                            .frame_padding(2);
+                        if button.build(ui) {
+                            new_selection = Some(i);
+                            dbg!(&new_selection);
+                            ui.close_current_popup();
+                        }
+                    }
+                });
+                if let Some(user_selection) = new_selection {
+                    if *selected != user_selection {
+                        *selected = user_selection;
+                        value_changed = true;
+                    }
+                }
+                imnodes::EndStaticAttribute();
+                value_changed
+            }
             // TODO: maybe we could unify the Quality and SizeSliders?
             // The only real difference is that the SizeSlider uses a display string
             // instead of showing the actual number selected.
@@ -299,6 +335,7 @@ pub enum NodeContents {
     Rendering {
         geometry: AttributeID,
         mask: AttributeID,
+        material: AttributeID,
         size_0d: AttributeID,
         size_1d: AttributeID,
     },
@@ -354,9 +391,9 @@ impl NodeContents {
                 vec![interval, row_1, row_2, row_3, output,]
             },
             NodeContents::Rendering {
-                geometry, mask, size_0d, size_1d,
+                geometry, mask, material, size_0d, size_1d,
             } => {
-                vec![geometry, mask, size_0d, size_1d]
+                vec![geometry, mask, material, size_0d, size_1d]
             },
             NodeContents::Group => {
                 unimplemented!()
@@ -399,9 +436,9 @@ impl NodeContents {
                 vec![interval, row_1, row_2, row_3, output,]
             },
             NodeContents::Rendering {
-                geometry, mask, size_0d, size_1d,
+                geometry, mask, material, size_0d, size_1d,
             } => {
-                vec![geometry, mask, size_0d, size_1d]
+                vec![geometry, mask, material, size_0d, size_1d]
             },
             NodeContents::Group => {
                 unimplemented!()
@@ -485,8 +522,9 @@ impl NodeContents {
         NodeContents::Rendering {
             geometry: 0,
             mask: 1,
-            size_0d: 2,
-            size_1d: 3,
+            material: 2,
+            size_0d: 3,
+            size_1d: 4,
         }
     }
 }
@@ -1057,6 +1095,7 @@ impl NodeGraph {
             AttributeContents::QualitySlider{ quality, .. } => Some(quality as usize),
             AttributeContents::SizeSlider{ size, .. } => Some(size as usize),
             AttributeContents::Mask{ selected } => Some(selected),
+            AttributeContents::Material{ selected } => Some(selected),
             _ => None
         }
     }
@@ -1311,6 +1350,9 @@ impl NodeGraph {
                 kind: DataKind::Geometry,
             },
             AttributeContents::Mask {
+                selected: 0,
+            },
+            AttributeContents::Material {
                 selected: 0,
             },
             AttributeContents::SizeSlider {

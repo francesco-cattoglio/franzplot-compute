@@ -7,7 +7,7 @@ pub type MaskIds = [TextureId; 2];
 
 pub struct Availables {
     pub mask_ids: MaskIds,
-    pub texture_ids: Vec<TextureId>,
+    pub material_ids: Vec<TextureId>,
 }
 
 pub struct Gui {
@@ -20,13 +20,13 @@ pub struct Gui {
 }
 
 impl Gui {
-    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>, scene_texture_id: TextureId, mask_ids: MaskIds) -> Self {
+    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>, scene_texture_id: TextureId, mask_ids: MaskIds, material_ids: Vec<TextureId>) -> Self {
         // when we initialize a GUI, we want to set the first undo_stack element to a completely empty graph
         use super::node_graph::NodeGraph;
         let empty_graph = NodeGraph::default();
         let availables = Availables {
             mask_ids,
-            texture_ids: Vec::new(),
+            material_ids,
         };
         Self {
             new_global_buffer: ImString::with_capacity(8),

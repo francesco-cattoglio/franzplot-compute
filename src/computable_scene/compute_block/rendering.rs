@@ -9,6 +9,7 @@ const LOCAL_SIZE_Y: usize = 16;
 pub struct RenderingBlockDescriptor {
     pub geometry: Option<BlockId>,
     pub mask: usize,
+    pub material: usize,
     pub size_0d: usize,
     pub size_1d: usize,
 }
@@ -23,7 +24,7 @@ pub struct RenderingData {
     pub index_buffer: wgpu::Buffer,
     pub index_count: u32,
     pub mask_id: usize,
-    pub texture_id: usize,
+    pub material_id: usize,
     pub compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
     pub out_dim: Dimensions,
@@ -43,18 +44,18 @@ impl RenderingData {
                 Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim)
             }
             ComputeBlock::Curve(curve_data) => {
-                Self::setup_1d_geometry(device, &curve_data.out_buffer, &curve_data.out_dim, curve_radius, curve_section_points, descriptor.mask)
+                Self::setup_1d_geometry(device, &curve_data.out_buffer, &curve_data.out_dim, curve_radius, curve_section_points, descriptor.mask, descriptor.material)
             }
             ComputeBlock::Surface(surface_data) => {
-                Self::setup_2d_geometry(device, &surface_data.out_buffer, &surface_data.out_dim)
+                Self::setup_2d_geometry(device, &surface_data.out_buffer, &surface_data.out_dim, descriptor.mask, descriptor.material)
             }
             ComputeBlock::Transform(transformed_data) => {
                 let buffer = &transformed_data.out_buffer;
                 let dimensions = &transformed_data.out_dim;
                 match dimensions {
                     Dimensions::D0 => Self::setup_0d_geometry(device, buffer, dimensions),
-                    Dimensions::D1(_) => Self::setup_1d_geometry(device, buffer, dimensions, curve_radius, curve_section_points, descriptor.mask),
-                    Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions),
+                    Dimensions::D1(_) => Self::setup_1d_geometry(device, buffer, dimensions, curve_radius, curve_section_points, descriptor.mask, descriptor.material),
+                    Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions, descriptor.mask, descriptor.material),
                 }
             }
             _ => Err(BlockCreationError::InputInvalid("the input provided to the Renderer is not a geometry kind"))
@@ -65,7 +66,7 @@ impl RenderingData {
         unimplemented!("point rendering not implemented yet")
     }
 
-    fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, section_radius: f32, n_section_points: usize, mask_id: usize) -> Result<Self, BlockCreationError> {
+    fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, section_radius: f32, n_section_points: usize, mask_id: usize, material_id: usize) -> Result<Self, BlockCreationError> {
         let size = dimensions.as_1d().unwrap().size;
         let (index_buffer, index_count) = create_curve_buffer_index(device, size, n_section_points);
         let vertex_buffer = dimensions.create_storage_buffer(n_section_points*std::mem::size_of::<StandardVertexData>(), device);
@@ -174,7 +175,7 @@ void main() {{
 
         Ok(Self {
             mask_id,
-            texture_id: 0,
+            material_id,
             compute_pipeline,
             compute_bind_group,
             out_dim: dimensions.clone(),
@@ -184,7 +185,7 @@ void main() {{
         })
     }
 
-    fn setup_2d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions) -> Result<Self, BlockCreationError> {
+    fn setup_2d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, mask_id: usize, material_id: usize) -> Result<Self, BlockCreationError> {
         let (param_1, param_2) = dimensions.as_2d().unwrap();
         let flag_pattern = true;
         let (index_buffer, index_count) = create_grid_buffer_index(device, param_1.size, param_2.size, flag_pattern);
@@ -286,8 +287,8 @@ void main() {{
         let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Surface Normals"))?;
 
         Ok(Self {
-            mask_id: 0,
-            texture_id: 0,
+            mask_id,
+            material_id,
             compute_pipeline,
             compute_bind_group,
             out_dim: dimensions.clone(),

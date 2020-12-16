@@ -11,7 +11,6 @@ pub struct Texture {
 pub type Masks = [Texture; 2];
 
 impl Texture {
-
     pub fn load<P: AsRef<std::path::Path>>(device: &wgpu::Device, queue: &wgpu::Queue, path: P, label: Option<&str>) -> anyhow::Result<Self> {
         let img = image::open(path)?;
         Self::from_image(device, queue, &img, label)

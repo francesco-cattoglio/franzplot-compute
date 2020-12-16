@@ -129,7 +129,19 @@ fn main() {
 
     // then, load all masks that will be available in the rendering node and push them to imgui
     let mask_paths: [&str; 2] = ["./resources/masks/checker_8.png", "./resources/masks/h_stripes_16.png"];
-    let imgui_mask_ids: Vec<imgui::TextureId> = mask_paths.iter()
+    let material_paths = vec!["./resources/matcap_test.png", "./resources/matcap_test_2.png", "./resources/matcap_test_3.png"];
+
+    use std::convert::TryInto;
+    let imgui_mask_ids: [imgui::TextureId; 2] = mask_paths.iter()
+    .map(|path| {
+        let texture = Texture::load(&device_manager.device, &device_manager.queue, path, None).unwrap();
+        renderer.textures.insert(texture.into())
+    })
+    .collect::<Vec<_>>() // make it into a vector
+    .try_into() // and then turn it into an array
+    .unwrap();
+
+    let imgui_material_ids: Vec<imgui::TextureId> = material_paths.iter()
     .map(|path| {
         let texture = Texture::load(&device_manager.device, &device_manager.queue, path, None).unwrap();
         renderer.textures.insert(texture.into())
@@ -137,9 +149,8 @@ fn main() {
     .collect();
 
     // last, initialize the rust_gui and the state with the list of available masks.
-    use std::convert::TryInto;
-    let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, imgui_mask_ids.try_into().unwrap());
-    let mut state = state::State::new(device_manager, &mask_paths);
+    let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, imgui_mask_ids, imgui_material_ids);
+    let mut state = state::State::new(device_manager, &mask_paths, &material_paths);
 
     let mut frame_duration = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();
