@@ -194,29 +194,38 @@ impl Attribute {
             } => {
                 imnodes::BeginStaticAttribute(id);
                 ui.text(im_str!("Mask:"));
+                ui.same_line(0.0);
                 let mut value_changed = false;
-                let border = ui.push_style_var(StyleVar::FrameBorderSize(1.0));
-                for (i, mask) in availables.mask_ids.iter().enumerate() {
-                    ui.same_line(0.0);
-                    if i == *selected {
-                        let draw_list = ui.get_window_draw_list();
-                        let pos = ui.cursor_screen_pos();
-                        let upper_left = [pos[0], pos[1]];
-                        let lower_right = [pos[0] + 16.0, pos[1] + 16.0];
-                        draw_list.add_rect(upper_left, lower_right, [1., 1.0, 1.0, 1.0])
-                            .thickness(3.0)
-                            .build();
+                let button = ImageButton::new(availables.mask_ids[*selected], [16.0, 16.0])
+                    .uv1([0.5, 0.5]) // the pattern will be zoomed in by showing only a small part
+                    .frame_padding(0);
+                if button.build(ui) {
+                    ui.open_popup(im_str!("mask selection"));
+                }
+
+                let mut new_selection: Option<usize> = None;
+                let token = ui.push_style_var(StyleVar::WindowPadding([4.0, 4.0]));
+                ui.popup(im_str!("mask selection"), || {
+                    for (i, texture) in availables.mask_ids.iter().enumerate() {
+                        if i%4 != 0 {
+                            ui.same_line(0.0);
+                        }
+                        let button = ImageButton::new(*texture, [32.0, 32.0])
+                            .frame_padding(0);
+                        if button.build(ui) {
+                            new_selection = Some(i);
+                            dbg!(&new_selection);
+                            ui.close_current_popup();
+                        }
                     }
-                    let button = ImageButton::new(*mask, [16.0, 16.0])
-                        .uv1([0.5, 0.5]) // the pattern will be zoomed in by only showing a quarter
-                        .frame_padding(0);
-                    if button.build(ui) {
+                });
+                token.pop(ui);
+                if let Some(user_selection) = new_selection {
+                    if *selected != user_selection {
+                        *selected = user_selection;
                         value_changed = true;
-                        *selected = i;
-                        dbg!(&selected);
                     }
                 }
-                border.pop(ui);
                 imnodes::EndStaticAttribute();
                 value_changed
             }

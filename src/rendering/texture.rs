@@ -19,7 +19,7 @@ impl Texture {
 
     pub fn thumbnail<P: AsRef<std::path::Path>>(device: &wgpu::Device, queue: &wgpu::Queue, path: P, label: Option<&str>) -> anyhow::Result<Self> {
         let img = image::open(path)?;
-        let thumb = img.thumbnail_exact(32, 32);
+        let thumb = img.thumbnail_exact(64, 64);
         Self::from_image(device, queue, &thumb, label)
     }
 
