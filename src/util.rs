@@ -1,3 +1,46 @@
+use crate::rust_gui;
+use crate::device_manager;
+use crate::rendering::texture;
+
+pub fn load_imgui_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, renderer: &mut imgui_wgpu::Renderer, files: &[P]) -> rust_gui::MaskIds {
+    use std::convert::TryInto;
+    files.iter()
+        .map(|path| {
+            let texture = texture::Texture::thumbnail(&manager.device, &manager.queue, path, None).unwrap();
+            renderer.textures.insert(texture.into())
+        })
+        .collect::<Vec<_>>() // make it into a vector
+        .try_into() // and then turn it into an array
+        .unwrap() // panic if dimensions don't match
+}
+
+pub fn load_imgui_materials<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, renderer: &mut imgui_wgpu::Renderer, files: &[P]) -> rust_gui::MaterialIds {
+    files.iter()
+        .map(|path| {
+            let texture = texture::Texture::thumbnail(&manager.device, &manager.queue, path, None).unwrap();
+            renderer.textures.insert(texture.into())
+        })
+        .collect()
+}
+
+pub fn load_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, files: &[P]) -> texture::Masks {
+    use std::convert::TryInto;
+    files.iter()
+        .map(|path| {
+            texture::Texture::load(&manager.device, &manager.queue, path, None).unwrap()
+        })
+        .collect::<Vec<_>>() // make it into a vector
+        .try_into() // and then turn it into an array
+        .unwrap() // panic if dimensions don't match
+}
+
+pub fn load_materials<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, files: &[P]) -> texture::Materials {
+    files.iter()
+        .map(|path| {
+            texture::Texture::load(&manager.device, &manager.queue, path, None).unwrap()
+        })
+        .collect()
+}
 
 // maps a buffer, waits for it to be available, and copies its contents into a new Vec<f32>
 #[allow(unused)]

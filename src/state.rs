@@ -2,7 +2,7 @@ use crate::computable_scene::*;
 use crate::device_manager::Manager;
 use crate::rendering::camera;
 use crate::rendering::SceneRenderer;
-use crate::rendering::texture::{Texture, Masks};
+use crate::rendering::texture::{Texture, Masks, Materials};
 use crate::node_graph;
 use serde::{Serialize, Deserialize};
 
@@ -75,7 +75,7 @@ pub struct State {
 
 impl State {
     // this function will likely be called only once, at program start
-    pub fn new<P: AsRef<std::path::Path>>(manager: Manager, mask_paths: &[P; 2], material_paths: &Vec<P>) -> Self {
+    pub fn new(manager: Manager, masks: Masks, materials: Materials) -> Self {
         // at program start, we can just set the user data to its default value
         let user: UserState = Default::default();
 
@@ -86,26 +86,13 @@ impl State {
             renderer: SceneRenderer::new(&manager.device),
             mouse_pos: [0.0, 0.0],
         };
-        let masks_vec: Vec<Texture> = mask_paths
-            .iter()
-            .map(|path| {
-                Texture::load(&manager.device, &manager.queue, path, None).unwrap()
-            })
-            .collect();
-
-        let materials: Vec<Texture> = material_paths
-            .iter()
-            .map(|path| {
-                Texture::load(&manager.device, &manager.queue, path, None).unwrap()
-            })
-            .collect();
 
         let camera = camera::Camera::from_height_width(manager.sc_desc.height as f32, manager.sc_desc.width as f32);
         let camera_controller = Box::new(camera::VTKController::new(0.015, 0.015, 0.03));
-        use std::convert::TryInto;
+
         let app = AppState {
             computable_scene,
-            masks: masks_vec.try_into().expect("wrong length"),
+            masks,
             materials,
             camera,
             camera_enabled: false,

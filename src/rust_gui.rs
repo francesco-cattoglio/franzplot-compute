@@ -4,10 +4,11 @@ use crate::state::State;
 
 const MAX_UNDO_HISTORY : usize = 10;
 pub type MaskIds = [TextureId; 2];
+pub type MaterialIds = Vec<TextureId>;
 
 pub struct Availables {
     pub mask_ids: MaskIds,
-    pub material_ids: Vec<TextureId>,
+    pub material_ids: MaterialIds,
 }
 
 pub struct Gui {
@@ -20,7 +21,7 @@ pub struct Gui {
 }
 
 impl Gui {
-    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>, scene_texture_id: TextureId, mask_ids: MaskIds, material_ids: Vec<TextureId>) -> Self {
+    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>, scene_texture_id: TextureId, mask_ids: MaskIds, material_ids: MaterialIds) -> Self {
         // when we initialize a GUI, we want to set the first undo_stack element to a completely empty graph
         use super::node_graph::NodeGraph;
         let empty_graph = NodeGraph::default();

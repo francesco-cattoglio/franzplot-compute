@@ -122,7 +122,6 @@ fn main() {
     };
     let mut renderer = imgui_wgpu::Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, renderer_config);
 
-    use rendering::texture::Texture;
     // first, create a texture that will be used to render the scene and display it inside of imgui
     let scene_texture = rendering::texture::Texture::create_output_texture(&device_manager.device, wgpu::Extent3d::default(), 1);
     let scene_texture_id = renderer.textures.insert(scene_texture.into());
@@ -131,26 +130,15 @@ fn main() {
     let mask_paths: [&str; 2] = ["./resources/masks/checker_8.png", "./resources/masks/h_stripes_16.png"];
     let material_paths = vec!["./resources/matcap_test.png", "./resources/matcap_test_2.png", "./resources/matcap_test_3.png"];
 
-    use std::convert::TryInto;
-    let imgui_mask_ids: [imgui::TextureId; 2] = mask_paths.iter()
-    .map(|path| {
-        let texture = Texture::load(&device_manager.device, &device_manager.queue, path, None).unwrap();
-        renderer.textures.insert(texture.into())
-    })
-    .collect::<Vec<_>>() // make it into a vector
-    .try_into() // and then turn it into an array
-    .unwrap();
+    let imgui_masks = util::load_imgui_masks(&device_manager, &mut renderer, &mask_paths);
+    let imgui_materials = util::load_imgui_materials(&device_manager, &mut renderer, &material_paths);
 
-    let imgui_material_ids: Vec<imgui::TextureId> = material_paths.iter()
-    .map(|path| {
-        let texture = Texture::load(&device_manager.device, &device_manager.queue, path, None).unwrap();
-        renderer.textures.insert(texture.into())
-    })
-    .collect();
+    let masks = util::load_masks(&device_manager, &mask_paths);
+    let materials = util::load_materials(&device_manager, &material_paths);
 
-    // last, initialize the rust_gui and the state with the list of available masks.
-    let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, imgui_mask_ids, imgui_material_ids);
-    let mut state = state::State::new(device_manager, &mask_paths, &material_paths);
+    // last, initialize the rust_gui and the state with the list of available masks and materials.
+    let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, imgui_masks, imgui_materials);
+    let mut state = state::State::new(device_manager, masks, materials);
 
     let mut frame_duration = std::time::Duration::from_secs(0);
     let mut old_instant = std::time::Instant::now();

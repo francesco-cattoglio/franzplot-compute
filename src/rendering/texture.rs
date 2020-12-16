@@ -9,11 +9,18 @@ pub struct Texture {
 }
 
 pub type Masks = [Texture; 2];
+pub type Materials = Vec<Texture>;
 
 impl Texture {
     pub fn load<P: AsRef<std::path::Path>>(device: &wgpu::Device, queue: &wgpu::Queue, path: P, label: Option<&str>) -> anyhow::Result<Self> {
         let img = image::open(path)?;
         Self::from_image(device, queue, &img, label)
+    }
+
+    pub fn thumbnail<P: AsRef<std::path::Path>>(device: &wgpu::Device, queue: &wgpu::Queue, path: P, label: Option<&str>) -> anyhow::Result<Self> {
+        let img = image::open(path)?;
+        let thumb = img.thumbnail_exact(32, 32);
+        Self::from_image(device, queue, &thumb, label)
     }
 
     pub fn create_depth_texture(device: &wgpu::Device, size: wgpu::Extent3d, sample_count: u32) -> Self {
