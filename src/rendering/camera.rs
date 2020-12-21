@@ -35,33 +35,17 @@ impl Camera {
     }
 
     pub fn build_view_matrix(&self) -> Mat4 {
-        let lookat_matrix = Mat4::look_at_lh(
-            self.eye,
-            self.target,
-            self.up,
-        );
-
-        lookat_matrix
+        Mat4::look_at_lh(self.eye, self.target, self.up)
     }
 
     pub fn build_projection_matrix(&self) -> Mat4 {
-        let lookat_matrix = Mat4::look_at_lh(
-            self.eye,
-            self.target,
-            self.up,
-        );
-        let proj_matrix = Mat4::perspective_lh(self.fov_y, self.aspect, self.z_near, self.z_far);
-        // let proj_matrix = Mat4::orthographic_lh(-4.0, 4.0, -2.5, 2.5, -10.0, 10.0);
-
-        proj_matrix
+        Mat4::perspective_lh(self.fov_y, self.aspect, self.z_near, self.z_far)
     }
 
     pub fn build_ortho_matrix(&self) -> Mat4 {
-        let proj_matrix = Mat4::perspective_lh(self.fov_y, self.aspect, self.z_near, self.z_far);
-        proj_matrix
-
-        // let ortho_matrix = Mat4::orthographic_lh(-4.0, 4.0, -2.5, 2.5, -10.0, 10.0);
-        // ortho_matrix
+        unimplemented!()
+        // need testing
+        //Mat4::orthographic_lh(-4.0, 4.0, -2.5, 2.5, -10.0, 10.0)
     }
 }
 

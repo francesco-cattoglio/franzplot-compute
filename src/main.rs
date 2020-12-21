@@ -147,7 +147,7 @@ fn main() {
                 return None;
             }
             let extension = path.extension()?.to_str()?.to_lowercase();
-            if extension == "png".to_string() {
+            if extension == *"png" {
                 Some(path)
             } else {
                 None

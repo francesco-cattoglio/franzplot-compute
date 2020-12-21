@@ -126,7 +126,7 @@ impl SceneRenderer {
         self.depth_texture = Texture::create_depth_texture(device, size, SAMPLE_COUNT);
     }
 
-    pub fn update_renderables(&mut self, device: &wgpu::Device, avail_masks: &Masks, avail_textures: &Vec<Texture>, chain: &ComputeChain) {
+    pub fn update_renderables(&mut self, device: &wgpu::Device, avail_masks: &Masks, avail_textures: &[Texture], chain: &ComputeChain) {
         self.renderables.clear();
         // go through all blocks,
         // chose the "Rendering" ones,
@@ -201,7 +201,7 @@ impl SceneRenderer {
         self.wireframes.push(render_bundle);
     }
 
-    fn add_renderable(&mut self, device: &wgpu::Device, masks: &Masks, textures: &Vec<Texture>, rendering_data: &RenderingData, object_id: u32) {
+    fn add_renderable(&mut self, device: &wgpu::Device, masks: &Masks, textures: &[Texture], rendering_data: &RenderingData, object_id: u32) {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for RenderingData"),

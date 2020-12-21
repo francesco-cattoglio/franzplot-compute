@@ -18,7 +18,7 @@ pub struct ComputableScene{
 }
 
 impl ComputableScene {
-    pub fn process_graph(&mut self, device: &wgpu::Device, masks: &Masks, textures: &Vec<Texture>, graph: &mut NodeGraph, globals: Globals) -> Vec<GraphError> {
+    pub fn process_graph(&mut self, device: &wgpu::Device, masks: &Masks, textures: &[Texture], graph: &mut NodeGraph, globals: Globals) -> Vec<GraphError> {
         self.globals = globals;
         // TODO: this part is super confusing, there are huge side effects that
         // can easily go unnoticed. maybe refactor it?

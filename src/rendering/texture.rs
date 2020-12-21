@@ -235,7 +235,7 @@ impl Texture {
                     // The layout of the texture
                     wgpu::TextureDataLayout {
                         offset: 0,
-                        bytes_per_row: 1 * image_size.0,
+                        bytes_per_row: std::mem::size_of::<u8>() as u32 * image_size.0,
                         rows_per_image: image_size.1,
                     },
                     size,
@@ -267,7 +267,7 @@ impl Texture {
                     // The layout of the texture
                     wgpu::TextureDataLayout {
                         offset: 0,
-                        bytes_per_row: 4 * image_size.0,
+                        bytes_per_row: std::mem::size_of::<u32>() as u32 * image_size.0,
                         rows_per_image: image_size.1,
                     },
                     size,
