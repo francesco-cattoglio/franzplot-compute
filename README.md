@@ -9,24 +9,19 @@ Feature già implementate:
 - controllo della telecamera in stile VTK. È possibile aggiungere altri stili (es: fly camera o orbit come nel vecchio franzplot) 
 
 Known bugs:
-- Quando si seleziona un nodo nel grafo con click sinistro e poi si fa click destro su un nodo diverso, le azioni vengono eseguite sul nodo selezionato, non sull'ultimo che è stato clickato.
-- Curve perfettamente verticali (segmento parallelo all'asse z) non vengono renderizzate correttamente.
 
 Prossime feature:
-- rendering dei punti
-- miglior rendering delle curve e delle superfici
-- gestione della scena (in particolare, le luci e gli assi cartesiani)
-- export di png
 
 Feature previste per Gennaio:
 - rendering & trasformazioni di primitive
-- import/export di mesh
 - curve di bezier
 - raggruppamento dei nodi nel grafo
 - visualizzazione delle curve u-v sulle superfici
 - scelta del formato file definitivo (attualmente uso un json, ma non può contenere commenti quindi va cambiato)
 
-Features non indispensabili per ora:
+Features a data da destinarsi:
+- import/export di mesh
+- export di png
 - sample della curva (la visualizzazione delle famiglie u-v è più utile didatticamente!)
 - export di video
 
