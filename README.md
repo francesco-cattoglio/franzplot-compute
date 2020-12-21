@@ -6,14 +6,13 @@ Feature già implementate:
 - save e load del grafo da file, incluse le variabili globali usate.
 - undo/redo nel grafo. Oltre ad avere i due tasti Undo/Redo, è possibile usare gli shortcut CTRL+Z e CTRL+SHIFT+Z.
 - duplicazione dei nodi.
+- controllo della telecamera in stile VTK. È possibile aggiungere altri stili (es: fly camera o orbit come nel vecchio franzplot) 
 
 Known bugs:
 - Quando si seleziona un nodo nel grafo con click sinistro e poi si fa click destro su un nodo diverso, le azioni vengono eseguite sul nodo selezionato, non sull'ultimo che è stato clickato.
 - Curve perfettamente verticali (segmento parallelo all'asse z) non vengono renderizzate correttamente.
-- Se si riutilizza lo stesso parametro sia in una curva che in una matrice parametrica, il risultato calcolato è errato.
 
 Prossime feature:
-- controllo della telecamera
 - rendering dei punti
 - miglior rendering delle curve e delle superfici
 - gestione della scena (in particolare, le luci e gli assi cartesiani)
@@ -26,7 +25,6 @@ Feature previste per Gennaio:
 - raggruppamento dei nodi nel grafo
 - visualizzazione delle curve u-v sulle superfici
 - scelta del formato file definitivo (attualmente uso un json, ma non può contenere commenti quindi va cambiato)
-- trovare un modo per catturare il mouse che funzioni senza dare problemi
 
 Features non indispensabili per ora:
 - sample della curva (la visualizzazione delle famiglie u-v è più utile didatticamente!)
