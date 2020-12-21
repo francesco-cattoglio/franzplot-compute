@@ -1,4 +1,5 @@
 use crate::rendering::{StandardVertexData, GLSL_STANDARD_VERTEX_STRUCT};
+use crate::node_graph::AVAILABLE_SIZES;
 use super::{ComputeBlock, BlockCreationError, Dimensions, BlockId};
 use super::{ProcessedMap, ProcessingResult};
 
@@ -35,41 +36,111 @@ impl RenderingData {
         let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Renderer input does not exist in the block map"))?;
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
-        use crate::node_graph;
-        let curve_radius = node_graph::AVAILABLE_SIZES[descriptor.thickness];
-        let curve_section_points = (descriptor.thickness + 3)*2;
         match input_block {
             ComputeBlock::Point(point_data) => {
-                Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim)
+                Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim, descriptor)
             }
             ComputeBlock::Curve(curve_data) => {
-                Self::setup_1d_geometry(device, &curve_data.out_buffer, &curve_data.out_dim, curve_radius, curve_section_points, descriptor.mask, descriptor.material)
+                Self::setup_1d_geometry(device, &curve_data.out_buffer, &curve_data.out_dim, descriptor)
             }
             ComputeBlock::Surface(surface_data) => {
-                Self::setup_2d_geometry(device, &surface_data.out_buffer, &surface_data.out_dim, descriptor.mask, descriptor.material)
+                Self::setup_2d_geometry(device, &surface_data.out_buffer, &surface_data.out_dim, descriptor)
             }
             ComputeBlock::Transform(transformed_data) => {
                 let buffer = &transformed_data.out_buffer;
                 let dimensions = &transformed_data.out_dim;
                 match dimensions {
-                    Dimensions::D0 => Self::setup_0d_geometry(device, buffer, dimensions),
-                    Dimensions::D1(_) => Self::setup_1d_geometry(device, buffer, dimensions, curve_radius, curve_section_points, descriptor.mask, descriptor.material),
-                    Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions, descriptor.mask, descriptor.material),
+                    Dimensions::D0 => Self::setup_0d_geometry(device, buffer, dimensions, descriptor),
+                    Dimensions::D1(_) => Self::setup_1d_geometry(device, buffer, dimensions, descriptor),
+                    Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions, descriptor),
                 }
             }
             _ => Err(BlockCreationError::InputInvalid("the input provided to the Renderer is not a geometry kind"))
         }
     }
 
-    fn setup_0d_geometry(_device: &wgpu::Device, _data_buffer: &wgpu::Buffer, _dimensions: &Dimensions) -> Result<Self, BlockCreationError> {
-        unimplemented!("point rendering not implemented yet")
+    fn setup_0d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
+        // Never go above a certain refinement level: the local group size for a compute shader
+        // invocation should never exceed 512, otherwise the GPU might error out, and with
+        // a refine level of 6 we already hit the 492 points count.
+        // TODO: on mobile group size limit might be 256, and max refine might be 4
+        let refine_amount = std::cmp::min(descriptor.thickness, 6);
+        let sphere_radius = AVAILABLE_SIZES[descriptor.thickness];
+
+        let (shader_consts, vertices_count, index_buffer, index_count) = create_point_data(device, refine_amount);
+        // BEWARE: for 0D dimensions, the buffer that will be created is just the
+        // "size of the element" that we pass in. For this reason, we need to put the size of
+        // a single vertex times the number of vertices that we used to represent the point
+        let vertex_buffer = dimensions.create_storage_buffer(vertices_count*std::mem::size_of::<StandardVertexData>(), device);
+
+        let shader_source = format!(r##"
+#version 450
+layout(local_size_x = {dimx}, local_size_y = 1) in;
+
+{vertex_struct}
+
+layout(set = 0, binding = 0) buffer InputVertices {{
+    vec4 in_buff[];
+}};
+
+layout(set = 0, binding = 1) buffer OutputData {{
+    Vertex out_buff[];
+}};
+
+{shader_constants}
+
+void main() {{
+    // this shader prepares the data for point rendering.
+    // there is very little work to do, we just translate the constants
+    // to their correct location and store the normals.
+    vec4 point_coords = in_buff[0];
+    uint idx = gl_GlobalInvocationID.x;
+
+    vec4 normal = vec4(sphere_points[idx], 0.0);
+    out_buff[idx].position = point_coords + {radius}*normal;
+    out_buff[idx].normal = normal;
+    out_buff[idx].uv_coords = vec2(0.0, 0.0);
+    out_buff[idx]._padding = vec2(0.123, 0.456);
+}}
+"##, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, radius=sphere_radius, shader_constants=shader_consts, dimx=vertices_count);
+
+        let bindings = [
+            // add descriptor for input buffer
+            CustomBindDescriptor {
+                position: 0,
+                buffer_slice: data_buffer.slice(..)
+            },
+            // add descriptor for output buffer
+            CustomBindDescriptor {
+                position: 1,
+                buffer_slice: vertex_buffer.slice(..)
+            }
+        ];
+
+        use crate::shader_processing::*;
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Curve Normals"))?;
+
+        Ok(Self {
+            mask_id: descriptor.mask,
+            material_id: descriptor.material,
+            compute_pipeline,
+            compute_bind_group,
+            out_dim: dimensions.clone(),
+            vertex_buffer,
+            index_buffer,
+            index_count
+        })
     }
 
-    fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, section_radius: f32, n_section_points: usize, mask_id: usize, material_id: usize) -> Result<Self, BlockCreationError> {
+    fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
+        let section_diameter = AVAILABLE_SIZES[descriptor.thickness];
+        let n_section_points = (descriptor.thickness + 3)*2;
+
         let size = dimensions.as_1d().unwrap().size;
         let (index_buffer, index_count) = create_curve_buffer_index(device, size, n_section_points);
         let vertex_buffer = dimensions.create_storage_buffer(n_section_points*std::mem::size_of::<StandardVertexData>(), device);
-        let shader_consts = create_curve_shader_constants(section_radius, n_section_points);
+
+        let shader_consts = create_curve_shader_constants(section_diameter/2.0, n_section_points);
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
@@ -173,8 +244,8 @@ void main() {{
         let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Curve Normals"))?;
 
         Ok(Self {
-            mask_id,
-            material_id,
+            mask_id: descriptor.mask,
+            material_id: descriptor.material,
             compute_pipeline,
             compute_bind_group,
             out_dim: dimensions.clone(),
@@ -184,7 +255,7 @@ void main() {{
         })
     }
 
-    fn setup_2d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, mask_id: usize, material_id: usize) -> Result<Self, BlockCreationError> {
+    fn setup_2d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
         let (param_1, param_2) = dimensions.as_2d().unwrap();
         let flag_pattern = true;
         let (index_buffer, index_count) = create_grid_buffer_index(device, param_1.size, param_2.size, flag_pattern);
@@ -286,8 +357,8 @@ void main() {{
         let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Surface Normals"))?;
 
         Ok(Self {
-            mask_id,
-            material_id,
+            mask_id: descriptor.mask,
+            material_id: descriptor.material,
             compute_pipeline,
             compute_bind_group,
             out_dim: dimensions.clone(),
@@ -304,7 +375,9 @@ void main() {{
         compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
         match &self.out_dim {
             Dimensions::D0 => {
-                unimplemented!();
+                // BEWARE: as described before, we wrote the size of the buffer inside the local shader
+                // dimensions, therefore the whole compute will always take just 1 dispatch
+                compute_pass.dispatch(1, 1, 1);
             }
             Dimensions::D1(_par_1) => {
                 // BEWARE: as described before, we wrote the size of the buffer inside the local shader
@@ -319,8 +392,36 @@ void main() {{
 }
 
 // UTILITY FUNCTIONS
-// those are needed to create the index buffers for both the point, curve and surface rendering
-// plus the reference section points for the curve rendering.
+// those are used to:
+// - create the index buffers for point, curve and surface rendering
+// - create the default vertices for the icosahedron representing the point
+// - create the default vertices positions for each curve section
+
+fn create_point_data(device: &wgpu::Device, refine: usize) -> (String, usize, wgpu::Buffer, u32) {
+    use hexasphere::shapes::IcoSphere;
+    let sphere = IcoSphere::new(refine, |_| ());
+
+    let points = sphere.raw_points();
+    let point_count = points.len();
+    dbg!(point_count);
+    let mut shader_consts = String::new();
+    shader_consts += &format!("const vec3 sphere_points[{n}] = {{\n", n=point_count);
+    for p in points {
+        shader_consts += &format!("\tvec3({x}, {y}, {z}),\n", x=p.x, y=p.y, z=p.z );
+    }
+    shader_consts += &format!("}};\n");
+    let indices = sphere.get_all_indices();
+
+    use wgpu::util::DeviceExt;
+    let index_buffer = device.create_buffer_init(
+        &wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsage::INDEX,
+    });
+    (shader_consts, point_count, index_buffer, indices.len() as u32)
+}
+
 fn create_curve_buffer_index(device: &wgpu::Device, x_size: usize, circle_points: usize) -> (wgpu::Buffer, u32) {
     assert!(circle_points > 3);
     let mut index_vector = Vec::<u32>::new();

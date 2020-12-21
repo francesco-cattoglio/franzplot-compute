@@ -546,6 +546,7 @@ dependencies = [
  "futures",
  "getopts",
  "glam",
+ "hexasphere",
  "image",
  "imgui",
  "imgui-wgpu",
@@ -884,6 +885,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5aca5565f760fb5b220e499d72710ed156fdb74e631659e99377d9ebfbd13ae8"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "hexasphere"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b81ef4574a098bd48fad1a5cd7c4e6e908ac9a90d85338cef224be96f3059355"
+dependencies = [
+ "glam",
+ "lazy_static",
 ]
 
 [[package]]

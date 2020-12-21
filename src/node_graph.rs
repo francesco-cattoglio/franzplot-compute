@@ -75,7 +75,7 @@ pub enum AttributeContents {
     }
 }
 
-pub const AVAILABLE_SIZES: [f32; 9] = [0.02, 0.04, 0.06, 0.08, 0.10, 0.12, 0.16, 0.2, 0.4];
+pub const AVAILABLE_SIZES: [f32; 9] = [0.04, 0.08, 0.12, 0.16, 0.20, 0.24, 0.32, 0.4, 0.8];
 
 impl Attribute {
     // the render function shall return bool if anything has changed.

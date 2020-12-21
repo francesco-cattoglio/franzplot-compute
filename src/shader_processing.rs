@@ -16,7 +16,8 @@ pub fn compile_compute_shader(
     ) -> CompilationResult {
         let mut shader_compiler = shaderc::Compiler::new().ok_or(BlockCreationError::InternalError("unable to initialize shader compiler"))?;
         let comp_spirv = shader_compiler.compile_into_spirv(shader_src, shaderc::ShaderKind::Compute, "shader.comp", "main", None)
-        .map_err(|_error: shaderc::Error| {
+        .map_err(|error: shaderc::Error| {
+            dbg!(&error);
             BlockCreationError::IncorrectAttributes(" check the expressions \n for errors ")
         })?;
         let comp_data = wgpu::util::make_spirv(comp_spirv.as_binary_u8());

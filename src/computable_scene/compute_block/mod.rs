@@ -114,8 +114,7 @@ impl Dimensions {
             label: None,
             mapped_at_creation: false,
             size: buff_size as wgpu::BufferAddress,
-            // Beware: vertex is actually only required for surface renderer,
-            // while copy and map are only needed when debugging/inspecting
+            // Beware:copy and map are only needed when debugging/inspecting
             usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
         })
     }
