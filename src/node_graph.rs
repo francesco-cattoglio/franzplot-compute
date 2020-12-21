@@ -789,16 +789,20 @@ impl NodeGraph {
             && ui.is_mouse_released(MouseButton::Right)
             && mouse_delta == [0.0, 0.0]; // exact comparison is fine due to GetMouseDragDelta threshold
 
-        // TODO: currently the right click menu is a bit bugged, because right-clicking on a node
-        // does not select it. This means that the node the user rightclicks on might not be the
-        // one they end up interacting with.
+        let mut selected_nodes_ids = imnodes::GetSelectedNodes();
         if right_click_popup {
             println!("rcd");
             let mut hovered_id: i32 = -1;
             if imnodes::IsNodeHovered(&mut hovered_id) {
-                println!("IsNodeHovered returned {}", &hovered_id);
+                // Right-clicking on a node does not select it. This means that if a user right clicks
+                // on a node that is not selected the interaction will be very confusing.
+                // To make sure everything will be fine, we clear node selection if this is the case.
+                if !selected_nodes_ids.contains(&hovered_id) {
+                    imnodes::ClearNodeSelection();
+                    selected_nodes_ids.clear();
+                }
+
                 self.right_clicked_node = Some(hovered_id);
-                dbg!(&self.right_clicked_node);
                 ui.open_popup(im_str!("Node menu"));
             } else if imnodes::IsLinkHovered(&mut hovered_id) {
                 self.right_clicked_link = Some(hovered_id);
@@ -811,11 +815,8 @@ impl NodeGraph {
         ui.popup(im_str!("Node menu"), || {
             let clicked_node = self.right_clicked_node.unwrap();
             let clicked_pos = ui.mouse_pos_on_opening_current_popup();
-            // The right-click menu changes contents depending
-            // on how many nodes the user selected
-            let selected_nodes_ids = imnodes::GetSelectedNodes();
-            // TODO: this should also probably be the case when only one node is selected...
-            if selected_nodes_ids.is_empty() {
+            // The right-click menu changes contents depending on how many nodes are selected
+            if selected_nodes_ids.len() <= 1 {
                 // single node selection, using the self.right_clicked_node id
                 if MenuItem::new(im_str!("delete node")).build(ui) {
                     println!("need to remove {}", clicked_node);
@@ -824,16 +825,15 @@ impl NodeGraph {
                     self.right_clicked_node = None;
                     request_savestate = Some(ui.time());
                 }
-                // TODO: decide if non-selected single node clone should still clone the links
+                // TODO: decide if single node clone should still clone the links
                 if MenuItem::new(im_str!("duplicate node")).build(ui) {
                     let position = [clicked_pos[0]+30.0, clicked_pos[1]+30.0];
                     self.duplicate_node_no_links(clicked_node, position);
                     self.right_clicked_node = None;
                     request_savestate = Some(ui.time());
                 }
-                // TODO: should renaming be available even if multiple nodes are selected?
                 if MenuItem::new(im_str!("rename node")).build(ui) {
-                    println!("need to rename {}", clicked_node);
+                    println!("need to rename {}, feature not yet implemented", clicked_node);
                     // TODO: when renaming is enabled, make sure to remove this line,
                     // or you will unwrap a None
                     self.right_clicked_node = None;
