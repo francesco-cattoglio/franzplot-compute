@@ -182,8 +182,7 @@ void main() {{
     barrier();
 
     if (idx == 0) {{
-        // TODO: better choice of starting vector, this one fails if t = [0, 0, 1]
-        vec3 ref_curr = vec3(0.0, 0.0, 1.0);
+        vec3 ref_curr = (abs(tangent.x) > 0.2) ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
         for (int i = 0; i < x_size; i++) {{
             vec3 next_dir = tangent_buff[i];
             // TODO: handle 90 degrees curve
