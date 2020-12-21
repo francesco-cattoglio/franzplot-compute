@@ -83,7 +83,7 @@ impl State {
         let computable_scene = ComputableScene {
             globals: globals::Globals::new(&manager.device, vec![], vec![]),
             chain: compute_chain::ComputeChain::new(),
-            renderer: SceneRenderer::new(&manager.device),
+            renderer: SceneRenderer::new_with_axes(&manager.device),
             mouse_pos: [0.0, 0.0],
         };
 

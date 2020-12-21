@@ -40,10 +40,12 @@ impl Uniforms {
 /// that imgui picks up and shows to the user.
 ///
 pub struct SceneRenderer {
-    pipeline_solid: wgpu::RenderPipeline,
+    solid_pipeline: wgpu::RenderPipeline,
+    wireframe_pipeline: wgpu::RenderPipeline,
     picking_buffer_length: usize,
     picking_buffer: wgpu::Buffer,
     picking_bind_group: wgpu::BindGroup,
+    wireframes: Vec<wgpu::RenderBundle>,
     renderables: Vec<wgpu::RenderBundle>,
     uniforms: Uniforms,
     uniforms_buffer: wgpu::Buffer,
@@ -53,6 +55,12 @@ pub struct SceneRenderer {
 }
 
 impl SceneRenderer {
+    pub fn new_with_axes(device: &wgpu::Device) -> Self {
+        let mut renderer = Self::new(device);
+        renderer.add_wireframe_axes(device);
+        renderer
+    }
+
     pub fn new(device: &wgpu::Device) -> Self {
         // the object picking buffer is initially created with a reasonable default length
         // If the user displays more than this many objects, the buffer will get resized.
@@ -92,7 +100,8 @@ impl SceneRenderer {
         });
 
         // set up pipeline and render targets
-        let pipeline_solid = create_solid_pipeline(&device, &uniforms_bind_layout, &picking_bind_layout);
+        let solid_pipeline = create_solid_pipeline(&device, &uniforms_bind_layout, &picking_bind_layout);
+        let wireframe_pipeline = create_wireframe_pipeline(&device, &uniforms_bind_layout);
         let depth_texture = Texture::create_depth_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
         let output_texture = Texture::create_output_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
 
@@ -100,13 +109,15 @@ impl SceneRenderer {
             picking_buffer_length,
             picking_buffer,
             picking_bind_group,
+            wireframes: Vec::new(),
             renderables: Vec::new(),
             depth_texture,
             output_texture,
             uniforms,
             uniforms_buffer,
             uniforms_bind_group,
-            pipeline_solid,
+            solid_pipeline,
+            wireframe_pipeline,
         }
     }
 
@@ -143,6 +154,53 @@ impl SceneRenderer {
         }
     }
 
+    fn add_wireframe_axes(&mut self, device: &wgpu::Device) {
+        let mut render_bundle_encoder = device.create_render_bundle_encoder(
+            &wgpu::RenderBundleEncoderDescriptor{
+                label: Some("Render bundle encoder for RenderingData"),
+                color_formats: &[SWAPCHAIN_FORMAT],
+                depth_stencil_format: Some(DEPTH_FORMAT),
+                sample_count: SAMPLE_COUNT,
+            }
+        );
+
+        let vertices: Vec<WireframeVertexData> = vec![
+            WireframeVertexData { position: [0.0, 0.0, 0.0], color: [255, 0, 0, 255] },
+            WireframeVertexData { position: [1.0, 0.0, 0.0], color: [255, 0, 0, 255] },
+            WireframeVertexData { position: [0.0, 0.0, 0.0], color: [0, 255, 0, 255] },
+            WireframeVertexData { position: [0.0, 1.0, 0.0], color: [0, 255, 0, 255] },
+            WireframeVertexData { position: [0.0, 0.0, 0.0], color: [0, 0, 255, 255] },
+            WireframeVertexData { position: [0.0, 0.0, 1.0], color: [0, 0, 255, 255] },
+        ];
+        let indices: Vec<u32> = vec![
+            0, 1,
+            2, 3,
+            4, 5,
+        ];
+
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+        });
+        let index_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(&indices),
+                usage: wgpu::BufferUsage::INDEX,
+        });
+
+        render_bundle_encoder.set_pipeline(&self.wireframe_pipeline);
+        render_bundle_encoder.set_vertex_buffer(0, vertex_buffer.slice(..));
+        render_bundle_encoder.set_index_buffer(index_buffer.slice(..));
+        render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
+        render_bundle_encoder.draw_indexed(0..indices.len() as u32, 0, 0..1);
+        let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
+            label: Some("Render bundle for wireframe"),
+        });
+        self.wireframes.push(render_bundle);
+    }
+
     fn add_renderable(&mut self, device: &wgpu::Device, masks: &Masks, textures: &Vec<Texture>, rendering_data: &RenderingData, object_id: u32) {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
@@ -152,7 +210,7 @@ impl SceneRenderer {
                 sample_count: SAMPLE_COUNT,
             }
         );
-        render_bundle_encoder.set_pipeline(&self.pipeline_solid);
+        render_bundle_encoder.set_pipeline(&self.solid_pipeline);
         render_bundle_encoder.set_vertex_buffer(0, rendering_data.vertex_buffer.slice(..));
         render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..));
         render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
@@ -218,7 +276,8 @@ impl SceneRenderer {
                 }),
             });
 
-            // actual render call
+            // actual render calls
+            render_pass.execute_bundles(self.wireframes.iter());
             render_pass.execute_bundles(self.renderables.iter());
         }
         let render_queue = encoder.finish();
@@ -268,6 +327,78 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
         });
 
         (picking_buffer, picking_bind_layout, picking_bind_group)
+}
+
+fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
+    // shader compiling
+    let mut shader_compiler = shaderc::Compiler::new().unwrap();
+    let vert_src = include_str!("wireframe.vert");
+    let frag_src = include_str!("wireframe.frag");
+    let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "wireframe.vert", "main", None).unwrap();
+    let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "wireframe.frag", "main", None).unwrap();
+    let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
+    let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
+    let vert_module = device.create_shader_module(vert_data);
+    let frag_module = device.create_shader_module(frag_data);
+
+    let render_pipeline_layout =
+        device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None,
+            push_constant_ranges: &[],
+            bind_group_layouts: &[uniforms_bind_layout]
+        });
+
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
+        layout: Some(&render_pipeline_layout),
+        label: None,
+        vertex_stage: wgpu::ProgrammableStageDescriptor {
+            module: &vert_module,
+            entry_point: "main",
+        },
+        fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+            module: &frag_module,
+            entry_point: "main",
+        }),
+        rasterization_state: Some(wgpu::RasterizationStateDescriptor {
+            front_face: wgpu::FrontFace::Ccw,
+            clamp_depth: false,
+            cull_mode: wgpu::CullMode::None,
+            depth_bias: 0,
+            depth_bias_slope_scale: 0.0,
+            depth_bias_clamp: 0.0,
+        }),
+        primitive_topology: wgpu::PrimitiveTopology::LineList,
+            color_states: &[wgpu::ColorStateDescriptor{
+            format: SWAPCHAIN_FORMAT,
+            color_blend: wgpu::BlendDescriptor::REPLACE,
+            alpha_blend: wgpu::BlendDescriptor::REPLACE,
+            write_mask: wgpu::ColorWrite::ALL
+        }],
+        depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Less,
+            stencil: wgpu::StencilStateDescriptor {
+                front: wgpu::StencilStateFaceDescriptor::IGNORE,
+                back: wgpu::StencilStateFaceDescriptor::IGNORE,
+                read_mask: 0,
+                write_mask: 0,
+            }
+        }),
+        sample_count: SAMPLE_COUNT,
+        sample_mask: !0,
+        alpha_to_coverage_enabled: false,
+        vertex_state: wgpu::VertexStateDescriptor {
+            index_format: wgpu::IndexFormat::Uint32,
+            vertex_buffers: &[
+                wgpu::VertexBufferDescriptor {
+                    stride: std::mem::size_of::<WireframeVertexData>() as wgpu::BufferAddress,
+                    step_mode: wgpu::InputStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Uchar4Norm],
+                },
+            ],
+        },
+    })
 }
 
 fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::BindGroupLayout, picking_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {

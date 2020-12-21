@@ -32,6 +32,24 @@ struct Vertex {
 unsafe impl bytemuck::Pod for StandardVertexData {}
 unsafe impl bytemuck::Zeroable for StandardVertexData {}
 
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct WireframeVertexData {
+    position: [f32; 3],
+    color: [u8; 4],
+}
+
+pub const GLSL_WIREFRAME_VERTEX_STRUCT: & str = r##"
+struct Vertex {
+    vec3 position;
+    vec4 color;
+};
+"##;
+
+unsafe impl bytemuck::Pod for WireframeVertexData {}
+unsafe impl bytemuck::Zeroable for WireframeVertexData {}
+
+
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const SWAPCHAIN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8UnormSrgb;
 
