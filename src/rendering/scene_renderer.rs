@@ -235,9 +235,9 @@ impl SceneRenderer {
         self.uniforms.proj = proj;
     }
 
-    pub fn update_mouse_pos(&mut self, mouse_pos: &[f32; 2]) {
-        self.uniforms.mouse_pos[0] = mouse_pos[0] as i32;
-        self.uniforms.mouse_pos[1] = mouse_pos[1] as i32;
+    pub fn update_mouse_pos(&mut self, mouse_pos: &[i32; 2]) {
+        self.uniforms.mouse_pos[0] = mouse_pos[0];
+        self.uniforms.mouse_pos[1] = mouse_pos[1];
     }
 
     pub fn render(&self, manager: &device_manager::Manager, target_view: &wgpu::TextureView) {
@@ -287,7 +287,7 @@ impl SceneRenderer {
         if !self.renderables.is_empty() {
             use crate::util::copy_buffer_as_f32;
             let picking_distances = copy_buffer_as_f32(&self.picking_buffer, &manager.device);
-            //dbg!(picking_distances);
+            dbg!(picking_distances);
         }
     }
 }

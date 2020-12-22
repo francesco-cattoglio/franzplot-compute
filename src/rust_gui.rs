@@ -20,6 +20,12 @@ pub struct Gui {
     availables: Availables,
 }
 
+#[derive(Debug)]
+pub struct SceneRectangle {
+    pub position: [f32; 2],
+    pub size: [f32; 2],
+}
+
 impl Gui {
     pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>, scene_texture_id: TextureId, mask_ids: MaskIds, material_ids: MaterialIds) -> Self {
         // when we initialize a GUI, we want to set the first undo_stack element to a completely empty graph
@@ -88,7 +94,7 @@ impl Gui {
         }
     }
 
-    pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State) -> Option<[f32; 2]> {
+    pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State) -> Option<SceneRectangle> {
         // create main window
         let window_begun = Window::new(im_str!("Rust window"))
             .no_decoration()
@@ -98,7 +104,7 @@ impl Gui {
             .position([0.0, 0.0], Condition::Always)
             .begin(ui);
 
-        let mut requested_scene_size = None;
+        let mut requested_scene_rectangle = None;
 
         if let Some(window_token) = window_begun {
             // menu bar
@@ -131,7 +137,7 @@ impl Gui {
 
                 TabItem::new(im_str!("Scene"))
                     .build(ui, || {
-                        requested_scene_size = Some(self.render_scene_tab(ui, state));
+                        requested_scene_rectangle = Some(self.render_scene_tab(ui, state));
                     });
 
                 TabItem::new(im_str!("Settings"))
@@ -143,7 +149,7 @@ impl Gui {
             }
             window_token.end(ui);
         }
-        requested_scene_size
+        requested_scene_rectangle
     }
 
     fn render_editor_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
@@ -211,7 +217,7 @@ impl Gui {
         ui.columns(1, im_str!("editor columns"), false);
     }
 
-    fn render_scene_tab(&self, ui: &Ui<'_>, state: &mut State) -> [f32; 2] {
+    fn render_scene_tab(&self, ui: &Ui<'_>, state: &mut State) -> SceneRectangle {
         ui.columns(2, im_str!("scene columns"), false);
         ui.set_current_column_width(120.0);
         ui.text(im_str!("Globals side"));
@@ -238,10 +244,9 @@ impl Gui {
         ui.next_column();
         ui.text(im_str!("Scene side"));
         // the scene shall use the whole remaining content space available
+        let scene_pos = ui.cursor_pos();
         let available_region = ui.content_region_avail();
 
-        // need a way to actually read and set the mouse position
-        state.app.computable_scene.mouse_pos = [300.0, 200.0];
         ImageButton::new(self.scene_texture_id, available_region)
             .frame_padding(0)
             .build(ui);
@@ -253,7 +258,10 @@ impl Gui {
         }
         state.app.camera_enabled = ui.is_item_hovered();
         ui.columns(1, im_str!("scene columns"), false);
-        available_region
+        SceneRectangle {
+            position: scene_pos,
+            size: available_region,
+        }
     }
 
     fn render_settings_tab(&self, ui: &Ui<'_>) {

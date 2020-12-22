@@ -37,6 +37,22 @@ pub enum CustomEvent {
     CurrentlyUnused,
 }
 
+pub struct PhysicalRectangle {
+    position: winit::dpi::PhysicalPosition::<i32>,
+    size: winit::dpi::PhysicalSize::<u32>,
+}
+
+impl PhysicalRectangle {
+    fn from_imgui_rectangle(rectangle: &rust_gui::SceneRectangle, hidpi_factor: f64) -> Self {
+        let logical_pos = winit::dpi::LogicalPosition::new(rectangle.position[0], rectangle.position[1]);
+        let logical_size = winit::dpi::LogicalSize::new(rectangle.size[0], rectangle.size[1]);
+        PhysicalRectangle {
+            position: logical_pos.to_physical(hidpi_factor),
+            size: logical_size.to_physical(hidpi_factor),
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
@@ -90,7 +106,7 @@ fn main() {
     imgui.set_ini_filename(None);
 
     let mut camera_inputs = rendering::camera::InputState::default();
-    let mut cursor_position = winit::dpi::PhysicalPosition::<f64>::new(0.0, 0.0);
+    let mut cursor_position = winit::dpi::PhysicalPosition::<i32>::new(0, 0);
     let mut mouse_frozen = false;
 
     let font_size = (12.0 * hidpi_factor) as f32;
@@ -220,25 +236,19 @@ fn main() {
                 // actual imgui rendering
                 let ui = imgui.frame();
                 let size = window.inner_size().to_logical(hidpi_factor);
-                let requested_logical_size = rust_gui.render(&ui, [size.width, size.height], &mut state);
-                let requested_physical_size : Option<winit::dpi::PhysicalSize<u32>> = requested_logical_size
-                    .map(|imgui_size| {
-                        let logical_size = winit::dpi::LogicalSize::new(imgui_size[0], imgui_size[1]);
-                        logical_size.to_physical(hidpi_factor)
-                    });
-                // after the GUI render command, we know if we need to render the scene or not
-                if let Some(physical_size) = requested_physical_size {
+                let requested_logical_rectangle = rust_gui.render(&ui, [size.width, size.height], &mut state);
+                // after calling the gui render function we know if we need to render the scene or not
+                if let Some(logical_rectangle) = requested_logical_rectangle {
+                    let physical_rectangle = PhysicalRectangle::from_imgui_rectangle(&logical_rectangle, hidpi_factor);
                     let scene_texture = renderer.textures.get(scene_texture_id).unwrap();
                     // first, check if the scene size has changed. If so, re-create the scene
                     // texture and depth buffer
-                    if physical_size.width != scene_texture.width() || physical_size.height != scene_texture.height() {
+                    if physical_rectangle.size.width != scene_texture.width() || physical_rectangle.size.height != scene_texture.height() {
                         let texture_size = wgpu::Extent3d {
-                            height: physical_size.height,
-                            width: physical_size.width,
+                            height: physical_rectangle.size.height,
+                            width: physical_rectangle.size.width,
                             depth: 1,
                         };
-                        dbg!(texture_size);
-                        dbg!(requested_logical_size);
                         state.app.update_depth_buffer(texture_size);
                         state.app.update_projection_matrix(texture_size);
                         let new_scene_texture = rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
@@ -246,6 +256,12 @@ fn main() {
                     }
                     // update the scene
                     let scene_texture_view = renderer.textures.get(scene_texture_id).unwrap().view();
+
+                    let relative_pos = [
+                        cursor_position.x - physical_rectangle.position.x,
+                        cursor_position.y - physical_rectangle.position.y,
+                    ];
+                    state.app.computable_scene.renderer.update_mouse_pos(&relative_pos);
                     state.app.update_scene(scene_texture_view, &camera_inputs);
                 }
 
@@ -314,7 +330,7 @@ fn main() {
                     Event::WindowEvent{ event: WindowEvent::CursorMoved { position, .. }, ..} => {
                         // put a safety un-freeze feature, in case we mess something up wrt releasing the mouse
                         if !mouse_frozen {
-                            cursor_position = position;
+                            cursor_position = position.cast();
                         }
                     }
                     Event::WindowEvent{ event: WindowEvent::MouseInput { .. }, ..} => {
