@@ -1,4 +1,3 @@
-// shader.frag
 #version 450
 
 layout(location=0) in vec2 v_uv_coords;
@@ -16,7 +15,7 @@ layout(set = 0, binding = 0) uniform Uniforms {
 };
 
 layout(set = 1, binding = 0) buffer Picking {
-    float picking[];
+    int picking[];
 };
 
 layout(set = 2, binding = 0) uniform texture2D mask_texture;
@@ -30,7 +29,7 @@ void main() {
     int pixel_x = int(gl_FragCoord.x);
     int pixel_y = int(gl_FragCoord.y);
     if (pixel_x == mouse_pos.x && pixel_y == mouse_pos.y) {
-        picking[object_id] = gl_FragCoord.z;
+        atomicMin(picking[object_id], floatBitsToInt(gl_FragCoord.z));
     }
     float mask_color = texture(sampler2D(mask_texture, mask_sampler), v_uv_coords).r;
     mask_color = 0.5* mask_color + 0.5;

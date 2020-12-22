@@ -245,7 +245,7 @@ impl SceneRenderer {
         // update the uniforms buffer
         manager.queue.write_buffer(&self.uniforms_buffer, 0, bytemuck::cast_slice(&[self.uniforms]));
 
-        let initialize_picking = vec![std::f32::NAN; self.picking_buffer_length];
+        let initialize_picking = vec![std::i32::MAX; self.picking_buffer_length];
         manager.queue.write_buffer(&self.picking_buffer, 0, bytemuck::cast_slice(&initialize_picking));
 
         // run the render pipeline
@@ -296,7 +296,7 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
         let picking_buffer = device.create_buffer(&wgpu::BufferDescriptor {
             mapped_at_creation: false,
             label: None,
-            size: (length * std::mem::size_of::<f32>()) as wgpu::BufferAddress,
+            size: (length * std::mem::size_of::<i32>()) as wgpu::BufferAddress,
             usage: wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::STORAGE,
         });
         let picking_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
