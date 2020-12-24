@@ -3,23 +3,27 @@
 ## Stato attuale
 
 Feature già implementate:
-- save e load del grafo da file, incluse le variabili globali usate.
-- undo/redo nel grafo. Oltre ad avere i due tasti Undo/Redo, è possibile usare gli shortcut CTRL+Z e CTRL+SHIFT+Z.
-- duplicazione dei nodi.
-- controllo della telecamera in stile VTK. È possibile aggiungere altri stili (es: fly camera o orbit come nel vecchio franzplot) 
+- save e load del grafo da file, incluse le variabili globali usate
+- undo/redo nel grafo. Oltre ad avere i due tasti Undo/Redo, è possibile usare gli shortcut CTRL+Z e CTRL+SHIFT+Z
+- duplicazione dei nodi
+- controllo della telecamera in stile VTK. È possibile aggiungere altri stili (es: fly camera o orbit come nel vecchio franzplot)
+- possibile selezionare gli oggetti facendoci doppioclick nella scena
 
-Known bugs:
-
-Prossime feature:
+Known bugs & issues:
+- in Debug l'avvio può essere lento per via del processing delle png contenenti i materiali. In Release l'avvio è molto più veloce.
 
 Feature previste per Gennaio:
 - rendering & trasformazioni di primitive
 - curve di bezier
-- raggruppamento dei nodi nel grafo
+- raggruppamento dei nodi/zoom nel grafo
 - visualizzazione delle curve u-v sulle superfici
-- scelta del formato file definitivo (attualmente uso un json, ma non può contenere commenti quindi va cambiato)
+- scelta del formato file definitivo (attualmente è json, ma non può contenere commenti quindi va cambiato. Idealmente dovrebbe avere un versioning)
 
 Features a data da destinarsi:
+- dump del grafo in caso di crash
+- settings (tipo di telecamera, visualizzazione degli assi cartesiani, visualizzazioni di piani, eccetera
+- trasparenza, via screen door transparency o qualsiasi altra tecnica purché sia Order Indipendent
+- widget a-la Blender per visualizzazione degli assi e possibile switch a prospettiva ortografica
 - import/export di mesh
 - export di png
 - sample della curva (la visualizzazione delle famiglie u-v è più utile didatticamente!)

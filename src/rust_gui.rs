@@ -243,8 +243,13 @@ impl Gui {
             }
         }
         ui.text("Selected object:");
+        // TODO: maybe you want to do something different if the user deletes the node and then goes back to the scene
         let node_name = if let Some(block_id) = self.selected_object {
-                state.user.graph.get_node(block_id).unwrap().title.clone() // TODO: this is bad, rewrite/refactor
+                if let Some(node) = state.user.graph.get_node(block_id) {
+                    node.title.clone()
+                } else {
+                    String::from("<deleted>")
+                }
             } else {
                 String::new()
             };
