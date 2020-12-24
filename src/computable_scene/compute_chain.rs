@@ -91,21 +91,16 @@ impl<'a> ComputeChain {
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Compute Encoder this time"),
         });
-        for block in self.valid_blocks() {
+        for (_id, block) in self.valid_blocks() {
             block.encode(&globals.bind_group, &mut encoder);
         }
         let compute_queue = encoder.finish();
         queue.submit(std::iter::once(compute_queue));
     }
 
-    pub fn valid_blocks(&'a self) -> impl Iterator<Item = &'a ComputeBlock> {
-        self.processed_blocks.values().filter_map(|elem| elem.as_ref().ok())
+    pub fn valid_blocks(&'a self) -> impl Iterator<Item = (&BlockId, &'a ComputeBlock)> {
+        self.processed_blocks.iter().filter_map(|(id, elem)| Some((id, elem.as_ref().ok()?)))
     }
-
-    pub fn invalid_blocks(&'a self) -> impl Iterator<Item = &'a BlockCreationError> {
-        self.processed_blocks.values().filter_map(|elem| elem.as_ref().err())
-    }
-
 }
 
 

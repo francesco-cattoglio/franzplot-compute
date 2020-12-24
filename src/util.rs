@@ -42,9 +42,25 @@ pub fn load_materials<P: AsRef<std::path::Path>>(manager: &device_manager::Manag
         .collect()
 }
 
-// maps a buffer, waits for it to be available, and copies its contents into a new Vec<f32>
+pub trait FourBytes {
+    fn from_bytes(bytes: [u8; 4]) -> Self;
+}
+
+impl FourBytes for f32 {
+    fn from_bytes(bytes: [u8; 4]) -> Self {
+        f32::from_ne_bytes(bytes)
+    }
+}
+
+impl FourBytes for i32 {
+    fn from_bytes(bytes: [u8; 4]) -> Self {
+        i32::from_ne_bytes(bytes)
+    }
+}
+
+// maps a buffer, waits for it to be available, and copies its contents into a new Vec<T>
 #[allow(unused)]
-pub fn copy_buffer_as_f32(buffer: &wgpu::Buffer, device: &wgpu::Device) -> Vec<f32> {
+pub fn copy_buffer_as<T: FourBytes>(buffer: &wgpu::Buffer, device: &wgpu::Device) -> Vec<T> {
     use futures::executor::block_on;
     let future_result = buffer.slice(..).map_async(wgpu::MapMode::Read);
     device.poll(wgpu::Maintain::Wait);
@@ -53,9 +69,9 @@ pub fn copy_buffer_as_f32(buffer: &wgpu::Buffer, device: &wgpu::Device) -> Vec<f
     let data: &[u8] = &mapped_buffer;
     use std::convert::TryInto;
     // Since contents are got in bytes, this converts these bytes back to f32
-    let result: Vec<f32> = data
+    let result: Vec<T> = data
         .chunks_exact(4)
-        .map(|b| f32::from_ne_bytes(b.try_into().unwrap()))
+        .map(|b| T::from_bytes(b.try_into().unwrap()))
         .skip(0)
         .step_by(1)
         .collect();

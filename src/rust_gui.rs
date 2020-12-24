@@ -256,6 +256,9 @@ impl Gui {
         if ui.is_item_deactivated() {
             self.winit_proxy.send_event(super::CustomEvent::MouseThaw).unwrap();
         }
+        if ui.is_item_active() && ui.is_mouse_double_clicked(MouseButton::Left) {
+            println!("clicked obj: {:?}", state.app.computable_scene.renderer.object_under_cursor(&state.app.manager.device));
+        }
         state.app.camera_enabled = ui.is_item_hovered();
         ui.columns(1, im_str!("scene columns"), false);
         SceneRectangle {

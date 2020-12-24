@@ -2,7 +2,7 @@ use crate::rendering::texture::{Texture, Masks};
 use crate::rendering::*;
 use crate::device_manager;
 use crate::computable_scene::compute_chain::ComputeChain;
-use crate::computable_scene::compute_block::{ComputeBlock, RenderingData};
+use crate::computable_scene::compute_block::{BlockId, ComputeBlock, RenderingData};
 use wgpu::util::DeviceExt;
 use glam::Mat4;
 
@@ -47,6 +47,7 @@ pub struct SceneRenderer {
     picking_bind_group: wgpu::BindGroup,
     wireframes: Vec<wgpu::RenderBundle>,
     renderables: Vec<wgpu::RenderBundle>,
+    renderable_ids: Vec<BlockId>,
     uniforms: Uniforms,
     uniforms_buffer: wgpu::Buffer,
     uniforms_bind_group: wgpu::BindGroup,
@@ -111,6 +112,7 @@ impl SceneRenderer {
             picking_bind_group,
             wireframes: Vec::new(),
             renderables: Vec::new(),
+            renderable_ids: Vec::new(),
             depth_texture,
             output_texture,
             uniforms,
@@ -131,10 +133,10 @@ impl SceneRenderer {
         // go through all blocks,
         // chose the "Rendering" ones,
         // turn their data into a renderable
-        let rendering_data: Vec<&RenderingData> = chain.valid_blocks()
-            .filter_map(|block| {
+        let rendering_data: Vec<(&BlockId, &RenderingData)> = chain.valid_blocks()
+            .filter_map(|(id, block)| {
                 if let ComputeBlock::Rendering(data) = block {
-                    Some(data)
+                    Some((id, data))
                 } else {
                     None
                 }
@@ -149,8 +151,9 @@ impl SceneRenderer {
             self.picking_bind_group = picking_bind_group;
         }
 
-        for (id, data) in rendering_data.iter().enumerate() {
-            self.add_renderable(device, avail_masks, avail_textures, data, id as u32);
+        for (idx, (block_id, data)) in rendering_data.into_iter().enumerate() {
+            self.renderable_ids.push(*block_id);
+            self.add_renderable(device, avail_masks, avail_textures, data, idx as u32);
         }
     }
 
@@ -282,12 +285,22 @@ impl SceneRenderer {
         }
         let render_queue = encoder.finish();
         manager.queue.submit(std::iter::once(render_queue));
+    }
 
-        // after rendering: recover the contents of the picking vector
-        if !self.renderables.is_empty() {
-            use crate::util::copy_buffer_as_f32;
-            let picking_distances = copy_buffer_as_f32(&self.picking_buffer, &manager.device);
-            dbg!(picking_distances);
+    pub fn object_under_cursor(&self, device: &wgpu::Device) -> Option<BlockId> {
+        use crate::util::copy_buffer_as;
+        let picking_distances = copy_buffer_as::<i32>(&self.picking_buffer, device);
+        // extract the min value in the picking distances array and its index
+        let (min_idx, min_value) = picking_distances
+            .into_iter()
+            .enumerate()
+            .min_by_key(|(_idx, value)| *value)?;
+        // if the value is different from the initialization value, we can use this
+        // idx to recover the BlockId of the renderable that is closer to the camera
+        if min_value != std::i32::MAX {
+            Some(self.renderable_ids[min_idx])
+        } else {
+            None
         }
     }
 }
