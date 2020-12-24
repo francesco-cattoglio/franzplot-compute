@@ -16,3 +16,6 @@
 
 # Folder used for all kind of temporary tests
 /garbage
+
+# Local Cargo configs.
+/.cargo/
