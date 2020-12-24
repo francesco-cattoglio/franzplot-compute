@@ -35,7 +35,22 @@
           }
         }
       },
-      null,
+      {
+        "title": "sfera",
+        "position": [
+          677.0,
+          263.0
+        ],
+        "error": null,
+        "contents": {
+          "Rendering": {
+            "geometry": 30,
+            "thickness": 11,
+            "mask": 12,
+            "material": 13
+          }
+        }
+      },
       {
         "title": "Interval",
         "position": [
@@ -56,8 +71,8 @@
       {
         "title": "Matrix",
         "position": [
-          316.0,
-          283.0
+          295.0,
+          280.0
         ],
         "error": null,
         "contents": {
@@ -85,7 +100,22 @@
           }
         }
       },
-      null
+      {
+        "title": "cerchio",
+        "position": [
+          604.0,
+          120.0
+        ],
+        "error": null,
+        "contents": {
+          "Rendering": {
+            "geometry": 10,
+            "thickness": 27,
+            "mask": 28,
+            "material": 29
+          }
+        }
+      }
     ],
     "attributes": [
       {
@@ -178,10 +208,40 @@
           }
         }
       },
-      null,
-      null,
-      null,
-      null,
+      {
+        "node_id": 6,
+        "contents": {
+          "InputPin": {
+            "label": "geometry",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "SizeSlider": {
+            "label": "thickness:",
+            "size": 3
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "Mask": {
+            "selected": 0
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "Material": {
+            "selected": 1
+          }
+        }
+      },
       {
         "node_id": 3,
         "contents": {
@@ -305,31 +365,51 @@
           }
         }
       },
-      null,
-      null,
-      null,
-      null
+      {
+        "node_id": 6,
+        "contents": {
+          "SizeSlider": {
+            "label": "thickness:",
+            "size": 3
+          }
+        }
+      },
+      {
+        "node_id": 6,
+        "contents": {
+          "Mask": {
+            "selected": 0
+          }
+        }
+      },
+      {
+        "node_id": 6,
+        "contents": {
+          "Material": {
+            "selected": 4
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "InputPin": {
+            "label": "geometry",
+            "kind": "Geometry"
+          }
+        }
+      }
     ],
     "links": {
+      "30": 26,
+      "10": 9,
+      "24": 9,
       "19": 18,
-      "25": 23,
       "5": 4,
-      "24": 9
+      "25": 23
     },
-    "free_nodes_list": [
-      2,
-      6
-    ],
-    "free_attributes_list": [
-      13,
-      12,
-      11,
-      30,
-      29,
-      28,
-      27,
-      10
-    ]
+    "free_nodes_list": [],
+    "free_attributes_list": []
   },
   "globals_names": [
     "k"
