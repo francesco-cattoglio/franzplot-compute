@@ -142,6 +142,7 @@ impl SceneRenderer {
 
     pub fn update_renderables(&mut self, device: &wgpu::Device, avail_masks: &Masks, avail_textures: &[Texture], chain: &ComputeChain) {
         self.renderables.clear();
+        self.renderable_ids.clear();
         // go through all blocks,
         // chose the "Rendering" ones,
         // turn their data into a renderable
