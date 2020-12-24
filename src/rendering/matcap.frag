@@ -2,7 +2,7 @@
 
 layout(location=0) in vec2 v_uv_coords;
 layout(location=1) in vec4 v_n_vector;
-layout(location=2) flat in int object_id;
+layout(location=2) flat in int object_idx;
 layout(location=3) flat in ivec2 mouse_pos;
 
 layout(location=0) out vec4 f_color;
@@ -11,7 +11,8 @@ layout(set = 0, binding = 0) uniform Uniforms {
     mat4 u_view;
     mat4 u_proj;
     ivec2 u_mouse_pos;
-    vec2 _u_padding;
+    int highlight_idx;
+    float _u_padding;
 };
 
 layout(set = 1, binding = 0) buffer Picking {
@@ -29,15 +30,13 @@ void main() {
     int pixel_x = int(gl_FragCoord.x);
     int pixel_y = int(gl_FragCoord.y);
     if (pixel_x == mouse_pos.x && pixel_y == mouse_pos.y) {
-        atomicMin(picking[object_id], floatBitsToInt(gl_FragCoord.z));
+        atomicMin(picking[object_idx], floatBitsToInt(gl_FragCoord.z));
     }
     float mask_color = texture(sampler2D(mask_texture, mask_sampler), v_uv_coords).r;
-    mask_color = 0.5* mask_color + 0.5;
+    mask_color = 0.5 * mask_color + 0.5;
     f_color = texture(sampler2D(t_diffuse, s_diffuse), vec2(muv.x, 1.0-muv.y));
-    f_color = mask_color * f_color;
-    //f_color.g = 0.0 + 0.8 * v_n_vector.y;
-    //f_color.b = 0.0 + 0.8 * v_n_vector.z;
-    //f_color.r = 0.01 + 0.8 * v_n_vector.x; //1.0 - f_color.g - f_color.b;
+    float highlight_coeff = (object_idx == highlight_idx) ? 1.5 : 1.0;
+    f_color = highlight_coeff * mask_color * f_color;
     f_color.a = 1.0;
 }
 

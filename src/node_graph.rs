@@ -551,7 +551,7 @@ impl NodeContents {
 
 #[derive(Clone, Deserialize, Serialize)]
 pub struct Node {
-    title: String,
+    pub title: String,
     position: [f32; 2],
     error: Option<GraphError>,
     contents: NodeContents,
@@ -626,6 +626,11 @@ pub struct NodeGraph {
     links: HashMap::<AttributeID, AttributeID>,
     free_nodes_list: Vec<NodeID>,
     free_attributes_list: Vec<AttributeID>,
+    // TODO: review this, having an option makes very little sense because the only
+    // time we change it is when we right click on something, and the only time
+    // we use the information is inside popups that come right after.
+    // Having "dangling" ids should never be a problem at all, while zeroing
+    // the option is extremely complicated due to the rename popup.
     #[serde(skip)]
     right_clicked_node: Option<NodeID>,
     #[serde(skip)]
@@ -812,6 +817,7 @@ impl NodeGraph {
             }
         }
 
+        let mut workaround_open_rename = false;
         ui.popup(im_str!("Node menu"), || {
             let clicked_node = self.right_clicked_node.unwrap();
             let clicked_pos = ui.mouse_pos_on_opening_current_popup();
@@ -833,10 +839,7 @@ impl NodeGraph {
                     request_savestate = Some(ui.time());
                 }
                 if MenuItem::new(im_str!("rename node")).build(ui) {
-                    println!("need to rename {}, feature not yet implemented", clicked_node);
-                    // TODO: when renaming is enabled, make sure to remove this line,
-                    // or you will unwrap a None
-                    self.right_clicked_node = None;
+                    workaround_open_rename = true;
                 }
             } else {
                 // multiple node selection, operates on all selected nodes
@@ -854,6 +857,24 @@ impl NodeGraph {
                     self.right_clicked_node = None;
                     request_savestate = Some(ui.time());
                 }
+            }
+        });
+
+        if workaround_open_rename {
+            ui.open_popup(im_str!("Edit node name"));
+        }
+        ui.popup(im_str!("Edit node name"), || {
+            let mut imstring = ImString::new("");
+            let value_changed = InputText::new(ui, im_str!(""), &mut imstring)
+                .no_undo_redo(true)
+                .resize_buffer(true)
+                .enter_returns_true(true)
+                .build();
+            if value_changed {
+                let node_id = self.right_clicked_node.unwrap();
+                self.right_clicked_node = None;
+                self.get_node_mut(node_id).unwrap().title = imstring.to_string();
+                ui.close_current_popup();
             }
         });
 

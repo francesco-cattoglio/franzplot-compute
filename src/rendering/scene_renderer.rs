@@ -12,7 +12,8 @@ struct Uniforms {
     view: Mat4,
     proj: Mat4,
     mouse_pos: [i32; 2],
-    _padding: [f32; 2],
+    highlight_idx: i32,
+    _padding: f32,
 }
 
 const SAMPLE_COUNT: u32 = 4;
@@ -26,7 +27,8 @@ impl Uniforms {
             view: Mat4::identity(),
             proj: Mat4::identity(),
             mouse_pos: [0, 0],
-            _padding: [0.0, 0.0],
+            highlight_idx: std::i32::MAX,
+            _padding: 0.0,
         }
     }
 }
@@ -120,6 +122,16 @@ impl SceneRenderer {
             uniforms_bind_group,
             solid_pipeline,
             wireframe_pipeline,
+        }
+    }
+
+    pub fn highlight_object(&mut self, object: Option<BlockId>) {
+        if let Some(id) = object {
+            if let Some(idx) = self.renderable_ids.iter().position(|elem| *elem == id) {
+                self.uniforms.highlight_idx = idx as i32;
+            }
+        } else {
+            self.uniforms.highlight_idx = std::i32::MAX;
         }
     }
 

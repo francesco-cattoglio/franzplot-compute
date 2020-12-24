@@ -9,7 +9,8 @@ layout(set = 0, binding = 0) uniform Uniforms {
     mat4 u_view;
     mat4 u_proj;
     ivec2 u_mouse_pos;
-    vec2 _u_padding;
+    int highlight_id;
+    float _u_padding;
 };
 
 void main() {

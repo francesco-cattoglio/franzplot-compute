@@ -1,6 +1,7 @@
 use imgui::*;
 use crate::file_io;
 use crate::state::State;
+use crate::computable_scene::compute_block::BlockId;
 
 const MAX_UNDO_HISTORY : usize = 10;
 pub type MaskIds = [TextureId; 4];
@@ -17,6 +18,7 @@ pub struct Gui {
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
     undo_stack: std::collections::VecDeque<(f64, String)>,
     undo_cursor: usize,
+    selected_object: Option<BlockId>,
     availables: Availables,
 }
 
@@ -41,6 +43,7 @@ impl Gui {
             winit_proxy,
             undo_stack: vec![(0.0, serde_json::to_string(&empty_graph).unwrap())].into(),
             undo_cursor: 0,
+            selected_object: None,
             availables,
         }
     }
@@ -217,7 +220,7 @@ impl Gui {
         ui.columns(1, im_str!("editor columns"), false);
     }
 
-    fn render_scene_tab(&self, ui: &Ui<'_>, state: &mut State) -> SceneRectangle {
+    fn render_scene_tab(&mut self, ui: &Ui<'_>, state: &mut State) -> SceneRectangle {
         ui.columns(2, im_str!("scene columns"), false);
         ui.set_current_column_width(120.0);
         ui.text(im_str!("Globals side"));
@@ -239,6 +242,13 @@ impl Gui {
                 requested_cursor = MouseCursor::ResizeEW;
             }
         }
+        ui.text("Selected object:");
+        let node_name = if let Some(block_id) = self.selected_object {
+                state.user.graph.get_node(block_id).unwrap().title.clone() // TODO: this is bad, rewrite/refactor
+            } else {
+                String::new()
+            };
+        ui.text(ImString::from(node_name));
         ui.set_mouse_cursor(Some(requested_cursor));
         width_token.pop(ui);
         ui.next_column();
@@ -257,7 +267,13 @@ impl Gui {
             self.winit_proxy.send_event(super::CustomEvent::MouseThaw).unwrap();
         }
         if ui.is_item_active() && ui.is_mouse_double_clicked(MouseButton::Left) {
-            println!("clicked obj: {:?}", state.app.computable_scene.renderer.object_under_cursor(&state.app.manager.device));
+            let clicked_object = state.app.computable_scene.renderer.object_under_cursor(&state.app.manager.device);
+            if clicked_object == self.selected_object {
+                self.selected_object = None;
+            } else {
+                self.selected_object = clicked_object;
+            }
+            state.app.computable_scene.renderer.highlight_object(self.selected_object);
         }
         state.app.camera_enabled = ui.is_item_hovered();
         ui.columns(1, im_str!("scene columns"), false);
