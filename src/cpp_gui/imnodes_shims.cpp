@@ -1,4 +1,5 @@
 #include "imnodes_shims.h"
+#include "franzplot-compute/src/cpp_gui/mod.rs.h"
 
 struct ImVec2 {
     float x, y;
@@ -47,6 +48,18 @@ namespace imnodes {
         }
 
         return to_return;
+    }
+
+    void ApplyStyle(const StyleShim& new_style) {
+        auto& style = imnodes::GetStyle();
+        style.grid_spacing = new_style.grid_spacing;
+        style.node_padding_horizontal = new_style.node_padding_horizontal;
+        style.node_padding_vertical = new_style.node_padding_vertical;
+        style.pin_circle_radius = new_style.pin_circle_radius;
+        style.pin_quad_side_length = new_style.pin_quad_side_length;
+        style.pin_triangle_side_length = new_style.pin_triangle_side_length;
+        style.pin_line_thickness = new_style.pin_line_thickness;
+        style.pin_hover_radius = new_style.pin_hover_radius;
     }
 
 }

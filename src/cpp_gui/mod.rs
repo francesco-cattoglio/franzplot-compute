@@ -13,8 +13,21 @@ unsafe impl cxx::ExternType for PinShape {
     type Id = cxx::type_id!("imnodes::PinShape");
     type Kind = cxx::kind::Trivial;
 }
+
 #[cxx::bridge(namespace = "imnodes")]
 pub mod imnodes {
+    struct StyleShim {
+        pub grid_spacing: f32,
+        pub node_padding_horizontal: f32,
+        pub node_padding_vertical: f32,
+
+        pub pin_circle_radius: f32,
+        pub pin_quad_side_length: f32,
+        pub pin_triangle_side_length: f32,
+        pub pin_line_thickness: f32,
+        pub pin_hover_radius: f32,
+    }
+
     unsafe extern "C++" {
         include!("franzplot-compute/src/cpp_gui/imnodes-5959729/imnodes.h");
         include!("franzplot-compute/src/cpp_gui/imnodes_shims.h");
@@ -23,6 +36,7 @@ pub mod imnodes {
         fn Shutdown();
         fn BeginNodeEditor();
         fn EndNodeEditor();
+        fn IsEditorHovered() -> bool;
         fn BeginNode(id: i32);
         fn EndNode();
         fn ClearNodeSelection();
@@ -43,6 +57,7 @@ pub mod imnodes {
         fn GetNodePosition(node_id: i32) -> [f32; 2];
         fn SetNodePosition(node_id: i32, position: [f32; 2]);
         fn GetSelectedNodes() -> Vec<i32>;
+        fn ApplyStyle(style: &StyleShim);
     }
 }
 

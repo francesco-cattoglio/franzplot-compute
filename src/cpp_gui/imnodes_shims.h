@@ -5,6 +5,7 @@
 struct ImVec2;
 
 namespace imnodes {
+    struct StyleShim;
 
     // forward declarations of the actual imnodes functions
     bool IsLinkCreated(int* started_at_attribute_id, int* ended_at_attribute_id, bool* created_from_snap);
@@ -26,4 +27,5 @@ namespace imnodes {
     void SetNodePosition(int node_id, std::array<float, 2> position);
     std::array<float, 2> GetNodePosition(int node_id);
     rust::Vec<int> GetSelectedNodes();
+    void ApplyStyle(const StyleShim& style);
 }

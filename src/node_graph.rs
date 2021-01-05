@@ -15,6 +15,21 @@ pub enum DataKind {
     Matrix,
 }
 
+pub const ZOOM_LEVELS: [f32; 5] = [0.25, 0.5, 0.75, 1.0, 1.25];
+
+fn create_style_shim(scale: f32) -> imnodes::StyleShim {
+    imnodes::StyleShim {
+        grid_spacing: 32.0 * scale,
+        node_padding_horizontal: 8.0 * scale,
+        node_padding_vertical: 8.0 * scale,
+        pin_circle_radius: 5.0 * scale,
+        pin_quad_side_length: 8.0 * scale,
+        pin_triangle_side_length: 12.0 * scale,
+        pin_line_thickness: 1.0 * scale,
+        pin_hover_radius: 15.0 * scale,
+    }
+}
+
 impl DataKind {
     // we might even return a color as well!
     fn to_pin_shape(&self) -> PinShape {
@@ -100,10 +115,13 @@ impl Attribute {
             AttributeContents::Text{
                 label, string,
             } => {
+                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
+                let widget_width = 16.5 * single_char_width;
+
                 imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
-                ui.same_line(0.0);
-                ui.set_next_item_width(80.0);
+                ui.same_line_with_spacing(0.0, 0.5 * single_char_width);
+                ui.set_next_item_width(widget_width);
                 let mut imstring = ImString::new(string.clone());
                 let value_changed = InputText::new(ui, im_str!(""), &mut imstring)
                     .no_undo_redo(true)
@@ -116,10 +134,13 @@ impl Attribute {
             AttributeContents::QualitySlider {
                 label, quality,
             } => {
+                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
+                let widget_width = 12.5 * single_char_width;
+
                 imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
-                ui.same_line(0.0);
-                ui.set_next_item_width(55.0);
+                ui.same_line_with_spacing(0.0, 0.5 * single_char_width);
+                ui.set_next_item_width(widget_width);
                 let value_changed = Slider::new(im_str!(""))
                     .range(4 ..= 16)
                     .build(ui, quality);
@@ -132,7 +153,10 @@ impl Attribute {
                 let mut value_changed = false;
                 imnodes::BeginStaticAttribute(id);
 
-                let width_token = ui.push_item_width(50.0);
+                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
+                let widget_width = 8.5 * single_char_width;
+                let widget_spacing = 0.5 * single_char_width;
+                let width_token = ui.push_item_width(widget_width);
                 let mut imstring: ImString;
 
                 // TODO: this is kinda ugly
@@ -143,7 +167,7 @@ impl Attribute {
                     .build();
                 *col_1 = imstring.to_string();
 
-                ui.same_line(0.0);
+                ui.same_line(1.0 * (widget_width + widget_spacing));
 
                 imstring = ImString::new(col_2.clone());
                 value_changed |= InputText::new(ui, im_str!("##2"), &mut imstring)
@@ -152,7 +176,7 @@ impl Attribute {
                     .build();
                 *col_2 = imstring.to_string();
 
-                ui.same_line(0.0);
+                ui.same_line(2.0 * (widget_width + widget_spacing));
 
                 imstring = ImString::new(col_3.clone());
                 value_changed |= InputText::new(ui, im_str!("##3"), &mut imstring)
@@ -161,7 +185,7 @@ impl Attribute {
                     .build();
                 *col_3 = imstring.to_string();
 
-                ui.same_line(0.0);
+                ui.same_line(3.0 * (widget_width + widget_spacing));
 
                 imstring = ImString::new(col_4.clone());
                 value_changed |= InputText::new(ui, im_str!("##4"), &mut imstring)
@@ -177,14 +201,17 @@ impl Attribute {
             AttributeContents::Color {
                 label, color
             } => {
+                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
+                let widget_width = 16.5 * single_char_width;
+
                 imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
-                ui.same_line(0.0);
+                ui.same_line_with_spacing(0.0, 0.5 * single_char_width);
                 let color_picker = ColorEdit::new(im_str!(""), EditableColor::Float3(color))
                     .inputs(false)
                     .options(true);
 
-                ui.set_next_item_width(80.0);
+                ui.set_next_item_width(widget_width);
                 let value_changed = color_picker.build(ui);
                 imnodes::EndStaticAttribute();
                 value_changed
@@ -192,13 +219,16 @@ impl Attribute {
             AttributeContents::Mask {
                 selected
             } => {
+                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
+                let widget_width = 2.35 * single_char_width;
+
                 imnodes::BeginStaticAttribute(id);
                 ui.text(im_str!("Mask:"));
-                ui.same_line(0.0);
+                ui.same_line_with_spacing(0.0, 0.5 * single_char_width);
                 let mut value_changed = false;
                 // for display purposes, clamp the value of "selected" to the mask length
                 let idx = std::cmp::min(*selected, availables.mask_ids.len() - 1);
-                let button = ImageButton::new(availables.mask_ids[idx], [16.0, 16.0])
+                let button = ImageButton::new(availables.mask_ids[idx], [widget_width, widget_width])
                     .uv1([0.5, 0.5]) // the pattern will be zoomed in by showing only a small part
                     .frame_padding(0);
                 if button.build(ui) {
@@ -234,13 +264,16 @@ impl Attribute {
             AttributeContents::Material {
                 selected
             } => {
+                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
+                let widget_width = 2.35 * single_char_width;
+
                 imnodes::BeginStaticAttribute(id);
                 ui.text(im_str!("Material:"));
-                ui.same_line(0.0);
+                ui.same_line_with_spacing(0.0, 0.5 * single_char_width);
                 let mut value_changed = false;
                 // for display purposes, clamp the value of "selected" to the materials length
                 let idx = std::cmp::min(*selected, availables.material_ids.len() - 1);
-                let button = ImageButton::new(availables.material_ids[idx], [16.0, 16.0])
+                let button = ImageButton::new(availables.material_ids[idx], [widget_width, widget_width])
                     .frame_padding(0);
                 if button.build(ui) {
                     ui.open_popup(im_str!("material selection"));
@@ -278,11 +311,13 @@ impl Attribute {
             AttributeContents::SizeSlider {
                 label, size
             } => {
-                imnodes::BeginStaticAttribute(id);
+                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
+                let widget_width = 16.5 * single_char_width;
 
+                imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
-                ui.same_line(0.0);
-                ui.set_next_item_width(55.0);
+                ui.same_line_with_spacing(0.0, 0.5 * single_char_width);
+                ui.set_next_item_width(widget_width);
                 let display_string: ImString = format!("{}", AVAILABLE_SIZES[*size as usize]).into();
                 let value_changed = Slider::new(im_str!(""))
                     .range(0 ..= AVAILABLE_SIZES.len() as i32 - 1)
@@ -580,6 +615,13 @@ impl Node {
                     ui.tooltip_text(&error.message);
                 }
             }
+            ui.same_line(0.0);
+            let mut cursor = ui.cursor_pos();
+            cursor[1] += 10.0;
+            ui.set_cursor_pos(cursor);
+                imnodes::BeginOutputAttribute(444, PinShape::QuadFilled);
+                imnodes::EndOutputAttribute();
+
         imnodes::EndNodeTitleBar();
         // TODO: not sure if we will be able to use the get_attribute_list()
         // when we introduce the Group kind node in the future...
@@ -758,8 +800,12 @@ impl NodeGraph {
         }
     }
 
-    pub fn render(&mut self, ui: &imgui::Ui<'_>, availables: &Availables) -> Option<f64> {
+    // TODO: refactor
+    pub fn render(&mut self, ui: &imgui::Ui<'_>, availables: &Availables, graph_font: imgui::FontId, zoom_level: usize) -> Option<f64> {
         let mut request_savestate: Option<f64> = None;
+        let style_shim = create_style_shim(ZOOM_LEVELS[zoom_level]);
+        imnodes::ApplyStyle(&style_shim);
+        let font_token = ui.push_font(graph_font);
         imnodes::BeginNodeEditor();
         // render all links first. Remember that link ID is the same as the input attribute ID!
         for pair in self.links.iter() {
@@ -780,9 +826,13 @@ impl NodeGraph {
             }
         }
 
-        // we need to end the node editor before doing any interaction
+        // we can only check if the editor is hovered before we call EndNodeEditor()
+        let editor_hovered = imnodes::IsEditorHovered();
+
+        // on the contrary, we need to end the node editor before doing any interaction
         // (e.g: right clicks, node creation)
         imnodes::EndNodeEditor();
+        font_token.pop(ui);
 
         // update all our nodes with the last node positions.
         self.read_positions_from_imnodes();
@@ -790,6 +840,7 @@ impl NodeGraph {
         // Process right click
         let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Right, 4.0);
         let right_click_popup: bool = ui.is_window_focused_with_flags(WindowFocusedFlags::ROOT_AND_CHILD_WINDOWS)
+            && editor_hovered
             && !ui.is_any_item_hovered()
             && ui.is_mouse_released(MouseButton::Right)
             && mouse_delta == [0.0, 0.0]; // exact comparison is fine due to GetMouseDragDelta threshold

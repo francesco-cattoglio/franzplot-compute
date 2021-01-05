@@ -53,6 +53,27 @@ impl PhysicalRectangle {
     }
 }
 
+fn add_custom_font(imgui_context: &mut imgui::Context, font_size: f32) -> imgui::FontId {
+    println!("adding font with size {}", font_size);
+    let glyph_range = FontGlyphRanges::from_slice(&[
+        0x0020, 0x00FF, // Basic Latin + Latin Supplement
+        0x2200, 0x22FF, // this range contains the miscellaneous symbols and arrows
+        0x2600, 0x26FF, // miscelaneous symbols
+        0]);
+    imgui_context.fonts().add_font(&[FontSource::TtfData {
+        data: include_bytes!("../resources/DejaVuSansCustom.ttf"),
+        size_pixels: font_size,
+        config: Some(imgui::FontConfig {
+            oversample_h: 2,
+            oversample_v: 2,
+            pixel_snap_h: false,
+            glyph_ranges: glyph_range,
+            size_pixels: font_size,
+            ..Default::default()
+        }),
+    }])
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let program = args[0].clone();
@@ -75,9 +96,6 @@ fn main() {
 
     let event_loop = EventLoop::<CustomEvent>::with_user_event();
     let mut builder = winit::window::WindowBuilder::new();
-    // TODO: if you try using fixed dimensions that are too big for the screen to fit
-    // (eg: a 768p monitor) the returned window will have different size and
-    // the program crashes because the scene texture size will not match
     builder = builder
         .with_title("test")
         .with_inner_size(winit::dpi::PhysicalSize::new(1280, 800));
@@ -111,25 +129,11 @@ fn main() {
 
     let font_size = (12.0 * hidpi_factor) as f32;
     imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+    add_custom_font(&mut imgui, font_size);
 
-    let glyph_range = FontGlyphRanges::from_slice(&[
-        0x0020, 0x00FF, // Basic Latin + Latin Supplement
-        0x2200, 0x22FF, // this range contains the miscellaneous symbols and arrows
-        0x2600, 0x26FF, // miscelaneous symbols
-        0]);
-    imgui.fonts().add_font(&[FontSource::TtfData {
-        data: include_bytes!("../resources/DejaVuSansCustom.ttf"),
-        size_pixels: font_size,
-        config: Some(imgui::FontConfig {
-            oversample_h: 2,
-            oversample_v: 2,
-            pixel_snap_h: false,
-            glyph_ranges: glyph_range,
-            size_pixels: font_size,
-            ..Default::default()
-        }),
-    }]);
-
+    let graph_fonts: Vec<imgui::FontId> = node_graph::ZOOM_LEVELS.iter()
+        .map(|scale| add_custom_font(&mut imgui, 12.0 * hidpi_factor as f32 * scale))
+        .collect();
     cpp_gui::imnodes::Initialize();
 
     let renderer_config = imgui_wgpu::RendererConfig {
@@ -181,7 +185,7 @@ fn main() {
     let materials = util::load_materials(&device_manager, &material_files);
 
     // last, initialize the rust_gui and the state with the list of available masks and materials.
-    let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, imgui_masks, imgui_materials);
+    let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, imgui_masks, imgui_materials, graph_fonts);
     let mut state = state::State::new(device_manager, masks, materials);
 
     let mut old_instant = std::time::Instant::now();

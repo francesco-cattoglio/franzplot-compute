@@ -15,6 +15,8 @@ pub struct Availables {
 pub struct Gui {
     pub scene_texture_id: TextureId,
     pub new_global_buffer: ImString,
+    graph_fonts: Vec<imgui::FontId>,
+    graph_zoom: usize,
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
     undo_stack: std::collections::VecDeque<(f64, String)>,
     undo_cursor: usize,
@@ -29,7 +31,7 @@ pub struct SceneRectangle {
 }
 
 impl Gui {
-    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>, scene_texture_id: TextureId, mask_ids: MaskIds, material_ids: MaterialIds) -> Self {
+    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>, scene_texture_id: TextureId, mask_ids: MaskIds, material_ids: MaterialIds, graph_fonts: Vec<FontId>) -> Self {
         // when we initialize a GUI, we want to set the first undo_stack element to a completely empty graph
         use super::node_graph::NodeGraph;
         let empty_graph = NodeGraph::default();
@@ -40,6 +42,8 @@ impl Gui {
         Self {
             new_global_buffer: ImString::with_capacity(8),
             scene_texture_id,
+            graph_fonts,
+            graph_zoom: 3,
             winit_proxy,
             undo_stack: vec![(0.0, serde_json::to_string(&empty_graph).unwrap())].into(),
             undo_cursor: 0,
@@ -95,6 +99,20 @@ impl Gui {
             state.user.graph = serde_json::from_str(&restored_state.1).unwrap();
             state.user.graph.push_positions_to_imnodes();
         }
+    }
+
+    pub fn zoom_up_graph(&mut self) {
+        if self.graph_zoom < self.graph_fonts.len() - 1 {
+            self.graph_zoom += 1;
+        }
+        println!("zoom up!");
+    }
+
+    pub fn zoom_down_graph(&mut self) {
+        if self.graph_zoom > 0 {
+            self.graph_zoom -= 1;
+        }
+        println!("zoom down!");
     }
 
     pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State) -> Option<SceneRectangle> {
@@ -205,7 +223,14 @@ impl Gui {
 
         ui.next_column();
         ui.text(im_str!("Right side"));
-        let requested_savestate = state.user.graph.render(ui, &self.availables);
+        let io = ui.io();
+        if io.mouse_wheel < 0.0 {
+            self.zoom_down_graph();
+        }
+        if io.mouse_wheel > 0.0 {
+            self.zoom_up_graph();
+        }
+        let requested_savestate = state.user.graph.render(ui, &self.availables, self.graph_fonts[self.graph_zoom], self.graph_zoom);
         if let Some(requested_stamp) = requested_savestate {
             // first, get the timestamp for the last savestate. This is because if the user only moves some nodes around
             // but changes nothing, the requested stamp will remain the same as the last in the stack, it does not matter
