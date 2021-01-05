@@ -10,7 +10,7 @@ Feature già implementate:
 - possibile selezionare gli oggetti facendoci doppioclick nella scena
 
 Known bugs & issues:
-- in Debug l'avvio può essere lento per via del processing delle png contenenti i materiali. In Release l'avvio è molto più veloce.
+- in Debug l'avvio è piuttosto lento; in Release l'avvio è molto più veloce (5 secondi vs 0.5).
 
 Feature previste per Gennaio:
 - rendering & trasformazioni di primitive

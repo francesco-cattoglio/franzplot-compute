@@ -8,7 +8,6 @@ layout(location=3) in vec2 _v_padding;
 layout(location=0) out vec2 v_uv_coords;
 layout(location=1) out vec4 v_n_vector;
 layout(location=2) out int object_idx;
-layout(location=3) out ivec2 mouse_pos;
 
 layout(set = 0, binding = 0) uniform Uniforms {
     mat4 u_view;
@@ -20,7 +19,6 @@ layout(set = 0, binding = 0) uniform Uniforms {
 
 void main() {
     v_uv_coords = uv_coords.xy;
-    mouse_pos = u_mouse_pos;
     object_idx = gl_InstanceIndex;
     v_n_vector = n_vectors;
     gl_Position = u_proj * u_view * a_position;

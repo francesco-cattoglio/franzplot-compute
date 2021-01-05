@@ -215,11 +215,12 @@ void main() {{
     }};
     for (int i = 0; i < {n_points}; i++) {{
         // the curve section is written as list of vec2 constant points, turn them into actual positions
-        // or directions and multiply them by the transform matrix
+        // or directions and multiply them by the transform matrix. Note that the new_basis
+        // is orthonormal, so there is no need to compute the inverse transpose
         uint out_idx = idx * {n_points} + i;
         vec3 section_point = vec3(0.0, section_points[i].x, section_points[i].y);
         out_buff[out_idx].position = new_basis * vec4(section_point, 1.0);
-        out_buff[out_idx].normal = vec4(normalize(section_point), 0.0);
+        out_buff[out_idx].normal = new_basis * vec4(normalize(section_point), 0.0);
         out_buff[out_idx].uv_coords = vec2(idx/(x_size-1.0), i/({n_points}-1.0));
         out_buff[out_idx]._padding = vec2(0.123, 0.456);
     }}
