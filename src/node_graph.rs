@@ -15,7 +15,7 @@ pub enum DataKind {
     Matrix,
 }
 
-pub const ZOOM_LEVELS: [f32; 5] = [0.25, 0.5, 0.75, 1.0, 1.25];
+pub const ZOOM_LEVELS: [f32; 6] = [0.32, 0.42, 0.56, 0.75, 1.0, 1.25];
 
 fn create_style_shim(scale: f32) -> imnodes::StyleShim {
     imnodes::StyleShim {
@@ -95,7 +95,10 @@ pub const AVAILABLE_SIZES: [f32; 9] = [0.04, 0.08, 0.12, 0.16, 0.20, 0.24, 0.32,
 impl Attribute {
     // the render function shall return bool if anything has changed.
     pub fn render(&mut self, ui: &imgui::Ui<'_>, availables: &Availables, id: AttributeID) -> bool {
-        match &mut self.contents {
+        let font_size = ui.current_font_size();
+        let style_token = ui.push_style_var(StyleVar::ItemSpacing([0.24 * font_size, 0.26 * font_size]));
+        let [char_w, _char_h] = ui.calc_text_size(im_str!("A"), false, 0.0);
+        let value_changed = match &mut self.contents {
             AttributeContents::InputPin {
                 label, kind,
             } => {
@@ -115,12 +118,11 @@ impl Attribute {
             AttributeContents::Text{
                 label, string,
             } => {
-                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
-                let widget_width = 16.5 * single_char_width;
+                let widget_width = 16.5 * char_w;
 
                 imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
-                ui.same_line_with_spacing(0.0, 0.5 * single_char_width);
+                ui.same_line(0.0);
                 ui.set_next_item_width(widget_width);
                 let mut imstring = ImString::new(string.clone());
                 let value_changed = InputText::new(ui, im_str!(""), &mut imstring)
@@ -134,12 +136,11 @@ impl Attribute {
             AttributeContents::QualitySlider {
                 label, quality,
             } => {
-                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
-                let widget_width = 12.5 * single_char_width;
+                let widget_width = 12.5 * char_w;
 
                 imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
-                ui.same_line_with_spacing(0.0, 0.5 * single_char_width);
+                ui.same_line(0.0);
                 ui.set_next_item_width(widget_width);
                 let value_changed = Slider::new(im_str!(""))
                     .range(4 ..= 16)
@@ -153,41 +154,42 @@ impl Attribute {
                 let mut value_changed = false;
                 imnodes::BeginStaticAttribute(id);
 
-                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
-                let widget_width = 8.5 * single_char_width;
-                let widget_spacing = 0.5 * single_char_width;
-                let width_token = ui.push_item_width(widget_width);
+                let widget_width = 8.5 * char_w;
                 let mut imstring: ImString;
 
                 // TODO: this is kinda ugly
                 imstring = ImString::new(col_1.clone());
+                ui.set_next_item_width(widget_width);
                 value_changed |= InputText::new(ui, im_str!("##1"), &mut imstring)
                     .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
                 *col_1 = imstring.to_string();
 
-                ui.same_line(1.0 * (widget_width + widget_spacing));
+                ui.same_line(0.0);
 
                 imstring = ImString::new(col_2.clone());
+                ui.set_next_item_width(widget_width);
                 value_changed |= InputText::new(ui, im_str!("##2"), &mut imstring)
                     .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
                 *col_2 = imstring.to_string();
 
-                ui.same_line(2.0 * (widget_width + widget_spacing));
+                ui.same_line(0.0);
 
                 imstring = ImString::new(col_3.clone());
+                ui.set_next_item_width(widget_width);
                 value_changed |= InputText::new(ui, im_str!("##3"), &mut imstring)
                     .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
                 *col_3 = imstring.to_string();
 
-                ui.same_line(3.0 * (widget_width + widget_spacing));
+                ui.same_line(0.0);
 
                 imstring = ImString::new(col_4.clone());
+                ui.set_next_item_width(widget_width);
                 value_changed |= InputText::new(ui, im_str!("##4"), &mut imstring)
                     .no_undo_redo(true)
                     .resize_buffer(true)
@@ -195,18 +197,16 @@ impl Attribute {
                 *col_4 = imstring.to_string();
 
                 imnodes::EndStaticAttribute();
-                width_token.pop(ui);
                 value_changed
             },
             AttributeContents::Color {
                 label, color
             } => {
-                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
-                let widget_width = 16.5 * single_char_width;
+                let widget_width = 16.5 * char_w;
 
                 imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
-                ui.same_line_with_spacing(0.0, 0.5 * single_char_width);
+                ui.same_line(0.0);
                 let color_picker = ColorEdit::new(im_str!(""), EditableColor::Float3(color))
                     .inputs(false)
                     .options(true);
@@ -219,12 +219,11 @@ impl Attribute {
             AttributeContents::Mask {
                 selected
             } => {
-                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
-                let widget_width = 2.35 * single_char_width;
+                let widget_width = 2.35 * char_w;
 
                 imnodes::BeginStaticAttribute(id);
                 ui.text(im_str!("Mask:"));
-                ui.same_line_with_spacing(0.0, 0.5 * single_char_width);
+                ui.same_line(0.0);
                 let mut value_changed = false;
                 // for display purposes, clamp the value of "selected" to the mask length
                 let idx = std::cmp::min(*selected, availables.mask_ids.len() - 1);
@@ -264,12 +263,11 @@ impl Attribute {
             AttributeContents::Material {
                 selected
             } => {
-                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
-                let widget_width = 2.35 * single_char_width;
+                let widget_width = 2.35 * char_w;
 
                 imnodes::BeginStaticAttribute(id);
                 ui.text(im_str!("Material:"));
-                ui.same_line_with_spacing(0.0, 0.5 * single_char_width);
+                ui.same_line(0.0);
                 let mut value_changed = false;
                 // for display purposes, clamp the value of "selected" to the materials length
                 let idx = std::cmp::min(*selected, availables.material_ids.len() - 1);
@@ -311,12 +309,11 @@ impl Attribute {
             AttributeContents::SizeSlider {
                 label, size
             } => {
-                let single_char_width = ui.calc_text_size(im_str!("A"), false, 0.0)[0];
-                let widget_width = 16.5 * single_char_width;
+                let widget_width = 12.0 * char_w;
 
                 imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
-                ui.same_line_with_spacing(0.0, 0.5 * single_char_width);
+                ui.same_line(0.0);
                 ui.set_next_item_width(widget_width);
                 let display_string: ImString = format!("{}", AVAILABLE_SIZES[*size as usize]).into();
                 let value_changed = Slider::new(im_str!(""))
@@ -332,7 +329,9 @@ impl Attribute {
             } => {
                 unimplemented!()
             }
-        }
+        };
+        style_token.pop(ui);
+        value_changed
     }
 
     pub fn render_list(ui: &imgui::Ui<'_>, availables: &Availables, attributes: &mut Vec<Option<Attribute>>, attribute_id_list: Vec<AttributeID>) -> bool {
@@ -615,13 +614,6 @@ impl Node {
                     ui.tooltip_text(&error.message);
                 }
             }
-            ui.same_line(0.0);
-            let mut cursor = ui.cursor_pos();
-            cursor[1] += 10.0;
-            ui.set_cursor_pos(cursor);
-                imnodes::BeginOutputAttribute(444, PinShape::QuadFilled);
-                imnodes::EndOutputAttribute();
-
         imnodes::EndNodeTitleBar();
         // TODO: not sure if we will be able to use the get_attribute_list()
         // when we introduce the Group kind node in the future...
@@ -834,9 +826,6 @@ impl NodeGraph {
         imnodes::EndNodeEditor();
         font_token.pop(ui);
 
-        // update all our nodes with the last node positions.
-        self.read_positions_from_imnodes();
-
         // Process right click
         let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Right, 4.0);
         let right_click_popup: bool = ui.is_window_focused_with_flags(WindowFocusedFlags::ROOT_AND_CHILD_WINDOWS)
@@ -1034,6 +1023,19 @@ impl NodeGraph {
             .enumerate()
             .filter_map(|pair| {
                 if let Some(node) = pair.1.as_ref() {
+                    Some((pair.0 as NodeID, node))
+                } else {
+                    None
+                }
+            })
+    }
+
+    pub fn get_nodes_mut(&mut self) -> impl Iterator<Item = (NodeID, &mut Node)> {
+        self.nodes
+            .iter_mut()
+            .enumerate()
+            .filter_map(|pair| {
+                if let Some(node) = pair.1.as_mut() {
                     Some((pair.0 as NodeID, node))
                 } else {
                     None

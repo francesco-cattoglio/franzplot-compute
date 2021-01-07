@@ -2,6 +2,7 @@ use imgui::*;
 use crate::file_io;
 use crate::state::State;
 use crate::computable_scene::compute_block::BlockId;
+use crate::node_graph::ZOOM_LEVELS;
 
 const MAX_UNDO_HISTORY : usize = 10;
 pub type MaskIds = [TextureId; 4];
@@ -43,7 +44,7 @@ impl Gui {
             new_global_buffer: ImString::with_capacity(8),
             scene_texture_id,
             graph_fonts,
-            graph_zoom: 3,
+            graph_zoom: 4,
             winit_proxy,
             undo_stack: vec![(0.0, serde_json::to_string(&empty_graph).unwrap())].into(),
             undo_cursor: 0,
@@ -101,18 +102,34 @@ impl Gui {
         }
     }
 
-    pub fn zoom_up_graph(&mut self) {
+    pub fn zoom_up_graph(&mut self, state: &mut State, mouse_pos: [f32; 2]) {
         if self.graph_zoom < self.graph_fonts.len() - 1 {
+            let prev_zoom = ZOOM_LEVELS[self.graph_zoom];
             self.graph_zoom += 1;
+            let new_zoom = ZOOM_LEVELS[self.graph_zoom];
+            for node in state.user.graph.get_nodes_mut() {
+                let [x, y] = node.1.position;
+                let [m_x, m_y] = mouse_pos;
+                node.1.position[0] = (x - m_x)*new_zoom/prev_zoom + m_x;
+                node.1.position[1] = (y - m_y)*new_zoom/prev_zoom + m_y;
+            }
+            state.user.graph.push_positions_to_imnodes();
         }
-        println!("zoom up!");
     }
 
-    pub fn zoom_down_graph(&mut self) {
+    pub fn zoom_down_graph(&mut self, state: &mut State, mouse_pos: [f32; 2]) {
         if self.graph_zoom > 0 {
+            let prev_zoom = ZOOM_LEVELS[self.graph_zoom];
             self.graph_zoom -= 1;
+            let new_zoom = ZOOM_LEVELS[self.graph_zoom];
+            for node in state.user.graph.get_nodes_mut() {
+                let [x, y] = node.1.position;
+                let [m_x, m_y] = mouse_pos;
+                node.1.position[0] = (x - m_x)*new_zoom/prev_zoom + m_x;
+                node.1.position[1] = (y - m_y)*new_zoom/prev_zoom + m_y;
+            }
+            state.user.graph.push_positions_to_imnodes();
         }
-        println!("zoom down!");
     }
 
     pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State) -> Option<SceneRectangle> {
@@ -225,12 +242,19 @@ impl Gui {
         ui.text(im_str!("Right side"));
         let io = ui.io();
         if io.mouse_wheel < 0.0 {
-            self.zoom_down_graph();
+            self.zoom_down_graph(state, io.mouse_pos);
         }
         if io.mouse_wheel > 0.0 {
-            self.zoom_up_graph();
+            self.zoom_up_graph(state, io.mouse_pos);
         }
+        // TODO: change the whole logic so that:
+        // push the positions that we want to display the nodes at, taking into account the zoom level
+        state.user.graph.push_positions_to_imnodes(zoom_level_goes_here);
+        // run the rendering
         let requested_savestate = state.user.graph.render(ui, &self.availables, self.graph_fonts[self.graph_zoom], self.graph_zoom);
+        // read all the nodes positions, again taking into account the zoom level.
+        state.user.graph.read_positions_from_imnodes();
+
         if let Some(requested_stamp) = requested_savestate {
             // first, get the timestamp for the last savestate. This is because if the user only moves some nodes around
             // but changes nothing, the requested stamp will remain the same as the last in the stack, it does not matter
@@ -242,6 +266,7 @@ impl Gui {
                 self.issue_savestate(state, ui.time());
             }
         }
+
         ui.columns(1, im_str!("editor columns"), false);
     }
 
