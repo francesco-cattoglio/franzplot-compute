@@ -38,7 +38,7 @@ impl RenderingData {
 
         match input_block {
             ComputeBlock::Point(point_data) => {
-                Self::setup_0d_geometry(device, &point_data.out_buffer, &point_data.out_dim, descriptor)
+                Self::setup_0d_geometry(device, &point_data.out_buffer, descriptor)
             }
             ComputeBlock::Curve(curve_data) => {
                 Self::setup_1d_geometry(device, &curve_data.out_buffer, &curve_data.out_dim, descriptor)
@@ -50,7 +50,7 @@ impl RenderingData {
                 let buffer = &transformed_data.out_buffer;
                 let dimensions = &transformed_data.out_dim;
                 match dimensions {
-                    Dimensions::D0 => Self::setup_0d_geometry(device, buffer, dimensions, descriptor),
+                    Dimensions::D0 => Self::setup_0d_geometry(device, buffer, descriptor),
                     Dimensions::D1(_) => Self::setup_1d_geometry(device, buffer, dimensions, descriptor),
                     Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions, descriptor),
                 }
@@ -59,7 +59,7 @@ impl RenderingData {
         }
     }
 
-    fn setup_0d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
+    fn setup_0d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
         // Never go above a certain refinement level: the local group size for a compute shader
         // invocation should never exceed 512, otherwise the GPU might error out, and with
         // a refine level of 6 we already hit the 492 points count.
@@ -68,10 +68,6 @@ impl RenderingData {
         let sphere_radius = AVAILABLE_SIZES[descriptor.thickness];
 
         let (shader_consts, vertices_count, index_buffer, index_count) = create_point_data(device, refine_amount);
-        // BEWARE: for 0D dimensions, the buffer that will be created is just the
-        // "size of the element" that we pass in. For this reason, we need to put the size of
-        // a single vertex times the number of vertices that we used to represent the point
-        let vertex_buffer = dimensions.create_storage_buffer(vertices_count*std::mem::size_of::<StandardVertexData>(), device);
 
         let shader_source = format!(r##"
 #version 450
@@ -104,6 +100,12 @@ void main() {{
 }}
 "##, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, radius=sphere_radius, shader_constants=shader_consts, dimx=vertices_count);
 
+        // BEWARE: for 0D dimensions, the buffer that will be created is just the
+        // "size of the element" that we pass in. For this reason, we need to put the size of
+        // a single vertex times the number of vertices that we used to represent the point
+        let out_dim = Dimensions::D0;
+        let vertex_buffer = out_dim.create_storage_buffer(vertices_count*std::mem::size_of::<StandardVertexData>(), device);
+
         let bindings = [
             // add descriptor for input buffer
             CustomBindDescriptor {
@@ -125,7 +127,7 @@ void main() {{
             material_id: descriptor.material,
             compute_pipeline,
             compute_bind_group,
-            out_dim: dimensions.clone(),
+            out_dim,
             vertex_buffer,
             index_buffer,
             index_count
@@ -136,7 +138,7 @@ void main() {{
         let section_diameter = AVAILABLE_SIZES[descriptor.thickness];
         let n_section_points = (descriptor.thickness + 3)*2;
 
-        let size = dimensions.as_1d().unwrap().size;
+        let size = dimensions.as_1d()?.size;
         let (index_buffer, index_count) = create_curve_buffer_index(device, size, n_section_points);
         let vertex_buffer = dimensions.create_storage_buffer(n_section_points*std::mem::size_of::<StandardVertexData>(), device);
 
@@ -256,7 +258,7 @@ void main() {{
     }
 
     fn setup_2d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
-        let (param_1, param_2) = dimensions.as_2d().unwrap();
+        let (param_1, param_2) = dimensions.as_2d()?;
         let flag_pattern = true;
         let (index_buffer, index_count) = create_grid_buffer_index(device, param_1.size, param_2.size, flag_pattern);
         let vertex_buffer = dimensions.create_storage_buffer(std::mem::size_of::<StandardVertexData>(), device);

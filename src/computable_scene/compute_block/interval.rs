@@ -18,11 +18,9 @@ impl IntervalBlockDescriptor {
 
 pub struct IntervalData {
     pub out_buffer: wgpu::Buffer,
-    pub buffer_size: wgpu::BufferAddress,
     compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
     pub out_dim: Dimensions,
-    pub name: String,
 }
 
 impl IntervalData {
@@ -46,33 +44,29 @@ impl IntervalData {
         }
         // and then strip the leading and trailing ones
         descriptor.name.retain(|c| !c.is_whitespace());
+        // TODO: we need to make sure that the first character is not a number!
+
         // Remove any leading and trailing whitespaces from the begin and end attributes.
         // This is done here because Parameters can be compared, and if we strip all
         // whitespaces here we are sure that the comparison will be succesful if the user
         // inputs the same thing in two different nodes but adds an extra whitespace.
+        // TODO: if the user enters the same number but writes it differently, the comparison can
+        // fail nonetheless
         descriptor.begin.retain(|c| !c.is_whitespace());
         descriptor.end.retain(|c| !c.is_whitespace());
         let param = Parameter {
-            name: descriptor.name.clone(),
+            name: Some(descriptor.name.clone()),
             begin: descriptor.begin.clone(),
             end: descriptor.end.clone(),
             size: n_evals,
         };
-        let out_dim = Dimensions::D1(param);
-        let buffer_size = (n_evals * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
-        let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            mapped_at_creation: false,
-            label: None,
-            size: buffer_size,
-            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::STORAGE,
-        });
 
         // Optimization note: an interval, will always fit a single compute local group,
         // since the limit on the size of the work group (maxComputeWorkGroupInvocations)
         // is at least 256 on every device.
         let shader_source = format!(r##"
 #version 450
-layout(local_size_x = {dimx}, local_size_y = 1) in;
+layout(local_size_x = {n_points}, local_size_y = 1) in;
 
 layout(set = 0, binding = 0) buffer OutputBuffer {{
     float out_buff[];
@@ -82,11 +76,14 @@ layout(set = 0, binding = 0) buffer OutputBuffer {{
 
 void main() {{
     uint index = gl_GlobalInvocationID.x;
-    float delta = ({interval_end} - {interval_begin}) / ({num_points} - 1.0);
+    float delta = ({interval_end} - {interval_begin}) / ({n_points} - 1.0);
     out_buff[index] = {interval_begin} + delta * index;
 }}
-"##, globals_header=&globals.shader_header, interval_begin=descriptor.begin, interval_end=descriptor.end, num_points=n_evals, dimx=n_evals
+"##, globals_header=&globals.shader_header, interval_begin=descriptor.begin, interval_end=descriptor.end, n_points=param.size
 );
+
+        let out_dim = Dimensions::D1(param);
+        let out_buffer = out_dim.create_storage_buffer(std::mem::size_of::<f32>(), device);
 
         let bindings = [
             // add descriptor for output buffer
@@ -102,8 +99,6 @@ void main() {{
             compute_bind_group,
             out_buffer,
             out_dim,
-            buffer_size,
-            name: descriptor.name,
         })
     }
 

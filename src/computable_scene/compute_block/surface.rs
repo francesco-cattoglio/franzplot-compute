@@ -51,30 +51,26 @@ impl SurfaceData {
 
         // We are creating a surface from 2 intervals, output vertex count is the product of the
         // two interval sizes. Buffer size is 4 times as much, because we are storing a Vec4
-        let dim_1 = first_interval_data.out_dim.as_1d().unwrap();
-        let dim_2 = second_interval_data.out_dim.as_1d().unwrap();
-        if dim_1.name == dim_2.name {
-            return Err(BlockCreationError::IncorrectAttributes(" The two input intervals \n must be different "));
+        let par_1 = first_interval_data.out_dim.as_1d()?;
+        let par_2 = second_interval_data.out_dim.as_1d()?;
+        let same_intervals = par_1.is_equal(&par_2)?;
+        if same_intervals {
+            return Err(BlockCreationError::IncorrectAttributes(" The two input intervals \n must have different names "));
         }
-        let out_dim = Dimensions::D2(dim_1, dim_2);
-        let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
-            //let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        //    label: None,
-        //    mapped_at_creation: false,
-        //    size: output_buffer_size as wgpu::BufferAddress,
-        //    usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
-        //});
+
+        let par_1_name = par_1.name.clone().unwrap();
+        let par_2_name = par_2.name.clone().unwrap();
 
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
 
 layout(set = 0, binding = 0) buffer InputBuffer1 {{
-    float {par1}_buff[];
+    float par1_buff[];
 }};
 
 layout(set = 0, binding = 1) buffer InputBuffer2 {{
-    float {par2}_buff[];
+    float par2_buff[];
 }};
 
 layout(set = 0, binding = 2) buffer OutputBuffer {{
@@ -87,14 +83,17 @@ void main() {{
     uint par1_idx = gl_GlobalInvocationID.x;
     uint par2_idx = gl_GlobalInvocationID.y;
     uint index = gl_GlobalInvocationID.x + gl_NumWorkGroups.x * gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
-    float {par1} = {par1}_buff[par1_idx];
-    float {par2} = {par2}_buff[par2_idx];
+    float {par1} = par1_buff[par1_idx];
+    float {par2} = par2_buff[par2_idx];
     out_buff[index].x = {fx};
     out_buff[index].y = {fy};
     out_buff[index].z = {fz};
     out_buff[index].w = 1;
 }}
-"##, header=&globals.shader_header, par1=&first_interval_data.name, par2=&second_interval_data.name, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+"##, header=&globals.shader_header, par1=par_1_name, par2=par_2_name, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+
+        let out_dim = Dimensions::D2(par_1, par_2);
+        let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
 
         let bindings = [
             // add descriptor for input buffers

@@ -1,8 +1,10 @@
-use anyhow::Result;
 pub use smol_str::SmolStr;
 
 pub mod point;
 pub use point::{PointBlockDescriptor, PointData};
+
+pub mod bezier;
+pub use bezier::{BezierBlockDescriptor, BezierData};
 
 pub mod curve;
 pub use curve::{CurveBlockDescriptor, CurveData};
@@ -41,6 +43,7 @@ pub enum BlockCreationError {
 pub enum ComputeBlock {
     Point(PointData),
     Interval(IntervalData),
+    Bezier(BezierData),
     Curve(CurveData),
     Surface(SurfaceData),
     Transform(TransformData),
@@ -48,9 +51,10 @@ pub enum ComputeBlock {
     Rendering(RenderingData),
 }
 
+/// a parameter can be anonymous, e.g. when created by a Bezier node
 #[derive(Debug, Clone)]
 pub struct Parameter {
-    pub name: String,
+    pub name: Option<String>,
     pub size: usize,
     pub begin: String,
     pub end: String,
@@ -58,21 +62,27 @@ pub struct Parameter {
 
 impl Parameter {
     pub fn is_equal(&self, other: &Parameter) -> Result <bool, BlockCreationError> {
-        if self.name == other.name {
-            dbg!(self.size);
-            dbg!(other.size);
-            // having the same name but a different quality, begin or end attribute is an error.
-            if self.size != other.size {
-                Err(BlockCreationError::IncorrectAttributes(" The geometry and parametric matrix \n contain intervals with the same name \n but different quality "))
-            } else if self.begin != other.begin {
-                Err(BlockCreationError::IncorrectAttributes(" The geometry and parametric matrix \n contain intervals with the same name \n but different begin "))
-            } else if self.end != other.end {
-                Err(BlockCreationError::IncorrectAttributes(" The geometry and parametric matrix \n contain intervals with the same name \n but different end "))
-            } else {
-                Ok(true)
+        match (&self.name, &other.name) {
+            (None, None) => Ok(false),
+            (None, Some(_)) => Ok(false),
+            (Some(_), None) => Ok(false),
+            (Some(self_name), Some(other_name)) => {
+                if self_name == other_name {
+                    // having the same name but a different quality, begin or end attribute is an error.
+                    if self.size != other.size {
+                        Err(BlockCreationError::IncorrectAttributes(" The input intervals \n have the same name \n but different 'quality' "))
+                    } else if self.begin != other.begin {
+                        Err(BlockCreationError::IncorrectAttributes(" The input intervals \n have the same name \n but different 'begin' "))
+                    } else if self.end != other.end {
+                        Err(BlockCreationError::IncorrectAttributes(" The input intervals \n have the same name \n but different 'end' "))
+                    } else {
+                        Ok(true)
+                    }
+                } else {
+                    Ok(false)
+                }
+
             }
-        } else {
-            Ok(false)
         }
     }
 }
@@ -85,23 +95,25 @@ pub enum Dimensions {
 }
 
 impl Dimensions {
-    #[allow(unused)]
-    pub fn as_0d(&self) -> Result<()> {
+    pub fn as_0d(&self) -> Result<(), BlockCreationError> {
         match self {
             Self::D0 => Ok(()),
-            _ => Err(anyhow::anyhow!("error converting dimensions to 0D")),
+            Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 1D object")),
+            Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 2D object")),
         }
     }
-    pub fn as_1d(&self) -> Result<Parameter> {
+    pub fn as_1d(&self) -> Result<Parameter, BlockCreationError> {
         match self {
+            Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 0D object")),
             Self::D1(dim) => Ok(dim.clone()),
-            _ => Err(anyhow::anyhow!("error converting dimensions to 1D")),
+            Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 2D object")),
         }
     }
-    pub fn as_2d(&self) -> Result<(Parameter, Parameter)> {
+    pub fn as_2d(&self) -> Result<(Parameter, Parameter), BlockCreationError> {
         match self {
+            Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 0D object")),
+            Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 1D object")),
             Self::D2(dim1, dim2) => Ok((dim1.clone(), dim2.clone())),
-            _ => Err(anyhow::anyhow!("error converting dimensions to 2D")),
         }
     }
     pub fn create_storage_buffer(&self, element_size: usize, device: &wgpu::Device) -> wgpu::Buffer {
@@ -130,6 +142,7 @@ impl ComputeBlock {
             Self::Matrix(data) => data.encode(globals_bind_group, encoder),
             Self::Transform(data) => data.encode(encoder),
             Self::Rendering(data) => data.encode(encoder),
+            Self::Bezier(data) => unimplemented!(),
         }
     }
 

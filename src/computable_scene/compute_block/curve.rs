@@ -24,8 +24,6 @@ pub struct CurveData {
     pub compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
     pub out_dim: Dimensions,
-    #[allow(unused)]
-    buffer_size: wgpu::BufferAddress,
 }
 
 impl CurveData {
@@ -41,17 +39,8 @@ impl CurveData {
 
         // We are creating a curve from an interval, output vertex count is the same as the input
         // one. Buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
-        let out_dim = interval_data.out_dim.clone();
-        let param = out_dim.as_1d().unwrap();
-        let n_points = param.size;
-        let output_buffer_size = (n_points * 4 * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
-        let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            mapped_at_creation: false,
-            size: output_buffer_size,
-            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::STORAGE,
-        });
-        dbg!(&output_buffer_size);
+        let param = interval_data.out_dim.as_1d()?;
+        let param_name = param.name.clone().unwrap();
 
         // Optimization note: a curve, just line an interval, will always fit a single compute
         // invocation, since the limit on the size of the work group (maxComputeWorkGroupInvocations)
@@ -61,7 +50,7 @@ impl CurveData {
 layout(local_size_x = {dimx}, local_size_y = 1) in;
 
 layout(set = 0, binding = 0) buffer InputBuffer {{
-    float {par}_buff[];
+    float in_buff[];
 }};
 
 layout(set = 0, binding = 1) buffer OutputBuffer {{
@@ -72,13 +61,16 @@ layout(set = 0, binding = 1) buffer OutputBuffer {{
 
 void main() {{
     uint index = gl_GlobalInvocationID.x;
-    float {par} = {par}_buff[index];
+    float {par} = in_buff[index];
     out_buff[index].x = {fx};
     out_buff[index].y = {fy};
     out_buff[index].z = {fz};
     out_buff[index].w = 1;
 }}
-"##, header=&globals.shader_header, par=&interval_data.name, dimx=n_points, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+"##, header=&globals.shader_header, par=param_name, dimx=param.size, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+
+        let out_dim = Dimensions::D1(param);
+        let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
 
         let bindings = [
             // add descriptor for input buffer
@@ -100,7 +92,6 @@ void main() {{
             compute_bind_group,
             out_buffer,
             out_dim,
-            buffer_size: output_buffer_size,
         })
     }
 

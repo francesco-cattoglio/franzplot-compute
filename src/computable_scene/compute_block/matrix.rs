@@ -33,7 +33,6 @@ impl Default for MatrixBlockDescriptor {
 
 pub struct MatrixData {
     pub out_buffer: wgpu::Buffer,
-    pub buffer_size: wgpu::BufferAddress,
     compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
     pub out_dim: Dimensions,
@@ -66,22 +65,15 @@ impl MatrixData {
             _ => return Err(BlockCreationError::InputInvalid("the input provided to the Matrix is not an Interval"))
         };
 
-        let out_dim = interval_data.out_dim.clone();
-        let par = out_dim.as_1d().unwrap();
-        let n_evals = par.size;
-        let output_buffer_size = (16 * std::mem::size_of::<f32>() * n_evals) as wgpu::BufferAddress;
-        let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            mapped_at_creation: false,
-            size: output_buffer_size,
-            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::STORAGE,
-        });
+        let param = interval_data.out_dim.as_1d()?;
+        let param_name = param.name.clone().unwrap();
+
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
 
 layout(set = 0, binding = 0) buffer InputBuffer {{
-    float {par}_buff[];
+    float in_buff[];
 }};
 
 layout(set = 0, binding = 1) buffer OutputBuffer {{
@@ -92,7 +84,7 @@ layout(set = 0, binding = 1) buffer OutputBuffer {{
 
 void main() {{
     uint index = gl_GlobalInvocationID.x;
-    float {par} = {par}_buff[index];
+    float {par} = in_buff[index];
     vec4 col_0 = vec4({_m00}, {_m10}, {_m20}, 0.0);
     vec4 col_1 = vec4({_m01}, {_m11}, {_m21}, 0.0);
     vec4 col_2 = vec4({_m02}, {_m12}, {_m22}, 0.0);
@@ -103,12 +95,15 @@ void main() {{
     out_buff[index][2] = col_2;
     out_buff[index][3] = col_3;
 }}
-"##, header=&globals.shader_header, par=&interval_data.name, dimx=n_evals,
+"##, header=&globals.shader_header, par=&param_name, dimx=param.size,
     _m00=desc.row_1[0], _m10=desc.row_2[0], _m20=desc.row_3[0],
     _m01=desc.row_1[1], _m11=desc.row_2[1], _m21=desc.row_3[1],
     _m02=desc.row_1[2], _m12=desc.row_2[2], _m22=desc.row_3[2],
     _m03=desc.row_1[3], _m13=desc.row_2[3], _m23=desc.row_3[3],
 );
+
+        let out_dim = Dimensions::D1(param);
+        let out_buffer = out_dim.create_storage_buffer(16 * std::mem::size_of::<f32>(), device);
 
         let bindings = [
             // add descriptor for input buffer
@@ -130,19 +125,11 @@ void main() {{
             compute_bind_group,
             out_buffer,
             out_dim,
-            buffer_size: output_buffer_size,
         })
     }
 
     fn new_without_interval(device: &wgpu::Device, globals: &Globals, desc: MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
-        let out_dim = Dimensions::D0;
-        let output_buffer_size = 16 * std::mem::size_of::<f32>() as wgpu::BufferAddress;
-        let out_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: None,
-            mapped_at_creation: false,
-            size: output_buffer_size,
-            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::STORAGE,
-        });
+
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = 1, local_size_y = 1) in;
@@ -172,6 +159,9 @@ void main() {{
     _m03=desc.row_1[3], _m13=desc.row_2[3], _m23=desc.row_3[3],
 );
 
+        let out_dim = Dimensions::D0;
+        let out_buffer = out_dim.create_storage_buffer(16 * std::mem::size_of::<f32>(), device);
+
         let bindings = [
             // add descriptor for output buffer
             CustomBindDescriptor {
@@ -187,7 +177,6 @@ void main() {{
             compute_bind_group,
             out_buffer,
             out_dim,
-            buffer_size: output_buffer_size,
         })
     }
 
