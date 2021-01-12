@@ -24,13 +24,23 @@ namespace imnodes {
     }
 
     std::array<float, 2> GetNodePosition(const int node_id) {
-        ImVec2 pos = GetNodeScreenSpacePos(node_id);
+        ImVec2 pos = GetNodeGridSpacePos(node_id);
         return {pos.x, pos.y};
     }
 
     void SetNodePosition(int node_id, std::array<float, 2> position) {
         ImVec2 pos = ImVec2{position[0], position[1]};
-        return SetNodeScreenSpacePos(node_id, pos);
+        return SetNodeGridSpacePos(node_id, pos);
+    }
+
+    std::array<float, 2> GetEditorPanning() {
+        ImVec2 pan = EditorContextGetPanning();
+        return {pan.x, pan.y};
+    }
+
+    void SetEditorPanning(std::array<float, 2> panning) {
+        ImVec2 pan = ImVec2{panning[0], panning[1]};
+        return EditorContextResetPanning(pan);
     }
 
     rust::Vec<int> GetSelectedNodes() {

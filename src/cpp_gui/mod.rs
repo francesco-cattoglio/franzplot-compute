@@ -56,6 +56,8 @@ pub mod imnodes {
         fn IsLinkHovered(id: &mut i32) -> bool;
         fn GetNodePosition(node_id: i32) -> [f32; 2];
         fn SetNodePosition(node_id: i32, position: [f32; 2]);
+        fn GetEditorPanning() -> [f32; 2];
+        fn SetEditorPanning(position: [f32; 2]);
         fn GetSelectedNodes() -> Vec<i32>;
         fn ApplyStyle(style: &StyleShim);
     }

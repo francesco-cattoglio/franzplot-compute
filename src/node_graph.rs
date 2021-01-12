@@ -660,6 +660,8 @@ pub struct NodeGraph {
     links: HashMap::<AttributeID, AttributeID>,
     free_nodes_list: Vec<NodeID>,
     free_attributes_list: Vec<AttributeID>,
+    #[serde(skip)]
+    pub zoom_level: usize,
     // TODO: review this, having an option makes very little sense because the only
     // time we change it is when we right click on something, and the only time
     // we use the information is inside popups that come right after.
@@ -692,6 +694,7 @@ impl Default for NodeGraph {
             right_clicked_node: None,
             right_clicked_link: None,
             editing_node: None,
+            zoom_level: 4,
             last_edit_timestamp: 0.0,
         }
     }
@@ -779,7 +782,10 @@ impl NodeGraph {
     pub fn push_positions_to_imnodes(&self) {
         for (idx, maybe_node) in self.nodes.iter().enumerate() {
             if let Some(node) = maybe_node.as_ref() {
-                imnodes::SetNodePosition(idx as NodeID, node.position);
+                let [pos_x, pos_y] = node.position;
+                let zoom = ZOOM_LEVELS[self.zoom_level];
+                let editor_pos = [pos_x*zoom, pos_y*zoom];
+                imnodes::SetNodePosition(idx as NodeID, editor_pos);
             }
         }
     }
@@ -787,17 +793,48 @@ impl NodeGraph {
     pub fn read_positions_from_imnodes(&mut self) {
         for (idx, maybe_node) in self.nodes.iter_mut().enumerate() {
             if let Some(node) = maybe_node.as_mut() {
-                node.position = imnodes::GetNodePosition(idx as NodeID);
+                let [pos_x, pos_y] = imnodes::GetNodePosition(idx as NodeID);
+                let zoom = ZOOM_LEVELS[self.zoom_level];
+                node.position = [pos_x/zoom, pos_y/zoom];
             }
         }
     }
 
-    // TODO: refactor
-    pub fn render(&mut self, ui: &imgui::Ui<'_>, availables: &Availables, graph_font: imgui::FontId, zoom_level: usize) -> Option<f64> {
+    pub fn zoom_up_graph(&mut self, mouse_pos: [f32; 2]) {
+        if self.zoom_level < ZOOM_LEVELS.len() - 1 {
+            let prev_zoom = ZOOM_LEVELS[self.zoom_level];
+            self.zoom_level += 1;
+            let new_zoom = ZOOM_LEVELS[self.zoom_level];
+            let [mouse_x, mouse_y] = mouse_pos;
+            let [pan_x, pan_y] = imnodes::GetEditorPanning();
+            let new_x = (pan_x-mouse_x)*new_zoom/prev_zoom + mouse_x;
+            let new_y = (pan_y-mouse_y)*new_zoom/prev_zoom + mouse_y;
+            imnodes::SetEditorPanning([new_x, new_y]);
+            self.push_positions_to_imnodes();
+        }
+    }
+
+    pub fn zoom_down_graph(&mut self, mouse_pos: [f32; 2]) {
+        if self.zoom_level > 0 {
+            let prev_zoom = ZOOM_LEVELS[self.zoom_level];
+            self.zoom_level -= 1;
+            let new_zoom = ZOOM_LEVELS[self.zoom_level];
+            let [mouse_x, mouse_y] = mouse_pos;
+            let [pan_x, pan_y] = imnodes::GetEditorPanning();
+            let new_x = (pan_x-mouse_x)*new_zoom/prev_zoom + mouse_x;
+            let new_y = (pan_y-mouse_y)*new_zoom/prev_zoom + mouse_y;
+            imnodes::SetEditorPanning([new_x, new_y]);
+            self.push_positions_to_imnodes();
+        }
+    }
+
+    pub fn render(&mut self, ui: &imgui::Ui<'_>, availables: &Availables, graph_fonts: &[imgui::FontId]) -> Option<f64> {
         let mut request_savestate: Option<f64> = None;
-        let style_shim = create_style_shim(ZOOM_LEVELS[zoom_level]);
+        let graph_font = graph_fonts[self.zoom_level];
+        let style_shim = create_style_shim(ZOOM_LEVELS[self.zoom_level]);
         imnodes::ApplyStyle(&style_shim);
         let font_token = ui.push_font(graph_font);
+        let editor_ne_point = ui.cursor_pos();
         imnodes::BeginNodeEditor();
         // render all links first. Remember that link ID is the same as the input attribute ID!
         for pair in self.links.iter() {
@@ -931,40 +968,44 @@ impl NodeGraph {
 
         let style_token = ui.push_style_var(StyleVar::WindowPadding([8.0, 8.0]));
         ui.popup(im_str!("Add menu"), || {
-            let clicked_pos = ui.mouse_pos_on_opening_current_popup();
+            let [click_pos_x, click_pos_y] = ui.mouse_pos_on_opening_current_popup();
+            let [pan_x, pan_y] = imnodes::GetEditorPanning();
+            let editor_pos_x = click_pos_x - editor_ne_point[0] - pan_x;
+            let editor_pos_y = click_pos_y - editor_ne_point[1] - pan_y;
+            let editor_pos = [editor_pos_x, editor_pos_y];
             if MenuItem::new(im_str!("Interval")).build(ui) {
-                self.add_interval_node([clicked_pos[0], clicked_pos[1]]);
+                self.add_interval_node(editor_pos);
                 request_savestate = Some(ui.time());
             }
 
             ui.menu(im_str!("Geometries"), true, || {
                 if MenuItem::new(im_str!("Curve")).build(ui) {
-                    self.add_curve_node([clicked_pos[0], clicked_pos[1]]);
+                    self.add_curve_node(editor_pos);
                     request_savestate = Some(ui.time());
                 }
                 if MenuItem::new(im_str!("Surface")).build(ui) {
-                    self.add_surface_node([clicked_pos[0], clicked_pos[1]]);
+                    self.add_surface_node(editor_pos);
                     request_savestate = Some(ui.time());
                 }
             }); // Geometries menu ends here
 
             ui.menu(im_str!("Transformations"), true, || {
                 if MenuItem::new(im_str!("Matrix")).build(ui) {
-                    self.add_matrix_node([clicked_pos[0], clicked_pos[1]]);
+                    self.add_matrix_node(editor_pos);
                     request_savestate = Some(ui.time());
                 }
                 if MenuItem::new(im_str!("Transform")).build(ui) {
-                    self.add_transform_node([clicked_pos[0], clicked_pos[1]]);
+                    self.add_transform_node(editor_pos);
                     request_savestate = Some(ui.time());
                 }
             }); // Transformations menu ends here
 
             if MenuItem::new(im_str!("Point")).build(ui) {
-                self.add_point_node([clicked_pos[0], clicked_pos[1]]);
+                self.add_point_node(editor_pos);
                 request_savestate = Some(ui.time());
             }
             if MenuItem::new(im_str!("Rendering")).build(ui) {
-                self.add_rendering_node([clicked_pos[0], clicked_pos[1]]);
+                self.add_rendering_node(editor_pos);
                 request_savestate = Some(ui.time());
             }
         }); // "Add" closure ends here

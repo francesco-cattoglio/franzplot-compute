@@ -25,6 +25,8 @@ namespace imnodes {
     bool IsLinkHovered(int& id);
     bool IsNodeHovered(int& id);
     void SetNodePosition(int node_id, std::array<float, 2> position);
+    std::array<float, 2> GetEditorPanning();
+    void SetEditorPanning(std::array<float, 2> panning);
     std::array<float, 2> GetNodePosition(int node_id);
     rust::Vec<int> GetSelectedNodes();
     void ApplyStyle(const StyleShim& style);

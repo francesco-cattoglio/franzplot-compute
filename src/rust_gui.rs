@@ -17,7 +17,6 @@ pub struct Gui {
     pub scene_texture_id: TextureId,
     pub new_global_buffer: ImString,
     graph_fonts: Vec<imgui::FontId>,
-    graph_zoom: usize,
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
     undo_stack: std::collections::VecDeque<(f64, String)>,
     undo_cursor: usize,
@@ -44,7 +43,6 @@ impl Gui {
             new_global_buffer: ImString::with_capacity(8),
             scene_texture_id,
             graph_fonts,
-            graph_zoom: 4,
             winit_proxy,
             undo_stack: vec![(0.0, serde_json::to_string(&empty_graph).unwrap())].into(),
             undo_cursor: 0,
@@ -65,10 +63,12 @@ impl Gui {
             self.issue_savestate(state, timestamp);
         }
         if self.undo_cursor != 0 {
+            let zoom_level = state.user.graph.zoom_level;
             self.undo_cursor -= 1;
             let old_state = self.undo_stack.get(self.undo_cursor).unwrap();
             // println!("Restored state from {} seconds ago", ui.time() - old_state.0);
             state.user.graph = serde_json::from_str(&old_state.1).unwrap();
+            state.user.graph.zoom_level = zoom_level;
             state.user.graph.push_positions_to_imnodes();
         }
     }
@@ -94,40 +94,12 @@ impl Gui {
 
     pub fn issue_redo(&mut self, state: &mut State) {
         if self.undo_cursor != self.undo_stack.len()-1 {
+            let zoom_level = state.user.graph.zoom_level;
             self.undo_cursor += 1;
             let restored_state = self.undo_stack.get(self.undo_cursor).unwrap();
             // println!("Restored state from {} seconds ago", ui.time() - restored_state.0);
             state.user.graph = serde_json::from_str(&restored_state.1).unwrap();
-            state.user.graph.push_positions_to_imnodes();
-        }
-    }
-
-    pub fn zoom_up_graph(&mut self, state: &mut State, mouse_pos: [f32; 2]) {
-        if self.graph_zoom < self.graph_fonts.len() - 1 {
-            let prev_zoom = ZOOM_LEVELS[self.graph_zoom];
-            self.graph_zoom += 1;
-            let new_zoom = ZOOM_LEVELS[self.graph_zoom];
-            for node in state.user.graph.get_nodes_mut() {
-                let [x, y] = node.1.position;
-                let [m_x, m_y] = mouse_pos;
-                node.1.position[0] = (x - m_x)*new_zoom/prev_zoom + m_x;
-                node.1.position[1] = (y - m_y)*new_zoom/prev_zoom + m_y;
-            }
-            state.user.graph.push_positions_to_imnodes();
-        }
-    }
-
-    pub fn zoom_down_graph(&mut self, state: &mut State, mouse_pos: [f32; 2]) {
-        if self.graph_zoom > 0 {
-            let prev_zoom = ZOOM_LEVELS[self.graph_zoom];
-            self.graph_zoom -= 1;
-            let new_zoom = ZOOM_LEVELS[self.graph_zoom];
-            for node in state.user.graph.get_nodes_mut() {
-                let [x, y] = node.1.position;
-                let [m_x, m_y] = mouse_pos;
-                node.1.position[0] = (x - m_x)*new_zoom/prev_zoom + m_x;
-                node.1.position[1] = (y - m_y)*new_zoom/prev_zoom + m_y;
-            }
+            state.user.graph.zoom_level = zoom_level;
             state.user.graph.push_positions_to_imnodes();
         }
     }
@@ -241,17 +213,19 @@ impl Gui {
         ui.next_column();
         ui.text(im_str!("Right side"));
         let io = ui.io();
+        let editor_ne_point = ui.cursor_pos();
+        let relative_pos = [io.mouse_pos[0] - editor_ne_point[0], io.mouse_pos[1] - editor_ne_point[1]];
         if io.mouse_wheel < 0.0 {
-            self.zoom_down_graph(state, io.mouse_pos);
+            state.user.graph.zoom_down_graph(relative_pos);
         }
         if io.mouse_wheel > 0.0 {
-            self.zoom_up_graph(state, io.mouse_pos);
+            state.user.graph.zoom_up_graph(relative_pos);
         }
         // TODO: change the whole logic so that:
         // push the positions that we want to display the nodes at, taking into account the zoom level
-        state.user.graph.push_positions_to_imnodes(zoom_level_goes_here);
+        state.user.graph.push_positions_to_imnodes();
         // run the rendering
-        let requested_savestate = state.user.graph.render(ui, &self.availables, self.graph_fonts[self.graph_zoom], self.graph_zoom);
+        let requested_savestate = state.user.graph.render(ui, &self.availables, &self.graph_fonts);
         // read all the nodes positions, again taking into account the zoom level.
         state.user.graph.read_positions_from_imnodes();
 
