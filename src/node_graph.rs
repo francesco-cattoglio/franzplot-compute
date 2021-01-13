@@ -360,6 +360,14 @@ pub enum NodeContents {
         z: AttributeID,
         output: AttributeID,
     },
+    Bezier {
+        p0: AttributeID,
+        p1: AttributeID,
+        p2: AttributeID,
+        p3: AttributeID,
+        quality: AttributeID,
+        output: AttributeID,
+    },
     Curve {
         interval: AttributeID,
         fx: AttributeID,
@@ -401,6 +409,7 @@ impl NodeContents {
         match self {
             NodeContents::Interval {..} => Self::default_interval(),
             NodeContents::Point {..} => Self::default_point(),
+            NodeContents::Bezier {..} => Self::default_bezier(),
             NodeContents::Curve {..} => Self::default_curve(),
             NodeContents::Surface {..} => Self::default_surface(),
             NodeContents::Matrix {..} => Self::default_matrix(),
@@ -423,6 +432,11 @@ impl NodeContents {
                 x, y, z, output
             } => {
                 vec![x, y, z, output]
+            },
+            NodeContents::Bezier {
+                p0, p1, p2, p3, quality, output
+            } => {
+                vec![p0, p1, p2, p3, quality, output]
             },
             NodeContents::Curve {
                 interval, fx, fy, fz, output
@@ -468,6 +482,11 @@ impl NodeContents {
                 x, y, z, output
             } => {
                 vec![x, y, z, output]
+            },
+            NodeContents::Bezier {
+                p0, p1, p2, p3, quality, output
+            } => {
+                vec![p0, p1, p2, p3, quality, output]
             },
             NodeContents::Curve {
                 interval, fx, fy, fz, output
@@ -520,6 +539,19 @@ impl NodeContents {
             y: 1,
             z: 2,
             output: 3,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_bezier() -> Self {
+        NodeContents::Bezier {
+            p0: 0,
+            p1: 1,
+            p2: 2,
+            p3: 3,
+            quality: 4,
+            output: 5,
         }
     }
 
@@ -983,6 +1015,10 @@ impl NodeGraph {
                     self.add_curve_node(editor_pos);
                     request_savestate = Some(ui.time());
                 }
+                if MenuItem::new(im_str!("Bezier")).build(ui) {
+                    self.add_bezier_node(editor_pos);
+                    request_savestate = Some(ui.time());
+                }
                 if MenuItem::new(im_str!("Surface")).build(ui) {
                     self.add_surface_node(editor_pos);
                     request_savestate = Some(ui.time());
@@ -1413,6 +1449,39 @@ impl NodeGraph {
         ];
         let node_contents = NodeContents::default_point();
         self.insert_node("Point".into(), position, node_contents, attributes_contents)
+    }
+
+    pub fn add_bezier_node(&mut self, position: [f32; 2]) -> NodeID {
+        // NOTE: the order here is important: the attributes here
+        // must appear in the same order as they do in the default_bezier() function!
+        let attributes_contents = vec![
+            AttributeContents::InputPin {
+                label: String::from("P0"),
+                kind: DataKind::Geometry,
+            },
+            AttributeContents::InputPin {
+                label: String::from("P1"),
+                kind: DataKind::Geometry,
+            },
+            AttributeContents::InputPin {
+                label: String::from("P2"),
+                kind: DataKind::Geometry,
+            },
+            AttributeContents::InputPin {
+                label: String::from("P3"),
+                kind: DataKind::Geometry,
+            },
+            AttributeContents::QualitySlider {
+                label: String::from("quality"),
+                quality: 4,
+            },
+            AttributeContents::OutputPin {
+                label: String::from("geometry"),
+                kind: DataKind::Geometry,
+            }
+        ];
+        let node_contents = NodeContents::default_bezier();
+        self.insert_node("Bézier".into(), position, node_contents, attributes_contents)
     }
 
     pub fn add_curve_node(&mut self, position: [f32; 2]) -> NodeID {

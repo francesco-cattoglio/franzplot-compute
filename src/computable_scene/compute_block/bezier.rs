@@ -22,8 +22,6 @@ pub struct BezierData {
     pub compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
     pub out_dim: Dimensions,
-    #[allow(unused)]
-    buffer_size: wgpu::BufferAddress,
 }
 
 impl BezierData {

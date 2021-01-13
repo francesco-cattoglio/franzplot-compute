@@ -169,6 +169,29 @@ impl ComputeBlock {
                 };
                 point_descriptor.make_block(device, globals)
             },
+            NodeContents::Bezier {
+                p0, p1, p2, p3, quality, ..
+            } => {
+                use crate::node_graph::NodeID;
+                let mut points = Vec::<NodeID>::new();
+                if let Some(id) = graph.get_attribute_as_linked_node(p0) {
+                    points.push(id);
+                }
+                if let Some(id) = graph.get_attribute_as_linked_node(p1) {
+                    points.push(id);
+                }
+                if let Some(id) = graph.get_attribute_as_linked_node(p2) {
+                    points.push(id);
+                }
+                if let Some(id) = graph.get_attribute_as_linked_node(p3) {
+                    points.push(id);
+                }
+                let bezier_descriptor = BezierBlockDescriptor {
+                    points,
+                    quality: graph.get_attribute_as_usize(quality).unwrap(),
+                };
+                bezier_descriptor.make_block(device, globals, processed_blocks)
+            },
             NodeContents::Curve {
                 interval, fx, fy, fz, ..
             } => {
