@@ -40,6 +40,9 @@ impl RenderingData {
             ComputeBlock::Point(point_data) => {
                 Self::setup_0d_geometry(device, &point_data.out_buffer, descriptor)
             }
+            ComputeBlock::Bezier(bezier_data) => {
+                Self::setup_1d_geometry(device, &bezier_data.out_buffer, &bezier_data.out_dim, descriptor)
+            }
             ComputeBlock::Curve(curve_data) => {
                 Self::setup_1d_geometry(device, &curve_data.out_buffer, &curve_data.out_dim, descriptor)
             }
@@ -184,7 +187,7 @@ void main() {{
     barrier();
 
     if (idx == 0) {{
-        vec3 ref_curr = (abs(tangent.x) > 0.2) ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+        vec3 ref_curr = (abs(tangent_buff[0].x) > 0.2) ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
         for (int i = 0; i < x_size; i++) {{
             vec3 next_dir = tangent_buff[i];
             // TODO: handle 90 degrees curve

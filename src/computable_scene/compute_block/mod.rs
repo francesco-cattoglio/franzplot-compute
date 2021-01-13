@@ -137,12 +137,12 @@ impl ComputeBlock {
         match self {
             Self::Point(data) => data.encode(globals_bind_group, encoder),
             Self::Interval(data) => data.encode(globals_bind_group, encoder),
+            Self::Bezier(data) => data.encode(encoder),
             Self::Curve(data) => data.encode(globals_bind_group, encoder),
             Self::Surface(data) => data.encode(globals_bind_group, encoder),
             Self::Matrix(data) => data.encode(globals_bind_group, encoder),
             Self::Transform(data) => data.encode(encoder),
             Self::Rendering(data) => data.encode(encoder),
-            Self::Bezier(data) => unimplemented!(),
         }
     }
 
@@ -190,7 +190,7 @@ impl ComputeBlock {
                     points,
                     quality: graph.get_attribute_as_usize(quality).unwrap(),
                 };
-                bezier_descriptor.make_block(device, globals, processed_blocks)
+                bezier_descriptor.make_block(device, processed_blocks)
             },
             NodeContents::Curve {
                 interval, fx, fy, fz, ..

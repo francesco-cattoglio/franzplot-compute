@@ -2,7 +2,6 @@ use imgui::*;
 use crate::file_io;
 use crate::state::State;
 use crate::computable_scene::compute_block::BlockId;
-use crate::node_graph::ZOOM_LEVELS;
 
 const MAX_UNDO_HISTORY : usize = 10;
 pub type MaskIds = [TextureId; 4];
