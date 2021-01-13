@@ -5,13 +5,9 @@
         "title": "Rendering",
         "position": [
           725.0,
-          120.0
+          119.99997
         ],
-        "error": {
-          "node_id": 0,
-          "severity": "Warning",
-          "message": " Node not computed \n due to previous errors "
-        },
+        "error": null,
         "contents": {
           "Rendering": {
             "geometry": 0,
@@ -24,8 +20,8 @@
       {
         "title": "Point",
         "position": [
-          32.0,
-          18.0
+          526.6667,
+          -11.333333
         ],
         "error": null,
         "contents": {
@@ -40,8 +36,8 @@
       {
         "title": "Point",
         "position": [
-          43.0,
-          144.0
+          169.66667,
+          -73.333336
         ],
         "error": null,
         "contents": {
@@ -56,8 +52,8 @@
       {
         "title": "Point",
         "position": [
-          46.0,
-          271.0
+          182.0,
+          193.66667
         ],
         "error": null,
         "contents": {
@@ -72,8 +68,8 @@
       {
         "title": "Point",
         "position": [
-          61.0,
-          398.0
+          537.0,
+          294.0
         ],
         "error": null,
         "contents": {
@@ -91,11 +87,7 @@
           557.0,
           119.0
         ],
-        "error": {
-          "node_id": 5,
-          "severity": "Warning",
-          "message": " the input provided to Bezier \n is not a Point "
-        },
+        "error": null,
         "contents": {
           "Bezier": {
             "p0": 20,
@@ -110,8 +102,8 @@
       {
         "title": "Matrix",
         "position": [
-          268.0,
-          6.0
+          172.0,
+          36.666668
         ],
         "error": null,
         "contents": {
@@ -127,8 +119,8 @@
       {
         "title": "Matrix",
         "position": [
-          286.0,
-          364.0
+          182.0,
+          309.33334
         ],
         "error": null,
         "contents": {
@@ -144,8 +136,8 @@
       {
         "title": "Transform",
         "position": [
-          408.0,
-          142.0
+          328.0,
+          -52.666668
         ],
         "error": null,
         "contents": {
@@ -159,19 +151,79 @@
       {
         "title": "Transform",
         "position": [
-          394.0,
-          244.0
+          339.33334,
+          214.6667
         ],
-        "error": {
-          "node_id": 9,
-          "severity": "Warning",
-          "message": " This Transform node \n is missing the Geometry input "
-        },
+        "error": null,
         "contents": {
           "Transform": {
             "geometry": 39,
             "matrix": 40,
             "output": 41
+          }
+        }
+      },
+      {
+        "title": "Rendering",
+        "position": [
+          449.125,
+          -122.803535
+        ],
+        "error": null,
+        "contents": {
+          "Rendering": {
+            "geometry": 42,
+            "thickness": 43,
+            "mask": 44,
+            "material": 45
+          }
+        }
+      },
+      {
+        "title": "Rendering",
+        "position": [
+          377.33334,
+          402.66672
+        ],
+        "error": null,
+        "contents": {
+          "Rendering": {
+            "geometry": 46,
+            "thickness": 47,
+            "mask": 48,
+            "material": 49
+          }
+        }
+      },
+      {
+        "title": "Rendering",
+        "position": [
+          699.39874,
+          -91.79168
+        ],
+        "error": null,
+        "contents": {
+          "Rendering": {
+            "geometry": 50,
+            "thickness": 51,
+            "mask": 52,
+            "material": 53
+          }
+        }
+      },
+      {
+        "title": "Rendering",
+        "position": [
+          638.10706,
+          453.27975
+        ],
+        "error": null,
+        "contents": {
+          "Rendering": {
+            "geometry": 54,
+            "thickness": 55,
+            "mask": 56,
+            "material": 57
           }
         }
       }
@@ -191,7 +243,7 @@
         "contents": {
           "SizeSlider": {
             "label": "thickness:",
-            "size": 3
+            "size": 2
           }
         }
       },
@@ -207,7 +259,7 @@
         "node_id": 0,
         "contents": {
           "Material": {
-            "selected": 0
+            "selected": 2
           }
         }
       },
@@ -564,17 +616,158 @@
             "kind": "Geometry"
           }
         }
+      },
+      {
+        "node_id": 10,
+        "contents": {
+          "InputPin": {
+            "label": "geometry",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 10,
+        "contents": {
+          "SizeSlider": {
+            "label": "thickness:",
+            "size": 2
+          }
+        }
+      },
+      {
+        "node_id": 10,
+        "contents": {
+          "Mask": {
+            "selected": 0
+          }
+        }
+      },
+      {
+        "node_id": 10,
+        "contents": {
+          "Material": {
+            "selected": 4
+          }
+        }
+      },
+      {
+        "node_id": 11,
+        "contents": {
+          "InputPin": {
+            "label": "geometry",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 11,
+        "contents": {
+          "SizeSlider": {
+            "label": "thickness:",
+            "size": 2
+          }
+        }
+      },
+      {
+        "node_id": 11,
+        "contents": {
+          "Mask": {
+            "selected": 0
+          }
+        }
+      },
+      {
+        "node_id": 11,
+        "contents": {
+          "Material": {
+            "selected": 4
+          }
+        }
+      },
+      {
+        "node_id": 12,
+        "contents": {
+          "InputPin": {
+            "label": "geometry",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 12,
+        "contents": {
+          "SizeSlider": {
+            "label": "thickness:",
+            "size": 2
+          }
+        }
+      },
+      {
+        "node_id": 12,
+        "contents": {
+          "Mask": {
+            "selected": 0
+          }
+        }
+      },
+      {
+        "node_id": 12,
+        "contents": {
+          "Material": {
+            "selected": 4
+          }
+        }
+      },
+      {
+        "node_id": 13,
+        "contents": {
+          "InputPin": {
+            "label": "geometry",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 13,
+        "contents": {
+          "SizeSlider": {
+            "label": "thickness:",
+            "size": 2
+          }
+        }
+      },
+      {
+        "node_id": 13,
+        "contents": {
+          "Mask": {
+            "selected": 0
+          }
+        }
+      },
+      {
+        "node_id": 13,
+        "contents": {
+          "Material": {
+            "selected": 4
+          }
+        }
       }
     ],
     "links": {
-      "23": 19,
-      "40": 35,
-      "22": 41,
+      "0": 25,
+      "39": 15,
       "20": 7,
       "37": 30,
+      "46": 41,
+      "54": 19,
       "21": 38,
+      "22": 41,
+      "42": 38,
+      "23": 19,
+      "50": 7,
       "36": 11,
-      "0": 25
+      "40": 35
     },
     "free_nodes_list": [],
     "free_attributes_list": []

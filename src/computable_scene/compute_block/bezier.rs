@@ -148,7 +148,7 @@ layout(set = 0, binding = 3) buffer OutputBuffer {{
 void main() {{
     uint index = gl_GlobalInvocationID.x;
     float t = index / ({n_points} - 1.0);
-    vec4 f_t = (1-t)*(1-t)*p0 + (1-t)*t*p1 + t*t*p2;
+    vec4 f_t = (1-t)*(1-t)*p0 + 2*(1-t)*t*p1 + t*t*p2;
     out_buff[index] = f_t;
 }}
 "##, n_points=param.size);
@@ -218,7 +218,7 @@ layout(set = 0, binding = 4) buffer OutputBuffer {{
 void main() {{
     uint index = gl_GlobalInvocationID.x;
     float t = index / ({n_points} - 1.0);
-    vec4 f_t = (1-t)*(1-t)*(1-t)*p0 + (1-t)*(1-t)*t*p1 + (1-t)*t*t*p2 + t*t*t*p3;
+    vec4 f_t = (1-t)*(1-t)*(1-t)*p0 + 3*(1-t)*(1-t)*t*p1 + 3*(1-t)*t*t*p2 + t*t*t*p3;
     out_buff[index] = f_t;
 }}
 "##, n_points=param.size);

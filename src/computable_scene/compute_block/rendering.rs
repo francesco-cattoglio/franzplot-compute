@@ -181,13 +181,14 @@ void main() {{
         tangent = (-0.5*in_buff[idx-1] + 0.5*in_buff[idx+1]).xyz;
     }}
 
-    tangent_buff[idx] = normalize(tangent);
+    tangent = normalize(tangent);
+    tangent_buff[idx] = tangent;
 
     memoryBarrierShared();
     barrier();
 
     if (idx == 0) {{
-        vec3 ref_curr = (abs(tangent_buff[0].x) > 0.2) ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
+        vec3 ref_curr = (abs(tangent.x) > 0.2) ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
         for (int i = 0; i < x_size; i++) {{
             vec3 next_dir = tangent_buff[i];
             // TODO: handle 90 degrees curve
