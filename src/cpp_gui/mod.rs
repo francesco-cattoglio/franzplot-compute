@@ -20,6 +20,7 @@ pub mod imnodes {
         pub grid_spacing: f32,
         pub node_padding_horizontal: f32,
         pub node_padding_vertical: f32,
+        pub link_thickness: f32,
 
         pub pin_circle_radius: f32,
         pub pin_quad_side_length: f32,

@@ -65,6 +65,8 @@ namespace imnodes {
         style.grid_spacing = new_style.grid_spacing;
         style.node_padding_horizontal = new_style.node_padding_horizontal;
         style.node_padding_vertical = new_style.node_padding_vertical;
+        style.link_thickness = new_style.link_thickness;
+
         style.pin_circle_radius = new_style.pin_circle_radius;
         style.pin_quad_side_length = new_style.pin_quad_side_length;
         style.pin_triangle_side_length = new_style.pin_triangle_side_length;

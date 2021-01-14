@@ -4,7 +4,6 @@ use super::ComputeBlock;
 use super::BlockId;
 use super::Dimensions;
 use super::BlockCreationError;
-use super::PointData;
 use super::{ProcessedMap, ProcessingResult};
 
 #[derive(Debug)]

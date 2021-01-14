@@ -15,7 +15,7 @@ pub enum DataKind {
     Matrix,
 }
 
-pub const ZOOM_LEVELS: [f32; 6] = [0.32, 0.42, 0.56, 0.75, 1.0, 1.25];
+pub const ZOOM_LEVELS: [f32; 6] = [1.0, 0.8, 0.64, 0.512, 0.41, 0.32];
 
 fn create_style_shim(scale: f32) -> imnodes::StyleShim {
     imnodes::StyleShim {
@@ -26,7 +26,8 @@ fn create_style_shim(scale: f32) -> imnodes::StyleShim {
         pin_quad_side_length: 8.0 * scale,
         pin_triangle_side_length: 12.0 * scale,
         pin_line_thickness: 1.0 * scale,
-        pin_hover_radius: 15.0 * scale,
+        pin_hover_radius: 10.0 * scale,
+        link_thickness: 4.0 * scale,
     }
 }
 
@@ -95,6 +96,8 @@ pub const AVAILABLE_SIZES: [f32; 9] = [0.04, 0.08, 0.12, 0.16, 0.20, 0.24, 0.32,
 impl Attribute {
     // the render function shall return bool if anything has changed.
     pub fn render(&mut self, ui: &imgui::Ui<'_>, availables: &Availables, id: AttributeID) -> bool {
+        // TODO: maybe we can push the style var at the begin of the editor rendering,
+        // just like we push the imnodes style vars
         let font_size = ui.current_font_size();
         let style_token = ui.push_style_var(StyleVar::ItemSpacing([0.24 * font_size, 0.26 * font_size]));
         let [char_w, _char_h] = ui.calc_text_size(im_str!("A"), false, 0.0);
@@ -726,7 +729,7 @@ impl Default for NodeGraph {
             right_clicked_node: None,
             right_clicked_link: None,
             editing_node: None,
-            zoom_level: 4,
+            zoom_level: 0,
             last_edit_timestamp: 0.0,
         }
     }
@@ -806,8 +809,6 @@ impl NodeGraph {
         // some existing attribute, that would mean something is off!
         assert!(self.nodes[node_id as usize].is_none());
         self.nodes[node_id as usize] = Some(node);
-        // and change the position of the node in imnodes
-        imnodes::SetNodePosition(node_id, position);
         node_id
     }
 
@@ -832,7 +833,7 @@ impl NodeGraph {
         }
     }
 
-    pub fn zoom_up_graph(&mut self, mouse_pos: [f32; 2]) {
+    pub fn zoom_down_graph(&mut self, mouse_pos: [f32; 2]) {
         if self.zoom_level < ZOOM_LEVELS.len() - 1 {
             let prev_zoom = ZOOM_LEVELS[self.zoom_level];
             self.zoom_level += 1;
@@ -846,7 +847,7 @@ impl NodeGraph {
         }
     }
 
-    pub fn zoom_down_graph(&mut self, mouse_pos: [f32; 2]) {
+    pub fn zoom_up_graph(&mut self, mouse_pos: [f32; 2]) {
         if self.zoom_level > 0 {
             let prev_zoom = ZOOM_LEVELS[self.zoom_level];
             self.zoom_level -= 1;
@@ -867,6 +868,7 @@ impl NodeGraph {
         imnodes::ApplyStyle(&style_shim);
         let font_token = ui.push_font(graph_font);
         let editor_ne_point = ui.cursor_pos();
+        self.push_positions_to_imnodes();
         imnodes::BeginNodeEditor();
         // render all links first. Remember that link ID is the same as the input attribute ID!
         for pair in self.links.iter() {
@@ -893,6 +895,7 @@ impl NodeGraph {
         // on the contrary, we need to end the node editor before doing any interaction
         // (e.g: right clicks, node creation)
         imnodes::EndNodeEditor();
+        self.read_positions_from_imnodes();
         font_token.pop(ui);
 
         // Process right click
@@ -929,7 +932,6 @@ impl NodeGraph {
         let mut workaround_open_rename = false;
         ui.popup(im_str!("Node menu"), || {
             let clicked_node = self.right_clicked_node.unwrap();
-            let clicked_pos = ui.mouse_pos_on_opening_current_popup();
             // The right-click menu changes contents depending on how many nodes are selected
             if selected_nodes_ids.len() <= 1 {
                 // single node selection, using the self.right_clicked_node id
@@ -942,8 +944,7 @@ impl NodeGraph {
                 }
                 // TODO: decide if single node clone should still clone the links
                 if MenuItem::new(im_str!("duplicate node")).build(ui) {
-                    let position = [clicked_pos[0]+30.0, clicked_pos[1]+30.0];
-                    self.duplicate_node_no_links(clicked_node, position);
+                    self.duplicate_node_no_links(clicked_node);
                     self.right_clicked_node = None;
                     request_savestate = Some(ui.time());
                 }
@@ -1004,44 +1005,45 @@ impl NodeGraph {
             let [pan_x, pan_y] = imnodes::GetEditorPanning();
             let editor_pos_x = click_pos_x - editor_ne_point[0] - pan_x;
             let editor_pos_y = click_pos_y - editor_ne_point[1] - pan_y;
-            let editor_pos = [editor_pos_x, editor_pos_y];
+            let zoom = ZOOM_LEVELS[self.zoom_level];
+            let node_pos = [editor_pos_x/zoom, editor_pos_y/zoom];
             if MenuItem::new(im_str!("Interval")).build(ui) {
-                self.add_interval_node(editor_pos);
+                self.add_interval_node(node_pos);
                 request_savestate = Some(ui.time());
             }
 
             ui.menu(im_str!("Geometries"), true, || {
                 if MenuItem::new(im_str!("Curve")).build(ui) {
-                    self.add_curve_node(editor_pos);
+                    self.add_curve_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
                 if MenuItem::new(im_str!("Bezier")).build(ui) {
-                    self.add_bezier_node(editor_pos);
+                    self.add_bezier_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
                 if MenuItem::new(im_str!("Surface")).build(ui) {
-                    self.add_surface_node(editor_pos);
+                    self.add_surface_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
             }); // Geometries menu ends here
 
             ui.menu(im_str!("Transformations"), true, || {
                 if MenuItem::new(im_str!("Matrix")).build(ui) {
-                    self.add_matrix_node(editor_pos);
+                    self.add_matrix_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
                 if MenuItem::new(im_str!("Transform")).build(ui) {
-                    self.add_transform_node(editor_pos);
+                    self.add_transform_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
             }); // Transformations menu ends here
 
             if MenuItem::new(im_str!("Point")).build(ui) {
-                self.add_point_node(editor_pos);
+                self.add_point_node(node_pos);
                 request_savestate = Some(ui.time());
             }
             if MenuItem::new(im_str!("Rendering")).build(ui) {
-                self.add_rendering_node(editor_pos);
+                self.add_rendering_node(node_pos);
                 request_savestate = Some(ui.time());
             }
         }); // "Add" closure ends here
@@ -1152,11 +1154,12 @@ impl NodeGraph {
 
     // "clone" a node means "get all the data that we might need to insert a copy
     // of this node into the graph". We do NOT insert it in the graph.
-    pub fn clone_node(&self, node_id: NodeID) -> Option<(String, NodeContents, Vec<AttributeContents>)> {
+    pub fn clone_node(&self, node_id: NodeID) -> Option<(String, [f32; 2], NodeContents, Vec<AttributeContents>)> {
         let node = self.get_node(node_id)?;
         let attributes_list = node.get_owned_attributes();
 
         let title = node.title.clone();
+        let position = node.position;
         let cloned_contents = node.contents.default_same_kind();
         let cloned_attributes = attributes_list
             .into_iter()
@@ -1169,11 +1172,12 @@ impl NodeGraph {
             })
             .collect();
 
-        Some((title, cloned_contents, cloned_attributes))
+        Some((title, position, cloned_contents, cloned_attributes))
     }
 
-    fn duplicate_node_no_links(&mut self, node_id: NodeID, position: [f32; 2]) -> NodeID {
-        let (title, cloned_contents, cloned_attributes) = self.clone_node(node_id).unwrap();
+    fn duplicate_node_no_links(&mut self, node_id: NodeID) -> NodeID {
+        let (title, orig_pos, cloned_contents, cloned_attributes) = self.clone_node(node_id).unwrap();
+        let position = [orig_pos[0] + 40.0, orig_pos[1] + 40.0];
         self.insert_node(title, position, cloned_contents, cloned_attributes)
     }
 
@@ -1188,10 +1192,8 @@ impl NodeGraph {
 
             // clone the node, insert it in the graph seting its position of the cloned node
             // to be the same as the original one, plus a little delta.
-            let mut position = imnodes::GetNodePosition(*original_node_id);
-            position[0] += 40.0;
-            position[1] += 140.0;
-            let (title, cloned_node, cloned_attributes) = self.clone_node(*original_node_id).unwrap();
+            let (title, orig_pos, cloned_node, cloned_attributes) = self.clone_node(*original_node_id).unwrap();
+            let position = [orig_pos[0] + 40.0, orig_pos[1] + 120.0];
             let cloned_node_id = self.insert_node(title, position, cloned_node, cloned_attributes);
 
             // Get the list of owned attributes. Node that due to the way the list is generated,

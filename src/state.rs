@@ -31,6 +31,7 @@ impl UserState {
         let file = std::fs::File::open(path).unwrap();
         let maybe_user_state = serde_json::from_reader(file);
         *self = maybe_user_state.unwrap();
+        dbg!(&self.graph.zoom_level);
         self.graph.push_positions_to_imnodes();
     }
 }
@@ -38,7 +39,7 @@ impl UserState {
 pub struct AppState {
     pub camera_controller: Box<dyn camera::Controller>,
     pub camera_enabled: bool,
-    pub camera: camera::Camera, // we might want to store camera position in user state
+    pub camera: camera::Camera, // TODO: we might want to store camera position in user state
     pub manager: Manager,
     pub materials: Vec<Texture>,
     pub masks: Masks,

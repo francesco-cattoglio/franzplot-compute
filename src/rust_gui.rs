@@ -220,13 +220,8 @@ impl Gui {
         if io.mouse_wheel > 0.0 {
             state.user.graph.zoom_up_graph(relative_pos);
         }
-        // TODO: change the whole logic so that:
-        // push the positions that we want to display the nodes at, taking into account the zoom level
-        state.user.graph.push_positions_to_imnodes();
         // run the rendering
         let requested_savestate = state.user.graph.render(ui, &self.availables, &self.graph_fonts);
-        // read all the nodes positions, again taking into account the zoom level.
-        state.user.graph.read_positions_from_imnodes();
 
         if let Some(requested_stamp) = requested_savestate {
             // first, get the timestamp for the last savestate. This is because if the user only moves some nodes around
