@@ -8,14 +8,15 @@ Feature già implementate:
 - duplicazione dei nodi
 - controllo della telecamera in stile VTK. È possibile aggiungere altri stili (es: fly camera o orbit come nel vecchio franzplot)
 - possibile selezionare gli oggetti facendoci doppioclick nella scena
+- curve di bezier
+- zoom nel grafo
 
 Known bugs & issues:
 - in Debug l'avvio è piuttosto lento; in Release l'avvio è molto più veloce (5 secondi vs 0.5).
 
 Feature previste per Gennaio:
 - rendering & trasformazioni di primitive
-- curve di bezier
-- raggruppamento dei nodi/zoom nel grafo
+- raggruppamento dei nodi
 - visualizzazione delle curve u-v sulle superfici
 - scelta del formato file definitivo (attualmente è json, ma non può contenere commenti quindi va cambiato. Idealmente dovrebbe avere un versioning)
 
