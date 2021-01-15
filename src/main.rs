@@ -155,11 +155,11 @@ fn main() {
         "./resources/masks/v_stripes_16.png",
         "./resources/masks/blank.png"
     ];
-    let dir_files = std::fs::read_dir("./resources/materials/")
+    let materials_dir_files = std::fs::read_dir("./resources/materials/")
         .unwrap(); // unwraps the dir reading, giving an iterator over its files
 
     // process the dir files, returning only valid filenames that end in "png"
-    let mut material_files: Vec<std::path::PathBuf> = dir_files
+    let mut material_files: Vec<std::path::PathBuf> = materials_dir_files
         .filter_map(|dir_result| {
             let dir_entry = dir_result.ok()?;
             let path = dir_entry.path();
@@ -183,6 +183,43 @@ fn main() {
 
     let masks = util::load_masks(&device_manager, &mask_paths);
     let materials = util::load_materials(&device_manager, &material_files);
+
+    // do the same for models
+    let models_dir_files = std::fs::read_dir("./resources/models/")
+        .unwrap(); // unwraps the dir reading, giving an iterator over its files
+
+    // process the dir files, returning only valid filenames that end in "png"
+    let mut model_files: Vec<std::path::PathBuf> = models_dir_files
+        .filter_map(|dir_result| {
+            let dir_entry = dir_result.ok()?;
+            let path = dir_entry.path();
+            if !path.is_file() {
+                return None;
+            }
+            let extension = path.extension()?.to_str()?.to_lowercase();
+            if extension == *"obj" {
+                Some(path)
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    model_files.sort();
+    dbg!(&model_files);
+
+    let dice = obj::Obj::load(&model_files[0]).unwrap();
+    for object in dice.data.objects.iter() {
+        for group in object.groups.iter() {
+            for polygon in group.polys.iter() {
+                println!("new face:");
+                let obj::SimplePolygon(all_indices) = &polygon;
+                for obj::IndexTuple(pos, uv, norm) in all_indices.iter() {
+                    println!("\t{:?}", dice.data.position.get(*pos));
+                }
+            }
+        }
+    }
 
     // last, initialize the rust_gui and the state with the list of available masks and materials.
     let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, imgui_masks, imgui_materials, graph_fonts);
