@@ -28,6 +28,7 @@ use super::Globals;
 use crate::node_graph::{ Node, NodeContents, NodeGraph, };
 
 pub type BlockId = i32;
+pub type PrefabId = i32;
 pub type ProcessingResult = Result<ComputeBlock, BlockCreationError>;
 pub type ProcessedMap = indexmap::IndexMap<BlockId, ProcessingResult>;
 
@@ -91,7 +92,8 @@ impl Parameter {
 pub enum Dimensions {
     D0,
     D1(Parameter),
-    D2(Parameter, Parameter)
+    D2(Parameter, Parameter),
+    D3(PrefabId),
 }
 
 impl Dimensions {
@@ -100,6 +102,7 @@ impl Dimensions {
             Self::D0 => Ok(()),
             Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 1D object")),
             Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 2D object")),
+            Self::D3(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 3D object")),
         }
     }
     pub fn as_1d(&self) -> Result<Parameter, BlockCreationError> {
@@ -107,6 +110,7 @@ impl Dimensions {
             Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 0D object")),
             Self::D1(dim) => Ok(dim.clone()),
             Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 2D object")),
+            Self::D3(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 3D object")),
         }
     }
     pub fn as_2d(&self) -> Result<(Parameter, Parameter), BlockCreationError> {
@@ -114,6 +118,15 @@ impl Dimensions {
             Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 0D object")),
             Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 1D object")),
             Self::D2(dim1, dim2) => Ok((dim1.clone(), dim2.clone())),
+            Self::D3(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 3D object")),
+        }
+    }
+    pub fn as_3d(&self) -> Result<PrefabId, BlockCreationError> {
+        match self {
+            Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_3d()` on a 0D object")),
+            Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_3d()` on a 1D object")),
+            Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_3d()` on a 2D object")),
+            Self::D3(prefab_id) => Ok(*prefab_id),
         }
     }
     pub fn create_storage_buffer(&self, element_size: usize, device: &wgpu::Device) -> wgpu::Buffer {
@@ -121,6 +134,9 @@ impl Dimensions {
             Dimensions::D0 => element_size,
             Dimensions::D1(param)=> element_size * param.size,
             Dimensions::D2(par1, par2) => element_size * par1.size * par2.size,
+            // since 3D geometry can only be created by loading it, one should never attempt to
+            // create a buffer from it
+            Dimensions::D3(_)=> unimplemented!("internal error: creating storage buffers for 3D objects"),
         };
         device.create_buffer(&wgpu::BufferDescriptor {
             label: None,

@@ -169,8 +169,17 @@ impl TransformData {
             (Dimensions::D2(_geo_p1, _geo_p2), Dimensions::D1(_mat_param)) => {
                 return Err(BlockCreationError::InputInvalid(" this operation would create \n an object with three parameters, \n which is not supported "));
             },
+            (Dimensions::D3(prefab_id), Dimensions::D0) => {
+                todo!()
+            },
+            (Dimensions::D3(prefab_id), Dimensions::D1(mat_param)) => {
+                todo!()
+            },
             (_, Dimensions::D2(_, _)) => {
                 return Err(BlockCreationError::InternalError("the input Matrix has 2 parameters"));
+            },
+            (_, Dimensions::D3(_)) => {
+                return Err(BlockCreationError::InternalError("the input Matrix has dimension equal to 3"));
             },
         }
         Ok(Self {

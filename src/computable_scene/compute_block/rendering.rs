@@ -56,6 +56,7 @@ impl RenderingData {
                     Dimensions::D0 => Self::setup_0d_geometry(device, buffer, descriptor),
                     Dimensions::D1(_) => Self::setup_1d_geometry(device, buffer, dimensions, descriptor),
                     Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions, descriptor),
+                    Dimensions::D3(_) => todo!(),
                 }
             }
             _ => Err(BlockCreationError::InputInvalid("the input provided to the Renderer is not a geometry kind"))
@@ -392,6 +393,9 @@ void main() {{
             }
             Dimensions::D2(par_1, par_2) => {
                 compute_pass.dispatch((par_1.size/LOCAL_SIZE_X) as u32, (par_2.size/LOCAL_SIZE_Y) as u32, 1);
+            }
+            Dimensions::D3(_) => {
+                todo!()
             }
         }
     }
