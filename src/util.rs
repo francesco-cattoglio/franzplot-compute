@@ -1,6 +1,7 @@
 use crate::rust_gui;
 use crate::device_manager;
 use crate::rendering::texture;
+use crate::rendering::model;
 
 pub fn load_imgui_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, renderer: &mut imgui_wgpu::Renderer, files: &[P]) -> rust_gui::MaskIds {
     use std::convert::TryInto;
@@ -23,6 +24,15 @@ pub fn load_imgui_materials<P: AsRef<std::path::Path>>(manager: &device_manager:
         .collect()
 }
 
+pub fn imgui_model_names<P: AsRef<std::path::Path>>(files: &[P]) -> Vec<imgui::ImString> {
+    files.iter()
+        .map(|path| {
+            let file_stem = path.as_ref().file_stem().unwrap().to_str().unwrap();
+            imgui::ImString::new(file_stem)
+        })
+        .collect()
+}
+
 pub fn load_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, files: &[P]) -> texture::Masks {
     use std::convert::TryInto;
     files.iter()
@@ -38,6 +48,15 @@ pub fn load_materials<P: AsRef<std::path::Path>>(manager: &device_manager::Manag
     files.iter()
         .map(|path| {
             texture::Texture::load(&manager.device, &manager.queue, path, None).unwrap()
+        })
+        .collect()
+}
+
+pub fn load_models<P: AsRef<std::path::Path>>(files: &[P]) -> Vec<model::Model> {
+    files.iter()
+        .map(|path| {
+            let obj_contents = obj::Obj::load(path).unwrap();
+            model::Model::from_obj(&obj_contents.data)
         })
         .collect()
 }

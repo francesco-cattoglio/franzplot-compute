@@ -10,7 +10,7 @@ impl Model {
     pub fn from_obj(data: &obj::ObjData) -> Self {
         let mut indices = Vec::<u32>::new();
         let mut vertices = Vec::<StandardVertexData>::new();
-        let mut last_vertex_idx = 0;
+
         for object in data.objects.iter() {
             for group in object.groups.iter() {
                 for polygon in group.polys.iter() {

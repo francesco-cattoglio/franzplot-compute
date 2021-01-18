@@ -3,6 +3,7 @@ use crate::device_manager::Manager;
 use crate::rendering::camera;
 use crate::rendering::SceneRenderer;
 use crate::rendering::texture::{Texture, Masks, Materials};
+use crate::rendering::model::Model;
 use crate::node_graph;
 use serde::{Serialize, Deserialize};
 
@@ -36,13 +37,18 @@ impl UserState {
     }
 }
 
+pub struct Assets {
+    pub materials: Vec<Texture>,
+    pub masks: Masks,
+    pub models: Vec<Model>,
+}
+
 pub struct AppState {
     pub camera_controller: Box<dyn camera::Controller>,
     pub camera_enabled: bool,
     pub camera: camera::Camera, // TODO: we might want to store camera position in user state
+    pub assets: Assets,
     pub manager: Manager,
-    pub materials: Vec<Texture>,
-    pub masks: Masks,
     pub computable_scene: ComputableScene,
 }
 
@@ -76,7 +82,7 @@ pub struct State {
 
 impl State {
     // this function will likely be called only once, at program start
-    pub fn new(manager: Manager, masks: Masks, materials: Materials) -> Self {
+    pub fn new(manager: Manager, assets: Assets) -> Self {
         // at program start, we can just set the user data to its default value
         let user: UserState = Default::default();
 
@@ -93,8 +99,7 @@ impl State {
 
         let app = AppState {
             computable_scene,
-            masks,
-            materials,
+            assets,
             camera,
             camera_enabled: false,
             camera_controller,
@@ -115,7 +120,7 @@ impl State {
         // ComputableScene::process_user_state would be easier to read and reason about
         // create a new Globals from the user defined names
         let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.masks, &self.app.materials, &mut self.user.graph, globals);
+        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.assets.masks, &self.app.assets.materials, &mut self.user.graph, globals);
         for error in graph_errors.into_iter() {
             self.user.graph.mark_error(error);
         }

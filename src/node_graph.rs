@@ -82,6 +82,9 @@ pub enum AttributeContents {
     Material {
         selected: usize,
     },
+    PrimitiveKind {
+        selected: usize,
+    },
     SizeSlider {
         label: String,
         size: i32,
@@ -262,7 +265,7 @@ impl Attribute {
                 }
                 imnodes::EndStaticAttribute();
                 value_changed
-            }
+            },
             AttributeContents::Material {
                 selected
             } => {
@@ -305,7 +308,24 @@ impl Attribute {
                 }
                 imnodes::EndStaticAttribute();
                 value_changed
-            }
+            },
+            AttributeContents::PrimitiveKind {
+                selected
+            } => {
+                let widget_width = 12.0 * char_w;
+
+                imnodes::BeginStaticAttribute(id);
+                ui.text(im_str!("Kind:"));
+                ui.same_line(0.0);
+                ui.set_next_item_width(widget_width);
+                let mut value_changed = false;
+                let list: Vec<&ImString> = availables.model_names.iter().collect();
+                if ComboBox::new(im_str!("##material")).build_simple_string(ui, selected, &list) {
+                    value_changed = true;
+                }
+                imnodes::EndStaticAttribute();
+                value_changed
+            },
             // TODO: maybe we could unify the Quality and SizeSliders?
             // The only real difference is that the SizeSlider uses a display string
             // instead of showing the actual number selected.
@@ -326,7 +346,7 @@ impl Attribute {
                     .build(ui, size);
                 imnodes::EndStaticAttribute();
                 value_changed
-            }
+            },
             AttributeContents::Unknown {
                 ..
             } => {
@@ -404,6 +424,11 @@ pub enum NodeContents {
         mask: AttributeID,
         material: AttributeID,
     },
+    Primitive {
+        primitive: AttributeID,
+        size: AttributeID,
+        output: AttributeID,
+    },
     Group
 }
 
@@ -418,6 +443,7 @@ impl NodeContents {
             NodeContents::Matrix {..} => Self::default_matrix(),
             NodeContents::Transform {..} => Self::default_transform(),
             NodeContents::Rendering {..} => Self::default_rendering(),
+            NodeContents::Primitive {..} => Self::default_primitive(),
             NodeContents::Group => unimplemented!(),
         }
     }
@@ -465,6 +491,11 @@ impl NodeContents {
                 geometry, thickness, mask, material,
             } => {
                 vec![geometry, thickness, mask, material,]
+            },
+            NodeContents::Primitive {
+                primitive, size, output,
+            } => {
+                vec![primitive, size, output,]
             },
             NodeContents::Group => {
                 unimplemented!()
@@ -515,6 +546,11 @@ impl NodeContents {
                 geometry, thickness, mask, material,
             } => {
                 vec![geometry, thickness, mask, material]
+            },
+            NodeContents::Primitive {
+                primitive, size, output,
+            } => {
+                vec![primitive, size, output,]
             },
             NodeContents::Group => {
                 unimplemented!()
@@ -613,6 +649,16 @@ impl NodeContents {
             thickness: 1,
             mask: 2,
             material: 3,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_primitive() -> Self {
+        NodeContents::Primitive {
+            primitive: 0,
+            size: 1,
+            output: 2,
         }
     }
 }
@@ -1013,6 +1059,10 @@ impl NodeGraph {
             }
 
             ui.menu(im_str!("Geometries"), true, || {
+                if MenuItem::new(im_str!("Primitive")).build(ui) {
+                    self.add_primitive_node(node_pos);
+                    request_savestate = Some(ui.time());
+                }
                 if MenuItem::new(im_str!("Curve")).build(ui) {
                     self.add_curve_node(node_pos);
                     request_savestate = Some(ui.time());
@@ -1567,6 +1617,24 @@ impl NodeGraph {
         ];
         let node_contents = NodeContents::default_rendering();
         self.insert_node("Rendering".into(), position, node_contents, attributes_contents)
+    }
+
+    pub fn add_primitive_node(&mut self, position: [f32; 2]) -> NodeID {
+        let attributes_contents = vec![
+            AttributeContents::PrimitiveKind {
+                selected: 0,
+            },
+            AttributeContents::Text {
+                label: String::from("size"),
+                string: String::from("1.0"),
+            },
+            AttributeContents::OutputPin {
+                label: String::from("geometry"),
+                kind: DataKind::Geometry,
+            },
+        ];
+        let node_contents = NodeContents::default_primitive();
+        self.insert_node("Primitive".into(), position, node_contents, attributes_contents)
     }
 
     pub fn add_transform_node(&mut self, position: [f32; 2]) -> NodeID {

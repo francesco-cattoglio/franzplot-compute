@@ -188,7 +188,7 @@ fn main() {
     let models_dir_files = std::fs::read_dir("./resources/models/")
         .unwrap(); // unwraps the dir reading, giving an iterator over its files
 
-    // process the dir files, returning only valid filenames that end in "png"
+    // process the dir files, returning only valid filenames that end in "obj"
     let mut model_files: Vec<std::path::PathBuf> = models_dir_files
         .filter_map(|dir_result| {
             let dir_entry = dir_result.ok()?;
@@ -206,24 +206,24 @@ fn main() {
         .collect();
 
     model_files.sort();
-    dbg!(&model_files);
+    let models = util::load_models(&model_files);
+    let model_names = util::imgui_model_names(&model_files);
+    dbg!(model_names.len());
 
-    let dice = obj::Obj::load(&model_files[0]).unwrap();
-    for object in dice.data.objects.iter() {
-        for group in object.groups.iter() {
-            for polygon in group.polys.iter() {
-                println!("new face:");
-                let obj::SimplePolygon(all_indices) = &polygon;
-                for obj::IndexTuple(pos, uv, norm) in all_indices.iter() {
-                    println!("\t{:?}", dice.data.position.get(*pos));
-                }
-            }
-        }
-    }
+    let assets = state::Assets {
+        materials,
+        models,
+        masks,
+    };
 
-    // last, initialize the rust_gui and the state with the list of available masks and materials.
-    let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, imgui_masks, imgui_materials, graph_fonts);
-    let mut state = state::State::new(device_manager, masks, materials);
+    // last, initialize the rust_gui and the state with the available assets.
+    let availables = rust_gui::Availables {
+        mask_ids: imgui_masks,
+        material_ids: imgui_materials,
+        model_names,
+    };
+    let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, availables, graph_fonts);
+    let mut state = state::State::new(device_manager, assets);
 
     let mut old_instant = std::time::Instant::now();
     let mut modifiers_state = winit::event::ModifiersState::default();

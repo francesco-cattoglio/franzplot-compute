@@ -10,6 +10,7 @@ pub type MaterialIds = Vec<TextureId>;
 pub struct Availables {
     pub mask_ids: MaskIds,
     pub material_ids: MaterialIds,
+    pub model_names: Vec<ImString>,
 }
 
 pub struct Gui {
@@ -30,14 +31,10 @@ pub struct SceneRectangle {
 }
 
 impl Gui {
-    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>, scene_texture_id: TextureId, mask_ids: MaskIds, material_ids: MaterialIds, graph_fonts: Vec<FontId>) -> Self {
+    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>, scene_texture_id: TextureId, availables: Availables, graph_fonts: Vec<FontId>) -> Self {
         // when we initialize a GUI, we want to set the first undo_stack element to a completely empty graph
         use super::node_graph::NodeGraph;
         let empty_graph = NodeGraph::default();
-        let availables = Availables {
-            mask_ids,
-            material_ids,
-        };
         Self {
             new_global_buffer: ImString::with_capacity(8),
             scene_texture_id,
@@ -173,6 +170,7 @@ impl Gui {
         if ui.button(im_str!("Redo"), [0.0, 0.0]) {
             self.issue_redo(state);
         }
+
         ui.columns(2, im_str!("editor columns"), false);
         ui.set_current_column_width(120.0);
         ui.text(im_str!("Left side"));

@@ -262,6 +262,11 @@ impl ComputeBlock {
                 };
                 rendering_descriptor.make_block(device, processed_blocks)
             },
+            NodeContents::Primitive {
+                primitive, size, ..
+            } => {
+                todo!();
+            },
             NodeContents::Group => {
                 unimplemented!()
             }
