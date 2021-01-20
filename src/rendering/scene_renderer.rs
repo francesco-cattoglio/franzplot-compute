@@ -1,8 +1,9 @@
-use crate::rendering::texture::{Texture, Masks};
+use crate::state::Assets;
+use crate::rendering::texture::{Texture};
 use crate::rendering::*;
 use crate::device_manager;
 use crate::computable_scene::compute_chain::ComputeChain;
-use crate::computable_scene::compute_block::{BlockId, ComputeBlock, RenderingData};
+use crate::computable_scene::compute_block::{BlockId, ComputeBlock, Dimensions, RenderingData};
 use wgpu::util::DeviceExt;
 use glam::Mat4;
 
@@ -140,7 +141,7 @@ impl SceneRenderer {
         self.depth_texture = Texture::create_depth_texture(device, size, SAMPLE_COUNT);
     }
 
-    pub fn update_renderables(&mut self, device: &wgpu::Device, avail_masks: &Masks, avail_textures: &[Texture], chain: &ComputeChain) {
+    pub fn update_renderables(&mut self, device: &wgpu::Device, assets: &Assets, chain: &ComputeChain) {
         self.renderables.clear();
         self.renderable_ids.clear();
         // go through all blocks,
@@ -166,7 +167,7 @@ impl SceneRenderer {
 
         for (idx, (block_id, data)) in rendering_data.into_iter().enumerate() {
             self.renderable_ids.push(*block_id);
-            self.add_renderable(device, avail_masks, avail_textures, data, idx as u32);
+            self.add_renderable(device, assets, data, idx as u32);
         }
     }
 
@@ -217,7 +218,7 @@ impl SceneRenderer {
         self.wireframes.push(render_bundle);
     }
 
-    fn add_renderable(&mut self, device: &wgpu::Device, masks: &Masks, textures: &[Texture], rendering_data: &RenderingData, object_id: u32) {
+    fn add_renderable(&mut self, device: &wgpu::Device, assets: &Assets, rendering_data: &RenderingData, object_id: u32) {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for RenderingData"),
@@ -226,13 +227,19 @@ impl SceneRenderer {
                 sample_count: SAMPLE_COUNT,
             }
         );
+        let index_buffer = match rendering_data.out_dim {
+            Dimensions::D0 => rendering_data.index_buffer.as_ref().unwrap(),
+            Dimensions::D1(_) => rendering_data.index_buffer.as_ref().unwrap(),
+            Dimensions::D2(_, _) => rendering_data.index_buffer.as_ref().unwrap(),
+            Dimensions::D3(_, prefab_id) => &assets.models[prefab_id as usize].index_buffer,
+        };
         render_bundle_encoder.set_pipeline(&self.solid_pipeline);
         render_bundle_encoder.set_vertex_buffer(0, rendering_data.vertex_buffer.slice(..));
-        render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..));
+        render_bundle_encoder.set_index_buffer(index_buffer.slice(..));
         render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
         render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
-        render_bundle_encoder.set_bind_group(2, &masks[rendering_data.mask_id].bind_group, &[]);
-        render_bundle_encoder.set_bind_group(3, &textures[rendering_data.material_id].bind_group, &[]);
+        render_bundle_encoder.set_bind_group(2, &assets.masks[rendering_data.mask_id].bind_group, &[]);
+        render_bundle_encoder.set_bind_group(3, &assets.materials[rendering_data.material_id].bind_group, &[]);
         // encode the object_id in the instance used for indexed rendering, so that the shader
         // will be able to recover the id by reading the gl_InstanceIndex variable
         let instance_id = object_id;

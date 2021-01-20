@@ -120,7 +120,7 @@ impl State {
         // ComputableScene::process_user_state would be easier to read and reason about
         // create a new Globals from the user defined names
         let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.assets.masks, &self.app.assets.materials, &mut self.user.graph, globals);
+        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.assets, &mut self.user.graph, globals);
         for error in graph_errors.into_iter() {
             self.user.graph.mark_error(error);
         }

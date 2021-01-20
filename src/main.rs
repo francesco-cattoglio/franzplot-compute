@@ -92,7 +92,7 @@ fn main() {
 
     let _input_file = matches.opt_str("i");
 
-    // wgpu_subscriber::initialize_default_subscriber(None);
+    wgpu_subscriber::initialize_default_subscriber(None);
 
     let event_loop = EventLoop::<CustomEvent>::with_user_event();
     let mut builder = winit::window::WindowBuilder::new();
@@ -206,9 +206,10 @@ fn main() {
         .collect();
 
     model_files.sort();
-    let models = util::load_models(&model_files);
+    let models = util::load_models(&device_manager.device, &model_files);
     let model_names = util::imgui_model_names(&model_files);
     dbg!(model_names.len());
+    dbg!(models.len());
 
     let assets = state::Assets {
         materials,

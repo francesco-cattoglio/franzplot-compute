@@ -1316,6 +1316,7 @@ impl NodeGraph {
         match attribute.contents {
             AttributeContents::QualitySlider{ quality, .. } => Some(quality as usize),
             AttributeContents::SizeSlider{ size, .. } => Some(size as usize),
+            AttributeContents::PrimitiveKind{ selected } => Some(selected),
             AttributeContents::Mask{ selected } => Some(selected),
             AttributeContents::Material{ selected } => Some(selected),
             _ => None

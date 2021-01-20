@@ -1,5 +1,6 @@
 use super::compute_block::*;
 use super::globals::Globals;
+use crate::rendering::model::Model;
 use crate::node_graph::{ NodeGraph, NodeID };
 
 pub struct ComputeChain {
@@ -19,12 +20,12 @@ impl<'a> ComputeChain {
 
     // This function currently modifies the internal state of the compute chain and reports any
     // error that happened at ComputeBlock creation time
-    pub fn scene_from_graph(&mut self, device: &wgpu::Device, globals: &Globals, graph: &NodeGraph) -> Vec<(NodeID, BlockCreationError)> {
+    pub fn scene_from_graph(&mut self, device: &wgpu::Device, models: &[Model], globals: &Globals, graph: &NodeGraph) -> Vec<(NodeID, BlockCreationError)> {
         // create a list of errors to be reported
         let mut error_list = Vec::<(BlockId, BlockCreationError)>::new();
 
         // process descriptors into actual compute blocks
-        let process_result = Self::process_graph(device, globals, graph);
+        let process_result = Self::process_graph(device, models, globals, graph);
 
         // TODO: we might decide _not_ to replace the current compute chain if processed_map
         // contained errors, or by some other logic.
@@ -49,7 +50,7 @@ impl<'a> ComputeChain {
 
     // This function fails if many BlockDescriptors share the same BlockId or if
     // there is a circular dependency between all the blocks.
-    fn process_graph(device: &wgpu::Device, globals: &Globals, graph: &NodeGraph) -> Result<ProcessedMap, UnrecoverableError> {
+    fn process_graph(device: &wgpu::Device, models: &[Model], globals: &Globals, graph: &NodeGraph) -> Result<ProcessedMap, UnrecoverableError> {
         // TODO: maybe rewrite this part, it looks like it is overcomplicated.
         // compute a map from BlockId to descriptor data and
         // a map from BlockId to all the inputs that a block has
@@ -79,7 +80,7 @@ impl<'a> ComputeChain {
         // Therefore we process the descriptors in the reversed order
         for id in sorted_ids.into_iter().rev() {
             if let Some(node) = graph.get_node(id) {
-                let block_result = ComputeBlock::from_node(device, globals, &processed_blocks, node, graph);
+                let block_result = ComputeBlock::from_node(device, models, globals, &processed_blocks, node, graph);
                 processed_blocks.insert(id, block_result);
             }
         }

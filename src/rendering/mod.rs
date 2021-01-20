@@ -10,7 +10,7 @@ pub use scene_renderer::SceneRenderer;
 // BEWARE: whenever you do any change at the following structure, also remember to modify
 // the corresponding VertexStateDescriptor that is used at pipeline creation stage
 #[repr(C)]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct StandardVertexData {
     position: [f32; 4],
     normal: [f32; 4],

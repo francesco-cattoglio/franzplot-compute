@@ -103,13 +103,13 @@ void main() {{
     }
 
     pub fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
-            let mut compute_pass = encoder.begin_compute_pass();
-            compute_pass.set_pipeline(&self.compute_pipeline);
-            compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
-            compute_pass.set_bind_group(1, variables_bind_group, &[]);
-            // BEWARE: as described before, we wrote the size of the buffer inside the local shader
-            // dimensions, therefore the whole compute will always take just 1 dispatch
-            compute_pass.dispatch(1, 1, 1);
+        let mut compute_pass = encoder.begin_compute_pass();
+        compute_pass.set_pipeline(&self.compute_pipeline);
+        compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
+        compute_pass.set_bind_group(1, variables_bind_group, &[]);
+        // BEWARE: as described before, we wrote the size of the buffer inside the local shader
+        // dimensions, therefore the whole compute will always take just 1 dispatch
+        compute_pass.dispatch(1, 1, 1);
     }
 }
 

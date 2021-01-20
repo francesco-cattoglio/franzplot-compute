@@ -52,11 +52,11 @@ pub fn load_materials<P: AsRef<std::path::Path>>(manager: &device_manager::Manag
         .collect()
 }
 
-pub fn load_models<P: AsRef<std::path::Path>>(files: &[P]) -> Vec<model::Model> {
+pub fn load_models<P: AsRef<std::path::Path>>(device: &wgpu::Device, files: &[P]) -> Vec<model::Model> {
     files.iter()
         .map(|path| {
             let obj_contents = obj::Obj::load(path).unwrap();
-            model::Model::from_obj(&obj_contents.data)
+            model::Model::from_obj(device, &obj_contents.data)
         })
         .collect()
 }

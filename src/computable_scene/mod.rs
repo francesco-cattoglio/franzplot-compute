@@ -4,7 +4,7 @@ pub mod globals;
 
 use globals::Globals;
 use compute_chain::ComputeChain;
-use crate::rendering::texture::{Texture, Masks};
+use crate::state::Assets;
 use crate::rendering::SceneRenderer;
 use compute_block::BlockCreationError;
 use crate::node_graph::NodeGraph;
@@ -18,12 +18,12 @@ pub struct ComputableScene{
 }
 
 impl ComputableScene {
-    pub fn process_graph(&mut self, device: &wgpu::Device, masks: &Masks, textures: &[Texture], graph: &mut NodeGraph, globals: Globals) -> Vec<GraphError> {
+    pub fn process_graph(&mut self, device: &wgpu::Device, assets: &Assets, graph: &mut NodeGraph, globals: Globals) -> Vec<GraphError> {
         self.globals = globals;
         // TODO: this part is super confusing, there are huge side effects that
         // can easily go unnoticed. maybe refactor it?
-        let scene_result = self.chain.scene_from_graph(device, &self.globals, graph);
-        self.renderer.update_renderables(device, masks, textures, &self.chain);
+        let scene_result = self.chain.scene_from_graph(device, &assets.models, &self.globals, graph);
+        self.renderer.update_renderables(device, &assets, &self.chain);
 
         // TODO: rewrite as a iter.map.collect?
         let mut to_return = Vec::<GraphError>::new();

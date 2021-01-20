@@ -1,13 +1,17 @@
 use super::StandardVertexData;
 
+pub const MODEL_CHUNK_VERTICES: usize = 32;
+
 #[derive(Debug)]
 pub struct Model {
-    vertices: Vec<StandardVertexData>,
-    indices: Vec<u32>,
+    pub vertex_buffer: wgpu::Buffer,
+    pub index_buffer: wgpu::Buffer,
+    pub vertex_count: usize,
+    pub index_count: u32,
 }
 
 impl Model {
-    pub fn from_obj(data: &obj::ObjData) -> Self {
+    pub fn from_obj(device: &wgpu::Device, data: &obj::ObjData) -> Self {
         let mut indices = Vec::<u32>::new();
         let mut vertices = Vec::<StandardVertexData>::new();
 
@@ -49,10 +53,33 @@ impl Model {
                 }
             }
         }
+        dbg!(&vertices.len());
+
+        let vertices_remainder = vertices.len() % MODEL_CHUNK_VERTICES;
+        if vertices_remainder != 0 {
+            // extend the vertices to round up its size up to the next MODEL_CHUNK_VERTICES
+            let new_size = vertices.len() + (MODEL_CHUNK_VERTICES - vertices_remainder);
+            vertices.resize_with(new_size, StandardVertexData::default);
+        }
+        dbg!(&vertices.len());
+
+        use wgpu::util::DeviceExt;
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor{
+            label: Some("model vertex buffer"),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
+        });
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor{
+            label: Some("model index buffer"),
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsage::INDEX,
+        });
 
         Self {
-            vertices,
-            indices,
+            vertex_buffer,
+            vertex_count: vertices.len(),
+            index_buffer,
+            index_count: indices.len() as u32,
         }
     }
 }

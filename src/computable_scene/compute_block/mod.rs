@@ -24,7 +24,11 @@ pub use transform::{TransformData, TransformBlockDescriptor};
 pub mod matrix;
 pub use matrix::{MatrixData, MatrixBlockDescriptor};
 
+pub mod prefab;
+pub use prefab::{PrefabData, PrefabBlockDescriptor};
+
 use super::Globals;
+use crate::rendering::model::Model;
 use crate::node_graph::{ Node, NodeContents, NodeGraph, };
 
 pub type BlockId = i32;
@@ -50,6 +54,7 @@ pub enum ComputeBlock {
     Transform(TransformData),
     Matrix(MatrixData),
     Rendering(RenderingData),
+    Prefab(PrefabData,)
 }
 
 /// a parameter can be anonymous, e.g. when created by a Bezier node
@@ -93,7 +98,7 @@ pub enum Dimensions {
     D0,
     D1(Parameter),
     D2(Parameter, Parameter),
-    D3(PrefabId),
+    D3(usize, PrefabId),
 }
 
 impl Dimensions {
@@ -102,7 +107,7 @@ impl Dimensions {
             Self::D0 => Ok(()),
             Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 1D object")),
             Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 2D object")),
-            Self::D3(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 3D object")),
+            Self::D3(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 3D object")),
         }
     }
     pub fn as_1d(&self) -> Result<Parameter, BlockCreationError> {
@@ -110,7 +115,7 @@ impl Dimensions {
             Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 0D object")),
             Self::D1(dim) => Ok(dim.clone()),
             Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 2D object")),
-            Self::D3(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 3D object")),
+            Self::D3(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 3D object")),
         }
     }
     pub fn as_2d(&self) -> Result<(Parameter, Parameter), BlockCreationError> {
@@ -118,15 +123,15 @@ impl Dimensions {
             Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 0D object")),
             Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 1D object")),
             Self::D2(dim1, dim2) => Ok((dim1.clone(), dim2.clone())),
-            Self::D3(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 3D object")),
+            Self::D3(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 3D object")),
         }
     }
-    pub fn as_3d(&self) -> Result<PrefabId, BlockCreationError> {
+    pub fn as_3d(&self) -> Result<(usize, PrefabId), BlockCreationError> {
         match self {
             Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_3d()` on a 0D object")),
             Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_3d()` on a 1D object")),
             Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_3d()` on a 2D object")),
-            Self::D3(prefab_id) => Ok(*prefab_id),
+            Self::D3(vertex_count, index_buffer) => Ok((*vertex_count, *index_buffer)),
         }
     }
     pub fn create_storage_buffer(&self, element_size: usize, device: &wgpu::Device) -> wgpu::Buffer {
@@ -136,7 +141,7 @@ impl Dimensions {
             Dimensions::D2(par1, par2) => element_size * par1.size * par2.size,
             // since 3D geometry can only be created by loading it, one should never attempt to
             // create a buffer from it
-            Dimensions::D3(_)=> unimplemented!("internal error: creating storage buffers for 3D objects"),
+            Dimensions::D3(vertex_count, _)=> element_size * vertex_count,
         };
         device.create_buffer(&wgpu::BufferDescriptor {
             label: None,
@@ -159,10 +164,11 @@ impl ComputeBlock {
             Self::Matrix(data) => data.encode(globals_bind_group, encoder),
             Self::Transform(data) => data.encode(encoder),
             Self::Rendering(data) => data.encode(encoder),
+            Self::Prefab(data) => data.encode(globals_bind_group, encoder),
         }
     }
 
-    pub fn from_node(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, node: &Node, graph: &NodeGraph) -> ProcessingResult {
+    pub fn from_node(device: &wgpu::Device, models: &[Model], globals: &Globals, processed_blocks: &ProcessedMap, node: &Node, graph: &NodeGraph) -> ProcessingResult {
         match *node.contents() {
             NodeContents::Interval {
                 variable, begin, end, quality, ..
@@ -260,15 +266,19 @@ impl ComputeBlock {
                     material: graph.get_attribute_as_usize(material).unwrap(),
                     thickness: graph.get_attribute_as_usize(thickness).unwrap(),
                 };
-                rendering_descriptor.make_block(device, processed_blocks)
+                rendering_descriptor.make_block(device, models, processed_blocks)
             },
             NodeContents::Primitive {
                 primitive, size, ..
             } => {
-                todo!();
+                let prefab_descriptor = PrefabBlockDescriptor {
+                    size: graph.get_attribute_as_string(size).unwrap(),
+                    prefab_id: graph.get_attribute_as_usize(primitive).unwrap() as i32,
+                };
+                prefab_descriptor.make_block(device, models, globals)
             },
             NodeContents::Group => {
-                unimplemented!()
+                todo!()
             }
         }
     }

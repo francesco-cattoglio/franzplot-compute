@@ -1,5 +1,6 @@
 use crate::rendering::{StandardVertexData, GLSL_STANDARD_VERTEX_STRUCT};
 use crate::node_graph::AVAILABLE_SIZES;
+use crate::rendering::model::{ Model, MODEL_CHUNK_VERTICES };
 use super::{ComputeBlock, BlockCreationError, Dimensions, BlockId};
 use super::{ProcessedMap, ProcessingResult};
 
@@ -14,14 +15,14 @@ pub struct RenderingBlockDescriptor {
     pub material: usize,
 }
 impl RenderingBlockDescriptor {
-    pub fn make_block(self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
-        Ok(ComputeBlock::Rendering(RenderingData::new(device, processed_blocks, self)?))
+    pub fn make_block(self, device: &wgpu::Device, models: &[Model], processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Rendering(RenderingData::new(device, models, processed_blocks, self)?))
     }
 }
 
 pub struct RenderingData {
     pub vertex_buffer: wgpu::Buffer,
-    pub index_buffer: wgpu::Buffer,
+    pub index_buffer: Option<wgpu::Buffer>,
     pub index_count: u32,
     pub mask_id: usize,
     pub material_id: usize,
@@ -31,7 +32,10 @@ pub struct RenderingData {
 }
 
 impl RenderingData {
-    pub fn new(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
+    // TODO: the only data we are extracting from models right now is index buffer count, we can
+    // remove it and just forward the prefab_id to the scene renderer and let it handle it the same
+    // way it handles the index_buffer
+    pub fn new(device: &wgpu::Device, models: &[Model], processed_blocks: &ProcessedMap, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
         let input_id = descriptor.geometry.ok_or(BlockCreationError::InputMissing(" This Renderer node \n has no input "))?;
         let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Renderer input does not exist in the block map"))?;
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
@@ -49,6 +53,9 @@ impl RenderingData {
             ComputeBlock::Surface(surface_data) => {
                 Self::setup_2d_geometry(device, &surface_data.out_buffer, &surface_data.out_dim, descriptor)
             }
+            ComputeBlock::Prefab(prefab_data) => {
+                Self::setup_3d_geometry(device, models, &prefab_data.out_buffer, &prefab_data.out_dim, descriptor)
+            }
             ComputeBlock::Transform(transformed_data) => {
                 let buffer = &transformed_data.out_buffer;
                 let dimensions = &transformed_data.out_dim;
@@ -56,7 +63,7 @@ impl RenderingData {
                     Dimensions::D0 => Self::setup_0d_geometry(device, buffer, descriptor),
                     Dimensions::D1(_) => Self::setup_1d_geometry(device, buffer, dimensions, descriptor),
                     Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions, descriptor),
-                    Dimensions::D3(_) => todo!(),
+                    Dimensions::D3(_, _) => todo!(),
                 }
             }
             _ => Err(BlockCreationError::InputInvalid("the input provided to the Renderer is not a geometry kind"))
@@ -133,7 +140,7 @@ void main() {{
             compute_bind_group,
             out_dim,
             vertex_buffer,
-            index_buffer,
+            index_buffer: Some(index_buffer),
             index_count
         })
     }
@@ -257,7 +264,7 @@ void main() {{
             compute_bind_group,
             out_dim: dimensions.clone(),
             vertex_buffer,
-            index_buffer,
+            index_buffer: Some(index_buffer),
             index_count
         })
     }
@@ -370,7 +377,66 @@ void main() {{
             compute_bind_group,
             out_dim: dimensions.clone(),
             vertex_buffer,
-            index_buffer,
+            index_buffer: Some(index_buffer),
+            index_count
+        })
+
+    }
+
+    fn setup_3d_geometry(device: &wgpu::Device, models: &[Model], data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
+        let (vertex_count, prefab_id) = dimensions.as_3d()?;
+        let model = models.get(prefab_id as usize).unwrap();
+
+        let index_count = model.index_count;
+
+        let vertex_buffer = dimensions.create_storage_buffer(std::mem::size_of::<StandardVertexData>(), device);
+
+        // TODO: we need to find a way to just issue a copy of a buffer at encoding stage, instead
+        // of running a compute shader that does nothing other then copy stuff over.
+        let shader_source = format!(r##"
+#version 450
+layout(local_size_x = {dimx}, local_size_y = 1) in;
+
+{vertex_struct}
+
+layout(set = 0, binding = 0) buffer InputVertices {{
+    Vertex in_buff[];
+}};
+
+layout(set = 0, binding = 1) buffer OutputVertices {{
+    Vertex out_buff[];
+}};
+
+void main() {{
+    uint idx = gl_GlobalInvocationID.x;
+    out_buff[idx]= in_buff[idx];
+}}
+"##, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, dimx=MODEL_CHUNK_VERTICES,);
+
+        let bindings = [
+            // add descriptor for input buffers
+            CustomBindDescriptor {
+                position: 0,
+                buffer_slice: data_buffer.slice(..)
+            },
+            // add descriptor for output buffer
+            CustomBindDescriptor {
+                position: 1,
+                buffer_slice: vertex_buffer.slice(..)
+            }
+        ];
+
+        use crate::shader_processing::*;
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Copy 3D data"))?;
+
+        Ok(Self {
+            mask_id: descriptor.mask,
+            material_id: descriptor.material,
+            compute_pipeline,
+            compute_bind_group,
+            out_dim: dimensions.clone(),
+            vertex_buffer,
+            index_buffer: None,
             index_count
         })
 
@@ -394,8 +460,8 @@ void main() {{
             Dimensions::D2(par_1, par_2) => {
                 compute_pass.dispatch((par_1.size/LOCAL_SIZE_X) as u32, (par_2.size/LOCAL_SIZE_Y) as u32, 1);
             }
-            Dimensions::D3(_) => {
-                todo!()
+            Dimensions::D3(vertex_count, _prefab_id) => {
+                compute_pass.dispatch((vertex_count/MODEL_CHUNK_VERTICES) as u32, 1, 1);
             }
         }
     }
