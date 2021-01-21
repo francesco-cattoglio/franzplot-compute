@@ -63,7 +63,7 @@ impl RenderingData {
                     Dimensions::D0 => Self::setup_0d_geometry(device, buffer, descriptor),
                     Dimensions::D1(_) => Self::setup_1d_geometry(device, buffer, dimensions, descriptor),
                     Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions, descriptor),
-                    Dimensions::D3(_, _) => todo!(),
+                    Dimensions::D3(_, _) => Self::setup_3d_geometry(device, models, buffer, dimensions, descriptor)
                 }
             }
             _ => Err(BlockCreationError::InputInvalid("the input provided to the Renderer is not a geometry kind"))

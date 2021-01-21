@@ -1,6 +1,8 @@
 use crate::shader_processing::*;
 use super::{ProcessedMap, ProcessingResult};
 use super::{ComputeBlock, BlockCreationError, BlockId, Dimensions};
+use crate::rendering::model::MODEL_CHUNK_VERTICES;
+use crate::rendering::{StandardVertexData, GLSL_STANDARD_VERTEX_STRUCT};
 
 const LOCAL_SIZE_X: usize = 16;
 const LOCAL_SIZE_Y: usize = 16;
@@ -40,6 +42,7 @@ impl TransformData {
             ComputeBlock::Curve(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             ComputeBlock::Surface(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             ComputeBlock::Transform(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
+            ComputeBlock::Prefab(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
             _ => return Err(BlockCreationError::InputInvalid("the first input provided to the Transform is not a Geometry"))
         };
         let (matrix_dim, matrix_buffer_slice) = match matrix_block {
@@ -51,7 +54,8 @@ impl TransformData {
         let compute_pipeline: wgpu::ComputePipeline;
         let compute_bind_group: wgpu::BindGroup;
         let dispatch_sizes: (usize, usize);
-        let elem_size = 4 * std::mem::size_of::<f32>();
+        let vec4_size = 4 * std::mem::size_of::<f32>();
+        let vertex_size = std::mem::size_of::<StandardVertexData>();
         // This massive match statement handles the 9 different possible combinations
         // of geometries and matrices being applied to them.
         // Some of these cases are really simple (usually this is true when the matrix is a non-parametric one).
@@ -62,7 +66,7 @@ impl TransformData {
         match (geometry_dim, matrix_dim) {
             (Dimensions::D0, Dimensions::D0) => {
                 out_dim = Dimensions::D0;
-                out_buffer = out_dim.create_storage_buffer(elem_size, &device);
+                out_buffer = out_dim.create_storage_buffer(vec4_size, &device);
                 dispatch_sizes = (1, 1);
                 let (pipeline, bind_group) = Self::transform_0d_0d(
                     device,
@@ -75,7 +79,7 @@ impl TransformData {
             },
             (Dimensions::D0, Dimensions::D1(mat_param)) => {
                 out_dim = Dimensions::D1(mat_param.clone());
-                out_buffer = out_dim.create_storage_buffer(elem_size, &device);
+                out_buffer = out_dim.create_storage_buffer(vec4_size, &device);
                 dispatch_sizes = (mat_param.size/LOCAL_SIZE_X, 1);
                 let (pipeline, bind_group) = Self::transform_0d_up1(
                     device,
@@ -88,7 +92,7 @@ impl TransformData {
             },
             (Dimensions::D1(geo_param), Dimensions::D0) => {
                 out_dim = Dimensions::D1(geo_param.clone());
-                out_buffer = out_dim.create_storage_buffer(elem_size, &device);
+                out_buffer = out_dim.create_storage_buffer(vec4_size, &device);
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, 1);
                 let (pipeline, bind_group) = Self::transform_1d_1d(
                     device,
@@ -101,7 +105,7 @@ impl TransformData {
             },
             (Dimensions::D1(geo_param), Dimensions::D1(mat_param)) if geo_param.is_equal(&mat_param)? => {
                 out_dim = Dimensions::D1(geo_param.clone());
-                out_buffer = out_dim.create_storage_buffer(elem_size, &device);
+                out_buffer = out_dim.create_storage_buffer(vec4_size, &device);
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, 1);
                 let (pipeline, bind_group) = Self::transform_1d_multi(
                     device,
@@ -114,7 +118,7 @@ impl TransformData {
             },
             (Dimensions::D1(geo_param), Dimensions::D1(mat_param)) => {
                 out_dim = Dimensions::D2(geo_param.clone(), mat_param.clone());
-                out_buffer = out_dim.create_storage_buffer(elem_size, &device);
+                out_buffer = out_dim.create_storage_buffer(vec4_size, &device);
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, mat_param.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_1d_up2(
                     device,
@@ -127,7 +131,7 @@ impl TransformData {
             },
             (Dimensions::D2(geo_p1, geo_p2), Dimensions::D0) => {
                 out_dim = Dimensions::D2(geo_p1.clone(), geo_p2.clone());
-                out_buffer = out_dim.create_storage_buffer(elem_size, &device);
+                out_buffer = out_dim.create_storage_buffer(vec4_size, &device);
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_2d_2d(
                     device,
@@ -140,7 +144,7 @@ impl TransformData {
             },
             (Dimensions::D2(geo_p1, geo_p2), Dimensions::D1(mat_param)) if geo_p1.is_equal(&mat_param)? => {
                 out_dim = Dimensions::D2(geo_p1.clone(), geo_p2.clone());
-                out_buffer = out_dim.create_storage_buffer(elem_size, &device);
+                out_buffer = out_dim.create_storage_buffer(vec4_size, &device);
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_2d_same_param(
                     device,
@@ -154,7 +158,7 @@ impl TransformData {
             },
             (Dimensions::D2(geo_p1, geo_p2), Dimensions::D1(mat_param)) if geo_p2.is_equal(&mat_param)? => {
                 out_dim = Dimensions::D2(geo_p1.clone(), geo_p2.clone());
-                out_buffer = out_dim.create_storage_buffer(elem_size, &device);
+                out_buffer = out_dim.create_storage_buffer(vec4_size, &device);
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_2d_same_param(
                     device,
@@ -170,10 +174,20 @@ impl TransformData {
                 return Err(BlockCreationError::InputInvalid(" this operation would create \n an object with three parameters, \n which is not supported "));
             },
             (Dimensions::D3(vertex_count, prefab_id), Dimensions::D0) => {
-                todo!()
+                out_dim = Dimensions::D3(vertex_count, prefab_id);
+                out_buffer = out_dim.create_storage_buffer(vertex_size, &device);
+                dispatch_sizes = (vertex_count/MODEL_CHUNK_VERTICES, 1);
+                let (pipeline, bind_group) = Self::transform_3d_3d(
+                    device,
+                    geometry_buffer_slice,
+                    matrix_buffer_slice,
+                    out_buffer.slice(..),
+                    )?;
+                compute_pipeline = pipeline;
+                compute_bind_group = bind_group;
             },
-            (Dimensions::D3(vertex_count, prefab_id), Dimensions::D1(mat_param)) => {
-                todo!()
+            (Dimensions::D3(_, _), Dimensions::D1(_)) => {
+                return Err(BlockCreationError::InternalError(" applying a parametric transform \n to a primitive geometry \n is not allowed "));
             },
             (_, Dimensions::D2(_, _)) => {
                 return Err(BlockCreationError::InternalError("the input Matrix has 2 parameters"));
@@ -389,6 +403,65 @@ void main() {{
     out_buff[index] = in_matrix * in_buff[index];
 }}
 "##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
+        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+        let mut bindings = Vec::<CustomBindDescriptor>::new();
+        // add descriptor for input buffer
+        bindings.push(CustomBindDescriptor {
+            position: 0,
+            buffer_slice: in_buff,
+        });
+        // add descriptor for matrix
+        bindings.push(CustomBindDescriptor {
+            position: 1,
+            buffer_slice: in_matrix,
+        });
+        bindings.push(CustomBindDescriptor {
+            position: 2,
+            buffer_slice: out_buff,
+        });
+        compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
+    }
+
+    fn transform_3d_3d(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> CompilationResult {
+        let shader_source = format!(r##"
+#version 450
+layout(local_size_x = {dimx}, local_size_y = 1) in;
+
+{vertex_struct}
+
+layout(set = 0, binding = 0) buffer InputSurface {{
+    Vertex in_buff[];
+}};
+
+layout(set = 0, binding = 1) buffer InputMatrix {{
+    mat4 in_matrix;
+}};
+
+layout(set = 0, binding = 2) buffer OutputBuffer {{
+    Vertex out_buff[];
+}};
+
+void main() {{
+    // in 3d->3d we operate on both the positions AND the normals.
+    uint idx = gl_GlobalInvocationID.x;
+    // positions get multiplied by the matrix
+    vec4 in_position = in_buff[idx].position;
+    out_buff[idx].position = in_matrix * in_position;
+    // normals get multiplied by the inverse transpose of the matrix,
+    // PROVIDED THE MATRIX IS NOT SINGULAR
+    // TODO: possible optimization: precompute inverse transpose
+    // directly in the matrix compute block (for 0D matrices only)
+    float determinant = determinant(in_matrix);
+    if (determinant > 1e-6) {{
+        out_buff[idx].normal = normalize(transpose(inverse(in_matrix))*in_buff[idx].normal);
+    }} else {{
+        // this is wrong, but at least it won't produce undefined garbage results
+        out_buff[idx].normal = in_buff[idx].normal;
+    }}
+    out_buff[idx].uv_coords = in_buff[idx].uv_coords;
+    out_buff[idx]._padding = in_buff[idx]._padding;
+}}
+"##, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, dimx=MODEL_CHUNK_VERTICES);
         //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
