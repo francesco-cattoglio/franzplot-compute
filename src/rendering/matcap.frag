@@ -25,16 +25,28 @@ layout(set = 3, binding = 0) uniform texture2D t_diffuse;
 layout(set = 3, binding = 1) uniform sampler s_diffuse;
 
 void main() {
+    // get a value that correlates with the distance of the fragment from the camera
+    float approx_z = gl_FragCoord.z;
+
     // object picking
     int pixel_x = int(gl_FragCoord.x);
     int pixel_y = int(gl_FragCoord.y);
     if (pixel_x == u_mouse_pos.x && pixel_y == u_mouse_pos.y) {
-        atomicMin(picking[object_idx], floatBitsToInt(gl_FragCoord.z));
+        atomicMin(picking[object_idx], floatBitsToInt(approx_z));
     }
 
-    // mask color
-    float mask_color = texture(sampler2D(mask_texture, mask_sampler), v_uv_coords).r;
-    mask_color = 0.5 * mask_color + 0.5;
+    vec4 mask_color = texture(sampler2D(mask_texture, mask_sampler), v_uv_coords);
+
+    // There is a mask to render with a wireframe effect. In order
+    // to use it, we discard fragments based on mask alpha and a threshold
+    float flatness = 0.001/fwidth(v_uv_coords.x) + 0.001/fwidth(v_uv_coords.y);
+    float distance = 1/3 * approx_z;
+    float threshold = distance + clamp(flatness, 0.0, 0.75);
+    if (mask_color.a != 1.0 && mask_color.a <= threshold)
+        discard;
+
+    float mask_value = mask_color.r;
+    mask_value = 0.5 * mask_value + 0.5;
 
     // matcap texturing
     highp vec4 scaled_normal = 0.49 * u_view * normalize(v_n_vector);
@@ -43,7 +55,7 @@ void main() {
 
     // final color
     float highlight_coeff = (object_idx == highlight_idx) ? 1.5 : 1.0;
-    f_color = highlight_coeff * mask_color * f_color;
+    f_color = highlight_coeff * mask_value * f_color;
     f_color.a = 1.0;
 
     // if you want to enable "printf debug", overwrite f_color before returning

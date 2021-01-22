@@ -10,17 +10,18 @@ Feature già implementate:
 - possibile selezionare gli oggetti facendoci doppioclick nella scena
 - curve di bezier
 - zoom nel grafo
+- rendering & trasformazioni di primitive
 
 Known bugs & issues:
 - in Debug l'avvio è piuttosto lento; in Release l'avvio è molto più veloce (5 secondi vs 0.5).
 
 Feature previste per Gennaio:
-- rendering & trasformazioni di primitive
-- raggruppamento dei nodi
+- rendering di piani e vettori
 - visualizzazione delle curve u-v sulle superfici
-- scelta del formato file definitivo (attualmente è json, ma non può contenere commenti quindi va cambiato. Idealmente dovrebbe avere un versioning)
+- scelta del formato file definitivo (puntiamo al RON, con aggiunta di qualche commento per il versioning)
 
 Features a data da destinarsi:
+- raggruppamento dei nodi
 - dump del grafo in caso di crash
 - settings (tipo di telecamera, visualizzazione degli assi cartesiani, visualizzazioni di piani, eccetera
 - trasparenza, via screen door transparency o qualsiasi altra tecnica purché sia Order Indipendent

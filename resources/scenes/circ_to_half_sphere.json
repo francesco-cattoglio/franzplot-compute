@@ -4,8 +4,8 @@
       {
         "title": "Interval",
         "position": [
-          204.0,
-          114.0
+          56.0,
+          68.0
         ],
         "error": null,
         "contents": {
@@ -21,8 +21,8 @@
       {
         "title": "Curve",
         "position": [
-          409.0,
-          111.0
+          261.0,
+          65.0
         ],
         "error": null,
         "contents": {
@@ -38,8 +38,8 @@
       {
         "title": "sfera",
         "position": [
-          677.0,
-          263.0
+          529.0,
+          216.99998
         ],
         "error": null,
         "contents": {
@@ -54,8 +54,8 @@
       {
         "title": "Interval",
         "position": [
-          150.0,
-          278.0
+          -43.0,
+          240.75003
         ],
         "error": null,
         "contents": {
@@ -71,8 +71,8 @@
       {
         "title": "Matrix",
         "position": [
-          295.0,
-          280.0
+          147.0,
+          234.00002
         ],
         "error": null,
         "contents": {
@@ -88,8 +88,8 @@
       {
         "title": "Transform",
         "position": [
-          571.0,
-          259.0
+          423.0,
+          212.99998
         ],
         "error": null,
         "contents": {
@@ -103,8 +103,8 @@
       {
         "title": "cerchio",
         "position": [
-          604.0,
-          120.0
+          456.00006,
+          74.0
         ],
         "error": null,
         "contents": {
@@ -230,7 +230,7 @@
         "node_id": 2,
         "contents": {
           "Mask": {
-            "selected": 0
+            "selected": 2
           }
         }
       },
@@ -401,11 +401,11 @@
       }
     ],
     "links": {
-      "30": 26,
-      "10": 9,
       "24": 9,
+      "10": 9,
       "19": 18,
       "5": 4,
+      "30": 26,
       "25": 23
     },
     "free_nodes_list": [],

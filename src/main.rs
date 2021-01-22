@@ -149,11 +149,12 @@ fn main() {
     // then, load all masks that will be available in the rendering node and push them to imgui
     // BEWARE: if you change the number of masks, you also need to modify the MaskIds in
     // rust_gui.rs and the Masks in texture.rs!
-    let mask_paths: [&str; 4] = [
+    let mask_paths: [&str; 5] = [
         "./resources/masks/checker_8.png",
         "./resources/masks/h_stripes_16.png",
         "./resources/masks/v_stripes_16.png",
-        "./resources/masks/blank.png"
+        "./resources/masks/blank.png",
+        "./resources/masks/alpha_grid.png",
     ];
     let materials_dir_files = std::fs::read_dir("./resources/materials/")
         .unwrap(); // unwraps the dir reading, giving an iterator over its files

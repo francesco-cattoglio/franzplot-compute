@@ -4,7 +4,7 @@ use crate::state::State;
 use crate::computable_scene::compute_block::BlockId;
 
 const MAX_UNDO_HISTORY : usize = 10;
-pub type MaskIds = [TextureId; 4];
+pub type MaskIds = [TextureId; 5];
 pub type MaterialIds = Vec<TextureId>;
 
 pub struct Availables {

@@ -8,7 +8,7 @@ pub struct Texture {
     pub size: wgpu::Extent3d,
 }
 
-pub type Masks = [Texture; 4];
+pub type Masks = [Texture; 5];
 pub type Materials = Vec<Texture>;
 
 impl Texture {
@@ -284,7 +284,7 @@ impl Texture {
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             anisotropy_clamp: None,
             label: None,
-            mag_filter: wgpu::FilterMode::Linear,
+            mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
             mipmap_filter: wgpu::FilterMode::Nearest,
             lod_min_clamp: -100.0,
