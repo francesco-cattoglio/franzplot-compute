@@ -4,25 +4,25 @@ use super::{ComputeBlock, BlockCreationError, Dimensions};
 use super::{ProcessingResult};
 
 #[derive(Debug)]
-pub struct PointBlockDescriptor {
-    pub fx: String,
-    pub fy: String,
-    pub fz: String,
+pub struct VectorBlockDescriptor {
+    pub vx: String,
+    pub vy: String,
+    pub vz: String,
 }
-impl PointBlockDescriptor {
+impl VectorBlockDescriptor {
     pub fn make_block(self, device: &wgpu::Device, globals: &Globals) -> ProcessingResult {
-        Ok(ComputeBlock::Point(PointData::new(device, globals, self)?))
+        Ok(ComputeBlock::Vector(VectorData::new(device, globals, self)?))
     }
 }
 
-pub struct PointData {
+pub struct VectorData {
     pub out_buffer: wgpu::Buffer,
     pub compute_pipeline: wgpu::ComputePipeline,
     compute_bind_group: wgpu::BindGroup,
     pub out_dim: Dimensions,
 }
-impl PointData {
-    pub fn new(device: &wgpu::Device, globals: &Globals, descriptor: PointBlockDescriptor) -> Result<Self, BlockCreationError> {
+impl VectorData {
+    pub fn new(device: &wgpu::Device, globals: &Globals, descriptor: VectorBlockDescriptor) -> Result<Self, BlockCreationError> {
         let out_dim = Dimensions::D0;
         let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
         let shader_source = format!(r##"
@@ -36,12 +36,12 @@ layout(set = 0, binding = 0) buffer OutputBuffer {{
 {header}
 
 void main() {{
-    out_buff.x = {fx};
-    out_buff.y = {fy};
-    out_buff.z = {fz};
-    out_buff.w = 1;
+    out_buff.x = {vx};
+    out_buff.y = {vy};
+    out_buff.z = {vz};
+    out_buff.w = 0.0;
 }}
-"##, header=&globals.shader_header, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+"##, header=&globals.shader_header, vx=&descriptor.vx, vy=&descriptor.vy, vz=&descriptor.vz);
 
         let bindings = [
             // add descriptor for output buffer
@@ -51,7 +51,7 @@ void main() {{
             }
         ];
 
-        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, shader_source.as_str(), &bindings, Some(&globals.bind_layout), Some("Point"))?;
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, shader_source.as_str(), &bindings, Some(&globals.bind_layout), Some("Vector"))?;
         Ok(Self {
             compute_bind_group,
             compute_pipeline,

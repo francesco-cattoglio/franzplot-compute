@@ -1,5 +1,8 @@
 pub use smol_str::SmolStr;
 
+pub mod vector;
+pub use vector::{VectorBlockDescriptor, VectorData};
+
 pub mod point;
 pub use point::{PointBlockDescriptor, PointData};
 
@@ -46,6 +49,7 @@ pub enum BlockCreationError {
 }
 
 pub enum ComputeBlock {
+    Vector(VectorData),
     Point(PointData),
     Interval(IntervalData),
     Bezier(BezierData),
@@ -156,6 +160,7 @@ impl Dimensions {
 impl ComputeBlock {
     pub fn encode(&self, globals_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
         match self {
+            Self::Vector(data) => data.encode(globals_bind_group, encoder),
             Self::Point(data) => data.encode(globals_bind_group, encoder),
             Self::Interval(data) => data.encode(globals_bind_group, encoder),
             Self::Bezier(data) => data.encode(encoder),
@@ -181,7 +186,17 @@ impl ComputeBlock {
                 };
                 interval_descriptor.make_block(device, globals)
             },
-            NodeContents::Point{
+            NodeContents::Vector {
+                x, y, z, ..
+            } => {
+                let vector_descriptor = VectorBlockDescriptor {
+                    vx: graph.get_attribute_as_string(x).unwrap(),
+                    vy: graph.get_attribute_as_string(y).unwrap(),
+                    vz: graph.get_attribute_as_string(z).unwrap(),
+                };
+                vector_descriptor.make_block(device, globals)
+            },
+            NodeContents::Point {
                 x, y, z, ..
             } => {
                 let point_descriptor = PointBlockDescriptor {

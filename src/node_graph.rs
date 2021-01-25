@@ -13,6 +13,7 @@ pub enum DataKind {
     Interval,
     Geometry,
     Matrix,
+    Vector,
 }
 
 pub const ZOOM_LEVELS: [f32; 6] = [1.0, 0.8, 0.64, 0.512, 0.41, 0.32];
@@ -37,6 +38,7 @@ impl DataKind {
         match self {
             DataKind::Interval => PinShape::QuadFilled,
             DataKind::Geometry => PinShape::CircleFilled,
+            DataKind::Vector => PinShape::TriangleFilled,
             DataKind::Matrix => PinShape::Quad,
         }
     }
@@ -377,6 +379,12 @@ pub enum NodeContents {
         quality: AttributeID,
         output: AttributeID,
     },
+    Vector {
+        x: AttributeID,
+        y: AttributeID,
+        z: AttributeID,
+        output: AttributeID,
+    },
     Point {
         x: AttributeID,
         y: AttributeID,
@@ -436,6 +444,7 @@ impl NodeContents {
     pub fn default_same_kind(&self) -> Self {
         match self {
             NodeContents::Interval {..} => Self::default_interval(),
+            NodeContents::Vector {..} => Self::default_vector(),
             NodeContents::Point {..} => Self::default_point(),
             NodeContents::Bezier {..} => Self::default_bezier(),
             NodeContents::Curve {..} => Self::default_curve(),
@@ -456,6 +465,11 @@ impl NodeContents {
                 variable, begin, end, quality, output,
             } => {
                 vec![variable, begin, end, quality, output]
+            },
+            NodeContents::Vector {
+                x, y, z, output
+            } => {
+                vec![x, y, z, output]
             },
             NodeContents::Point {
                 x, y, z, output
@@ -512,6 +526,11 @@ impl NodeContents {
             } => {
                 vec![variable, begin, end, quality, output]
             },
+            NodeContents::Vector {
+                x, y, z, output
+            } => {
+                vec![x, y, z, output]
+            },
             NodeContents::Point {
                 x, y, z, output
             } => {
@@ -567,6 +586,17 @@ impl NodeContents {
             end: 2,
             quality: 3,
             output: 4,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_vector() -> Self {
+        NodeContents::Vector {
+            x: 0,
+            y: 1,
+            z: 2,
+            output: 3,
         }
     }
 
@@ -1092,6 +1122,10 @@ impl NodeGraph {
                 self.add_point_node(node_pos);
                 request_savestate = Some(ui.time());
             }
+            if MenuItem::new(im_str!("Vector")).build(ui) {
+                self.add_vector_node(node_pos);
+                request_savestate = Some(ui.time());
+            }
             if MenuItem::new(im_str!("Rendering")).build(ui) {
                 self.add_rendering_node(node_pos);
                 request_savestate = Some(ui.time());
@@ -1477,6 +1511,31 @@ impl NodeGraph {
         ];
         let node_contents = NodeContents::default_interval();
         self.insert_node("Interval".into(), position, node_contents, attributes_contents)
+    }
+
+    pub fn add_vector_node(&mut self, position: [f32; 2]) -> NodeID {
+        // NOTE: the order here is important: the attributes here
+        // must appear in the same order as they do in the default_point() function!
+        let attributes_contents = vec![
+            AttributeContents::Text {
+                label: String::from("x"),
+                string: String::from("0.0"),
+            },
+            AttributeContents::Text {
+                label: String::from("y"),
+                string: String::from("0.0"),
+            },
+            AttributeContents::Text {
+                label: String::from("z"),
+                string: String::from("0.0"),
+            },
+            AttributeContents::OutputPin {
+                label: String::from("vector"),
+                kind: DataKind::Vector,
+            }
+        ];
+        let node_contents = NodeContents::default_vector();
+        self.insert_node("Vector".into(), position, node_contents, attributes_contents)
     }
 
     pub fn add_point_node(&mut self, position: [f32; 2]) -> NodeID {
