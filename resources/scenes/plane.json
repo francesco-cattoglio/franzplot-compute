@@ -1,0 +1,213 @@
+{
+  "graph": {
+    "nodes": [
+      {
+        "title": "Point",
+        "position": [
+          54.0,
+          53.0
+        ],
+        "error": null,
+        "contents": {
+          "Point": {
+            "x": 0,
+            "y": 1,
+            "z": 2,
+            "output": 3
+          }
+        }
+      },
+      {
+        "title": "Vector",
+        "position": [
+          54.0,
+          163.0
+        ],
+        "error": null,
+        "contents": {
+          "Vector": {
+            "x": 4,
+            "y": 5,
+            "z": 6,
+            "output": 7
+          }
+        }
+      },
+      {
+        "title": "Plane",
+        "position": [
+          271.0,
+          88.0
+        ],
+        "error": null,
+        "contents": {
+          "Plane": {
+            "center": 8,
+            "normal": 9,
+            "output": 10
+          }
+        }
+      },
+      {
+        "title": "Rendering",
+        "position": [
+          339.0,
+          98.0
+        ],
+        "error": null,
+        "contents": {
+          "Rendering": {
+            "geometry": 11,
+            "thickness": 12,
+            "mask": 13,
+            "material": 14
+          }
+        }
+      }
+    ],
+    "attributes": [
+      {
+        "node_id": 0,
+        "contents": {
+          "Text": {
+            "label": "x",
+            "string": "0.0"
+          }
+        }
+      },
+      {
+        "node_id": 0,
+        "contents": {
+          "Text": {
+            "label": "y",
+            "string": "0.0"
+          }
+        }
+      },
+      {
+        "node_id": 0,
+        "contents": {
+          "Text": {
+            "label": "z",
+            "string": "0.0"
+          }
+        }
+      },
+      {
+        "node_id": 0,
+        "contents": {
+          "OutputPin": {
+            "label": "geometry",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 1,
+        "contents": {
+          "Text": {
+            "label": "x",
+            "string": "0.0"
+          }
+        }
+      },
+      {
+        "node_id": 1,
+        "contents": {
+          "Text": {
+            "label": "y",
+            "string": "0.0"
+          }
+        }
+      },
+      {
+        "node_id": 1,
+        "contents": {
+          "Text": {
+            "label": "z",
+            "string": "0.0"
+          }
+        }
+      },
+      {
+        "node_id": 1,
+        "contents": {
+          "OutputPin": {
+            "label": "vector",
+            "kind": "Vector"
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "InputPin": {
+            "label": "point",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "InputPin": {
+            "label": "normal",
+            "kind": "Vector"
+          }
+        }
+      },
+      {
+        "node_id": 2,
+        "contents": {
+          "OutputPin": {
+            "label": "output",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 3,
+        "contents": {
+          "InputPin": {
+            "label": "geometry",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 3,
+        "contents": {
+          "SizeSlider": {
+            "label": "thickness:",
+            "size": 3
+          }
+        }
+      },
+      {
+        "node_id": 3,
+        "contents": {
+          "Mask": {
+            "selected": 4
+          }
+        }
+      },
+      {
+        "node_id": 3,
+        "contents": {
+          "Material": {
+            "selected": 0
+          }
+        }
+      }
+    ],
+    "links": {
+      "8": 3,
+      "9": 7,
+      "11": 10
+    },
+    "free_nodes_list": [],
+    "free_attributes_list": []
+  },
+  "globals_names": [],
+  "globals_init_values": []
+}

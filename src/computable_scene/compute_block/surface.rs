@@ -25,7 +25,7 @@ impl SurfaceBlockDescriptor {
 pub struct SurfaceData {
     pub out_buffer: wgpu::Buffer,
     pub compute_pipeline: wgpu::ComputePipeline,
-    compute_bind_group: wgpu::BindGroup,
+    pub compute_bind_group: wgpu::BindGroup,
     pub out_dim: Dimensions,
 }
 

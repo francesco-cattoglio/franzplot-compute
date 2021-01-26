@@ -92,7 +92,7 @@ fn main() {
 
     let _input_file = matches.opt_str("i");
 
-    wgpu_subscriber::initialize_default_subscriber(None);
+    //wgpu_subscriber::initialize_default_subscriber(None);
 
     let event_loop = EventLoop::<CustomEvent>::with_user_event();
     let mut builder = winit::window::WindowBuilder::new();

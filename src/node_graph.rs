@@ -414,6 +414,11 @@ pub enum NodeContents {
         fz: AttributeID,
         output: AttributeID,
     },
+    Plane {
+        center: AttributeID,
+        normal: AttributeID,
+        output: AttributeID,
+    },
     Transform {
         geometry: AttributeID,
         matrix: AttributeID,
@@ -449,6 +454,7 @@ impl NodeContents {
             NodeContents::Bezier {..} => Self::default_bezier(),
             NodeContents::Curve {..} => Self::default_curve(),
             NodeContents::Surface {..} => Self::default_surface(),
+            NodeContents::Plane {..} => Self::default_plane(),
             NodeContents::Matrix {..} => Self::default_matrix(),
             NodeContents::Transform {..} => Self::default_transform(),
             NodeContents::Rendering {..} => Self::default_rendering(),
@@ -490,6 +496,11 @@ impl NodeContents {
                 interval_1, interval_2, fx, fy, fz, output
             } => {
                 vec![interval_1, interval_2, fx, fy, fz, output]
+            },
+            NodeContents::Plane {
+                center, normal, output
+            } => {
+                vec![center, normal, output]
             },
             NodeContents::Transform {
                 geometry, matrix, output
@@ -550,6 +561,11 @@ impl NodeContents {
                 interval_1, interval_2, fx, fy, fz, output
             } => {
                 vec![interval_1, interval_2, fx, fy, fz, output]
+            },
+            NodeContents::Plane {
+                center, normal, output
+            } => {
+                vec![center, normal, output]
             },
             NodeContents::Transform {
                 geometry, matrix, output
@@ -646,6 +662,16 @@ impl NodeContents {
             fy: 3,
             fz: 4,
             output: 5,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_plane() -> Self {
+        NodeContents::Plane {
+            center: 0,
+            normal: 1,
+            output: 2,
         }
     }
 
@@ -1103,6 +1129,10 @@ impl NodeGraph {
                 }
                 if MenuItem::new(im_str!("Surface")).build(ui) {
                     self.add_surface_node(node_pos);
+                    request_savestate = Some(ui.time());
+                }
+                if MenuItem::new(im_str!("Plane")).build(ui) {
+                    self.add_plane_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
             }); // Geometries menu ends here
@@ -1656,6 +1686,25 @@ impl NodeGraph {
         ];
         let node_contents = NodeContents::default_surface();
         self.insert_node("Surface".into(), position, node_contents, attributes_contents)
+    }
+
+    pub fn add_plane_node(&mut self, position: [f32; 2]) -> NodeID {
+        let attributes_contents = vec![
+            AttributeContents::InputPin {
+                label: String::from("point"),
+                kind: DataKind::Geometry,
+            },
+            AttributeContents::InputPin {
+                label: String::from("normal"),
+                kind: DataKind::Vector,
+            },
+            AttributeContents::OutputPin {
+                label: String::from("output"),
+                kind: DataKind::Geometry,
+            }
+        ];
+        let node_contents = NodeContents::default_plane();
+        self.insert_node("Plane".into(), position, node_contents, attributes_contents)
     }
 
     pub fn add_rendering_node(&mut self, position: [f32; 2]) -> NodeID {

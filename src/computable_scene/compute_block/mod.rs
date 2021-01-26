@@ -12,6 +12,9 @@ pub use bezier::{BezierBlockDescriptor, BezierData};
 pub mod curve;
 pub use curve::{CurveBlockDescriptor, CurveData};
 
+pub mod plane;
+pub use plane::{PlaneData, PlaneBlockDescriptor};
+
 pub mod surface;
 pub use surface::{SurfaceData, SurfaceBlockDescriptor};
 
@@ -251,6 +254,15 @@ impl ComputeBlock {
                     fz: graph.get_attribute_as_string(fz).unwrap(),
                 };
                 curve_descriptor.make_block(device, globals, processed_blocks)
+            },
+            NodeContents::Plane {
+                center, normal, ..
+            } => {
+                let plane_descriptor = PlaneBlockDescriptor {
+                    center: graph.get_attribute_as_linked_node(center),
+                    normal: graph.get_attribute_as_linked_node(normal),
+                };
+                plane_descriptor.make_block(device, processed_blocks)
             },
             NodeContents::Transform {
                 geometry, matrix, ..
