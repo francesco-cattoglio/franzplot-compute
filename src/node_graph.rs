@@ -437,6 +437,12 @@ pub enum NodeContents {
         mask: AttributeID,
         material: AttributeID,
     },
+    VectorRendering {
+        application_point: AttributeID,
+        vector: AttributeID,
+        thickness: AttributeID,
+        material: AttributeID,
+    },
     Primitive {
         primitive: AttributeID,
         size: AttributeID,
@@ -458,6 +464,7 @@ impl NodeContents {
             NodeContents::Matrix {..} => Self::default_matrix(),
             NodeContents::Transform {..} => Self::default_transform(),
             NodeContents::Rendering {..} => Self::default_rendering(),
+            NodeContents::VectorRendering {..} => Self::default_vector_rendering(),
             NodeContents::Primitive {..} => Self::default_primitive(),
             NodeContents::Group => unimplemented!(),
         }
@@ -516,6 +523,11 @@ impl NodeContents {
                 geometry, thickness, mask, material,
             } => {
                 vec![geometry, thickness, mask, material,]
+            },
+            NodeContents::VectorRendering {
+                application_point, vector, thickness, material,
+            } => {
+                vec![application_point, vector, thickness, material,]
             },
             NodeContents::Primitive {
                 primitive, size, output,
@@ -581,6 +593,11 @@ impl NodeContents {
                 geometry, thickness, mask, material,
             } => {
                 vec![geometry, thickness, mask, material]
+            },
+            NodeContents::VectorRendering {
+                application_point, vector, thickness, material,
+            } => {
+                vec![application_point, vector, thickness, material,]
             },
             NodeContents::Primitive {
                 primitive, size, output,
@@ -704,6 +721,17 @@ impl NodeContents {
             geometry: 0,
             thickness: 1,
             mask: 2,
+            material: 3,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_vector_rendering() -> Self {
+        NodeContents::VectorRendering {
+            application_point: 0,
+            vector: 1,
+            thickness: 2,
             material: 3,
         }
     }
@@ -1158,6 +1186,10 @@ impl NodeGraph {
             }
             if MenuItem::new(im_str!("Rendering")).build(ui) {
                 self.add_rendering_node(node_pos);
+                request_savestate = Some(ui.time());
+            }
+            if MenuItem::new(im_str!("Vector Rendering")).build(ui) {
+                self.add_vector_rendering_node(node_pos);
                 request_savestate = Some(ui.time());
             }
         }); // "Add" closure ends here
@@ -1726,6 +1758,28 @@ impl NodeGraph {
         ];
         let node_contents = NodeContents::default_rendering();
         self.insert_node("Rendering".into(), position, node_contents, attributes_contents)
+    }
+
+    pub fn add_vector_rendering_node(&mut self, position: [f32; 2]) -> NodeID {
+        let attributes_contents = vec![
+            AttributeContents::InputPin {
+                label: String::from("application point"),
+                kind: DataKind::Geometry,
+            },
+            AttributeContents::InputPin {
+                label: String::from("vector"),
+                kind: DataKind::Vector,
+            },
+            AttributeContents::SizeSlider {
+                label: String::from("thickness:"),
+                size: 3,
+            },
+            AttributeContents::Material {
+                selected: 0,
+            },
+        ];
+        let node_contents = NodeContents::default_vector_rendering();
+        self.insert_node("Vector Rendering".into(), position, node_contents, attributes_contents)
     }
 
     pub fn add_primitive_node(&mut self, position: [f32; 2]) -> NodeID {

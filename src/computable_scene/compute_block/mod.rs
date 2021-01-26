@@ -295,6 +295,18 @@ impl ComputeBlock {
                 };
                 rendering_descriptor.make_block(device, models, processed_blocks)
             },
+            NodeContents::VectorRendering {
+                application_point, vector, thickness, material,
+            } => {
+                todo!()
+                //let rendering_descriptor = RenderingBlockDescriptor {
+                //    geometry: graph.get_attribute_as_linked_node(geometry),
+                //    mask: graph.get_attribute_as_usize(mask).unwrap(),
+                //    material: graph.get_attribute_as_usize(material).unwrap(),
+                //    thickness: graph.get_attribute_as_usize(thickness).unwrap(),
+                //};
+                //rendering_descriptor.make_block(device, models, processed_blocks)
+            },
             NodeContents::Primitive {
                 primitive, size, ..
             } => {
