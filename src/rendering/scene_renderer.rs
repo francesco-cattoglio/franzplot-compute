@@ -3,7 +3,7 @@ use crate::rendering::texture::{Texture};
 use crate::rendering::*;
 use crate::device_manager;
 use crate::computable_scene::compute_chain::ComputeChain;
-use crate::computable_scene::compute_block::{BlockId, ComputeBlock, Dimensions, RenderingData};
+use crate::computable_scene::compute_block::{BlockId, ComputeBlock, Dimensions, RenderingData, VectorRenderingData};
 use wgpu::util::DeviceExt;
 use glam::Mat4;
 
@@ -157,6 +157,16 @@ impl SceneRenderer {
             })
         .collect();
 
+        let vector_rendering_data: Vec<(&BlockId, &VectorRenderingData)> = chain.valid_blocks()
+            .filter_map(|(id, block)| {
+                if let ComputeBlock::VectorRendering(data) = block {
+                    Some((id, data))
+                } else {
+                    None
+                }
+            })
+        .collect();
+
         // if the buffer used for object picking is not big enough, resize it (i.e create a new one)
         if rendering_data.len() > self.picking_buffer_length {
             let (picking_buffer, _picking_bind_layout, picking_bind_group) = create_picking_buffer(device, rendering_data.len());
@@ -168,6 +178,10 @@ impl SceneRenderer {
         for (idx, (block_id, data)) in rendering_data.into_iter().enumerate() {
             self.renderable_ids.push(*block_id);
             self.add_renderable(device, assets, data, idx as u32);
+        }
+        for (block_id, data) in vector_rendering_data.into_iter() {
+            self.renderable_ids.push(*block_id);
+            self.add_renderable_vector(device, assets, data);
         }
     }
 
@@ -243,6 +257,32 @@ impl SceneRenderer {
         // encode the object_id in the instance used for indexed rendering, so that the shader
         // will be able to recover the id by reading the gl_InstanceIndex variable
         let instance_id = object_id;
+        render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, instance_id..instance_id+1);
+        let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
+            label: Some("Render bundle for a single scene object"),
+        });
+        self.renderables.push(render_bundle);
+    }
+
+    fn add_renderable_vector(&mut self, device: &wgpu::Device, assets: &Assets, rendering_data: &VectorRenderingData) {
+        let mut render_bundle_encoder = device.create_render_bundle_encoder(
+            &wgpu::RenderBundleEncoderDescriptor{
+                label: Some("Render bundle encoder for VectorRenderingData"),
+                color_formats: &[SWAPCHAIN_FORMAT],
+                depth_stencil_format: Some(DEPTH_FORMAT),
+                sample_count: SAMPLE_COUNT,
+            }
+        );
+        render_bundle_encoder.set_pipeline(&self.solid_pipeline);
+        render_bundle_encoder.set_vertex_buffer(0, rendering_data.vertex_buffer.slice(..));
+        render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..));
+        render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(2, &assets.masks[0].bind_group, &[]);
+        render_bundle_encoder.set_bind_group(3, &assets.materials[rendering_data.material_id].bind_group, &[]);
+        // encode the object_id in the instance used for indexed rendering, so that the shader
+        // will be able to recover the id by reading the gl_InstanceIndex variable
+        let instance_id = 0; //TODO: this needs fixing, otherwise this breaks the object picking
         render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, instance_id..instance_id+1);
         let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
             label: Some("Render bundle for a single scene object"),

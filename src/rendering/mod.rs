@@ -12,13 +12,13 @@ pub use scene_renderer::SceneRenderer;
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StandardVertexData {
-    position: [f32; 4],
-    normal: [f32; 4],
-    uv_coords: [f32; 2],
+    pub position: [f32; 4],
+    pub normal: [f32; 4],
+    pub uv_coords: [f32; 2],
     // maybe we could pack the color and the 2d indices in here!
     // the color can be packed in [u8; 4] and passed in as Uchar4Norm,
     // while the two indices could simply be [u16; 2]
-    _padding: [f32; 2],
+    pub _padding: [f32; 2],
 }
 
 pub const GLSL_STANDARD_VERTEX_STRUCT: & str = r##"

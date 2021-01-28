@@ -21,6 +21,9 @@ pub use surface::{SurfaceData, SurfaceBlockDescriptor};
 pub mod rendering;
 pub use rendering::{RenderingData, RenderingBlockDescriptor};
 
+pub mod vector_rendering;
+pub use vector_rendering::{VectorRenderingData, VectorRenderingBlockDescriptor};
+
 pub mod interval;
 pub use interval::{IntervalData, IntervalBlockDescriptor};
 
@@ -61,6 +64,7 @@ pub enum ComputeBlock {
     Transform(TransformData),
     Matrix(MatrixData),
     Rendering(RenderingData),
+    VectorRendering(VectorRenderingData),
     Prefab(PrefabData,)
 }
 
@@ -172,6 +176,7 @@ impl ComputeBlock {
             Self::Matrix(data) => data.encode(globals_bind_group, encoder),
             Self::Transform(data) => data.encode(encoder),
             Self::Rendering(data) => data.encode(encoder),
+            Self::VectorRendering(data) => {}, //data.encode(encoder),
             Self::Prefab(data) => data.encode(globals_bind_group, encoder),
         }
     }
@@ -298,14 +303,13 @@ impl ComputeBlock {
             NodeContents::VectorRendering {
                 application_point, vector, thickness, material,
             } => {
-                todo!()
-                //let rendering_descriptor = RenderingBlockDescriptor {
-                //    geometry: graph.get_attribute_as_linked_node(geometry),
-                //    mask: graph.get_attribute_as_usize(mask).unwrap(),
-                //    material: graph.get_attribute_as_usize(material).unwrap(),
-                //    thickness: graph.get_attribute_as_usize(thickness).unwrap(),
-                //};
-                //rendering_descriptor.make_block(device, models, processed_blocks)
+                let rendering_descriptor = VectorRenderingBlockDescriptor {
+                    application_point: graph.get_attribute_as_linked_node(application_point),
+                    vector: graph.get_attribute_as_linked_node(vector),
+                    material: graph.get_attribute_as_usize(material).unwrap(),
+                    thickness: graph.get_attribute_as_usize(thickness).unwrap(),
+                };
+                rendering_descriptor.make_block(device, processed_blocks)
             },
             NodeContents::Primitive {
                 primitive, size, ..
