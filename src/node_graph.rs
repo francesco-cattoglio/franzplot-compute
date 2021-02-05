@@ -1577,7 +1577,7 @@ impl NodeGraph {
 
     pub fn add_vector_node(&mut self, position: [f32; 2]) -> NodeID {
         // NOTE: the order here is important: the attributes here
-        // must appear in the same order as they do in the default_point() function!
+        // must appear in the same order as they do in the default_vector() function!
         let attributes_contents = vec![
             AttributeContents::Text {
                 label: String::from("x"),

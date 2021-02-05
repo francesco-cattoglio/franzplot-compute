@@ -274,7 +274,7 @@ impl SceneRenderer {
             }
         );
         render_bundle_encoder.set_pipeline(&self.solid_pipeline);
-        render_bundle_encoder.set_vertex_buffer(0, rendering_data.vertex_buffer.slice(..));
+        render_bundle_encoder.set_vertex_buffer(0, rendering_data.out_buffer.slice(..));
         render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..));
         render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
         render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);

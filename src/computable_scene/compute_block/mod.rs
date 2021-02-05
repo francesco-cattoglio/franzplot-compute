@@ -176,7 +176,7 @@ impl ComputeBlock {
             Self::Matrix(data) => data.encode(globals_bind_group, encoder),
             Self::Transform(data) => data.encode(encoder),
             Self::Rendering(data) => data.encode(encoder),
-            Self::VectorRendering(data) => {}, //data.encode(encoder),
+            Self::VectorRendering(data) => data.encode(encoder),
             Self::Prefab(data) => data.encode(globals_bind_group, encoder),
         }
     }

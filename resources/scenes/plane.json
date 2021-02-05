@@ -63,6 +63,22 @@
             "material": 14
           }
         }
+      },
+      {
+        "title": "Vector Rendering",
+        "position": [
+          327.0,
+          249.0
+        ],
+        "error": null,
+        "contents": {
+          "VectorRendering": {
+            "application_point": 15,
+            "vector": 16,
+            "thickness": 17,
+            "material": 18
+          }
+        }
       }
     ],
     "attributes": [
@@ -107,7 +123,7 @@
         "contents": {
           "Text": {
             "label": "x",
-            "string": "0.0"
+            "string": "cos(t)"
           }
         }
       },
@@ -116,7 +132,7 @@
         "contents": {
           "Text": {
             "label": "y",
-            "string": "0.0"
+            "string": "sin(t)"
           }
         }
       },
@@ -198,16 +214,57 @@
             "selected": 0
           }
         }
+      },
+      {
+        "node_id": 4,
+        "contents": {
+          "InputPin": {
+            "label": "application point",
+            "kind": "Geometry"
+          }
+        }
+      },
+      {
+        "node_id": 4,
+        "contents": {
+          "InputPin": {
+            "label": "vector",
+            "kind": "Vector"
+          }
+        }
+      },
+      {
+        "node_id": 4,
+        "contents": {
+          "SizeSlider": {
+            "label": "thickness:",
+            "size": 3
+          }
+        }
+      },
+      {
+        "node_id": 4,
+        "contents": {
+          "Material": {
+            "selected": 0
+          }
+        }
       }
     ],
     "links": {
+      "15": 3,
+      "11": 10,
       "8": 3,
       "9": 7,
-      "11": 10
+      "16": 7
     },
     "free_nodes_list": [],
     "free_attributes_list": []
   },
-  "globals_names": [],
-  "globals_init_values": []
+  "globals_names": [
+    "t"
+  ],
+  "globals_init_values": [
+    0.0
+  ]
 }
