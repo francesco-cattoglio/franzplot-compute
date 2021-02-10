@@ -74,4 +74,8 @@ namespace imnodes {
         style.pin_hover_radius = new_style.pin_hover_radius;
     }
 
+    void EnableCtrlScroll(bool enabled, const bool& key_modifier) {
+        imnodes::GetIO().emulate_three_button_mouse.enabled = enabled;
+        imnodes::GetIO().emulate_three_button_mouse.modifier = &key_modifier;
+    }
 }

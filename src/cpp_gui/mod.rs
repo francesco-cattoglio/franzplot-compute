@@ -61,6 +61,7 @@ pub mod imnodes {
         fn SetEditorPanning(position: [f32; 2]);
         fn GetSelectedNodes() -> Vec<i32>;
         fn ApplyStyle(style: &StyleShim);
+        fn EnableCtrlScroll(enabled: bool, key_modifier: &bool);
     }
 }
 

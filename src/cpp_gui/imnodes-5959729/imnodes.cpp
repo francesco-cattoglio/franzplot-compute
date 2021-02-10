@@ -1116,9 +1116,8 @@ void begin_canvas_interaction(EditorContext& editor)
     }
 
     const bool started_panning =
-        g.io.emulate_three_button_mouse.enabled
-            ? (g.left_mouse_clicked && *g.io.emulate_three_button_mouse.modifier)
-            : g.middle_mouse_clicked;
+        (g.io.emulate_three_button_mouse.enabled && g.left_mouse_clicked && *g.io.emulate_three_button_mouse.modifier)
+        || g.middle_mouse_clicked;
 
     if (started_panning)
     {
@@ -1419,9 +1418,8 @@ void click_interaction_update(EditorContext& editor)
     case ClickInteractionType_Panning:
     {
         const bool dragging =
-            g.io.emulate_three_button_mouse.enabled
-                ? (g.left_mouse_dragging && (*g.io.emulate_three_button_mouse.modifier))
-                : g.middle_mouse_dragging;
+            (g.io.emulate_three_button_mouse.enabled && g.left_mouse_dragging && *g.io.emulate_three_button_mouse.modifier)
+            || g.middle_mouse_dragging;
 
         if (dragging)
         {

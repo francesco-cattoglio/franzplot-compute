@@ -30,4 +30,5 @@ namespace imnodes {
     std::array<float, 2> GetNodePosition(int node_id);
     rust::Vec<int> GetSelectedNodes();
     void ApplyStyle(const StyleShim& style);
+    void EnableCtrlScroll(bool enabled, const bool& key_modifier);
 }

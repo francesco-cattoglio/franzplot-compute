@@ -135,6 +135,7 @@ fn main() {
         .map(|scale| add_custom_font(&mut imgui, 12.0 * hidpi_factor as f32 * scale))
         .collect();
     cpp_gui::imnodes::Initialize();
+    cpp_gui::imnodes::EnableCtrlScroll(true, &imgui.io().key_ctrl);
 
     let renderer_config = imgui_wgpu::RendererConfig {
         texture_format: rendering::SWAPCHAIN_FORMAT,
