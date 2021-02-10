@@ -15,23 +15,56 @@ use serde::{Serialize, Deserialize};
 // saving to file: we don't want to serialize compute shaders,
 // we only want to save the graph, the variables and the scene settings.
 
-#[derive(Default, Deserialize, Serialize)]
+#[derive(Clone, Default, Deserialize, Serialize)]
 pub struct UserState {
     pub graph: node_graph::NodeGraph,
     pub globals_names: Vec<String>,
     pub globals_init_values: Vec<f32>,
 }
 
+#[derive(Deserialize, Serialize)]
+enum FileVersion {
+    V0(UserState),
+}
+
 impl UserState {
-    pub fn write_to_file(&self, path: &std::path::PathBuf) {
+    pub fn write_to_frzp(&self, path: &std::path::PathBuf) {
+        let mut file = std::fs::File::create(path).unwrap();
+        let ser_config = ron::ser::PrettyConfig::new()
+            .with_depth_limit(5)
+            .with_indentor("  ".to_owned())
+            .with_separate_tuple_members(true)
+            .with_enumerate_arrays(true);
+        let to_serialize = FileVersion::V0(self.clone());
+        let serialized_data = ron::ser::to_string_pretty(&to_serialize, ser_config).unwrap();
+        let mut contents = r##"//// FRANZPLOT DATA FILE V0 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.01 or higher
+
+"##.to_string();
+
+        contents.push_str(&serialized_data);
+        use std::io::Write;
+        file.write_all(contents.as_bytes()).unwrap();
+
+    }
+
+    pub fn write_to_json(&self, path: &std::path::PathBuf) {
         let file = std::fs::File::create(path).unwrap();
         serde_json::to_writer_pretty(file, &self).unwrap();
     }
 
-    pub fn read_from_file(&mut self, path: &std::path::PathBuf) {
-        let file = std::fs::File::open(path).unwrap();
-        let maybe_user_state = serde_json::from_reader(file);
-        *self = maybe_user_state.unwrap();
+    pub fn read_from_frzp(&mut self, path: &std::path::PathBuf) {
+        let mut file = std::fs::File::open(path).unwrap();
+        let mut contents = String::new();
+        use std::io::Read;
+        file.read_to_string(&mut contents).unwrap();
+        let saved_data: FileVersion = ron::from_str(&contents).unwrap();
+        match saved_data {
+            FileVersion::V0(user_state) => *self = user_state,
+        }
         dbg!(&self.graph.zoom_level);
         self.graph.push_positions_to_imnodes();
     }

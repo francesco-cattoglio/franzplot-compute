@@ -1,0 +1,227 @@
+//// FRANZPLOT DATA FILE V0 ////
+//// This file should not be edited by hand,
+//// as doing so might easily corrupt the data.
+//// To edit this file, open it in Franzplot, version 21.01 or higher
+
+V0((
+  graph: (
+    nodes: [
+      Some((
+        title: "Point",
+        position: (
+          54,
+          53,
+        ),
+        error: None,
+        contents: Point(
+          x: 0,
+          y: 1,
+          z: 2,
+          output: 3,
+        ),
+      )),// [0]
+      Some((
+        title: "Vector",
+        position: (
+          54,
+          163,
+        ),
+        error: None,
+        contents: Vector(
+          x: 4,
+          y: 5,
+          z: 6,
+          output: 7,
+        ),
+      )),// [1]
+      Some((
+        title: "Plane",
+        position: (
+          271,
+          88,
+        ),
+        error: None,
+        contents: Plane(
+          center: 8,
+          normal: 9,
+          output: 10,
+        ),
+      )),// [2]
+      Some((
+        title: "Rendering",
+        position: (
+          339,
+          98,
+        ),
+        error: None,
+        contents: Rendering(
+          geometry: 11,
+          thickness: 12,
+          mask: 13,
+          material: 14,
+        ),
+      )),// [3]
+      Some((
+        title: "Vector Rendering",
+        position: (
+          327,
+          249,
+        ),
+        error: None,
+        contents: VectorRendering(
+          application_point: 15,
+          vector: 16,
+          thickness: 17,
+          material: 18,
+        ),
+      )),
+    ],
+    attributes: [
+      Some((
+        node_id: 0,
+        contents: Text(
+          label: "x",
+          string: "0.0",
+        ),
+      )),// [0]
+      Some((
+        node_id: 0,
+        contents: Text(
+          label: "y",
+          string: "0.0",
+        ),
+      )),// [1]
+      Some((
+        node_id: 0,
+        contents: Text(
+          label: "z",
+          string: "0.0",
+        ),
+      )),// [2]
+      Some((
+        node_id: 0,
+        contents: OutputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [3]
+      Some((
+        node_id: 1,
+        contents: Text(
+          label: "x",
+          string: "cos(t)",
+        ),
+      )),// [4]
+      Some((
+        node_id: 1,
+        contents: Text(
+          label: "y",
+          string: "sin(t)",
+        ),
+      )),// [5]
+      Some((
+        node_id: 1,
+        contents: Text(
+          label: "z",
+          string: "0.0",
+        ),
+      )),// [6]
+      Some((
+        node_id: 1,
+        contents: OutputPin(
+          label: "vector",
+          kind: Vector,
+        ),
+      )),// [7]
+      Some((
+        node_id: 2,
+        contents: InputPin(
+          label: "point",
+          kind: Geometry,
+        ),
+      )),// [8]
+      Some((
+        node_id: 2,
+        contents: InputPin(
+          label: "normal",
+          kind: Vector,
+        ),
+      )),// [9]
+      Some((
+        node_id: 2,
+        contents: OutputPin(
+          label: "output",
+          kind: Geometry,
+        ),
+      )),// [10]
+      Some((
+        node_id: 3,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [11]
+      Some((
+        node_id: 3,
+        contents: SizeSlider(
+          label: "thickness:",
+          size: 3,
+        ),
+      )),// [12]
+      Some((
+        node_id: 3,
+        contents: Mask(
+          selected: 4,
+        ),
+      )),// [13]
+      Some((
+        node_id: 3,
+        contents: Material(
+          selected: 0,
+        ),
+      )),// [14]
+      Some((
+        node_id: 4,
+        contents: InputPin(
+          label: "application point",
+          kind: Geometry,
+        ),
+      )),// [15]
+      Some((
+        node_id: 4,
+        contents: InputPin(
+          label: "vector",
+          kind: Vector,
+        ),
+      )),// [16]
+      Some((
+        node_id: 4,
+        contents: SizeSlider(
+          label: "thickness:",
+          size: 3,
+        ),
+      )),// [17]
+      Some((
+        node_id: 4,
+        contents: Material(
+          selected: 0,
+        ),
+      )),
+    ],
+    links: {
+      9: 7,
+      11: 10,
+      16: 7,
+      8: 3,
+      15: 3,
+    },
+    free_nodes_list: [],
+    free_attributes_list: [],
+  ),
+  globals_names: [
+    "t",
+  ],
+  globals_init_values: [
+    0,
+  ],
+))

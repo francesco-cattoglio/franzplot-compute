@@ -1,0 +1,638 @@
+//// FRANZPLOT DATA FILE V0 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.01 or higher
+
+V0((
+  graph: (
+    nodes: [
+      Some((
+        title: "Point",
+        position: (
+          133,
+          244,
+        ),
+        error: None,
+        contents: Point(
+          x: 0,
+          y: 1,
+          z: 2,
+          output: 3,
+        ),
+      )),// [0]
+      Some((
+        title: "Point",
+        position: (
+          585,
+          231,
+        ),
+        error: None,
+        contents: Point(
+          x: 4,
+          y: 5,
+          z: 6,
+          output: 7,
+        ),
+      )),// [1]
+      Some((
+        title: "Point",
+        position: (
+          352,
+          802,
+        ),
+        error: None,
+        contents: Point(
+          x: 8,
+          y: 9,
+          z: 10,
+          output: 11,
+        ),
+      )),// [2]
+      Some((
+        title: "Sole",
+        position: (
+          394,
+          215,
+        ),
+        error: None,
+        contents: Rendering(
+          geometry: 12,
+          thickness: 13,
+          mask: 14,
+          material: 15,
+        ),
+      )),// [3]
+      Some((
+        title: "Venere",
+        position: (
+          856,
+          321,
+        ),
+        error: None,
+        contents: Rendering(
+          geometry: 16,
+          thickness: 17,
+          mask: 18,
+          material: 19,
+        ),
+      )),// [4]
+      Some((
+        title: "Terra",
+        position: (
+          644,
+          534,
+        ),
+        error: None,
+        contents: Rendering(
+          geometry: 20,
+          thickness: 21,
+          mask: 22,
+          material: 23,
+        ),
+      )),// [5]
+      Some((
+        title: "Matrix",
+        position: (
+          601,
+          376,
+        ),
+        error: None,
+        contents: Matrix(
+          interval: 27,
+          row_1: 26,
+          row_2: 25,
+          row_3: 24,
+          output: 32,
+        ),
+      )),// [6]
+      Some((
+        title: "Point",
+        position: (
+          296,
+          498,
+        ),
+        error: None,
+        contents: Point(
+          x: 31,
+          y: 30,
+          z: 29,
+          output: 28,
+        ),
+      )),// [7]
+      Some((
+        title: "Transform",
+        position: (
+          755,
+          263,
+        ),
+        error: None,
+        contents: Transform(
+          geometry: 33,
+          matrix: 34,
+          output: 35,
+        ),
+      )),// [8]
+      Some((
+        title: "Matrix",
+        position: (
+          273,
+          922,
+        ),
+        error: None,
+        contents: Matrix(
+          interval: 36,
+          row_1: 37,
+          row_2: 38,
+          row_3: 39,
+          output: 40,
+        ),
+      )),// [9]
+      Some((
+        title: "Transform",
+        position: (
+          523,
+          885,
+        ),
+        error: None,
+        contents: Transform(
+          geometry: 41,
+          matrix: 42,
+          output: 43,
+        ),
+      )),// [10]
+      Some((
+        title: "Matrix",
+        position: (
+          258,
+          635,
+        ),
+        error: None,
+        contents: Matrix(
+          interval: 44,
+          row_1: 45,
+          row_2: 46,
+          row_3: 47,
+          output: 48,
+        ),
+      )),// [11]
+      Some((
+        title: "Transform",
+        position: (
+          528,
+          509,
+        ),
+        error: None,
+        contents: Transform(
+          geometry: 49,
+          matrix: 50,
+          output: 51,
+        ),
+      )),// [12]
+      Some((
+        title: "Marte",
+        position: (
+          627,
+          796,
+        ),
+        error: None,
+        contents: Rendering(
+          geometry: 52,
+          thickness: 53,
+          mask: 54,
+          material: 55,
+        ),
+      )),
+    ],
+    attributes: [
+      Some((
+        node_id: 0,
+        contents: Text(
+          label: "x",
+          string: "0.0",
+        ),
+      )),// [0]
+      Some((
+        node_id: 0,
+        contents: Text(
+          label: "y",
+          string: "0.0",
+        ),
+      )),// [1]
+      Some((
+        node_id: 0,
+        contents: Text(
+          label: "z",
+          string: "0.0",
+        ),
+      )),// [2]
+      Some((
+        node_id: 0,
+        contents: OutputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [3]
+      Some((
+        node_id: 1,
+        contents: Text(
+          label: "x",
+          string: "3",
+        ),
+      )),// [4]
+      Some((
+        node_id: 1,
+        contents: Text(
+          label: "y",
+          string: "0.0",
+        ),
+      )),// [5]
+      Some((
+        node_id: 1,
+        contents: Text(
+          label: "z",
+          string: "0.0",
+        ),
+      )),// [6]
+      Some((
+        node_id: 1,
+        contents: OutputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [7]
+      Some((
+        node_id: 2,
+        contents: Text(
+          label: "x",
+          string: "6",
+        ),
+      )),// [8]
+      Some((
+        node_id: 2,
+        contents: Text(
+          label: "y",
+          string: "0.0",
+        ),
+      )),// [9]
+      Some((
+        node_id: 2,
+        contents: Text(
+          label: "z",
+          string: "0.0",
+        ),
+      )),// [10]
+      Some((
+        node_id: 2,
+        contents: OutputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [11]
+      Some((
+        node_id: 3,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [12]
+      Some((
+        node_id: 3,
+        contents: SizeSlider(
+          label: "thickness:",
+          size: 8,
+        ),
+      )),// [13]
+      Some((
+        node_id: 3,
+        contents: Mask(
+          selected: 0,
+        ),
+      )),// [14]
+      Some((
+        node_id: 3,
+        contents: Material(
+          selected: 5,
+        ),
+      )),// [15]
+      Some((
+        node_id: 4,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [16]
+      Some((
+        node_id: 4,
+        contents: SizeSlider(
+          label: "thickness:",
+          size: 3,
+        ),
+      )),// [17]
+      Some((
+        node_id: 4,
+        contents: Mask(
+          selected: 0,
+        ),
+      )),// [18]
+      Some((
+        node_id: 4,
+        contents: Material(
+          selected: 4,
+        ),
+      )),// [19]
+      Some((
+        node_id: 5,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [20]
+      Some((
+        node_id: 5,
+        contents: SizeSlider(
+          label: "thickness:",
+          size: 3,
+        ),
+      )),// [21]
+      Some((
+        node_id: 5,
+        contents: Mask(
+          selected: 0,
+        ),
+      )),// [22]
+      Some((
+        node_id: 5,
+        contents: Material(
+          selected: 6,
+        ),
+      )),// [23]
+      Some((
+        node_id: 6,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "0.0",
+          col_3: "1.0",
+          col_4: "0.0",
+        ),
+      )),// [24]
+      Some((
+        node_id: 6,
+        contents: MatrixRow(
+          col_1: "-sin(1/k_venus*t)",
+          col_2: "cos(1/k_venus*t)",
+          col_3: "0.0",
+          col_4: "0.0",
+        ),
+      )),// [25]
+      Some((
+        node_id: 6,
+        contents: MatrixRow(
+          col_1: "cos(1/k_venus*t)",
+          col_2: "sin(1/k_venus*t)",
+          col_3: "0.0",
+          col_4: "0.0",
+        ),
+      )),// [26]
+      Some((
+        node_id: 6,
+        contents: InputPin(
+          label: "interval",
+          kind: Interval,
+        ),
+      )),// [27]
+      Some((
+        node_id: 7,
+        contents: OutputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [28]
+      Some((
+        node_id: 7,
+        contents: Text(
+          label: "z",
+          string: "0.0",
+        ),
+      )),// [29]
+      Some((
+        node_id: 7,
+        contents: Text(
+          label: "y",
+          string: "0.0",
+        ),
+      )),// [30]
+      Some((
+        node_id: 7,
+        contents: Text(
+          label: "x",
+          string: "4",
+        ),
+      )),// [31]
+      Some((
+        node_id: 6,
+        contents: OutputPin(
+          label: "output",
+          kind: Matrix,
+        ),
+      )),// [32]
+      Some((
+        node_id: 8,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [33]
+      Some((
+        node_id: 8,
+        contents: InputPin(
+          label: "matrix",
+          kind: Matrix,
+        ),
+      )),// [34]
+      Some((
+        node_id: 8,
+        contents: OutputPin(
+          label: "output",
+          kind: Geometry,
+        ),
+      )),// [35]
+      Some((
+        node_id: 9,
+        contents: InputPin(
+          label: "interval",
+          kind: Interval,
+        ),
+      )),// [36]
+      Some((
+        node_id: 9,
+        contents: MatrixRow(
+          col_1: "cos(1/k_mars*t)",
+          col_2: "sin(1/k_mars*t)",
+          col_3: "0.0",
+          col_4: "0.0",
+        ),
+      )),// [37]
+      Some((
+        node_id: 9,
+        contents: MatrixRow(
+          col_1: "-sin(1/k_mars*t)",
+          col_2: "cos(1/k_mars*t)",
+          col_3: "0.0",
+          col_4: "0.0",
+        ),
+      )),// [38]
+      Some((
+        node_id: 9,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "0.0",
+          col_3: "1.0",
+          col_4: "0.0",
+        ),
+      )),// [39]
+      Some((
+        node_id: 9,
+        contents: OutputPin(
+          label: "output",
+          kind: Matrix,
+        ),
+      )),// [40]
+      Some((
+        node_id: 10,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [41]
+      Some((
+        node_id: 10,
+        contents: InputPin(
+          label: "matrix",
+          kind: Matrix,
+        ),
+      )),// [42]
+      Some((
+        node_id: 10,
+        contents: OutputPin(
+          label: "output",
+          kind: Geometry,
+        ),
+      )),// [43]
+      Some((
+        node_id: 11,
+        contents: InputPin(
+          label: "interval",
+          kind: Interval,
+        ),
+      )),// [44]
+      Some((
+        node_id: 11,
+        contents: MatrixRow(
+          col_1: "cos(1/k_earth*t)",
+          col_2: "sin(1/k_earth*t)",
+          col_3: "0.0",
+          col_4: "0.0",
+        ),
+      )),// [45]
+      Some((
+        node_id: 11,
+        contents: MatrixRow(
+          col_1: "-sin(1/k_earth*t)",
+          col_2: "cos(1/k_earth*t)",
+          col_3: "0.0",
+          col_4: "0.0",
+        ),
+      )),// [46]
+      Some((
+        node_id: 11,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "0.0",
+          col_3: "1.0",
+          col_4: "0.0",
+        ),
+      )),// [47]
+      Some((
+        node_id: 11,
+        contents: OutputPin(
+          label: "output",
+          kind: Matrix,
+        ),
+      )),// [48]
+      Some((
+        node_id: 12,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [49]
+      Some((
+        node_id: 12,
+        contents: InputPin(
+          label: "matrix",
+          kind: Matrix,
+        ),
+      )),// [50]
+      Some((
+        node_id: 12,
+        contents: OutputPin(
+          label: "output",
+          kind: Geometry,
+        ),
+      )),// [51]
+      Some((
+        node_id: 13,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [52]
+      Some((
+        node_id: 13,
+        contents: SizeSlider(
+          label: "thickness:",
+          size: 2,
+        ),
+      )),// [53]
+      Some((
+        node_id: 13,
+        contents: Mask(
+          selected: 0,
+        ),
+      )),// [54]
+      Some((
+        node_id: 13,
+        contents: Material(
+          selected: 9,
+        ),
+      )),
+    ],
+    links: {
+      16: 35,
+      49: 28,
+      50: 48,
+      41: 11,
+      34: 32,
+      42: 40,
+      12: 3,
+      33: 7,
+      52: 43,
+      20: 51,
+    },
+    free_nodes_list: [],
+    free_attributes_list: [],
+  ),
+  globals_names: [
+    "k_earth",// [0]
+    "k_venus",// [1]
+    "k_mars",// [2]
+    "t",
+  ],
+  globals_init_values: [
+    1,// [0]
+    0.61,// [1]
+    1.88,// [2]
+    0,
+  ],
+))

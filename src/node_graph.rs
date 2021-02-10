@@ -44,7 +44,7 @@ impl DataKind {
     }
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct Attribute {
     node_id: NodeID,
     contents: AttributeContents,
@@ -818,7 +818,7 @@ pub struct GraphError {
     pub message: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize)]
 pub struct NodeGraph {
     nodes: Vec<Option<Node>>,
     attributes: Vec<Option<Attribute>>,

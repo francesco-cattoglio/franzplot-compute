@@ -334,10 +334,10 @@ fn main() {
             Event::UserEvent(user_event) => {
                 match user_event {
                     CustomEvent::SaveFile(path_buf) => {
-                        state.user.write_to_file(&path_buf);
+                        state.user.write_to_frzp(&path_buf);
                     },
                     CustomEvent::OpenFile(path_buf) => {
-                        state.user.read_from_file(&path_buf);
+                        state.user.read_from_frzp(&path_buf);
                         rust_gui.issue_savestate(&mut state, imgui.time());
                     },
                     CustomEvent::MouseFreeze => {
