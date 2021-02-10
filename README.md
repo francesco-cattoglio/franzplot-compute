@@ -2,33 +2,23 @@
 
 ## Stato attuale
 
-Feature già implementate:
-- save e load del grafo da file, incluse le variabili globali usate
-- undo/redo nel grafo. Oltre ad avere i due tasti Undo/Redo, è possibile usare gli shortcut CTRL+Z e CTRL+SHIFT+Z
-- duplicazione dei nodi
-- controllo della telecamera in stile VTK. È possibile aggiungere altri stili (es: fly camera o orbit come nel vecchio franzplot)
-- possibile selezionare gli oggetti facendoci doppioclick nella scena
-- curve di bezier
-- zoom nel grafo
-- rendering & trasformazioni di primitive
+Tutte le feature necessarie per un uso di base del software sono state implementate.
+
+Le ultime cose urgenti da fare sono:
+- implementazione della visualizzazione delle curve u-v sulle superfici
+- fix minori per l'uso sotto Mac OS
+- testing sotto windows
 
 Known bugs & issues:
 - in Debug l'avvio è piuttosto lento; in Release l'avvio è molto più veloce (5 secondi vs 0.5).
-
-Feature previste per Gennaio:
-- rendering di piani e vettori
-- visualizzazione delle curve u-v sulle superfici
-- scelta del formato file definitivo (puntiamo al RON, con aggiunta di qualche commento per il versioning)
 
 Features a data da destinarsi:
 - raggruppamento dei nodi
 - dump del grafo in caso di crash
 - settings (tipo di telecamera, visualizzazione degli assi cartesiani, visualizzazioni di piani, eccetera
-- trasparenza, via screen door transparency o qualsiasi altra tecnica purché sia Order Indipendent
 - widget a-la Blender per visualizzazione degli assi e possibile switch a prospettiva ortografica
 - import/export di mesh
 - export di png
-- sample della curva (la visualizzazione delle famiglie u-v è più utile didatticamente!)
 - export di video
 
 ## Come compilare il progetto
@@ -36,7 +26,7 @@ Features a data da destinarsi:
 Le tre dipendenze per compilare il contenuto del repository sotto linux sono:
 - la toolchain per il linguaggio Rust, *versione minima 1.48*
 - le librerie per lo sviluppo della API grafica vulkan
-- un compilatore C++11
+- un compilatore C++11 e CMake (necessari per le dipendenze)
 
 ### Toolchain Rust
 Il consiglio è quello di seguire le istruzioni che trovate sul sito ufficiale: https://www.rust-lang.org/tools/install
