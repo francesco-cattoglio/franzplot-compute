@@ -4,7 +4,7 @@ pub type CompilationResult = Result<(wgpu::ComputePipeline, wgpu::BindGroup), Bl
 
 pub struct CustomBindDescriptor<'a> {
     pub position: u32,
-    pub buffer_slice: wgpu::BufferSlice<'a>,
+    pub buffer: &'a wgpu::Buffer,
 }
 
 pub fn compile_compute_shader(
@@ -21,28 +21,31 @@ pub fn compile_compute_shader(
             BlockCreationError::IncorrectAttributes(" check the expressions \n for errors ")
         })?;
         let comp_data = wgpu::util::make_spirv(comp_spirv.as_binary_u8());
-        let shader_module = device.create_shader_module(comp_data);
+        let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
+            label: None,
+            source: comp_data,
+            flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
+        });
         let mut layout_entries = Vec::<wgpu::BindGroupLayoutEntry>::new();
         let mut descriptor_entries = Vec::<wgpu::BindGroupEntry>::new();
         for binding in bindings {
             let position = binding.position;
-            let buffer_slice = binding.buffer_slice;
             layout_entries.push(
                     wgpu::BindGroupLayoutEntry {
                         binding: position,
                         count: None,
                         visibility: wgpu::ShaderStage::COMPUTE,
-                        ty: wgpu::BindingType::StorageBuffer {
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Storage { read_only: false },
                             min_binding_size: None,
-                            dynamic: false,
-                            readonly: false,
+                            has_dynamic_offset: false,
                         }
                     });
 
             descriptor_entries.push(
                 wgpu::BindGroupEntry {
                     binding: position,
-                    resource: wgpu::BindingResource::Buffer (buffer_slice),
+                    resource: binding.buffer.as_entire_binding(),
                     });
         }
         dbg!(&layout_entries);
@@ -67,10 +70,8 @@ pub fn compile_compute_shader(
         let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
             layout: Some(&compute_pipeline_layout),
             label,
-            compute_stage: wgpu::ProgrammableStageDescriptor {
-                entry_point: "main",
-                module: &shader_module,
-            }
+            module: &shader_module,
+            entry_point: "main",
         });
         let compute_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &compute_bind_group_layout,

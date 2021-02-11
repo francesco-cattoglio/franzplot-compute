@@ -122,20 +122,20 @@ void main() {{
             // add descriptor for input buffers
             CustomBindDescriptor {
                 position: 0,
-                buffer_slice: vertex_buffer.slice(..)
+                buffer: &vertex_buffer
             },
             CustomBindDescriptor {
                 position: 1,
-                buffer_slice: appl_point_data.out_buffer.slice(..)
+                buffer: &appl_point_data.out_buffer
             },
             CustomBindDescriptor {
                 position: 2,
-                buffer_slice: vector_data.out_buffer.slice(..)
+                buffer: &vector_data.out_buffer
             },
             // add descriptor for output buffer
             CustomBindDescriptor {
                 position: 3,
-                buffer_slice: out_buffer.slice(..)
+                buffer: &out_buffer
             }
         ];
 
@@ -156,7 +156,9 @@ void main() {{
     }
 
     pub fn encode(&self, encoder: &mut wgpu::CommandEncoder) {
-        let mut compute_pass = encoder.begin_compute_pass();
+        let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor{
+            label: Some("vector rendering compute pass")
+        });
         compute_pass.set_pipeline(&self.compute_pipeline);
         compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
         // BEWARE: just like we did with other shaders, we wrote the size of the buffer inside the local shader

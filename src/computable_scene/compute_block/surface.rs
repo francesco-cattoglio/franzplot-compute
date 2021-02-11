@@ -99,16 +99,16 @@ void main() {{
             // add descriptor for input buffers
             CustomBindDescriptor {
                 position: 0,
-                buffer_slice: first_interval_data.out_buffer.slice(..)
+                buffer: &first_interval_data.out_buffer
             },
             CustomBindDescriptor {
                 position: 1,
-                buffer_slice: second_interval_data.out_buffer.slice(..)
+                buffer: &second_interval_data.out_buffer
             },
             // add descriptor for output buffer
             CustomBindDescriptor {
                 position: 2,
-                buffer_slice: out_buffer.slice(..)
+                buffer: &out_buffer
             }
         ];
 
@@ -123,7 +123,9 @@ void main() {{
     }
 
     pub fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
-            let mut compute_pass = encoder.begin_compute_pass();
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor{
+                label: Some("surface compute pass")
+            });
             compute_pass.set_pipeline(&self.compute_pipeline);
             compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
             compute_pass.set_bind_group(1, variables_bind_group, &[]);

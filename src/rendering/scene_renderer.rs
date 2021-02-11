@@ -84,8 +84,9 @@ impl SceneRenderer {
                     binding: 0,
                     count: None,
                     visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::UniformBuffer {
-                        dynamic: false,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
                         min_binding_size: None,
                     },
                 },
@@ -97,7 +98,7 @@ impl SceneRenderer {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer(uniforms_buffer.slice(..)),
+                    resource: uniforms_buffer.as_entire_binding(),
                 },
             ],
             label: Some("Uniforms bind group"),
@@ -223,7 +224,7 @@ impl SceneRenderer {
 
         render_bundle_encoder.set_pipeline(&self.wireframe_pipeline);
         render_bundle_encoder.set_vertex_buffer(0, vertex_buffer.slice(..));
-        render_bundle_encoder.set_index_buffer(index_buffer.slice(..));
+        render_bundle_encoder.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
         render_bundle_encoder.draw_indexed(0..indices.len() as u32, 0, 0..1);
         let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
@@ -249,7 +250,7 @@ impl SceneRenderer {
         };
         render_bundle_encoder.set_pipeline(&self.solid_pipeline);
         render_bundle_encoder.set_vertex_buffer(0, rendering_data.vertex_buffer.slice(..));
-        render_bundle_encoder.set_index_buffer(index_buffer.slice(..));
+        render_bundle_encoder.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
         render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
         render_bundle_encoder.set_bind_group(2, &assets.masks[rendering_data.mask_id].bind_group, &[]);
@@ -275,7 +276,7 @@ impl SceneRenderer {
         );
         render_bundle_encoder.set_pipeline(&self.solid_pipeline);
         render_bundle_encoder.set_vertex_buffer(0, rendering_data.out_buffer.slice(..));
-        render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..));
+        render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
         render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
         render_bundle_encoder.set_bind_group(2, &assets.masks[0].bind_group, &[]);
@@ -319,6 +320,7 @@ impl SceneRenderer {
 
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("scene render pass"),
                 color_attachments: &[
                     wgpu::RenderPassColorAttachmentDescriptor {
                         attachment: &self.output_texture.view,
@@ -378,9 +380,9 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
                     binding: 0,
                     count: None,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::StorageBuffer {
-                        readonly: false,
-                        dynamic: false,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                        has_dynamic_offset: false,
                         min_binding_size: None,
                     },
                 },
@@ -393,7 +395,7 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer(picking_buffer.slice(..)),
+                    resource: picking_buffer.as_entire_binding(),
                 },
             ],
             label: Some("Camera bind group"),
@@ -411,8 +413,16 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
     let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "wireframe.frag", "main", None).unwrap();
     let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
     let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
-    let vert_module = device.create_shader_module(vert_data);
-    let frag_module = device.create_shader_module(frag_data);
+    let vert_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
+        label: Some("wireframe vertex shader module"),
+        source: vert_data,
+        flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
+    });
+    let frag_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
+        label: Some("wireframe fragment shader module"),
+        source: frag_data,
+        flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
+    });
 
     let render_pipeline_layout =
         device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -421,55 +431,49 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
             bind_group_layouts: &[uniforms_bind_layout]
         });
 
+    let vertex_buffer_layout = wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<WireframeVertexData>() as wgpu::BufferAddress,
+        step_mode: wgpu::InputStepMode::Vertex,
+        attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Uchar4Norm],
+    };
+    let color_target_state = wgpu::ColorTargetState {
+        format: super::SWAPCHAIN_FORMAT,
+        alpha_blend: wgpu::BlendState::REPLACE,
+        color_blend: wgpu::BlendState::REPLACE,
+        write_mask: wgpu::ColorWrite::ALL,
+    };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
         layout: Some(&render_pipeline_layout),
         label: None,
-        vertex_stage: wgpu::ProgrammableStageDescriptor {
+        vertex: wgpu::VertexState {
             module: &vert_module,
             entry_point: "main",
+            buffers: &[vertex_buffer_layout],
         },
-        fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::LineList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: wgpu::CullMode::None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+        },
+        fragment: Some(wgpu::FragmentState {
             module: &frag_module,
             entry_point: "main",
+            targets: &[color_target_state],
         }),
-        rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-            front_face: wgpu::FrontFace::Ccw,
-            clamp_depth: false,
-            cull_mode: wgpu::CullMode::None,
-            depth_bias: 0,
-            depth_bias_slope_scale: 0.0,
-            depth_bias_clamp: 0.0,
-        }),
-        primitive_topology: wgpu::PrimitiveTopology::LineList,
-            color_states: &[wgpu::ColorStateDescriptor{
-            format: SWAPCHAIN_FORMAT,
-            color_blend: wgpu::BlendDescriptor::REPLACE,
-            alpha_blend: wgpu::BlendDescriptor::REPLACE,
-            write_mask: wgpu::ColorWrite::ALL
-        }],
-        depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
-            format: DEPTH_FORMAT,
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: super::DEPTH_FORMAT,
             depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::Less,
-            stencil: wgpu::StencilStateDescriptor {
-                front: wgpu::StencilStateFaceDescriptor::IGNORE,
-                back: wgpu::StencilStateFaceDescriptor::IGNORE,
-                read_mask: 0,
-                write_mask: 0,
-            }
+            depth_compare: wgpu::CompareFunction::Greater,
+            bias: wgpu::DepthBiasState::default(),
+            stencil: wgpu::StencilState::default(),
+            clamp_depth: false,
         }),
-        sample_count: SAMPLE_COUNT,
-        sample_mask: !0,
-        alpha_to_coverage_enabled: false,
-        vertex_state: wgpu::VertexStateDescriptor {
-            index_format: wgpu::IndexFormat::Uint32,
-            vertex_buffers: &[
-                wgpu::VertexBufferDescriptor {
-                    stride: std::mem::size_of::<WireframeVertexData>() as wgpu::BufferAddress,
-                    step_mode: wgpu::InputStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Uchar4Norm],
-                },
-            ],
+        multisample: wgpu::MultisampleState {
+            count: SAMPLE_COUNT,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
         },
     })
 }
@@ -483,8 +487,16 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
     let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "matcap.frag", "main", None).unwrap();
     let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
     let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
-    let vert_module = device.create_shader_module(vert_data);
-    let frag_module = device.create_shader_module(frag_data);
+    let vert_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
+        label: Some("solid pipeline vertex shader module"),
+        source: vert_data,
+        flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
+    });
+    let frag_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
+        label: Some("solid pipeline fragment shader module"),
+        source: frag_data,
+        flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
+    });
 
     let texture_bind_layout = Texture::default_bind_layout(device);
     let render_pipeline_layout =
@@ -494,55 +506,49 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
             bind_group_layouts: &[uniforms_bind_layout, picking_bind_layout, &texture_bind_layout, &texture_bind_layout]
         });
 
+    let vertex_buffer_descriptor = wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<StandardVertexData>() as wgpu::BufferAddress,
+        step_mode: wgpu::InputStepMode::Vertex,
+        attributes: &wgpu::vertex_attr_array![0 => Float4, 1 => Float4, 2 => Float2, 3 => Float2],
+    };
+    let color_target_state = wgpu::ColorTargetState {
+        format: super::SWAPCHAIN_FORMAT,
+        alpha_blend: wgpu::BlendState::REPLACE,
+        color_blend: wgpu::BlendState::REPLACE,
+        write_mask: wgpu::ColorWrite::ALL,
+    };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
         layout: Some(&render_pipeline_layout),
         label: None,
-        vertex_stage: wgpu::ProgrammableStageDescriptor {
+        vertex: wgpu::VertexState {
             module: &vert_module,
             entry_point: "main",
+            buffers: &[vertex_buffer_descriptor],
         },
-        fragment_stage: Some(wgpu::ProgrammableStageDescriptor {
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: wgpu::CullMode::None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+        },
+        fragment: Some(wgpu::FragmentState {
             module: &frag_module,
             entry_point: "main",
+            targets: &[color_target_state],
         }),
-        rasterization_state: Some(wgpu::RasterizationStateDescriptor {
-            front_face: wgpu::FrontFace::Ccw,
-            clamp_depth: false,
-            cull_mode: wgpu::CullMode::None,
-            depth_bias: 0,
-            depth_bias_slope_scale: 0.0,
-            depth_bias_clamp: 0.0,
-        }),
-        primitive_topology: wgpu::PrimitiveTopology::TriangleList,
-        color_states: &[wgpu::ColorStateDescriptor{
-            format: SWAPCHAIN_FORMAT,
-            color_blend: wgpu::BlendDescriptor::REPLACE,
-            alpha_blend: wgpu::BlendDescriptor::REPLACE,
-            write_mask: wgpu::ColorWrite::ALL
-        }],
-        depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
-            format: DEPTH_FORMAT,
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: super::DEPTH_FORMAT,
             depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::Less,
-            stencil: wgpu::StencilStateDescriptor {
-                front: wgpu::StencilStateFaceDescriptor::IGNORE,
-                back: wgpu::StencilStateFaceDescriptor::IGNORE,
-                read_mask: 0,
-                write_mask: 0,
-            }
+            depth_compare: wgpu::CompareFunction::Greater,
+            bias: wgpu::DepthBiasState::default(),
+            stencil: wgpu::StencilState::default(),
+            clamp_depth: false,
         }),
-        sample_count: SAMPLE_COUNT,
-        sample_mask: !0,
-        alpha_to_coverage_enabled: false,
-        vertex_state: wgpu::VertexStateDescriptor {
-            index_format: wgpu::IndexFormat::Uint32,
-            vertex_buffers: &[
-                wgpu::VertexBufferDescriptor {
-                    stride: std::mem::size_of::<StandardVertexData>() as wgpu::BufferAddress,
-                    step_mode: wgpu::InputStepMode::Vertex,
-                    attributes: &wgpu::vertex_attr_array![0 => Float4, 1 => Float4, 2 => Float2, 3 => Float2],
-                },
-            ],
+        multisample: wgpu::MultisampleState {
+            count: SAMPLE_COUNT,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
         },
     })
 }

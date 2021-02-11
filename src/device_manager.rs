@@ -25,7 +25,7 @@ impl Manager {
 
         let adapter_future = instance.request_adapter(
             &wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::Default,
+                power_preference: wgpu::PowerPreference::HighPerformance, // TODO: investigate, this could be useful!
                 compatible_surface: Some(&surface),
             }
         );
@@ -33,19 +33,19 @@ impl Manager {
 
         let device_future = adapter.request_device(
             &wgpu::DeviceDescriptor {
+                label: Some("requested device"),
                 features: adapter.features(),
                 limits: wgpu::Limits {
                     max_storage_buffers_per_shader_stage: 6, // TODO: we need to make sure that every possible GPU supports this
                     .. Default::default()
                 },
-                shader_validation: true,
             },
             None
         );
         let (device, queue) = block_on(device_future).expect("unable to get a device and a queue");
 
         let sc_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
             format: SWAPCHAIN_FORMAT,
             width: size.width,
             height: size.height,
@@ -96,7 +96,7 @@ impl Manager {
     pub fn update_swapchain(&mut self, window: &Window) {
         let size = window.inner_size();
         let swapchain_descriptor = wgpu::SwapChainDescriptor {
-                usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+                usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
                 format: wgpu::TextureFormat::Bgra8UnormSrgb,
                 width: size.width,
                 height: size.height,

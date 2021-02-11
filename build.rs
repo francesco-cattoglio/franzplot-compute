@@ -4,10 +4,12 @@ fn main() {
         "src/cpp_gui/imnodes_shims.cpp",
     ];
     let include_files = vec![
-        "src/cpp_gui/imgui-1.79/imstb_textedit.h",
-        "src/cpp_gui/imgui-1.79/imgui_internal.h",
-        "src/cpp_gui/imgui-1.79/imconfig.h",
-        "src/cpp_gui/imgui-1.79/imgui.h",
+        "src/cpp_gui/imgui-1.80/imstb_truetype.h",
+        "src/cpp_gui/imgui-1.80/imstb_textedit.h",
+        "src/cpp_gui/imgui-1.80/imgui_internal.h",
+        "src/cpp_gui/imgui-1.80/imstb_rectpack.h",
+        "src/cpp_gui/imgui-1.80/imconfig.h",
+        "src/cpp_gui/imgui-1.80/imgui.h",
         "src/cpp_gui/imnodes-5959729/imnodes.h",
         "src/cpp_gui/imnodes_shims.h",
         "src/cpp_gui/imgui_shims.h",
@@ -15,7 +17,7 @@ fn main() {
 
     cxx_build::bridge("src/cpp_gui/mod.rs")
         .files(&cpp_files)
-        .include("src/cpp_gui/imgui-1.79/")
+        .include("src/cpp_gui/imgui-1.80/")
         .include("src/cpp_gui/imnodes-5959729/")
         .include("src/cpp_gui/include/")
         .compile("cxxbridge-gui");

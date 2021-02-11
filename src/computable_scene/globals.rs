@@ -61,9 +61,10 @@ impl Globals {
                         count: None,
                         binding: 0,
                         visibility: wgpu::ShaderStage::COMPUTE,
-                        ty: wgpu::BindingType::UniformBuffer {
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
                             min_binding_size: None,
-                            dynamic: false,
+                            has_dynamic_offset: false,
                         }
                     },
                 ],
@@ -74,9 +75,7 @@ impl Globals {
             entries: &[
                 wgpu::BindGroupEntry {
                     binding: 0,
-                    resource: wgpu::BindingResource::Buffer (
-                        buffer.slice(..),
-                    ),
+                    resource: buffer.as_entire_binding(),
                 },
             ],
             label: Some("global variables bind group")

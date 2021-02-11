@@ -47,7 +47,7 @@ void main() {{
             // add descriptor for output buffer
             CustomBindDescriptor {
                 position: 0,
-                buffer_slice: out_buffer.slice(..)
+                buffer: &out_buffer,
             }
         ];
 
@@ -61,7 +61,9 @@ void main() {{
     }
 
     pub fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
-            let mut compute_pass = encoder.begin_compute_pass();
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("vector compute pass"),
+            });
             compute_pass.set_pipeline(&self.compute_pipeline);
             compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
             compute_pass.set_bind_group(1, variables_bind_group, &[]);

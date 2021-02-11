@@ -10,13 +10,13 @@ path = "src/main.rs"
 
 [dependencies]
 bytemuck = "1.2"
-wgpu = "0.6"
-shaderc = "0.6"
+wgpu = "0.7"
+shaderc = "0.7"
 anyhow = "1.0"
 futures = "0.3"
 glam = "0.11"
 maplit = "1.0"
-winit = "0.23"
+winit = "0.24"
 tobj = "2.0"
 image = "0.23"
 smol_str = { version = "0.1", features = ["serde"] }
@@ -25,8 +25,9 @@ serde_json = "1"
 ron = "0.6.4"
 getopts = "0.2"
 obj = "0.10"
-imgui = "0.6.0"
-imgui-wgpu = "0.12.0"
+imgui = "0.7.0"
+imgui-winit-support = "0.7.0"
+imgui-wgpu = "*"
 wgpu-subscriber = "0.1"
 cxx = "1.0.9"
 pathfinding = "2.0"
@@ -34,11 +35,12 @@ indexmap = "1.6"
 tinyfiledialogs = "3"
 hexasphere = "3.1"
 
-[dependencies.imgui-winit-support]
-version = "0.6"
-
 [build-dependencies]
 cxx-build = "1.0"
 
 [profile.dev.package.image]
 opt-level = 2
+
+[patch.crates-io]
+imgui-wgpu = { git = 'https://github.com/4bb4/imgui-wgpu-rs.git', branch = 'upgrade-to-imgui-rs-0.7' }
+

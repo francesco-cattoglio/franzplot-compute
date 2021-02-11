@@ -96,16 +96,16 @@ void main() {{
             // add descriptor for input buffers
             CustomBindDescriptor {
                 position: 0,
-                buffer_slice: center_data.out_buffer.slice(..)
+                buffer: &center_data.out_buffer
             },
             CustomBindDescriptor {
                 position: 1,
-                buffer_slice: normal_data.out_buffer.slice(..)
+                buffer: &normal_data.out_buffer
             },
             // add descriptor for output buffer
             CustomBindDescriptor {
                 position: 2,
-                buffer_slice: out_buffer.slice(..)
+                buffer: &out_buffer
             }
         ];
 

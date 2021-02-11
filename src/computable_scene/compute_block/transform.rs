@@ -37,16 +37,16 @@ impl TransformData {
         let found_element = processed_blocks.get(&matrix_id).ok_or(BlockCreationError::InternalError("Transform Matrix input does not exist in the block map"))?;
         let matrix_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
-        let (geometry_dim, geometry_buffer_slice) = match geometry_block {
-            ComputeBlock::Point(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
-            ComputeBlock::Curve(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
-            ComputeBlock::Surface(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
-            ComputeBlock::Transform(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
-            ComputeBlock::Prefab(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
+        let (geometry_dim, geometry_buffer) = match geometry_block {
+            ComputeBlock::Point(data) => (data.out_dim.clone(), &data.out_buffer),
+            ComputeBlock::Curve(data) => (data.out_dim.clone(), &data.out_buffer),
+            ComputeBlock::Surface(data) => (data.out_dim.clone(), &data.out_buffer),
+            ComputeBlock::Transform(data) => (data.out_dim.clone(), &data.out_buffer),
+            ComputeBlock::Prefab(data) => (data.out_dim.clone(), &data.out_buffer),
             _ => return Err(BlockCreationError::InputInvalid("the first input provided to the Transform is not a Geometry"))
         };
-        let (matrix_dim, matrix_buffer_slice) = match matrix_block {
-            ComputeBlock::Matrix(data) => (data.out_dim.clone(), data.out_buffer.slice(..)),
+        let (matrix_dim, matrix_buffer) = match matrix_block {
+            ComputeBlock::Matrix(data) => (data.out_dim.clone(), &data.out_buffer),
             _ => return Err(BlockCreationError::InputInvalid("the second input provided to the Transform is not a Matrix"))
         };
         let out_dim: Dimensions;
@@ -70,9 +70,9 @@ impl TransformData {
                 dispatch_sizes = (1, 1);
                 let (pipeline, bind_group) = Self::transform_0d_0d(
                     device,
-                    geometry_buffer_slice,
-                    matrix_buffer_slice,
-                    out_buffer.slice(..),
+                    geometry_buffer,
+                    matrix_buffer,
+                    &out_buffer,
                     )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
@@ -83,9 +83,9 @@ impl TransformData {
                 dispatch_sizes = (mat_param.size/LOCAL_SIZE_X, 1);
                 let (pipeline, bind_group) = Self::transform_0d_up1(
                     device,
-                    geometry_buffer_slice,
-                    matrix_buffer_slice,
-                    out_buffer.slice(..),
+                    geometry_buffer,
+                    matrix_buffer,
+                    &out_buffer,
                     )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
@@ -96,9 +96,9 @@ impl TransformData {
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, 1);
                 let (pipeline, bind_group) = Self::transform_1d_1d(
                     device,
-                    geometry_buffer_slice,
-                    matrix_buffer_slice,
-                    out_buffer.slice(..),
+                    geometry_buffer,
+                    matrix_buffer,
+                    &out_buffer,
                     )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
@@ -109,9 +109,9 @@ impl TransformData {
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, 1);
                 let (pipeline, bind_group) = Self::transform_1d_multi(
                     device,
-                    geometry_buffer_slice,
-                    matrix_buffer_slice,
-                    out_buffer.slice(..),
+                    geometry_buffer,
+                    matrix_buffer,
+                    &out_buffer,
                     )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
@@ -122,9 +122,9 @@ impl TransformData {
                 dispatch_sizes = (geo_param.size/LOCAL_SIZE_X, mat_param.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_1d_up2(
                     device,
-                    geometry_buffer_slice,
-                    matrix_buffer_slice,
-                    out_buffer.slice(..),
+                    geometry_buffer,
+                    matrix_buffer,
+                    &out_buffer,
                     )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
@@ -135,9 +135,9 @@ impl TransformData {
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_2d_2d(
                     device,
-                    geometry_buffer_slice,
-                    matrix_buffer_slice,
-                    out_buffer.slice(..),
+                    geometry_buffer,
+                    matrix_buffer,
+                    &out_buffer,
                     )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
@@ -148,9 +148,9 @@ impl TransformData {
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_2d_same_param(
                     device,
-                    geometry_buffer_slice,
-                    matrix_buffer_slice,
-                    out_buffer.slice(..),
+                    geometry_buffer,
+                    matrix_buffer,
+                    &out_buffer,
                     1
                     )?;
                 compute_pipeline = pipeline;
@@ -162,9 +162,9 @@ impl TransformData {
                 dispatch_sizes = (geo_p1.size/LOCAL_SIZE_X, geo_p2.size/LOCAL_SIZE_Y);
                 let (pipeline, bind_group) = Self::transform_2d_same_param(
                     device,
-                    geometry_buffer_slice,
-                    matrix_buffer_slice,
-                    out_buffer.slice(..),
+                    geometry_buffer,
+                    matrix_buffer,
+                    &out_buffer,
                     2
                     )?;
                 compute_pipeline = pipeline;
@@ -179,9 +179,9 @@ impl TransformData {
                 dispatch_sizes = (vertex_count/MODEL_CHUNK_VERTICES, 1);
                 let (pipeline, bind_group) = Self::transform_3d_3d(
                     device,
-                    geometry_buffer_slice,
-                    matrix_buffer_slice,
-                    out_buffer.slice(..),
+                    geometry_buffer,
+                    matrix_buffer,
+                    &out_buffer,
                     )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
@@ -206,13 +206,15 @@ impl TransformData {
     }
 
     pub fn encode(&self, encoder: &mut wgpu::CommandEncoder) {
-            let mut compute_pass = encoder.begin_compute_pass();
+            let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor{
+                label: Some("transform compute pass")
+            });
             compute_pass.set_pipeline(&self.compute_pipeline);
             compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
             compute_pass.dispatch(self.dispatch_sizes.0 as u32, self.dispatch_sizes.1 as u32, 1);
     }
 
-    fn transform_0d_0d(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> CompilationResult {
+    fn transform_0d_0d(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = 1, local_size_y = 1) in;
@@ -238,21 +240,21 @@ void main() {{
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
             position: 0,
-            buffer_slice: in_buff,
+            buffer: in_buff,
         });
         // add descriptor for matrix
         bindings.push(CustomBindDescriptor {
             position: 1,
-            buffer_slice: in_matrix,
+            buffer: in_matrix,
         });
         bindings.push(CustomBindDescriptor {
             position: 2,
-            buffer_slice: out_buff,
+            buffer: out_buff,
         });
         compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_0d_up1(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
+    fn transform_0d_up1(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer,
                      ) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
@@ -282,21 +284,21 @@ void main() {{
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
             position: 0,
-            buffer_slice: in_buff,
+            buffer: in_buff,
         });
         // add descriptor for matrix
         bindings.push(CustomBindDescriptor {
             position: 1,
-            buffer_slice: in_matrix,
+            buffer: in_matrix,
         });
         bindings.push(CustomBindDescriptor {
             position: 2,
-            buffer_slice: out_buff,
+            buffer: out_buff,
         });
         compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_1d_1d(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> CompilationResult {
+    fn transform_1d_1d(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
@@ -323,21 +325,21 @@ void main() {{
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
             position: 0,
-            buffer_slice: in_buff,
+            buffer: in_buff,
         });
         // add descriptor for matrix
         bindings.push(CustomBindDescriptor {
             position: 1,
-            buffer_slice: in_matrix,
+            buffer: in_matrix,
         });
         bindings.push(CustomBindDescriptor {
             position: 2,
-            buffer_slice: out_buff,
+            buffer: out_buff,
         });
         compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_1d_multi(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> CompilationResult {
+    fn transform_1d_multi(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
@@ -364,21 +366,21 @@ void main() {{
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
             position: 0,
-            buffer_slice: in_buff,
+            buffer: in_buff,
         });
         // add descriptor for matrix
         bindings.push(CustomBindDescriptor {
             position: 1,
-            buffer_slice: in_matrix,
+            buffer: in_matrix,
         });
         bindings.push(CustomBindDescriptor {
             position: 2,
-            buffer_slice: out_buff,
+            buffer: out_buff,
         });
         compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_2d_2d(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> CompilationResult {
+    fn transform_2d_2d(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
@@ -408,21 +410,21 @@ void main() {{
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
             position: 0,
-            buffer_slice: in_buff,
+            buffer: in_buff,
         });
         // add descriptor for matrix
         bindings.push(CustomBindDescriptor {
             position: 1,
-            buffer_slice: in_matrix,
+            buffer: in_matrix,
         });
         bindings.push(CustomBindDescriptor {
             position: 2,
-            buffer_slice: out_buff,
+            buffer: out_buff,
         });
         compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_3d_3d(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> CompilationResult {
+    fn transform_3d_3d(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
@@ -467,21 +469,21 @@ void main() {{
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
             position: 0,
-            buffer_slice: in_buff,
+            buffer: in_buff,
         });
         // add descriptor for matrix
         bindings.push(CustomBindDescriptor {
             position: 1,
-            buffer_slice: in_matrix,
+            buffer: in_matrix,
         });
         bindings.push(CustomBindDescriptor {
             position: 2,
-            buffer_slice: out_buff,
+            buffer: out_buff,
         });
         compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_1d_up2(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice) -> CompilationResult {
+    fn transform_1d_up2(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
@@ -512,21 +514,21 @@ void main() {{
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
             position: 0,
-            buffer_slice: in_buff,
+            buffer: in_buff,
         });
         // add descriptor for matrix
         bindings.push(CustomBindDescriptor {
             position: 1,
-            buffer_slice: in_matrix,
+            buffer: in_matrix,
         });
         bindings.push(CustomBindDescriptor {
             position: 2,
-            buffer_slice: out_buff,
+            buffer: out_buff,
         });
         compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_2d_same_param(device: &wgpu::Device, in_buff: wgpu::BufferSlice, in_matrix: wgpu::BufferSlice, out_buff: wgpu::BufferSlice,
+    fn transform_2d_same_param(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer,
         which_param: u32) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
@@ -557,16 +559,16 @@ void main() {{
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
             position: 0,
-            buffer_slice: in_buff,
+            buffer: in_buff,
         });
         // add descriptor for matrix
         bindings.push(CustomBindDescriptor {
             position: 1,
-            buffer_slice: in_matrix,
+            buffer: in_matrix,
         });
         bindings.push(CustomBindDescriptor {
             position: 2,
-            buffer_slice: out_buff,
+            buffer: out_buff,
         });
         compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }

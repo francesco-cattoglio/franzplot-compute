@@ -31,7 +31,7 @@ impl Texture {
             format: super::DEPTH_FORMAT,
             mip_level_count: 1,
             label: Some("Depth texture"),
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT
                 | wgpu::TextureUsage::SAMPLED
                 | wgpu::TextureUsage::COPY_SRC
             };
@@ -39,7 +39,7 @@ impl Texture {
         let texture = device.create_texture(&descriptor);
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor { // 4.
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -51,6 +51,7 @@ impl Texture {
             lod_min_clamp: -100.0,
             lod_max_clamp: 100.0,
             compare: Some(wgpu::CompareFunction::LessEqual), // 5.
+            border_color: None,
         });
 
         let texture_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -59,17 +60,17 @@ impl Texture {
                     binding: 0,
                     count: None,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::SampledTexture {
+                    ty: wgpu::BindingType::Texture {
                         multisampled: false,
-                        component_type: wgpu::TextureComponentType::Float,
-                        dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
                     },
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     count: None,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler { comparison: true },
+                    ty: wgpu::BindingType::Sampler { comparison: true, filtering: true },
                 },
             ],
             label: Some("texture bind group layout"),
@@ -105,7 +106,7 @@ impl Texture {
             format: super::SWAPCHAIN_FORMAT,
             mip_level_count: 1,
             label: Some("Depth texture"),
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT
                 | wgpu::TextureUsage::SAMPLED
                 | wgpu::TextureUsage::COPY_SRC
             };
@@ -113,7 +114,7 @@ impl Texture {
         let texture = device.create_texture(&descriptor);
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sampler = device.create_sampler(&wgpu::SamplerDescriptor { // 4.
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
@@ -125,6 +126,7 @@ impl Texture {
             lod_min_clamp: -100.0,
             lod_max_clamp: 100.0,
             compare: None,
+            border_color: None,
         });
 
         let texture_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -133,17 +135,17 @@ impl Texture {
                     binding: 0,
                     count: None,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::SampledTexture {
+                    ty: wgpu::BindingType::Texture {
                         multisampled: sample_count > 1,
-                        component_type: wgpu::TextureComponentType::Float,
-                        dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
                     },
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     count: None,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler { comparison: false },
+                    ty: wgpu::BindingType::Sampler { comparison: false, filtering: true },
                 },
             ],
             label: Some("texture bind group layout"),
@@ -171,12 +173,6 @@ impl Texture {
         }
     }
 
-    //#[allow(unused)]
-    //pub fn from_bytes(device: &wgpu::Device, queue: &wgpu::Queue, bytes: &[u8], label: &str) -> Result<Self> {
-    //    let img = image::load_from_memory(bytes).unwrap();
-    //    Self::from_image(device, queue, &img, Some(label))
-    //}
-
     pub fn default_bind_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
         device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
@@ -184,17 +180,17 @@ impl Texture {
                     binding: 0,
                     count: None,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::SampledTexture {
+                    ty: wgpu::BindingType::Texture {
                         multisampled: false,
-                        component_type: wgpu::TextureComponentType::Float,
-                        dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
                     },
                 },
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     count: None,
                     visibility: wgpu::ShaderStage::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler { comparison: false },
+                    ty: wgpu::BindingType::Sampler { comparison: false, filtering: true },
                 },
             ],
             label: Some("default texture bind group layout"),
@@ -290,6 +286,7 @@ impl Texture {
             lod_min_clamp: -100.0,
             lod_max_clamp: 100.0,
             compare: None,
+            border_color: None,
         });
 
         let texture_bind_layout = Self::default_bind_layout(device);
