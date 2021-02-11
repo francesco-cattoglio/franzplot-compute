@@ -465,7 +465,7 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
         depth_stencil: Some(wgpu::DepthStencilState {
             format: super::DEPTH_FORMAT,
             depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::Greater,
+            depth_compare: wgpu::CompareFunction::Less,
             bias: wgpu::DepthBiasState::default(),
             stencil: wgpu::StencilState::default(),
             clamp_depth: false,
@@ -540,7 +540,7 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
         depth_stencil: Some(wgpu::DepthStencilState {
             format: super::DEPTH_FORMAT,
             depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::Greater,
+            depth_compare: wgpu::CompareFunction::Less,
             bias: wgpu::DepthBiasState::default(),
             stencil: wgpu::StencilState::default(),
             clamp_depth: false,
