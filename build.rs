@@ -20,6 +20,7 @@ fn main() {
         .include("src/cpp_gui/imgui-1.80/")
         .include("src/cpp_gui/imnodes-5959729/")
         .include("src/cpp_gui/include/")
+        .flag_if_supported("-std=c++11")
         .compile("cxxbridge-gui");
 
     // instruct the build system to re-run cxx if any cpp file changes,

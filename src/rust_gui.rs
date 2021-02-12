@@ -100,7 +100,7 @@ impl Gui {
         }
     }
 
-    pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State) -> Option<SceneRectangle> {
+    pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State, executor: &super::Executor) -> Option<SceneRectangle> {
         // create main window
         let window_begun = Window::new(im_str!("Rust window"))
             .no_decoration()
@@ -122,7 +122,7 @@ impl Gui {
                     }
                     if MenuItem::new(im_str!("Open")).build(ui) {
                         println!("open file entry clicked");
-                        file_io::background_file_open(self.winit_proxy.clone());
+                        file_io::background_file_open(self.winit_proxy.clone(), executor);
                     }
                 });
                 if MenuItem::new(im_str!("About")).build(ui) {

@@ -2,6 +2,7 @@ use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
 };
+use nfd2::Response;
 
 use imgui::{FontSource, FontGlyphRanges};
 
@@ -30,11 +31,38 @@ fn print_usage(program: &str, opts: Options) {
 #[allow(unused)]
 #[derive(Debug)]
 pub enum CustomEvent {
+    RequestDialog,
     OpenFile(std::path::PathBuf),
     SaveFile(std::path::PathBuf),
     MouseFreeze,
     MouseThaw,
     CurrentlyUnused,
+}
+
+
+use std::future::Future;
+
+pub struct Executor {
+    #[cfg(not(target_arch = "wasm32"))]
+    pool: futures::executor::ThreadPool,
+}
+
+impl Executor {
+    fn new() -> Self {
+        Self {
+            #[cfg(not(target_arch = "wasm32"))]
+            pool: futures::executor::ThreadPool::new().unwrap(),
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn execut<F: Future<Output = ()> + Send + 'static>(&self, f: F) {
+        self.pool.spawn_ok(f);
+    }
+    #[cfg(target_arch = "wasm32")]
+    pub fn execut<F: Future<Output = ()> + 'static>(&self, f: F) {
+        wasm_bindgen_futures::spawn_local(f);
+    }
 }
 
 pub struct PhysicalRectangle {
@@ -225,6 +253,7 @@ fn main() {
         material_ids: imgui_materials,
         model_names,
     };
+    let executor = Executor::new();
     let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, availables, graph_fonts);
     let mut state = state::State::new(device_manager, assets);
 
@@ -281,7 +310,7 @@ fn main() {
                 // actual imgui rendering
                 let ui = imgui.frame();
                 let size = window.inner_size().to_logical(hidpi_factor);
-                let requested_logical_rectangle = rust_gui.render(&ui, [size.width, size.height], &mut state);
+                let requested_logical_rectangle = rust_gui.render(&ui, [size.width, size.height], &mut state, &executor);
                 // after calling the gui render function we know if we need to render the scene or not
                 if let Some(logical_rectangle) = requested_logical_rectangle {
                     let physical_rectangle = PhysicalRectangle::from_imgui_rectangle(&logical_rectangle, hidpi_factor);
@@ -335,6 +364,14 @@ fn main() {
             // to winit that have to be executed during the next frame.
             Event::UserEvent(user_event) => {
                 match user_event {
+                    CustomEvent::RequestDialog => {
+                        //println!("does this even work?");
+                        //match nfd2::open_file_dialog(None, None).expect("oh no") {
+                        //    Response::Okay(file_path) => println!("File path = {:?}", file_path),
+                        //    Response::OkayMultiple(files) => println!("Files {:?}", files),
+                        //    Response::Cancel => println!("User canceled"),
+                        //}
+                    },
                     CustomEvent::SaveFile(path_buf) => {
                         state.user.write_to_frzp(&path_buf);
                     },

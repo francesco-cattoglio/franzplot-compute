@@ -13,7 +13,7 @@ bytemuck = "1.2"
 wgpu = "0.7"
 shaderc = "0.7"
 anyhow = "1.0"
-futures = "0.3"
+futures = {version="0.3.10",features=["thread-pool"]}
 glam = "0.11"
 maplit = "1.0"
 winit = "0.24"
@@ -32,7 +32,8 @@ wgpu-subscriber = "0.1"
 cxx = "1.0.9"
 pathfinding = "2.0"
 indexmap = "1.6"
-tinyfiledialogs = "3"
+nfd2 = "0.2"
+rfd = "0.2.0"
 hexasphere = "3.1"
 
 [build-dependencies]

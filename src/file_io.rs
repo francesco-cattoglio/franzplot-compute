@@ -1,3 +1,4 @@
+use nfd2::Response;
 use winit::event_loop::EventLoopProxy;
 
 use super::CustomEvent;
@@ -12,25 +13,29 @@ use super::CustomEvent;
 // - embed a kdialog-like application which handles save file filters correctly in your binary,
 //   unpackage it at a temp location and use std::process::Command to run it.
 fn show_save_dialog(proxy: EventLoopProxy<CustomEvent>) {
-    if let Some(filename) = tinyfiledialogs::save_file_dialog_with_filter("Save", "", &["*.frzp"], "franzplot") {
-        if !filename.is_empty() {
-            dbg!(&filename);
-            let mut file_path = std::path::PathBuf::from(filename);
-            file_path.set_extension("frzp");
-            proxy.send_event(CustomEvent::SaveFile(file_path)).unwrap();
-        }
-    }
+    //if let Some(file_path) = dialog_result {
+        //if !filename.is_empty() {
+        //    dbg!(&filename);
+        //    let mut file_path = std::path::PathBuf::from(filename);
+        //    file_path.set_extension("frzp");
+        //    proxy.send_event(CustomEvent::SaveFile(file_path)).unwrap();
+        //}
+    //}
     // if the user cancelled the dialog, do nothing
 }
 
 fn show_open_dialog(proxy: EventLoopProxy<CustomEvent>) {
-    if let Some(filename) = tinyfiledialogs::open_file_dialog("Open", "", Some((&["*.frzp"], "franzplot"))) {
-        if !filename.is_empty() {
-            dbg!(&filename);
-            let file_path = std::path::PathBuf::from(filename);
-            proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
-        }
-    }
+    //match nfd2::open_file_dialog(None, None).expect("oh no") {
+    //    Response::Okay(file_path) => println!("File path = {:?}", file_path),
+    //    Response::OkayMultiple(files) => println!("Files {:?}", files),
+    //    Response::Cancel => println!("User canceled"),
+    //}
+    //if let Some(file_path) = dialog_result {
+    //    if !file_path.exists() {
+    //        dbg!(&file_path);
+    //        proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
+    //    }
+    //}
     // if the user cancelled the dialog, do nothing
 }
 
@@ -45,9 +50,19 @@ pub fn background_file_save(proxy: EventLoopProxy<CustomEvent>) {
     });
 }
 
-pub fn background_file_open(proxy: EventLoopProxy<CustomEvent>) {
+pub fn background_file_open(proxy: EventLoopProxy<CustomEvent>, executor: &super::Executor) {
+    let dialog = rfd::AsyncFileDialog::new()
+        .add_filter("Franzplot", &["frzp"])
+        .pick_file();
+
+    let event_loop_proxy = proxy.clone();
+        executor.execut(async move {
+            let file = dialog.await;
+            if let Some(handle) = file {
+                event_loop_proxy.send_event(CustomEvent::OpenFile(handle.path().into()));
+            }
+        });
     // start a new thread!
-    std::thread::spawn(move || {
-        show_open_dialog(proxy);
-    });
+    //std::thread::spawn(move || {
+    //});
 }
