@@ -175,20 +175,52 @@ fn main() {
     let scene_texture = rendering::texture::Texture::create_output_texture(&device_manager.device, wgpu::Extent3d::default(), 1);
     let scene_texture_id = renderer.textures.insert(scene_texture.into());
 
+    let resources_path = {
+        // Check if the resources folder can be find as a subfolder of current work directory
+        let mut dir_path = env::current_dir().unwrap();
+        dir_path.push("resources");
+        let mut exe_path = env::current_exe().unwrap();
+        exe_path.pop();
+        exe_path.push("resources");
+        if dir_path.is_dir() {
+            dir_path
+        } else if exe_path.is_dir() {
+            exe_path
+        } else {
+            panic!("Could not find the 'resources' folder");
+        }
+    };
+    dbg!(&resources_path);
+    let mut masks_dir = resources_path.clone();
+    masks_dir.push("masks");
+    let mut materials_dir = resources_path.clone();
+    materials_dir.push("materials");
+
     // then, load all masks that will be available in the rendering node and push them to imgui
     // BEWARE: if you change the number of masks, you also need to modify the MaskIds in
     // rust_gui.rs and the Masks in texture.rs!
-    let mask_paths: [&str; 5] = [
-        "./resources/masks/checker_8.png",
-        "./resources/masks/h_stripes_16.png",
-        "./resources/masks/v_stripes_16.png",
-        "./resources/masks/blank.png",
-        "./resources/masks/alpha_grid.png",
+    let mask_names: [&str; 5] = [
+        "checker_8.png",
+        "h_stripes_16.png",
+        "v_stripes_16.png",
+        "blank.png",
+        "alpha_grid.png",
     ];
-    let materials_dir_files = std::fs::read_dir("./resources/materials/")
-        .unwrap(); // unwraps the dir reading, giving an iterator over its files
+    use std::convert::TryInto;
+    let mask_files: [std::path::PathBuf; 5] = mask_names
+        .iter()
+        .map(|name| {
+            let mut mask_path = masks_dir.clone();
+            mask_path.push(name);
+            mask_path
+        })
+        .collect::<Vec<_>>() // make it into a vector
+        .try_into() // and then turn it into an array
+        .unwrap(); // panic if dimensions don't match
 
-    // process the dir files, returning only valid filenames that end in "png"
+    // process the materials_dir files, returning only valid filenames that end in "png"
+    let materials_dir_files = std::fs::read_dir(materials_dir)
+        .unwrap(); // unwraps the dir reading, giving an iterator over its files
     let mut material_files: Vec<std::path::PathBuf> = materials_dir_files
         .filter_map(|dir_result| {
             let dir_entry = dir_result.ok()?;
@@ -208,14 +240,16 @@ fn main() {
     material_files.sort();
     dbg!(&material_files);
 
-    let imgui_masks = util::load_imgui_masks(&device_manager, &mut renderer, &mask_paths);
+    let imgui_masks = util::load_imgui_masks(&device_manager, &mut renderer, &mask_files);
     let imgui_materials = util::load_imgui_materials(&device_manager, &mut renderer, &material_files);
 
-    let masks = util::load_masks(&device_manager, &mask_paths);
+    let masks = util::load_masks(&device_manager, &mask_files);
     let materials = util::load_materials(&device_manager, &material_files);
 
     // do the same for models
-    let models_dir_files = std::fs::read_dir("./resources/models/")
+    let mut models_dir = resources_path.clone();
+    models_dir.push("models");
+    let models_dir_files = std::fs::read_dir(models_dir)
         .unwrap(); // unwraps the dir reading, giving an iterator over its files
 
     // process the dir files, returning only valid filenames that end in "obj"
