@@ -1857,8 +1857,7 @@ checksum = "b5eb417147ba9860a96cfe72a0b93bf88fee1744b5636ec99ab20c1aa9376581"
 [[package]]
 name = "rfd"
 version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c49ab43206ee213d9d2e53411e489eb5caca64bdc745854f551a98702456b991"
+source = "git+https://github.com/francesco-cattoglio/rfd.git?branch=save_file_filters#b0e717bd65766b0998a5798d9ab66c55ec29cad0"
 dependencies = [
  "block",
  "cocoa-foundation",

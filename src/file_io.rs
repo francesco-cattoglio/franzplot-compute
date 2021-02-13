@@ -39,14 +39,20 @@ fn show_open_dialog(proxy: EventLoopProxy<CustomEvent>) {
     // if the user cancelled the dialog, do nothing
 }
 
-// TODO: background threads are probably not needed under OS X
 // TODO: we probably would like to check if we have an open dialog/
 // a background thread already already, to prevent the user from
 // opening tons of them by accident.
-pub fn background_file_save(proxy: EventLoopProxy<CustomEvent>) {
-    // start a new thread!
-    std::thread::spawn(move || {
-        show_save_dialog(proxy);
+pub fn background_file_save(proxy: EventLoopProxy<CustomEvent>, executor: &super::Executor) {
+    let dialog = rfd::AsyncFileDialog::new()
+        .add_filter("Franzplot", &["frzp"])
+        .save_file();
+
+    let event_loop_proxy = proxy.clone();
+    executor.execut(async move {
+        let file = dialog.await;
+        if let Some(handle) = file {
+            event_loop_proxy.send_event(CustomEvent::SaveFile(handle.path().into()));
+        }
     });
 }
 
@@ -56,13 +62,10 @@ pub fn background_file_open(proxy: EventLoopProxy<CustomEvent>, executor: &super
         .pick_file();
 
     let event_loop_proxy = proxy.clone();
-        executor.execut(async move {
-            let file = dialog.await;
-            if let Some(handle) = file {
-                event_loop_proxy.send_event(CustomEvent::OpenFile(handle.path().into()));
-            }
-        });
-    // start a new thread!
-    //std::thread::spawn(move || {
-    //});
+    executor.execut(async move {
+        let file = dialog.await;
+        if let Some(handle) = file {
+            event_loop_proxy.send_event(CustomEvent::OpenFile(handle.path().into()));
+        }
+    });
 }

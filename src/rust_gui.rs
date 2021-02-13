@@ -118,7 +118,7 @@ impl Gui {
                 ui.menu(im_str!("File"), true, || {
                     if MenuItem::new(im_str!("Save")).build(ui) {
                         println!("save file entry clicked");
-                        file_io::background_file_save(self.winit_proxy.clone());
+                        file_io::background_file_save(self.winit_proxy.clone(), executor);
                     }
                     if MenuItem::new(im_str!("Open")).build(ui) {
                         println!("open file entry clicked");

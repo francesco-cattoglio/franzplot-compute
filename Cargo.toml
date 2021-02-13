@@ -44,4 +44,5 @@ opt-level = 2
 
 [patch.crates-io]
 imgui-wgpu = { git = 'https://github.com/4bb4/imgui-wgpu-rs.git', branch = 'upgrade-to-imgui-rs-0.7' }
+rfd = { git = 'https://github.com/francesco-cattoglio/rfd.git', branch = 'save_file_filters' }
 
