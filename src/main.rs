@@ -355,7 +355,7 @@ fn main() {
                 // If we are dragging onto something that requires the mouse pointer to stay fixed,
                 // this is the moment in which we move it back to its old position.
                 if mouse_frozen {
-                    window.set_cursor_position(cursor_position).unwrap();
+                    //window.set_cursor_position(cursor_position).unwrap();
                 }
                 camera_inputs.reset_deltas();
             }
@@ -381,9 +381,11 @@ fn main() {
                     },
                     CustomEvent::MouseFreeze => {
                         mouse_frozen = true;
+                        window.set_cursor_grab(true).unwrap();
                     },
                     CustomEvent::MouseThaw => {
                         mouse_frozen = false;
+                        window.set_cursor_grab(false).unwrap();
                     },
                     CustomEvent::CurrentlyUnused => println!("received a custom user event")
                 }
@@ -415,9 +417,6 @@ fn main() {
                             cursor_position = position.cast();
                         }
                     }
-                    Event::WindowEvent{ event: WindowEvent::MouseInput { .. }, ..} => {
-                        // put a safety un-freeze feature, in case we mess something up wrt releasing the mouse
-                    }
                     Event::WindowEvent{ event: WindowEvent::ModifiersChanged(modifiers), ..} => {
                         modifiers_state = modifiers;
                     }
@@ -439,11 +438,11 @@ fn main() {
                     Event::DeviceEvent{ event: DeviceEvent::MouseWheel { delta }, ..} => {
                         camera_inputs.mouse_wheel = delta;
                     }
-                    Event::DeviceEvent{ event: DeviceEvent::Button {button, state }, .. } => {
+                    Event::WindowEvent{ event: WindowEvent::MouseInput { state, button, .. }, ..} => {
                         let pressed = state == ElementState::Pressed;
                         match button {
-                            1 => camera_inputs.mouse_left_click = pressed,
-                            3 => camera_inputs.mouse_right_click = pressed,
+                            MouseButton::Left => camera_inputs.mouse_left_click = pressed,
+                            MouseButton::Right => camera_inputs.mouse_right_click = pressed,
                             _ => {},
                         }
                     }
