@@ -1857,7 +1857,7 @@ checksum = "b5eb417147ba9860a96cfe72a0b93bf88fee1744b5636ec99ab20c1aa9376581"
 [[package]]
 name = "rfd"
 version = "0.2.0"
-source = "git+https://github.com/francesco-cattoglio/rfd.git?branch=save_file_filters#b0e717bd65766b0998a5798d9ab66c55ec29cad0"
+source = "git+https://github.com/PolyMeilex/rfd.git?rev=7b5e29f#7b5e29f8c733382b659dd4b130bdc8d1fd3dc703"
 dependencies = [
  "block",
  "cocoa-foundation",

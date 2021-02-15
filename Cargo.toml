@@ -33,8 +33,10 @@ cxx = "1.0.9"
 pathfinding = "2.0"
 indexmap = "1.6"
 nfd2 = "0.2"
-rfd = "0.2.0"
 hexasphere = "3.1"
+
+#TODO: when a new release happens, just switch back to normal rfd from crates.io
+rfd = { git = "https://github.com/PolyMeilex/rfd.git", rev = "7b5e29f" }
 
 [build-dependencies]
 cxx-build = "1.0"
@@ -44,5 +46,4 @@ opt-level = 2
 
 [patch.crates-io]
 imgui-wgpu = { git = 'https://github.com/4bb4/imgui-wgpu-rs.git', branch = 'upgrade-to-imgui-rs-0.7' }
-rfd = { git = 'https://github.com/francesco-cattoglio/rfd.git', branch = 'save_file_filters' }
 
