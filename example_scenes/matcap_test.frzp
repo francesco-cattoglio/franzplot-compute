@@ -95,9 +95,10 @@ V0((
       )),// [2]
       Some((
         node_id: 0,
-        contents: QualitySlider(
+        contents: IntSlider(
           label: "quality",
-          quality: 8,
+          value: 8,
+          mode: IntRange(4,16),
         ),
       )),// [3]
       Some((
@@ -144,9 +145,10 @@ V0((
       )),// [9]
       Some((
         node_id: 2,
-        contents: SizeSlider(
+        contents: IntSlider(
           label: "thickness:",
-          size: 3,
+          value: 3,
+          mode: SizeLabels,
         ),
       )),// [10]
       Some((
@@ -191,9 +193,10 @@ V0((
       )),// [16]
       Some((
         node_id: 3,
-        contents: QualitySlider(
+        contents: IntSlider(
           label: "quality",
-          quality: 9,
+          value: 9,
+          mode: IntRange(4,16),
         ),
       )),// [17]
       Some((

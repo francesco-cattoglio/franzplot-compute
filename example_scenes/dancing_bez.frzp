@@ -375,9 +375,10 @@ V0((
       )),// [23]
       Some((
         node_id: 5,
-        contents: QualitySlider(
+        contents: IntSlider(
           label: "quality",
-          quality: 4,
+          value: 4,
+          mode: IntRange(4,16),
         ),
       )),// [24]
       Some((
@@ -520,9 +521,10 @@ V0((
       )),// [42]
       Some((
         node_id: 10,
-        contents: SizeSlider(
+        contents: IntSlider(
           label: "thickness:",
-          size: 2,
+          value: 2,
+          mode: SizeLabels,
         ),
       )),// [43]
       Some((

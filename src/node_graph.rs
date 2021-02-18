@@ -51,6 +51,12 @@ pub struct Attribute {
 }
 
 #[derive(Clone, Deserialize, Serialize)]
+pub enum SliderMode {
+    IntRange(i32, i32),
+    SizeLabels,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
 pub enum AttributeContents {
     InputPin {
         label: String,
@@ -64,9 +70,10 @@ pub enum AttributeContents {
         label: String,
         string: String,
     },
-    QualitySlider {
+    IntSlider {
         label: String,
-        quality: i32,
+        value: i32,
+        mode: SliderMode,
     },
     MatrixRow {
         col_1: String,
@@ -86,10 +93,6 @@ pub enum AttributeContents {
     },
     PrimitiveKind {
         selected: usize,
-    },
-    SizeSlider {
-        label: String,
-        size: i32,
     },
     Unknown {
         label: String,
@@ -123,7 +126,7 @@ impl Attribute {
                 imnodes::EndOutputAttribute();
                 false
             },
-            AttributeContents::Text{
+            AttributeContents::Text {
                 label, string,
             } => {
                 let widget_width = 16.5 * char_w;
@@ -141,18 +144,33 @@ impl Attribute {
                 imnodes::EndStaticAttribute();
                 value_changed
             },
-            AttributeContents::QualitySlider {
-                label, quality,
+            AttributeContents::IntSlider {
+                label, value, mode,
             } => {
-                let widget_width = 12.5 * char_w;
+                let widget_width = 12.0 * char_w;
 
                 imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
                 ui.same_line(0.0);
                 ui.set_next_item_width(widget_width);
-                let value_changed = Slider::new(im_str!(""))
-                    .range(4 ..= 16)
-                    .build(ui, quality);
+                let value_changed = match mode {
+                    SliderMode::IntRange(min, max) => {
+                        Slider::new(im_str!(""))
+                            .range(*min ..= *max)
+                            .flags(SliderFlags::NO_INPUT)
+                            .build(ui, value)
+                    },
+                    SliderMode::SizeLabels => {
+                        let max_id = AVAILABLE_SIZES.len() - 1;
+                        let string_id = max_id.min(*value as usize);
+                        let display_string: ImString = format!("{}", AVAILABLE_SIZES[string_id]).into();
+                        Slider::new(im_str!(""))
+                            .range(0 ..= max_id as i32)
+                            .display_format(&display_string)
+                            .flags(SliderFlags::NO_INPUT)
+                            .build(ui, value)
+                    }
+                };
                 imnodes::EndStaticAttribute();
                 value_changed
             },
@@ -328,27 +346,6 @@ impl Attribute {
                 imnodes::EndStaticAttribute();
                 value_changed
             },
-            // TODO: maybe we could unify the Quality and SizeSliders?
-            // The only real difference is that the SizeSlider uses a display string
-            // instead of showing the actual number selected.
-            AttributeContents::SizeSlider {
-                label, size
-            } => {
-                let widget_width = 12.0 * char_w;
-
-                imnodes::BeginStaticAttribute(id);
-                ui.text(&label);
-                ui.same_line(0.0);
-                ui.set_next_item_width(widget_width);
-                let display_string: ImString = format!("{}", AVAILABLE_SIZES[*size as usize]).into();
-                let value_changed = Slider::new(im_str!(""))
-                    .range(0 ..= AVAILABLE_SIZES.len() as i32 - 1)
-                    .display_format(&display_string)
-                    .flags(SliderFlags::NO_INPUT)
-                    .build(ui, size);
-                imnodes::EndStaticAttribute();
-                value_changed
-            },
             AttributeContents::Unknown {
                 ..
             } => {
@@ -417,6 +414,7 @@ pub enum NodeContents {
     Plane {
         center: AttributeID,
         normal: AttributeID,
+        size: AttributeID,
         output: AttributeID,
     },
     Transform {
@@ -505,9 +503,9 @@ impl NodeContents {
                 vec![interval_1, interval_2, fx, fy, fz, output]
             },
             NodeContents::Plane {
-                center, normal, output
+                center, normal, size, output
             } => {
-                vec![center, normal, output]
+                vec![center, normal, size, output]
             },
             NodeContents::Transform {
                 geometry, matrix, output
@@ -575,9 +573,9 @@ impl NodeContents {
                 vec![interval_1, interval_2, fx, fy, fz, output]
             },
             NodeContents::Plane {
-                center, normal, output
+                center, normal, size, output
             } => {
-                vec![center, normal, output]
+                vec![center, normal, size, output]
             },
             NodeContents::Transform {
                 geometry, matrix, output
@@ -688,7 +686,8 @@ impl NodeContents {
         NodeContents::Plane {
             center: 0,
             normal: 1,
-            output: 2,
+            size: 2,
+            output: 3,
         }
     }
 
@@ -1410,8 +1409,7 @@ impl NodeGraph {
         let attribute = attribute_slot.as_ref()?;
         // finally, if the attribute exists, we need to check if we can convert it is a usize
         match attribute.contents {
-            AttributeContents::QualitySlider{ quality, .. } => Some(quality as usize),
-            AttributeContents::SizeSlider{ size, .. } => Some(size as usize),
+            AttributeContents::IntSlider{ value, .. } => Some(value as usize),
             AttributeContents::PrimitiveKind{ selected } => Some(selected),
             AttributeContents::Mask{ selected } => Some(selected),
             AttributeContents::Material{ selected } => Some(selected),
@@ -1562,9 +1560,10 @@ impl NodeGraph {
                 label: String::from("  end"),
                 string: String::from(""),
             },
-            AttributeContents::QualitySlider {
+            AttributeContents::IntSlider {
                 label: String::from("quality"),
-                quality: 4,
+                value: 4,
+                mode: SliderMode::IntRange(2, 16),
             },
             AttributeContents::OutputPin {
                 label: String::from("interval"),
@@ -1645,9 +1644,10 @@ impl NodeGraph {
                 label: String::from("P3"),
                 kind: DataKind::Geometry,
             },
-            AttributeContents::QualitySlider {
+            AttributeContents::IntSlider {
                 label: String::from("quality"),
-                quality: 4,
+                value: 4,
+                mode: SliderMode::IntRange(2, 16),
             },
             AttributeContents::OutputPin {
                 label: String::from("geometry"),
@@ -1730,6 +1730,11 @@ impl NodeGraph {
                 label: String::from("normal"),
                 kind: DataKind::Vector,
             },
+            AttributeContents::IntSlider {
+                label: String::from("size:"),
+                value: 4,
+                mode: SliderMode::IntRange(1, 16),
+            },
             AttributeContents::OutputPin {
                 label: String::from("output"),
                 kind: DataKind::Geometry,
@@ -1745,9 +1750,10 @@ impl NodeGraph {
                 label: String::from("geometry"),
                 kind: DataKind::Geometry,
             },
-            AttributeContents::SizeSlider {
+            AttributeContents::IntSlider {
                 label: String::from("thickness:"),
-                size: 3,
+                value: 3,
+                mode: SliderMode::SizeLabels,
             },
             AttributeContents::Mask {
                 selected: 0,
@@ -1770,9 +1776,10 @@ impl NodeGraph {
                 label: String::from("vector"),
                 kind: DataKind::Vector,
             },
-            AttributeContents::SizeSlider {
+            AttributeContents::IntSlider {
                 label: String::from("thickness:"),
-                size: 3,
+                value: 3,
+                mode: SliderMode::SizeLabels,
             },
             AttributeContents::Material {
                 selected: 0,
@@ -1788,7 +1795,7 @@ impl NodeGraph {
                 selected: 0,
             },
             AttributeContents::Text {
-                label: String::from("size"),
+                label: String::from("size:"),
                 string: String::from("1.0"),
             },
             AttributeContents::OutputPin {

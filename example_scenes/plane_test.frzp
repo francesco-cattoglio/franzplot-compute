@@ -1,7 +1,8 @@
-//// FRANZPLOT DATA FILE V0 ////
-//// This file should not be edited by hand,
-//// as doing so might easily corrupt the data.
-//// To edit this file, open it in Franzplot, version 21.01 or higher
+//// FRANZPLOT DATA FILE V0 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.01 or higher
 
 V0((
   graph: (
@@ -37,21 +38,22 @@ V0((
       Some((
         title: "Plane",
         position: (
-          271,
-          88,
+          270,
+          79,
         ),
         error: None,
         contents: Plane(
           center: 8,
           normal: 9,
+          size: 19,
           output: 10,
         ),
       )),// [2]
       Some((
         title: "Rendering",
         position: (
-          339,
-          98,
+          429,
+          71,
         ),
         error: None,
         contents: Rendering(
@@ -64,8 +66,8 @@ V0((
       Some((
         title: "Vector Rendering",
         position: (
-          327,
-          249,
+          333,
+          204,
         ),
         error: None,
         contents: VectorRendering(
@@ -163,9 +165,10 @@ V0((
       )),// [11]
       Some((
         node_id: 3,
-        contents: SizeSlider(
+        contents: IntSlider(
           label: "thickness:",
-          size: 3,
+          value: 3,
+          mode: SizeLabels,
         ),
       )),// [12]
       Some((
@@ -196,9 +199,10 @@ V0((
       )),// [16]
       Some((
         node_id: 4,
-        contents: SizeSlider(
+        contents: IntSlider(
           label: "thickness:",
-          size: 3,
+          value: 3,
+          mode: SizeLabels,
         ),
       )),// [17]
       Some((
@@ -206,14 +210,22 @@ V0((
         contents: Material(
           selected: 0,
         ),
+      )),// [18]
+      Some((
+        node_id: 1,
+        contents: IntSlider(
+          label: "size:",
+          value: 4,
+          mode: IntRange(1,16),
+        ),
       )),
     ],
     links: {
       9: 7,
       11: 10,
-      16: 7,
       8: 3,
       15: 3,
+      16: 7,
     },
     free_nodes_list: [],
     free_attributes_list: [],
