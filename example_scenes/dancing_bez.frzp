@@ -216,9 +216,10 @@ V0((
       )),// [0]
       Some((
         node_id: 0,
-        contents: SizeSlider(
+        contents: IntSlider(
           label: "thickness:",
-          size: 2,
+          value: 2,
+          mode: SizeLabels,
         ),
       )),// [1]
       Some((
@@ -548,9 +549,10 @@ V0((
       )),// [46]
       Some((
         node_id: 11,
-        contents: SizeSlider(
+        contents: IntSlider(
           label: "thickness:",
-          size: 2,
+          value: 2,
+          mode: SizeLabels,
         ),
       )),// [47]
       Some((
@@ -574,9 +576,10 @@ V0((
       )),// [50]
       Some((
         node_id: 12,
-        contents: SizeSlider(
+        contents: IntSlider(
           label: "thickness:",
-          size: 2,
+          value: 2,
+          mode: SizeLabels,
         ),
       )),// [51]
       Some((
@@ -600,9 +603,10 @@ V0((
       )),// [54]
       Some((
         node_id: 13,
-        contents: SizeSlider(
+        contents: IntSlider(
           label: "thickness:",
-          size: 2,
+          value: 2,
+          mode: SizeLabels,
         ),
       )),// [55]
       Some((
