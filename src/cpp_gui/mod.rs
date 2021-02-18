@@ -30,7 +30,7 @@ pub mod imnodes {
     }
 
     unsafe extern "C++" {
-        include!("franzplot-compute/src/cpp_gui/imnodes-5959729/imnodes.h");
+        include!("franzplot-compute/src/cpp_gui/imnodes-868dda6/imnodes.h");
         include!("franzplot-compute/src/cpp_gui/imnodes_shims.h");
         type PinShape = super::PinShape;
         fn Initialize();

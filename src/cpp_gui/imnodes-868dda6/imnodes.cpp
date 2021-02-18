@@ -16,7 +16,7 @@
 #include <imgui_internal.h>
 
 // Check minimum ImGui version
-#define MINIMUM_COMPATIBLE_IMGUI_VERSION 16401
+#define MINIMUM_COMPATIBLE_IMGUI_VERSION 17400
 #if IMGUI_VERSION_NUM < MINIMUM_COMPATIBLE_IMGUI_VERSION
 #error "Minimum ImGui version requirement not met -- please use a newer version!"
 #endif
@@ -108,6 +108,10 @@ struct OptionalIndex
 
     inline bool operator==(const int rhs) const { return m_index == rhs; }
 
+    inline bool operator!=(const OptionalIndex& rhs) const { return m_index != rhs.m_index; }
+
+    inline bool operator!=(const int rhs) const { return m_index != rhs; }
+
     static const int invalid_index = -1;
 
 private:
@@ -144,10 +148,7 @@ struct NodeData
     {
     }
 
-    ~NodeData()
-    {
-        id = -1;
-    }
+    ~NodeData() { id = INT_MIN; }
 };
 
 struct PinData
@@ -868,11 +869,11 @@ void object_pool_update(ObjectPool<NodeData>& nodes)
         else
         {
             const int previous_id = nodes.pool[i].id;
-            if (previous_id == -1)
-                continue;
             const int previous_idx = nodes.id_map.GetInt(previous_id, -1);
+
             if (previous_idx != -1)
             {
+                assert(previous_idx == i);
                 // Remove node idx form depth stack the first time we detect that this idx slot is
                 // unused
                 ImVector<int>& depth_stack = editor_context_get().node_depth_order;
@@ -988,15 +989,13 @@ ImVec2 get_screen_space_pin_coordinates(const EditorContext& editor, const PinDa
     return get_screen_space_pin_coordinates(parent_node_rect, pin.attribute_rect, pin.type);
 }
 
-// These functions are here, and not members of the BoxSelector struct, because
-// implementing a C API in C++ is frustrating. EditorContext has a BoxSelector
-// field, but the state changes depend on the editor. So, these are implemented
-// as C-style free functions so that the code is not too much of a mish-mash of
-// C functions and C++ method definitions.
-
 bool mouse_in_canvas()
 {
-    return g.canvas_rect_screen_space.Contains(ImGui::GetMousePos()) && ImGui::IsWindowHovered();
+    // This flag should be true either when hovering or clicking something in the canvas.
+    const bool is_window_hovered_or_focused = ImGui::IsWindowHovered() || ImGui::IsWindowFocused();
+
+    return is_window_hovered_or_focused &&
+           g.canvas_rect_screen_space.Contains(ImGui::GetMousePos());
 }
 
 void begin_node_selection(EditorContext& editor, const int node_idx)
@@ -1115,9 +1114,7 @@ void begin_canvas_interaction(EditorContext& editor)
         return;
     }
 
-    const bool started_panning =
-        (g.io.emulate_three_button_mouse.enabled && g.left_mouse_clicked && *g.io.emulate_three_button_mouse.modifier)
-        || g.middle_mouse_clicked;
+    const bool started_panning = g.middle_mouse_clicked;
 
     if (started_panning)
     {
@@ -1371,7 +1368,11 @@ void click_interaction_update(EditorContext& editor)
 
         const LinkBezierData link_data = get_link_renderable(
             start_pos, end_pos, start_pin.type, g.style.link_line_segments_per_length);
+#if IMGUI_VERSION_NUM < 18000
         g.canvas_draw_list->AddBezierCurve(
+#else
+        g.canvas_draw_list->AddBezierCubic(
+#endif
             link_data.bezier.p0,
             link_data.bezier.p1,
             link_data.bezier.p2,
@@ -1417,9 +1418,7 @@ void click_interaction_update(EditorContext& editor)
     break;
     case ClickInteractionType_Panning:
     {
-        const bool dragging =
-            (g.io.emulate_three_button_mouse.enabled && g.left_mouse_dragging && *g.io.emulate_three_button_mouse.modifier)
-            || g.middle_mouse_dragging;
+        const bool dragging = g.middle_mouse_dragging;
 
         if (dragging)
         {
@@ -1441,19 +1440,24 @@ void click_interaction_update(EditorContext& editor)
 
 OptionalIndex resolve_hovered_node(const EditorContext& editor)
 {
-    if (g.node_indices_overlapping_with_mouse.Size == 0)
+    if (g.node_indices_overlapping_with_mouse.size() == 0)
     {
         return OptionalIndex();
+    }
+
+    if (g.node_indices_overlapping_with_mouse.size() == 1)
+    {
+        return OptionalIndex(g.node_indices_overlapping_with_mouse[0]);
     }
 
     int largest_depth_idx = -1;
     int node_idx_on_top = -1;
 
     const ImVector<int>& depth_stack = editor.node_depth_order;
-    for (int i = 0; i < g.node_indices_overlapping_with_mouse.Size; ++i)
+    for (int i = 0; i < g.node_indices_overlapping_with_mouse.size(); ++i)
     {
         const int node_idx = g.node_indices_overlapping_with_mouse[i];
-        for (int depth_idx = 0; depth_idx < depth_stack.Size; ++depth_idx)
+        for (int depth_idx = 0; depth_idx < depth_stack.size(); ++depth_idx)
         {
             if (depth_stack[depth_idx] == node_idx && (depth_idx > largest_depth_idx))
             {
@@ -1698,7 +1702,8 @@ void draw_pin(EditorContext& editor, const int pin_idx, const bool left_mouse_cl
     draw_pin_shape(pin.pos, pin, pin_color);
 }
 
-// TODO: Separate hover code from drawing code to avoid this unpleasant divergent function signature.
+// TODO: Separate hover code from drawing code to avoid this unpleasant divergent function
+// signature.
 bool is_node_hovered(const NodeData& node, const int node_idx, const ObjectPool<PinData> pins)
 {
     // We render pins on top of nodes. In order to prevent node interaction when a pin is on top of
@@ -1778,8 +1783,8 @@ void draw_node(EditorContext& editor, const int node_idx)
     if (node_hovered)
     {
         g.hovered_node_idx = node_idx;
-        const bool node_ui_interaction = g.interactive_node_idx == node_idx;
-        if (g.left_mouse_clicked && !node_ui_interaction)
+        const bool node_free_to_move = g.interactive_node_idx != node_idx;
+        if (g.left_mouse_clicked && node_free_to_move)
         {
             begin_node_selection(editor, node_idx);
         }
@@ -1839,7 +1844,11 @@ void draw_link(EditorContext& editor, const int link_idx)
         link_color = link.color_style.hovered;
     }
 
+#if IMGUI_VERSION_NUM < 18000
     g.canvas_draw_list->AddBezierCurve(
+#else
+    g.canvas_draw_list->AddBezierCubic(
+#endif
         link_data.bezier.p0,
         link_data.bezier.p1,
         link_data.bezier.p2,
@@ -2084,9 +2093,13 @@ void BeginNodeEditor()
     g.mouse_pos = ImGui::GetIO().MousePos;
     g.left_mouse_clicked = ImGui::IsMouseClicked(0);
     g.left_mouse_released = ImGui::IsMouseReleased(0);
-    g.middle_mouse_clicked = ImGui::IsMouseClicked(2);
+    g.middle_mouse_clicked = (g.io.emulate_three_button_mouse.enabled && g.left_mouse_clicked &&
+                              *g.io.emulate_three_button_mouse.modifier) ||
+                             ImGui::IsMouseClicked(2);
     g.left_mouse_dragging = ImGui::IsMouseDragging(0, 0.0f);
-    g.middle_mouse_dragging = ImGui::IsMouseDragging(2, 0.0f);
+    g.middle_mouse_dragging = (g.io.emulate_three_button_mouse.enabled && g.left_mouse_dragging &&
+                               (*g.io.emulate_three_button_mouse.modifier)) ||
+                              ImGui::IsMouseDragging(2, 0.0f);
 
     g.active_attribute = false;
 
@@ -2505,10 +2518,7 @@ ImVec2 GetNodeGridSpacePos(int node_id)
     return node.origin;
 }
 
-bool IsEditorHovered()
-{
-    return mouse_in_canvas();
-}
+bool IsEditorHovered() { return mouse_in_canvas(); }
 
 bool IsNodeHovered(int* const node_id)
 {
