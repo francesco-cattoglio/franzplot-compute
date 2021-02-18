@@ -35,11 +35,11 @@ impl Camera {
     }
 
     pub fn build_view_matrix(&self) -> Mat4 {
-        Mat4::look_at_lh(self.eye, self.target, self.up)
+        Mat4::look_at_rh(self.eye, self.target, self.up)
     }
 
     pub fn build_projection_matrix(&self) -> Mat4 {
-        Mat4::perspective_lh(self.fov_y, self.aspect, self.z_near, self.z_far)
+        Mat4::perspective_rh(self.fov_y, self.aspect, self.z_near, self.z_far)
     }
 
     pub fn build_ortho_matrix(&self) -> Mat4 {
@@ -129,7 +129,12 @@ impl Controller for VTKController {
             let x_delta = inputs.mouse_motion.0 as f32 * self.sensitivity_horizontal;
             let y_delta = inputs.mouse_motion.1 as f32 * self.sensitivity_vertical;
             let camera_right = camera.up.cross(pos_on_sphere.normalize());
-            let position_delta =  y_delta * camera.up + x_delta * camera_right;
+            // we want to render the effect of the object rotating the same way
+            // the mouse moves. For this reason, we need to rotate the camera
+            // in the opposite direction along "camera.right"!
+            // The movement along the "camera.up" direction does not need to be inverted
+            // because screen coordinates are already "y points downwards"
+            let position_delta =  y_delta * camera.up - x_delta * camera_right;
             // for small angles, sin(theta) = theta!
             pos_on_sphere = (pos_on_sphere + position_delta).normalize();
             camera.up = camera_right.cross(-pos_on_sphere).normalize();
