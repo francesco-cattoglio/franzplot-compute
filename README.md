@@ -9,7 +9,7 @@ Feature per la release per gli studenti:
 - [] Settings per la sensività dello zoom su grafo e scena
 - [] Settings per la telecamera - orbit sempre verticale?
 - [] Aggiunta delle primitive mancanti
-- [] Rimozione dei materiali non strettamente necessari
+- [x] Rimozione dei materiali non strettamente necessari
 - [] Update all'ultima versione di imnodes per i bugfix
 
 Known bugs & issues:
