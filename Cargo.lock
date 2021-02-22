@@ -1120,7 +1120,7 @@ dependencies = [
 [[package]]
 name = "imgui-wgpu"
 version = "0.14.0"
-source = "git+https://github.com/francesco-cattoglio/imgui-wgpu-rs.git?branch=tracking_wgpu_75e77d1#598d27654d75e614ea553d7cf26968655593485e"
+source = "git+https://github.com/francesco-cattoglio/imgui-wgpu-rs.git?branch=tracking_wgpu_75e77d1#acd63b710a09aa788939b4f203cd117fbb02cea0"
 dependencies = [
  "bytemuck",
  "imgui",

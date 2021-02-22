@@ -4,15 +4,19 @@
 
 Tutte le feature necessarie per un uso di base del software sono state implementate.
 
-Le ultime cose urgenti da fare sono:
-- implementazione della visualizzazione delle curve u-v sulle superfici
-- fix minori per l'uso sotto Mac OS
-- testing sotto windows
+Feature per la release per gli studenti:
+- [x] Cleanup dell'interfaccia
+- [] Settings per la sensività dello zoom su grafo e scena
+- [] Settings per la telecamera - orbit sempre verticale?
+- [] Aggiunta delle primitive mancanti
+- [] Rimozione dei materiali non strettamente necessari
+- [] Update all'ultima versione di imnodes per i bugfix
 
 Known bugs & issues:
 - in Debug l'avvio è piuttosto lento; in Release l'avvio è molto più veloce (5 secondi vs 0.5).
 
 Features a data da destinarsi:
+- implementazione della visualizzazione delle curve u-v sulle superfici
 - raggruppamento dei nodi
 - dump del grafo in caso di crash
 - settings (tipo di telecamera, visualizzazione degli assi cartesiani, visualizzazioni di piani, eccetera

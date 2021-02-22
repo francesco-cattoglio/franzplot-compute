@@ -124,6 +124,13 @@ impl Gui {
                         println!("open file entry clicked");
                         file_io::background_file_open(self.winit_proxy.clone(), executor);
                     }
+                    ui.separator();
+                    if MenuItem::new(im_str!("Exit")).build(ui) {
+                        println!("exit entry clicked");
+                        use crate::CustomEvent;
+                        self.winit_proxy.send_event(CustomEvent::RequestExit);
+                        file_io::background_file_open(self.winit_proxy.clone(), executor);
+                    }
                 });
                 if MenuItem::new(im_str!("About")).build(ui) {
                     println!("\"About\" entry clicked");
@@ -173,7 +180,6 @@ impl Gui {
 
         ui.columns(2, im_str!("editor columns"), false);
         ui.set_current_column_width(120.0);
-        ui.text(im_str!("Left side"));
         // the following code is similar to what a Vec::drain_filter would do,
         // but operates on 2 vectors at the same time.
         let mut i = 0;
@@ -208,7 +214,6 @@ impl Gui {
         }
 
         ui.next_column();
-        ui.text(im_str!("Right side"));
         let io = ui.io();
         let editor_ne_point = ui.cursor_pos();
         let relative_pos = [io.mouse_pos[0] - editor_ne_point[0], io.mouse_pos[1] - editor_ne_point[1]];
@@ -239,7 +244,6 @@ impl Gui {
     fn render_scene_tab(&mut self, ui: &Ui<'_>, state: &mut State) -> SceneRectangle {
         ui.columns(2, im_str!("scene columns"), false);
         ui.set_current_column_width(120.0);
-        ui.text(im_str!("Globals side"));
         ui.text("Global variables");
 
         // and add the UI for updating them
@@ -258,6 +262,11 @@ impl Gui {
                 requested_cursor = MouseCursor::ResizeEW;
             }
         }
+        let available_region = ui.content_region_avail();
+        if available_region[1] > 250.0 {
+            let y_spacing = available_region[1] - 120.0;
+            ui.dummy([1.0, y_spacing]);
+        }
         ui.text("Selected object:");
         // TODO: maybe you want to do something different if the user deletes the node and then goes back to the scene
         let node_name = if let Some(block_id) = self.selected_object {
@@ -273,7 +282,6 @@ impl Gui {
         ui.set_mouse_cursor(Some(requested_cursor));
         width_token.pop(ui);
         ui.next_column();
-        ui.text(im_str!("Scene side"));
         // the scene shall use the whole remaining content space available
         let scene_pos = ui.cursor_pos();
         let available_region = ui.content_region_avail();

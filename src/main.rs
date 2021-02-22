@@ -2,7 +2,6 @@ use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
 };
-use nfd2::Response;
 
 use imgui::{FontSource, FontGlyphRanges};
 
@@ -31,9 +30,9 @@ fn print_usage(program: &str, opts: Options) {
 #[allow(unused)]
 #[derive(Debug)]
 pub enum CustomEvent {
-    RequestDialog,
     OpenFile(std::path::PathBuf),
     SaveFile(std::path::PathBuf),
+    RequestExit,
     MouseFreeze,
     MouseThaw,
     CurrentlyUnused,
@@ -120,7 +119,7 @@ fn main() {
 
     let _input_file = matches.opt_str("i");
 
-    //wgpu_subscriber::initialize_default_subscriber(None);
+    wgpu_subscriber::initialize_default_subscriber(None);
 
     let event_loop = EventLoop::<CustomEvent>::with_user_event();
     let mut builder = winit::window::WindowBuilder::new();
@@ -322,7 +321,12 @@ fn main() {
             // into a single event, to help avoid duplicating rendering work.
             Event::RedrawRequested(_window_id) => {
                 // acquire next frame, or update the swapchain if a resize occurred
-                let frame = state.app.manager.get_frame_or_update(&window);
+                let frame = if let Some(frame) = state.app.manager.get_frame(&window) {
+                    frame
+                } else {
+                    // if we are unable to get a frame, skip rendering altogether
+                    return;
+                };
 
                 // use the acquired frame for a rendering pass, which will clear the screen and render the gui
                 let mut encoder: wgpu::CommandEncoder =
@@ -398,13 +402,8 @@ fn main() {
             // to winit that have to be executed during the next frame.
             Event::UserEvent(user_event) => {
                 match user_event {
-                    CustomEvent::RequestDialog => {
-                        //println!("does this even work?");
-                        //match nfd2::open_file_dialog(None, None).expect("oh no") {
-                        //    Response::Okay(file_path) => println!("File path = {:?}", file_path),
-                        //    Response::OkayMultiple(files) => println!("Files {:?}", files),
-                        //    Response::Cancel => println!("User canceled"),
-                        //}
+                    CustomEvent::RequestExit => {
+                        *control_flow = ControlFlow::Exit;
                     },
                     CustomEvent::SaveFile(path_buf) => {
                         state.user.write_to_frzp(&path_buf);
@@ -456,9 +455,7 @@ fn main() {
                     }
                     // shortcuts processing goes here
                     Event::WindowEvent{ event: WindowEvent::KeyboardInput { input, .. }, .. } => {
-                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Escape) {
-                            *control_flow = ControlFlow::Exit;
-                        } else if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Z) {
+                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Z) {
                             if modifiers_state.ctrl() && modifiers_state.shift() {
                                 rust_gui.issue_redo(&mut state);
                             } else if modifiers_state.ctrl() {
