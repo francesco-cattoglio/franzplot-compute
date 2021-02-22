@@ -1,0 +1,1028 @@
+//// FRANZPLOT DATA FILE V0 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.01 or higher
+
+V0((
+  graph: (
+    nodes: [
+      Some((
+        title: "Primitive",
+        position: (
+          -83.9375,
+          -170.75,
+        ),
+        error: None,
+        contents: Primitive(
+          primitive: 0,
+          size: 1,
+          output: 2,
+        ),
+      )),// [0]
+      Some((
+        title: "Matrix",
+        position: (
+          -74.687416,
+          -69.62498,
+        ),
+        error: None,
+        contents: Matrix(
+          interval: 3,
+          row_1: 4,
+          row_2: 5,
+          row_3: 6,
+          output: 7,
+        ),
+      )),// [1]
+      Some((
+        title: "Transform",
+        position: (
+          100.74997,
+          -161.87498,
+        ),
+        error: None,
+        contents: Transform(
+          geometry: 8,
+          matrix: 9,
+          output: 10,
+        ),
+      )),// [2]
+      Some((
+        title: "Rendering",
+        position: (
+          199.18747,
+          -154.06248,
+        ),
+        error: None,
+        contents: Rendering(
+          geometry: 11,
+          thickness: 12,
+          mask: 13,
+          material: 14,
+        ),
+      )),// [3]
+      Some((
+        title: "Primitive",
+        position: (
+          -83.00001,
+          74.25,
+        ),
+        error: None,
+        contents: Primitive(
+          primitive: 15,
+          size: 16,
+          output: 17,
+        ),
+      )),// [4]
+      Some((
+        title: "Matrix",
+        position: (
+          -73.74992,
+          175.37505,
+        ),
+        error: None,
+        contents: Matrix(
+          interval: 18,
+          row_1: 19,
+          row_2: 20,
+          row_3: 21,
+          output: 22,
+        ),
+      )),// [5]
+      Some((
+        title: "Transform",
+        position: (
+          101.68754,
+          83.12504,
+        ),
+        error: None,
+        contents: Transform(
+          geometry: 23,
+          matrix: 24,
+          output: 25,
+        ),
+      )),// [6]
+      Some((
+        title: "Rendering",
+        position: (
+          200.125,
+          90.93754,
+        ),
+        error: None,
+        contents: Rendering(
+          geometry: 26,
+          thickness: 27,
+          mask: 28,
+          material: 29,
+        ),
+      )),// [7]
+      Some((
+        title: "Primitive",
+        position: (
+          388.3751,
+          348.50003,
+        ),
+        error: None,
+        contents: Primitive(
+          primitive: 30,
+          size: 31,
+          output: 32,
+        ),
+      )),// [8]
+      Some((
+        title: "Matrix",
+        position: (
+          377.81262,
+          458.18753,
+        ),
+        error: None,
+        contents: Matrix(
+          interval: 33,
+          row_1: 34,
+          row_2: 35,
+          row_3: 36,
+          output: 37,
+        ),
+      )),// [9]
+      Some((
+        title: "Transform",
+        position: (
+          553.25006,
+          365.93756,
+        ),
+        error: None,
+        contents: Transform(
+          geometry: 38,
+          matrix: 39,
+          output: 40,
+        ),
+      )),// [10]
+      Some((
+        title: "Rendering",
+        position: (
+          651.68756,
+          373.75006,
+        ),
+        error: None,
+        contents: Rendering(
+          geometry: 41,
+          thickness: 42,
+          mask: 43,
+          material: 44,
+        ),
+      )),// [11]
+      Some((
+        title: "Primitive",
+        position: (
+          424.81253,
+          89.875,
+        ),
+        error: None,
+        contents: Primitive(
+          primitive: 45,
+          size: 46,
+          output: 47,
+        ),
+      )),// [12]
+      Some((
+        title: "Matrix",
+        position: (
+          434.06253,
+          191.00005,
+        ),
+        error: None,
+        contents: Matrix(
+          interval: 48,
+          row_1: 49,
+          row_2: 50,
+          row_3: 51,
+          output: 52,
+        ),
+      )),// [13]
+      Some((
+        title: "Transform",
+        position: (
+          604.81256,
+          92.50003,
+        ),
+        error: None,
+        contents: Transform(
+          geometry: 53,
+          matrix: 54,
+          output: 55,
+        ),
+      )),// [14]
+      Some((
+        title: "Rendering",
+        position: (
+          707.9374,
+          106.56251,
+        ),
+        error: None,
+        contents: Rendering(
+          geometry: 56,
+          thickness: 57,
+          mask: 58,
+          material: 59,
+        ),
+      )),// [15]
+      Some((
+        title: "Primitive",
+        position: (
+          434.18753,
+          -152.3125,
+        ),
+        error: None,
+        contents: Primitive(
+          primitive: 60,
+          size: 61,
+          output: 62,
+        ),
+      )),// [16]
+      Some((
+        title: "Matrix",
+        position: (
+          438.75003,
+          -43.374973,
+        ),
+        error: None,
+        contents: Matrix(
+          interval: 63,
+          row_1: 64,
+          row_2: 65,
+          row_3: 66,
+          output: 67,
+        ),
+      )),// [17]
+      Some((
+        title: "Transform",
+        position: (
+          618.87506,
+          -143.43748,
+        ),
+        error: None,
+        contents: Transform(
+          geometry: 68,
+          matrix: 69,
+          output: 70,
+        ),
+      )),// [18]
+      Some((
+        title: "Rendering",
+        position: (
+          717.3124,
+          -135.62498,
+        ),
+        error: None,
+        contents: Rendering(
+          geometry: 71,
+          thickness: 72,
+          mask: 73,
+          material: 74,
+        ),
+      )),// [19]
+      Some((
+        title: "Primitive",
+        position: (
+          -72.0625,
+          313.3125,
+        ),
+        error: None,
+        contents: Primitive(
+          primitive: 75,
+          size: 76,
+          output: 77,
+        ),
+      )),// [20]
+      Some((
+        title: "Matrix",
+        position: (
+          -62.812424,
+          414.43753,
+        ),
+        error: None,
+        contents: Matrix(
+          interval: 78,
+          row_1: 79,
+          row_2: 80,
+          row_3: 81,
+          output: 82,
+        ),
+      )),// [21]
+      Some((
+        title: "Transform",
+        position: (
+          112.62496,
+          322.1875,
+        ),
+        error: None,
+        contents: Transform(
+          geometry: 83,
+          matrix: 84,
+          output: 85,
+        ),
+      )),// [22]
+      Some((
+        title: "Rendering",
+        position: (
+          203.24995,
+          300.3125,
+        ),
+        error: None,
+        contents: Rendering(
+          geometry: 86,
+          thickness: 87,
+          mask: 88,
+          material: 89,
+        ),
+      )),
+    ],
+    attributes: [
+      Some((
+        node_id: 0,
+        contents: PrimitiveKind(
+          selected: 0,
+        ),
+      )),// [0]
+      Some((
+        node_id: 0,
+        contents: Text(
+          label: "size:",
+          string: "sin(t)*sin(s)",
+        ),
+      )),// [1]
+      Some((
+        node_id: 0,
+        contents: OutputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [2]
+      Some((
+        node_id: 1,
+        contents: InputPin(
+          label: "interval",
+          kind: Interval,
+        ),
+      )),// [3]
+      Some((
+        node_id: 1,
+        contents: MatrixRow(
+          col_1: "1.0",
+          col_2: "0.0",
+          col_3: "0.0",
+          col_4: "-1.5",
+        ),
+      )),// [4]
+      Some((
+        node_id: 1,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "1.0",
+          col_3: "0.0",
+          col_4: "1",
+        ),
+      )),// [5]
+      Some((
+        node_id: 1,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "0.0",
+          col_3: "1.0",
+          col_4: "0.0",
+        ),
+      )),// [6]
+      Some((
+        node_id: 1,
+        contents: OutputPin(
+          label: "output",
+          kind: Matrix,
+        ),
+      )),// [7]
+      Some((
+        node_id: 2,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [8]
+      Some((
+        node_id: 2,
+        contents: InputPin(
+          label: "matrix",
+          kind: Matrix,
+        ),
+      )),// [9]
+      Some((
+        node_id: 2,
+        contents: OutputPin(
+          label: "output",
+          kind: Geometry,
+        ),
+      )),// [10]
+      Some((
+        node_id: 3,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [11]
+      Some((
+        node_id: 3,
+        contents: IntSlider(
+          label: "thickness:",
+          value: 3,
+          mode: SizeLabels,
+        ),
+      )),// [12]
+      Some((
+        node_id: 3,
+        contents: Mask(
+          selected: 0,
+        ),
+      )),// [13]
+      Some((
+        node_id: 3,
+        contents: Material(
+          selected: 0,
+        ),
+      )),// [14]
+      Some((
+        node_id: 4,
+        contents: PrimitiveKind(
+          selected: 1,
+        ),
+      )),// [15]
+      Some((
+        node_id: 4,
+        contents: Text(
+          label: "size:",
+          string: "sin(t)*cos(s)",
+        ),
+      )),// [16]
+      Some((
+        node_id: 4,
+        contents: OutputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [17]
+      Some((
+        node_id: 5,
+        contents: InputPin(
+          label: "interval",
+          kind: Interval,
+        ),
+      )),// [18]
+      Some((
+        node_id: 5,
+        contents: MatrixRow(
+          col_1: "1.0",
+          col_2: "0.0",
+          col_3: "0.0",
+          col_4: "0",
+        ),
+      )),// [19]
+      Some((
+        node_id: 5,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "1.0",
+          col_3: "0.0",
+          col_4: "1",
+        ),
+      )),// [20]
+      Some((
+        node_id: 5,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "0.0",
+          col_3: "1.0",
+          col_4: "0.0",
+        ),
+      )),// [21]
+      Some((
+        node_id: 5,
+        contents: OutputPin(
+          label: "output",
+          kind: Matrix,
+        ),
+      )),// [22]
+      Some((
+        node_id: 6,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [23]
+      Some((
+        node_id: 6,
+        contents: InputPin(
+          label: "matrix",
+          kind: Matrix,
+        ),
+      )),// [24]
+      Some((
+        node_id: 6,
+        contents: OutputPin(
+          label: "output",
+          kind: Geometry,
+        ),
+      )),// [25]
+      Some((
+        node_id: 7,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [26]
+      Some((
+        node_id: 7,
+        contents: IntSlider(
+          label: "thickness:",
+          value: 3,
+          mode: SizeLabels,
+        ),
+      )),// [27]
+      Some((
+        node_id: 7,
+        contents: Mask(
+          selected: 0,
+        ),
+      )),// [28]
+      Some((
+        node_id: 7,
+        contents: Material(
+          selected: 2,
+        ),
+      )),// [29]
+      Some((
+        node_id: 8,
+        contents: PrimitiveKind(
+          selected: 5,
+        ),
+      )),// [30]
+      Some((
+        node_id: 8,
+        contents: Text(
+          label: "size:",
+          string: "cos(s)",
+        ),
+      )),// [31]
+      Some((
+        node_id: 8,
+        contents: OutputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [32]
+      Some((
+        node_id: 9,
+        contents: InputPin(
+          label: "interval",
+          kind: Interval,
+        ),
+      )),// [33]
+      Some((
+        node_id: 9,
+        contents: MatrixRow(
+          col_1: "1.0",
+          col_2: "0.0",
+          col_3: "0.0",
+          col_4: "1.5",
+        ),
+      )),// [34]
+      Some((
+        node_id: 9,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "1.0",
+          col_3: "0.0",
+          col_4: "-1",
+        ),
+      )),// [35]
+      Some((
+        node_id: 9,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "0.0",
+          col_3: "1.0",
+          col_4: "0.0",
+        ),
+      )),// [36]
+      Some((
+        node_id: 9,
+        contents: OutputPin(
+          label: "output",
+          kind: Matrix,
+        ),
+      )),// [37]
+      Some((
+        node_id: 10,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [38]
+      Some((
+        node_id: 10,
+        contents: InputPin(
+          label: "matrix",
+          kind: Matrix,
+        ),
+      )),// [39]
+      Some((
+        node_id: 10,
+        contents: OutputPin(
+          label: "output",
+          kind: Geometry,
+        ),
+      )),// [40]
+      Some((
+        node_id: 11,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [41]
+      Some((
+        node_id: 11,
+        contents: IntSlider(
+          label: "thickness:",
+          value: 3,
+          mode: SizeLabels,
+        ),
+      )),// [42]
+      Some((
+        node_id: 11,
+        contents: Mask(
+          selected: 0,
+        ),
+      )),// [43]
+      Some((
+        node_id: 11,
+        contents: Material(
+          selected: 5,
+        ),
+      )),// [44]
+      Some((
+        node_id: 12,
+        contents: PrimitiveKind(
+          selected: 4,
+        ),
+      )),// [45]
+      Some((
+        node_id: 12,
+        contents: Text(
+          label: "size:",
+          string: "sin(t)",
+        ),
+      )),// [46]
+      Some((
+        node_id: 12,
+        contents: OutputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [47]
+      Some((
+        node_id: 13,
+        contents: InputPin(
+          label: "interval",
+          kind: Interval,
+        ),
+      )),// [48]
+      Some((
+        node_id: 13,
+        contents: MatrixRow(
+          col_1: "1.0",
+          col_2: "0.0",
+          col_3: "0.0",
+          col_4: "0",
+        ),
+      )),// [49]
+      Some((
+        node_id: 13,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "1.0",
+          col_3: "0.0",
+          col_4: "-1",
+        ),
+      )),// [50]
+      Some((
+        node_id: 13,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "0.0",
+          col_3: "1.0",
+          col_4: "0.0",
+        ),
+      )),// [51]
+      Some((
+        node_id: 13,
+        contents: OutputPin(
+          label: "output",
+          kind: Matrix,
+        ),
+      )),// [52]
+      Some((
+        node_id: 14,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [53]
+      Some((
+        node_id: 14,
+        contents: InputPin(
+          label: "matrix",
+          kind: Matrix,
+        ),
+      )),// [54]
+      Some((
+        node_id: 14,
+        contents: OutputPin(
+          label: "output",
+          kind: Geometry,
+        ),
+      )),// [55]
+      Some((
+        node_id: 15,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [56]
+      Some((
+        node_id: 15,
+        contents: IntSlider(
+          label: "thickness:",
+          value: 3,
+          mode: SizeLabels,
+        ),
+      )),// [57]
+      Some((
+        node_id: 15,
+        contents: Mask(
+          selected: 0,
+        ),
+      )),// [58]
+      Some((
+        node_id: 15,
+        contents: Material(
+          selected: 1,
+        ),
+      )),// [59]
+      Some((
+        node_id: 16,
+        contents: PrimitiveKind(
+          selected: 3,
+        ),
+      )),// [60]
+      Some((
+        node_id: 16,
+        contents: Text(
+          label: "size:",
+          string: "cos(t)*cos(s)",
+        ),
+      )),// [61]
+      Some((
+        node_id: 16,
+        contents: OutputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [62]
+      Some((
+        node_id: 17,
+        contents: InputPin(
+          label: "interval",
+          kind: Interval,
+        ),
+      )),// [63]
+      Some((
+        node_id: 17,
+        contents: MatrixRow(
+          col_1: "1.0",
+          col_2: "0.0",
+          col_3: "0.0",
+          col_4: "-1.5",
+        ),
+      )),// [64]
+      Some((
+        node_id: 17,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "1.0",
+          col_3: "0.0",
+          col_4: "-1",
+        ),
+      )),// [65]
+      Some((
+        node_id: 17,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "0.0",
+          col_3: "1.0",
+          col_4: "0.0",
+        ),
+      )),// [66]
+      Some((
+        node_id: 17,
+        contents: OutputPin(
+          label: "output",
+          kind: Matrix,
+        ),
+      )),// [67]
+      Some((
+        node_id: 18,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [68]
+      Some((
+        node_id: 18,
+        contents: InputPin(
+          label: "matrix",
+          kind: Matrix,
+        ),
+      )),// [69]
+      Some((
+        node_id: 18,
+        contents: OutputPin(
+          label: "output",
+          kind: Geometry,
+        ),
+      )),// [70]
+      Some((
+        node_id: 19,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [71]
+      Some((
+        node_id: 19,
+        contents: IntSlider(
+          label: "thickness:",
+          value: 3,
+          mode: SizeLabels,
+        ),
+      )),// [72]
+      Some((
+        node_id: 19,
+        contents: Mask(
+          selected: 0,
+        ),
+      )),// [73]
+      Some((
+        node_id: 19,
+        contents: Material(
+          selected: 4,
+        ),
+      )),// [74]
+      Some((
+        node_id: 20,
+        contents: PrimitiveKind(
+          selected: 2,
+        ),
+      )),// [75]
+      Some((
+        node_id: 20,
+        contents: Text(
+          label: "size:",
+          string: "cos(t)*sin(s)",
+        ),
+      )),// [76]
+      Some((
+        node_id: 20,
+        contents: OutputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [77]
+      Some((
+        node_id: 21,
+        contents: InputPin(
+          label: "interval",
+          kind: Interval,
+        ),
+      )),// [78]
+      Some((
+        node_id: 21,
+        contents: MatrixRow(
+          col_1: "1.0",
+          col_2: "0.0",
+          col_3: "0.0",
+          col_4: "1.5",
+        ),
+      )),// [79]
+      Some((
+        node_id: 21,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "1.0",
+          col_3: "0.0",
+          col_4: "1",
+        ),
+      )),// [80]
+      Some((
+        node_id: 21,
+        contents: MatrixRow(
+          col_1: "0.0",
+          col_2: "0.0",
+          col_3: "1.0",
+          col_4: "0.0",
+        ),
+      )),// [81]
+      Some((
+        node_id: 21,
+        contents: OutputPin(
+          label: "output",
+          kind: Matrix,
+        ),
+      )),// [82]
+      Some((
+        node_id: 22,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [83]
+      Some((
+        node_id: 22,
+        contents: InputPin(
+          label: "matrix",
+          kind: Matrix,
+        ),
+      )),// [84]
+      Some((
+        node_id: 22,
+        contents: OutputPin(
+          label: "output",
+          kind: Geometry,
+        ),
+      )),// [85]
+      Some((
+        node_id: 23,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [86]
+      Some((
+        node_id: 23,
+        contents: IntSlider(
+          label: "thickness:",
+          value: 3,
+          mode: SizeLabels,
+        ),
+      )),// [87]
+      Some((
+        node_id: 23,
+        contents: Mask(
+          selected: 0,
+        ),
+      )),// [88]
+      Some((
+        node_id: 23,
+        contents: Material(
+          selected: 3,
+        ),
+      )),
+    ],
+    links: {
+      71: 70,
+      26: 25,
+      38: 32,
+      53: 47,
+      84: 82,
+      11: 10,
+      83: 77,
+      41: 40,
+      24: 22,
+      8: 2,
+      56: 55,
+      68: 62,
+      9: 7,
+      86: 85,
+      54: 52,
+      69: 67,
+      23: 17,
+      39: 37,
+    },
+    free_nodes_list: [],
+    free_attributes_list: [],
+  ),
+  globals_names: [
+    "t",// [0]
+    "s",
+  ],
+  globals_init_values: [
+    0.78,// [0]
+    0.78,
+  ],
+))

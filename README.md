@@ -8,9 +8,11 @@ Feature per la release per gli studenti:
 - [x] Cleanup dell'interfaccia
 - [] Settings per la sensività dello zoom su grafo e scena
 - [] Settings per la telecamera - orbit sempre verticale?
-- [] Aggiunta delle primitive mancanti
+- [x] Aggiunta delle primitive mancanti
 - [x] Rimozione dei materiali non strettamente necessari
 - [] Update all'ultima versione di imnodes per i bugfix
+- [] Etichettare gli assi
+- [] Dimensione del piano?
 
 Known bugs & issues:
 - in Debug l'avvio è piuttosto lento; in Release l'avvio è molto più veloce (5 secondi vs 0.5).
