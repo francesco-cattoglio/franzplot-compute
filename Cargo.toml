@@ -45,5 +45,5 @@ cxx-build = "1.0"
 opt-level = 2
 
 [patch.crates-io]
-imgui-wgpu = { git = 'https://github.com/4bb4/imgui-wgpu-rs.git', branch = 'upgrade-to-imgui-rs-0.7' }
-
+imgui-wgpu = { git = 'https://github.com/francesco-cattoglio/imgui-wgpu-rs.git', branch = 'tracking_wgpu_75e77d1' }
+wgpu = { git = 'https://github.com/gfx-rs/wgpu-rs', rev = '75e77d18'}

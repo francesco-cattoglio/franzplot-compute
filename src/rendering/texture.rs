@@ -61,7 +61,7 @@ impl Texture {
                     count: None,
                     visibility: wgpu::ShaderStage::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
-                        multisampled: false,
+                        multisampled: sample_count > 1,
                         sample_type: wgpu::TextureSampleType::Float { filterable: true },
                         view_dimension: wgpu::TextureViewDimension::D2,
                     },

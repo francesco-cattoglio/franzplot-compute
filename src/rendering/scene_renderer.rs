@@ -438,8 +438,10 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
     };
     let color_target_state = wgpu::ColorTargetState {
         format: super::SWAPCHAIN_FORMAT,
-        alpha_blend: wgpu::BlendState::REPLACE,
-        color_blend: wgpu::BlendState::REPLACE,
+        blend: Some(wgpu::BlendState{
+            alpha: wgpu::BlendComponent::REPLACE,
+            color: wgpu::BlendComponent::REPLACE,
+        }),
         write_mask: wgpu::ColorWrite::ALL,
     };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
@@ -454,7 +456,7 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
             topology: wgpu::PrimitiveTopology::LineList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
-            cull_mode: wgpu::CullMode::None,
+            cull_mode: None,
             polygon_mode: wgpu::PolygonMode::Fill,
         },
         fragment: Some(wgpu::FragmentState {
@@ -513,8 +515,10 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
     };
     let color_target_state = wgpu::ColorTargetState {
         format: super::SWAPCHAIN_FORMAT,
-        alpha_blend: wgpu::BlendState::REPLACE,
-        color_blend: wgpu::BlendState::REPLACE,
+        blend: Some(wgpu::BlendState {
+            color: wgpu::BlendComponent::REPLACE,
+            alpha: wgpu::BlendComponent::REPLACE,
+        }),
         write_mask: wgpu::ColorWrite::ALL,
     };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
@@ -529,7 +533,7 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
-            cull_mode: wgpu::CullMode::None,
+            cull_mode: None,
             polygon_mode: wgpu::PolygonMode::Fill,
         },
         fragment: Some(wgpu::FragmentState {
