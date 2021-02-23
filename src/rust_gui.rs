@@ -20,6 +20,8 @@ pub struct Gui {
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
     undo_stack: std::collections::VecDeque<(f64, String)>,
     undo_cursor: usize,
+    pub added_zoom: f32,
+    accumulated_zoom: f32,
     selected_object: Option<BlockId>,
     availables: Availables,
 }
@@ -44,6 +46,8 @@ impl Gui {
             undo_cursor: 0,
             selected_object: None,
             availables,
+            accumulated_zoom: 0.0,
+            added_zoom: 0.0,
         }
     }
 
@@ -155,7 +159,7 @@ impl Gui {
 
                 TabItem::new(im_str!("Settings"))
                     .build(ui, || {
-                        self.render_settings_tab(ui);
+                        self.render_settings_tab(ui, state);
                     });
 
                 tab_bar_token.end(ui);
@@ -217,12 +221,27 @@ impl Gui {
         let io = ui.io();
         let editor_ne_point = ui.cursor_pos();
         let relative_pos = [io.mouse_pos[0] - editor_ne_point[0], io.mouse_pos[1] - editor_ne_point[1]];
-        if io.mouse_wheel < 0.0 {
-            state.user.graph.zoom_down_graph(relative_pos);
+        // detect if the mouse is in the correct area for zoom interaction
+        let enable_zoom_interaction: bool = ui.is_mouse_hovering_rect(ui.cursor_pos(), ui.content_region_max());
+        if enable_zoom_interaction {
+            // handling of graph zoom is a bit tricky because the mouse wheel is continuous but
+            // the zoom levels are discretized. first, add the zoom delta for the current frame
+            self.accumulated_zoom += self.added_zoom;
+            // then check if the accumulated zoom passed a given threshold, and if it did
+            // then we zoom up/down the graph and reset the accumulated value.
+            // This prevents us from jumping across multiple levels in a single zoom action, which is
+            // good because a single mouse wheel scroll can report a huge delta.
+            if self.accumulated_zoom < -1.0 {
+                state.user.graph.zoom_down_graph(relative_pos);
+                self.accumulated_zoom = 0.0;
+            }
+            if self.accumulated_zoom > 1.0 {
+                state.user.graph.zoom_up_graph(relative_pos);
+                self.accumulated_zoom = 0.0;
+            }
         }
-        if io.mouse_wheel > 0.0 {
-            state.user.graph.zoom_up_graph(relative_pos);
-        }
+        // regardless of interaction, reset the added_zoom variable
+        self.added_zoom = 0.0;
         // run the rendering
         let requested_savestate = state.user.graph.render(ui, &self.availables, &self.graph_fonts);
 
@@ -312,7 +331,30 @@ impl Gui {
         }
     }
 
-    fn render_settings_tab(&self, ui: &Ui<'_>) {
-        ui.text(im_str!("Setting will appear on this tab"));
+    fn render_settings_tab(&self, ui: &Ui<'_>, state: &mut State) {
+        let sensitivity = &mut state.app.sensitivity;
+        ui.text(im_str!("Zoom sensitivity"));
+        let width_token = ui.push_item_width(120.0);
+        imgui::Slider::new(im_str!("mouse zoom speed for graph"))
+            .range(0.1 ..= 2.0)
+            .display_format(im_str!("%.2f"))
+            .flags(SliderFlags::NO_INPUT)
+            .build(ui, &mut sensitivity.mouse_zoom_graph);
+        imgui::Slider::new(im_str!("mouse zoom speed for scene"))
+            .range(0.1 ..= 2.0)
+            .display_format(im_str!("%.2f"))
+            .flags(SliderFlags::NO_INPUT)
+            .build(ui, &mut sensitivity.mouse_zoom_scene);
+        imgui::Slider::new(im_str!("touchpad zoom speed for graph"))
+            .range(0.1 ..= 2.0)
+            .display_format(im_str!("%.2f"))
+            .flags(SliderFlags::NO_INPUT)
+            .build(ui, &mut sensitivity.touch_zoom_graph);
+        imgui::Slider::new(im_str!("touchpad zoom speed for scene"))
+            .range(0.1 ..= 2.0)
+            .display_format(im_str!("%.2f"))
+            .flags(SliderFlags::NO_INPUT)
+            .build(ui, &mut sensitivity.touch_zoom_scene);
+        width_token.pop(ui);
     }
 }

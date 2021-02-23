@@ -51,11 +51,6 @@ impl UserState {
 
     }
 
-    pub fn write_to_json(&self, path: &std::path::PathBuf) {
-        let file = std::fs::File::create(path).unwrap();
-        serde_json::to_writer_pretty(file, &self).unwrap();
-    }
-
     pub fn read_from_frzp(&mut self, path: &std::path::PathBuf) {
         let mut file = std::fs::File::open(path).unwrap();
         let mut contents = String::new();
@@ -76,6 +71,24 @@ pub struct Assets {
     pub models: Vec<Model>,
 }
 
+pub struct Sensitivity {
+    pub mouse_zoom_graph: f32,
+    pub mouse_zoom_scene: f32,
+    pub touch_zoom_graph: f32,
+    pub touch_zoom_scene: f32,
+}
+
+impl Default for Sensitivity {
+    fn default() -> Self {
+        Sensitivity {
+            mouse_zoom_graph: 1.0,
+            mouse_zoom_scene: 0.8,
+            touch_zoom_graph: 0.8,
+            touch_zoom_scene: 1.0,
+        }
+    }
+}
+
 pub struct AppState {
     pub camera_controller: Box<dyn camera::Controller>,
     pub camera_enabled: bool,
@@ -83,6 +96,7 @@ pub struct AppState {
     pub assets: Assets,
     pub manager: Manager,
     pub computable_scene: ComputableScene,
+    pub sensitivity: Sensitivity,
 }
 
 impl AppState {
@@ -136,7 +150,8 @@ impl State {
             camera,
             camera_enabled: false,
             camera_controller,
-            manager
+            manager,
+            sensitivity: Sensitivity::default(),
         };
 
         Self {

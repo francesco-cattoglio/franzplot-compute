@@ -60,20 +60,20 @@ pub struct InputState {
     pub mouse_right_click: bool,
     pub mouse_left_click: bool,
     pub mouse_motion: (f64, f64),
-    pub mouse_wheel: MouseScrollDelta,
+    pub mouse_wheel: f32,
 }
 
 impl InputState {
     pub fn reset_deltas(&mut self) {
         self.mouse_motion = (0.0, 0.0);
-        self.mouse_wheel = MouseScrollDelta::LineDelta(0.0, 0.0);
+        self.mouse_wheel = 0.0;
     }
 }
 
 impl Default for InputState {
     fn default() -> Self {
         InputState {
-            mouse_wheel: MouseScrollDelta::LineDelta(0.0, 0.0),
+            mouse_wheel: 0.0,
             forward: false,
             back: false,
             up: false,
@@ -115,16 +115,9 @@ impl Controller for VTKController {
         let relative_pos = camera.eye - camera.target;
         let mut distance = relative_pos.length();
         let mut pos_on_sphere = relative_pos.normalize();
-        match inputs.mouse_wheel {
-            MouseScrollDelta::LineDelta(_x, y) => {
-                distance += y * self.sensitivity_zoom;
-                distance = distance.max(self.min_distance);
-            },
-            MouseScrollDelta::PixelDelta(physical_position) => {
-                distance += physical_position.y as f32 * self.sensitivity_zoom;
-                distance = distance.max(self.min_distance);
-            }
-        }
+        distance += inputs.mouse_wheel;
+        distance = distance.max(self.min_distance);
+
         if inputs.mouse_left_click {
             let x_delta = inputs.mouse_motion.0 as f32 * self.sensitivity_horizontal;
             let y_delta = inputs.mouse_motion.1 as f32 * self.sensitivity_vertical;

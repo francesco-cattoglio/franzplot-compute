@@ -467,7 +467,9 @@ fn main() {
                         camera_inputs.mouse_motion = delta;
                     }
                     Event::DeviceEvent{ event: DeviceEvent::MouseWheel { delta }, ..} => {
-                        camera_inputs.mouse_wheel = delta;
+                        let sensitivity = &state.app.sensitivity;
+                        camera_inputs.mouse_wheel = util::compute_scene_zoom(delta, sensitivity.mouse_zoom_scene, sensitivity.touch_zoom_scene);
+                        rust_gui.added_zoom = util::compute_graph_zoom(delta, sensitivity.mouse_zoom_graph, sensitivity.touch_zoom_graph);
                     }
                     Event::WindowEvent{ event: WindowEvent::MouseInput { state, button, .. }, ..} => {
                         let pressed = state == ElementState::Pressed;
