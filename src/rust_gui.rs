@@ -355,6 +355,18 @@ impl Gui {
             .display_format(im_str!("%.2f"))
             .flags(SliderFlags::NO_INPUT)
             .build(ui, &mut sensitivity.touch_zoom_scene);
+        ui.text(im_str!("Camera settings"));
+        ui.checkbox(im_str!("lock camera to vertical position"), &mut state.app.camera_lock_up);
+        imgui::Slider::new(im_str!("horizontal sensitivity"))
+            .range(0.1 ..= 2.0)
+            .display_format(im_str!("%.2f"))
+            .flags(SliderFlags::NO_INPUT)
+            .build(ui, &mut sensitivity.camera_horizontal);
+        imgui::Slider::new(im_str!("vertical sensitivity"))
+            .range(0.1 ..= 2.0)
+            .display_format(im_str!("%.2f"))
+            .flags(SliderFlags::NO_INPUT)
+            .build(ui, &mut sensitivity.camera_vertical);
         width_token.pop(ui);
     }
 }

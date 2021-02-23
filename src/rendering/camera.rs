@@ -1,5 +1,6 @@
 use glam::{Vec3, Mat4};
 use winit::event::*;
+use crate::state::Sensitivity;
 
 #[derive(Debug)]
 pub struct Camera {
@@ -88,30 +89,26 @@ impl Default for InputState {
 }
 
 pub trait Controller {
-    fn update_camera(&self, camera: &mut Camera, inputs: &InputState);
+    // TODO: when we introduce more than 1 kind of controllers, we might need
+    // to change the signature and remove the "lock_z_up" boolean
+    fn update_camera(&self, camera: &mut Camera, inputs: &InputState, sensitivity: &Sensitivity, lock_z_up: bool);
 }
 
 #[derive(Debug)]
 pub struct VTKController {
-    sensitivity_vertical: f32,
-    sensitivity_horizontal: f32,
-    sensitivity_zoom: f32,
     min_distance: f32,
 }
 
 impl VTKController {
-    pub fn new(sensitivity_vertical: f32, sensitivity_horizontal: f32, sensitivity_zoom: f32) -> Self {
+    pub fn new() -> Self {
         Self {
-            sensitivity_horizontal,
-            sensitivity_vertical,
-            sensitivity_zoom,
-            min_distance: 0.25,
+            min_distance: 0.20,
         }
     }
 }
 
 impl Controller for VTKController {
-    fn update_camera(&self, camera: &mut Camera, inputs: &InputState) {
+    fn update_camera(&self, camera: &mut Camera, inputs: &InputState, sensitivity: &Sensitivity, lock_z_up: bool) {
         let relative_pos = camera.eye - camera.target;
         let mut distance = relative_pos.length();
         let mut pos_on_sphere = relative_pos.normalize();
@@ -119,8 +116,9 @@ impl Controller for VTKController {
         distance = distance.max(self.min_distance);
 
         if inputs.mouse_left_click {
-            let x_delta = inputs.mouse_motion.0 as f32 * self.sensitivity_horizontal;
-            let y_delta = inputs.mouse_motion.1 as f32 * self.sensitivity_vertical;
+            let coeff = 0.02;
+            let x_delta = inputs.mouse_motion.0 as f32 * coeff * sensitivity.camera_horizontal;
+            let y_delta = inputs.mouse_motion.1 as f32 * coeff * sensitivity.camera_vertical;
             let camera_right = camera.up.cross(pos_on_sphere.normalize());
             // we want to render the effect of the object rotating the same way
             // the mouse moves. For this reason, we need to rotate the camera
@@ -130,7 +128,11 @@ impl Controller for VTKController {
             let position_delta =  y_delta * camera.up - x_delta * camera_right;
             // for small angles, sin(theta) = theta!
             pos_on_sphere = (pos_on_sphere + position_delta).normalize();
-            camera.up = camera_right.cross(-pos_on_sphere).normalize();
+            if lock_z_up {
+                camera.up = Vec3::unit_z();
+            } else {
+                camera.up = camera_right.cross(-pos_on_sphere).normalize();
+            }
         }
         camera.eye = pos_on_sphere * distance;
     }
