@@ -297,6 +297,27 @@ impl ComputeBlock {
                 let matrix_descriptor = MatrixBlockDescriptor::new_from_rotation(axis, angle);
                 matrix_descriptor.make_block(device, globals, processed_blocks)
             },
+            NodeContents::TranslationMatrix {
+                vector, ..
+            } => {
+                let maybe_id = graph.get_attribute_as_linked_node(vector);
+                let node_id = match maybe_id {
+                    Some(id) => id,
+                    None => return Err(BlockCreationError::InputMissing(" this Translation Matrix node \n is missing the vector input ")),
+                };
+                let vector_node = graph.get_node(node_id).unwrap();
+                match vector_node.contents {
+                    NodeContents::Vector { x, y, z, .. } => {
+                        let x = graph.get_attribute_as_string(x).unwrap();
+                        let y = graph.get_attribute_as_string(y).unwrap();
+                        let z = graph.get_attribute_as_string(z).unwrap();
+
+                        let matrix_descriptor = MatrixBlockDescriptor::new_from_translation(x, y, z);
+                        matrix_descriptor.make_block(device, globals, processed_blocks)
+                    },
+                    _ => Err(BlockCreationError::InputInvalid(" the input is not a vector node "))
+                }
+            },
             NodeContents::Rendering {
                 geometry, thickness, mask, material,
             } => {

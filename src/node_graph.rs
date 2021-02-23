@@ -471,6 +471,10 @@ pub enum NodeContents {
         angle: AttributeID,
         output: AttributeID,
     },
+    TranslationMatrix {
+        vector: AttributeID,
+        output: AttributeID,
+    },
     Rendering {
         geometry: AttributeID,
         thickness: AttributeID,
@@ -503,6 +507,7 @@ impl NodeContents {
             NodeContents::Plane {..} => Self::default_plane(),
             NodeContents::Matrix {..} => Self::default_matrix(),
             NodeContents::RotationMatrix {..} => Self::default_rotation_matrix(),
+            NodeContents::TranslationMatrix {..} => Self::default_translation_matrix(),
             NodeContents::Transform {..} => Self::default_transform(),
             NodeContents::Rendering {..} => Self::default_rendering(),
             NodeContents::VectorRendering {..} => Self::default_vector_rendering(),
@@ -564,6 +569,11 @@ impl NodeContents {
                 axis, angle, output,
             } => {
                 vec![axis, angle, output,]
+            },
+            NodeContents::TranslationMatrix {
+                vector, output,
+            } => {
+                vec![vector, output,]
             },
             NodeContents::Rendering {
                 geometry, thickness, mask, material,
@@ -639,6 +649,11 @@ impl NodeContents {
                 axis, angle, output,
             } => {
                 vec![axis, angle, output,]
+            },
+            NodeContents::TranslationMatrix {
+                vector, output,
+            } => {
+                vec![vector, output,]
             },
             NodeContents::Rendering {
                 geometry, thickness, mask, material,
@@ -768,6 +783,15 @@ impl NodeContents {
 
     // NOTE: if you modify this function, also modify the order in which we return
     // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_translation_matrix() -> Self {
+        NodeContents::TranslationMatrix {
+            vector: 0,
+            output: 1,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
     pub fn default_transform() -> Self {
         NodeContents::Transform {
             geometry: 0,
@@ -815,7 +839,7 @@ pub struct Node {
     pub title: String,
     position: [f32; 2],
     error: Option<GraphError>,
-    contents: NodeContents,
+    pub contents: NodeContents, // TODO: made this public to implement the translation matrix more easily. change back to private
 }
 
 impl Node {
@@ -1238,6 +1262,10 @@ impl NodeGraph {
                 }
                 if MenuItem::new(im_str!("Rotation Matrix")).build(ui) {
                     self.add_rotation_matrix_node(node_pos);
+                    request_savestate = Some(ui.time());
+                }
+                if MenuItem::new(im_str!("Translation Matrix")).build(ui) {
+                    self.add_translation_matrix_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
             }); // Transformations menu ends here
@@ -1872,7 +1900,8 @@ impl NodeGraph {
     pub fn add_primitive_node(&mut self, position: [f32; 2]) -> NodeID {
         let attributes_contents = vec![
             AttributeContents::PrimitiveKind {
-                selected: 0,
+                // due to alphabetical order of primitives, cube is selection number 1
+                selected: 1,
             },
             AttributeContents::Text {
                 label: String::from("size:"),
@@ -1955,6 +1984,21 @@ impl NodeGraph {
         ];
         let node_contents = NodeContents::default_rotation_matrix();
         self.insert_node("Rotation Matrix".into(), position, node_contents, attributes_contents)
+    }
+
+    pub fn add_translation_matrix_node(&mut self, position: [f32; 2]) -> NodeID {
+        let attributes_contents = vec![
+            AttributeContents::InputPin {
+                label: String::from("vector"),
+                kind: DataKind::Vector,
+            },
+            AttributeContents::OutputPin {
+                label: String::from("output"),
+                kind: DataKind::Matrix,
+            },
+        ];
+        let node_contents = NodeContents::default_translation_matrix();
+        self.insert_node("Translation Matrix".into(), position, node_contents, attributes_contents)
     }
 
 }

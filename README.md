@@ -13,10 +13,14 @@ Feature per la release per gli studenti:
 - [] Update all'ultima versione di imnodes per i bugfix
 - [] Etichettare gli assi
 - [] Dimensione del piano?
-- [] Nodi prefab per matrici di rotazione e traslazione
+- [x] Nodi prefab per matrici di rotazione e traslazione
 
 Known bugs & issues:
 - in Debug l'avvio è piuttosto lento; in Release l'avvio è molto più veloce (5 secondi vs 0.5).
+- la Translation Matrix è stata implementata con un metodo quick&dirt, qualora si decidesse di
+  aggiungere la possibilità di operare sui vettori in qualsiasi maniera (ad es, applicargli trasformazioni
+  o calcolarli come sottrazione di due punti), sarà necessario re-implementarla usando un nuovo tipo di
+  compute block.
 
 Features a data da destinarsi:
 - implementazione della visualizzazione delle curve u-v sulle superfici

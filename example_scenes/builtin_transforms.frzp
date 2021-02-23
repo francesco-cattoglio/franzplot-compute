@@ -1,0 +1,275 @@
+//// FRANZPLOT DATA FILE V0 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.01 or higher
+
+V0((
+  graph: (
+    nodes: [
+      Some((
+        title: "Primitive",
+        position: (
+          45,
+          5,
+        ),
+        error: None,
+        contents: Primitive(
+          primitive: 0,
+          size: 1,
+          output: 2,
+        ),
+      )),// [0]
+      Some((
+        title: "Translation Matrix",
+        position: (
+          219,
+          242,
+        ),
+        error: None,
+        contents: TranslationMatrix(
+          vector: 3,
+          output: 4,
+        ),
+      )),// [1]
+      Some((
+        title: "Vector",
+        position: (
+          66,
+          236,
+        ),
+        error: None,
+        contents: Vector(
+          x: 5,
+          y: 6,
+          z: 7,
+          output: 8,
+        ),
+      )),// [2]
+      Some((
+        title: "Transform",
+        position: (
+          382,
+          125,
+        ),
+        error: None,
+        contents: Transform(
+          geometry: 9,
+          matrix: 10,
+          output: 11,
+        ),
+      )),// [3]
+      Some((
+        title: "Rendering",
+        position: (
+          484,
+          121,
+        ),
+        error: None,
+        contents: Rendering(
+          geometry: 12,
+          thickness: 13,
+          mask: 14,
+          material: 15,
+        ),
+      )),// [4]
+      Some((
+        title: "Rotation Matrix",
+        position: (
+          48,
+          107,
+        ),
+        error: None,
+        contents: RotationMatrix(
+          axis: 16,
+          angle: 17,
+          output: 18,
+        ),
+      )),// [5]
+      Some((
+        title: "Transform",
+        position: (
+          236,
+          20,
+        ),
+        error: None,
+        contents: Transform(
+          geometry: 19,
+          matrix: 20,
+          output: 21,
+        ),
+      )),
+    ],
+    attributes: [
+      Some((
+        node_id: 0,
+        contents: PrimitiveKind(
+          selected: 1,
+        ),
+      )),// [0]
+      Some((
+        node_id: 0,
+        contents: Text(
+          label: "size:",
+          string: "1.0",
+        ),
+      )),// [1]
+      Some((
+        node_id: 0,
+        contents: OutputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [2]
+      Some((
+        node_id: 1,
+        contents: InputPin(
+          label: "vector",
+          kind: Vector,
+        ),
+      )),// [3]
+      Some((
+        node_id: 1,
+        contents: OutputPin(
+          label: "output",
+          kind: Matrix,
+        ),
+      )),// [4]
+      Some((
+        node_id: 2,
+        contents: Text(
+          label: "x",
+          string: "cos(t)",
+        ),
+      )),// [5]
+      Some((
+        node_id: 2,
+        contents: Text(
+          label: "y",
+          string: "sin(t)",
+        ),
+      )),// [6]
+      Some((
+        node_id: 2,
+        contents: Text(
+          label: "z",
+          string: "0.0",
+        ),
+      )),// [7]
+      Some((
+        node_id: 2,
+        contents: OutputPin(
+          label: "vector",
+          kind: Vector,
+        ),
+      )),// [8]
+      Some((
+        node_id: 3,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [9]
+      Some((
+        node_id: 3,
+        contents: InputPin(
+          label: "matrix",
+          kind: Matrix,
+        ),
+      )),// [10]
+      Some((
+        node_id: 3,
+        contents: OutputPin(
+          label: "output",
+          kind: Geometry,
+        ),
+      )),// [11]
+      Some((
+        node_id: 4,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [12]
+      Some((
+        node_id: 4,
+        contents: IntSlider(
+          label: "thickness:",
+          value: 3,
+          mode: SizeLabels,
+        ),
+      )),// [13]
+      Some((
+        node_id: 4,
+        contents: Mask(
+          selected: 0,
+        ),
+      )),// [14]
+      Some((
+        node_id: 4,
+        contents: Material(
+          selected: 0,
+        ),
+      )),// [15]
+      Some((
+        node_id: 5,
+        contents: AxisSelect(
+          axis: Z,
+        ),
+      )),// [16]
+      Some((
+        node_id: 5,
+        contents: Text(
+          label: "angle",
+          string: "s",
+        ),
+      )),// [17]
+      Some((
+        node_id: 5,
+        contents: OutputPin(
+          label: "output",
+          kind: Matrix,
+        ),
+      )),// [18]
+      Some((
+        node_id: 6,
+        contents: InputPin(
+          label: "geometry",
+          kind: Geometry,
+        ),
+      )),// [19]
+      Some((
+        node_id: 6,
+        contents: InputPin(
+          label: "matrix",
+          kind: Matrix,
+        ),
+      )),// [20]
+      Some((
+        node_id: 6,
+        contents: OutputPin(
+          label: "output",
+          kind: Geometry,
+        ),
+      )),
+    ],
+    links: {
+      12: 11,
+      19: 2,
+      10: 4,
+      3: 8,
+      20: 18,
+      9: 21,
+    },
+    free_nodes_list: [],
+    free_attributes_list: [],
+  ),
+  globals_names: [
+    "t",// [0]
+    "s",
+  ],
+  globals_init_values: [
+    0,// [0]
+    0,
+  ],
+))

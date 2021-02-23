@@ -47,6 +47,18 @@ impl MatrixBlockDescriptor {
             row_3,
         }
     }
+
+    pub fn new_from_translation(x: String, y: String, z: String) -> Self {
+        let row_1 = ["1.0".into(), "0.0".into(), "0.0".into(), x];
+        let row_2 = ["0.0".into(), "1.0".into(), "0.0".into(), y];
+        let row_3 = ["0.0".into(), "0.0".into(), "1.0".into(), z];
+        Self {
+            interval: None,
+            row_1,
+            row_2,
+            row_3,
+        }
+    }
 }
 
 impl Default for MatrixBlockDescriptor {
