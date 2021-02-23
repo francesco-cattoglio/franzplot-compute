@@ -7,7 +7,7 @@ Tutte le feature necessarie per un uso di base del software sono state implement
 Feature per la release per gli studenti:
 - [x] Cleanup dell'interfaccia
 - [x] Settings per la sensività dello zoom su grafo e scena
-- [] Settings per la telecamera - orbit sempre verticale?
+- [x] Settings per la telecamera - orbit sempre verticale?
 - [x] Aggiunta delle primitive mancanti
 - [x] Rimozione dei materiali non strettamente necessari
 - [] Update all'ultima versione di imnodes per i bugfix

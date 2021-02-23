@@ -56,6 +56,13 @@ pub enum SliderMode {
     SizeLabels,
 }
 
+#[derive(Copy, Clone, Deserialize, Serialize)]
+pub enum Axis {
+    X,
+    Y,
+    Z,
+}
+
 #[derive(Clone, Deserialize, Serialize)]
 pub enum AttributeContents {
     InputPin {
@@ -80,6 +87,9 @@ pub enum AttributeContents {
         col_2: String,
         col_3: String,
         col_4: String,
+    },
+    AxisSelect {
+        axis: Axis,
     },
     Color {
         label: String,
@@ -141,6 +151,33 @@ impl Attribute {
                     .resize_buffer(true)
                     .build();
                 *string = imstring.to_string();
+                imnodes::EndStaticAttribute();
+                value_changed
+            },
+            AttributeContents::AxisSelect {
+                axis
+            } => {
+                let widget_width = 8.5 * char_w;
+
+                imnodes::BeginStaticAttribute(id);
+
+                ui.text(im_str!(" axis"));
+                ui.same_line(0.0);
+                ui.set_next_item_width(widget_width);
+                let choices = vec!(im_str!("X"), im_str!("Y"), im_str!("Z"));
+                let mut selected = match axis {
+                    Axis::X => 0,
+                    Axis::Y => 1,
+                    Axis::Z => 2,
+                };
+                let value_changed = ComboBox::new(im_str!("##axis"))
+                    .build_simple_string(ui, &mut selected, &choices);
+                *axis = match selected {
+                    0 => Axis::X,
+                    1 => Axis::Y,
+                    2 => Axis::Z,
+                    _ => panic!()
+                };
                 imnodes::EndStaticAttribute();
                 value_changed
             },
@@ -429,6 +466,11 @@ pub enum NodeContents {
         row_3: AttributeID,
         output: AttributeID,
     },
+    RotationMatrix {
+        axis: AttributeID,
+        angle: AttributeID,
+        output: AttributeID,
+    },
     Rendering {
         geometry: AttributeID,
         thickness: AttributeID,
@@ -460,6 +502,7 @@ impl NodeContents {
             NodeContents::Surface {..} => Self::default_surface(),
             NodeContents::Plane {..} => Self::default_plane(),
             NodeContents::Matrix {..} => Self::default_matrix(),
+            NodeContents::RotationMatrix {..} => Self::default_rotation_matrix(),
             NodeContents::Transform {..} => Self::default_transform(),
             NodeContents::Rendering {..} => Self::default_rendering(),
             NodeContents::VectorRendering {..} => Self::default_vector_rendering(),
@@ -516,6 +559,11 @@ impl NodeContents {
                 interval, row_1, row_2, row_3, output,
             } => {
                 vec![interval, row_1, row_2, row_3, output,]
+            },
+            NodeContents::RotationMatrix {
+                axis, angle, output,
+            } => {
+                vec![axis, angle, output,]
             },
             NodeContents::Rendering {
                 geometry, thickness, mask, material,
@@ -586,6 +634,11 @@ impl NodeContents {
                 interval, row_1, row_2, row_3, output,
             } => {
                 vec![interval, row_1, row_2, row_3, output,]
+            },
+            NodeContents::RotationMatrix {
+                axis, angle, output,
+            } => {
+                vec![axis, angle, output,]
             },
             NodeContents::Rendering {
                 geometry, thickness, mask, material,
@@ -700,6 +753,16 @@ impl NodeContents {
             row_2: 2,
             row_3: 3,
             output: 4,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_rotation_matrix() -> Self {
+        NodeContents::RotationMatrix {
+            axis: 0,
+            angle: 1,
+            output: 2,
         }
     }
 
@@ -1165,12 +1228,16 @@ impl NodeGraph {
             }); // Geometries menu ends here
 
             ui.menu(im_str!("Transformations"), true, || {
+                if MenuItem::new(im_str!("Transform")).build(ui) {
+                    self.add_transform_node(node_pos);
+                    request_savestate = Some(ui.time());
+                }
                 if MenuItem::new(im_str!("Matrix")).build(ui) {
                     self.add_matrix_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("Transform")).build(ui) {
-                    self.add_transform_node(node_pos);
+                if MenuItem::new(im_str!("Rotation Matrix")).build(ui) {
+                    self.add_rotation_matrix_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
             }); // Transformations menu ends here
@@ -1456,6 +1523,19 @@ impl NodeGraph {
                 col_3.to_string(),
                 col_4.to_string(),
             ])
+        } else {
+            None
+        }
+    }
+
+    pub fn get_attribute_as_axis(&self, attribute_id: AttributeID) -> Option<Axis> {
+        // first, we need to check if the attribute_id actually exists in our attributes map
+        let attribute_slot = self.attributes.get(attribute_id as usize)?;
+        // then, if the slot is here, we need to check if something is in the slot.
+        let attribute = attribute_slot.as_ref()?;
+        // if it exists, then we need to check if it is a MatrixRow attribute.
+        if let AttributeContents::AxisSelect{ axis } = attribute.contents {
+            Some(axis)
         } else {
             None
         }
@@ -1857,6 +1937,24 @@ impl NodeGraph {
         ];
         let node_contents = NodeContents::default_matrix();
         self.insert_node("Matrix".into(), position, node_contents, attributes_contents)
+    }
+
+    pub fn add_rotation_matrix_node(&mut self, position: [f32; 2]) -> NodeID {
+        let attributes_contents = vec![
+            AttributeContents::AxisSelect {
+                axis: Axis::X,
+            },
+            AttributeContents::Text {
+                label: String::from("angle"),
+                string: String::from("0.0"),
+            },
+            AttributeContents::OutputPin {
+                label: String::from("output"),
+                kind: DataKind::Matrix,
+            },
+        ];
+        let node_contents = NodeContents::default_rotation_matrix();
+        self.insert_node("Rotation Matrix".into(), position, node_contents, attributes_contents)
     }
 
 }

@@ -289,6 +289,14 @@ impl ComputeBlock {
                 };
                 matrix_descriptor.make_block(device, globals, processed_blocks)
             },
+            NodeContents::RotationMatrix {
+                axis, angle, ..
+            } => {
+                let axis = graph.get_attribute_as_axis(axis).unwrap();
+                let angle = graph.get_attribute_as_string(angle).unwrap();
+                let matrix_descriptor = MatrixBlockDescriptor::new_from_rotation(axis, angle);
+                matrix_descriptor.make_block(device, globals, processed_blocks)
+            },
             NodeContents::Rendering {
                 geometry, thickness, mask, material,
             } => {

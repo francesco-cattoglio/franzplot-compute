@@ -5,6 +5,7 @@ use super::BlockId;
 use super::BlockCreationError;
 use super::{ProcessedMap, ProcessingResult};
 use super::Dimensions;
+use crate::node_graph::Axis;
 
 #[derive(Debug)]
 pub struct MatrixBlockDescriptor {
@@ -17,6 +18,34 @@ pub struct MatrixBlockDescriptor {
 impl MatrixBlockDescriptor {
     pub fn make_block(self, device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap) -> ProcessingResult {
         Ok(ComputeBlock::Matrix(MatrixData::new(device, globals, processed_blocks, self)?))
+    }
+
+    pub fn new_from_rotation(axis: Axis, angle: String) -> Self {
+        // we need to write down a different matrix depending on what rotation axis we have
+        let (row_1, row_2, row_3);
+        match axis {
+            Axis::X => {
+                row_1 = ["1.0".into(),               "0.0".into(),                "0.0".into(), "0.0".into()];
+                row_2 = ["0.0".into(), format!("cos({})", &angle), format!("-sin({})", &angle), "0.0".into()];
+                row_3 = ["0.0".into(), format!("sin({})", &angle),  format!("cos({})", &angle), "0.0".into()];
+            },
+            Axis::Y => {
+                row_1 = [ format!("cos({})", &angle), "0.0".into(), format!("sin({})", &angle), "0.0".into()];
+                row_2 = [               "0.0".into(), "1.0".into(),               "0.0".into(), "0.0".into()];
+                row_3 = [format!("-sin({})", &angle), "0.0".into(), format!("cos({})", &angle), "0.0".into()];
+            },
+            Axis::Z => {
+                row_1 = [format!("cos({})", &angle), format!("-sin({})", &angle), "0.0".into(), "0.0".into()];
+                row_2 = [format!("sin({})", &angle),  format!("cos({})", &angle), "0.0".into(), "0.0".into()];
+                row_3 = [              "0.0".into(),                "0.0".into(), "1.0".into(), "0.0".into()];
+            },
+        }
+        Self {
+            interval: None,
+            row_1,
+            row_2,
+            row_3,
+        }
     }
 }
 
