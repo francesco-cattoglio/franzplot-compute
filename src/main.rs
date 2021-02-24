@@ -244,6 +244,7 @@ fn main() {
 
     let masks = util::load_masks(&device_manager, &mask_files);
     let materials = util::load_materials(&device_manager, &material_files);
+    assert!(materials.len() > 0, "Error while loading resources: could not load any material.");
 
     // do the same for models
     let mut models_dir = resources_path.clone();
@@ -271,8 +272,7 @@ fn main() {
     model_files.sort();
     let models = util::load_models(&device_manager.device, &model_files);
     let model_names = util::imgui_model_names(&model_files);
-    dbg!(model_names.len());
-    dbg!(models.len());
+    assert!(models.len() > 0, "Error while loading resources: could not load any model.");
 
     let assets = state::Assets {
         materials,
