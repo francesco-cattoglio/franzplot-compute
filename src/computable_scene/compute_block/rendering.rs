@@ -1,3 +1,4 @@
+use crate::computable_scene::globals::Globals;
 use crate::rendering::{StandardVertexData, GLSL_STANDARD_VERTEX_STRUCT};
 use crate::node_graph::AVAILABLE_SIZES;
 use crate::rendering::model::{ Model, MODEL_CHUNK_VERTICES };
@@ -15,8 +16,8 @@ pub struct RenderingBlockDescriptor {
     pub material: usize,
 }
 impl RenderingBlockDescriptor {
-    pub fn make_block(self, device: &wgpu::Device, models: &[Model], processed_blocks: &ProcessedMap) -> ProcessingResult {
-        Ok(ComputeBlock::Rendering(RenderingData::new(device, models, processed_blocks, self)?))
+    pub fn make_block(self, device: &wgpu::Device, globals: &Globals, models: &[Model], processed_blocks: &ProcessedMap) -> ProcessingResult {
+        Ok(ComputeBlock::Rendering(RenderingData::new(device, globals, models, processed_blocks, self)?))
     }
 }
 
@@ -35,42 +36,42 @@ impl RenderingData {
     // TODO: the only data we are extracting from models right now is index buffer count, we can
     // remove it and just forward the prefab_id to the scene renderer and let it handle it the same
     // way it handles the index_buffer
-    pub fn new(device: &wgpu::Device, models: &[Model], processed_blocks: &ProcessedMap, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, globals: &Globals, models: &[Model], processed_blocks: &ProcessedMap, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
         let input_id = descriptor.geometry.ok_or(BlockCreationError::InputMissing(" This Renderer node \n has no input "))?;
         let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Renderer input does not exist in the block map"))?;
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         match input_block {
             ComputeBlock::Point(point_data) => {
-                Self::setup_0d_geometry(device, &point_data.out_buffer, descriptor)
+                Self::setup_0d_geometry(device, globals, &point_data.out_buffer, descriptor)
             }
             ComputeBlock::Bezier(bezier_data) => {
-                Self::setup_1d_geometry(device, &bezier_data.out_buffer, &bezier_data.out_dim, descriptor)
+                Self::setup_1d_geometry(device, globals, &bezier_data.out_buffer, &bezier_data.out_dim, descriptor)
             }
             ComputeBlock::Curve(curve_data) => {
-                Self::setup_1d_geometry(device, &curve_data.out_buffer, &curve_data.out_dim, descriptor)
+                Self::setup_1d_geometry(device, globals, &curve_data.out_buffer, &curve_data.out_dim, descriptor)
             }
             ComputeBlock::Surface(surface_data) => {
-                Self::setup_2d_geometry(device, &surface_data.out_buffer, &surface_data.out_dim, descriptor)
+                Self::setup_2d_geometry(device, globals, &surface_data.out_buffer, &surface_data.out_dim, descriptor)
             }
             ComputeBlock::Prefab(prefab_data) => {
-                Self::setup_3d_geometry(device, models, &prefab_data.out_buffer, &prefab_data.out_dim, descriptor)
+                Self::setup_3d_geometry(device, globals, models, &prefab_data.out_buffer, &prefab_data.out_dim, descriptor)
             }
             ComputeBlock::Transform(transformed_data) => {
                 let buffer = &transformed_data.out_buffer;
                 let dimensions = &transformed_data.out_dim;
                 match dimensions {
-                    Dimensions::D0 => Self::setup_0d_geometry(device, buffer, descriptor),
-                    Dimensions::D1(_) => Self::setup_1d_geometry(device, buffer, dimensions, descriptor),
-                    Dimensions::D2(_, _) => Self::setup_2d_geometry(device, buffer, dimensions, descriptor),
-                    Dimensions::D3(_, _) => Self::setup_3d_geometry(device, models, buffer, dimensions, descriptor)
+                    Dimensions::D0 => Self::setup_0d_geometry(device, globals, buffer, descriptor),
+                    Dimensions::D1(_) => Self::setup_1d_geometry(device, globals, buffer, dimensions, descriptor),
+                    Dimensions::D2(_, _) => Self::setup_2d_geometry(device, globals, buffer, dimensions, descriptor),
+                    Dimensions::D3(_, _) => Self::setup_3d_geometry(device, globals, models, buffer, dimensions, descriptor)
                 }
             }
             _ => Err(BlockCreationError::InputInvalid("the input provided to the Renderer is not a geometry kind"))
         }
     }
 
-    fn setup_0d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
+    fn setup_0d_geometry(device: &wgpu::Device, globals: &Globals, data_buffer: &wgpu::Buffer, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
         // Never go above a certain refinement level: the local group size for a compute shader
         // invocation should never exceed 512, otherwise the GPU might error out, and with
         // a refine level of 6 we already hit the 492 points count.
@@ -131,7 +132,7 @@ void main() {{
         ];
 
         use crate::shader_processing::*;
-        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Curve Normals"))?;
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, Some(&globals.bind_layout), Some("Curve Normals"))?;
 
         Ok(Self {
             mask_id: descriptor.mask,
@@ -145,7 +146,7 @@ void main() {{
         })
     }
 
-    fn setup_1d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
+    fn setup_1d_geometry(device: &wgpu::Device, globals: &Globals, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
         let section_diameter = AVAILABLE_SIZES[descriptor.thickness];
         let n_section_points = (descriptor.thickness + 3)*2;
 
@@ -255,7 +256,7 @@ void main() {{
         ];
 
         use crate::shader_processing::*;
-        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Curve Normals"))?;
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, Some(&globals.bind_layout), Some("Curve Normals"))?;
 
         Ok(Self {
             mask_id: descriptor.mask,
@@ -269,7 +270,7 @@ void main() {{
         })
     }
 
-    fn setup_2d_geometry(device: &wgpu::Device, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
+    fn setup_2d_geometry(device: &wgpu::Device, globals: &Globals, data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
         let (param_1, param_2) = dimensions.as_2d()?;
         let flag_pattern = true;
         let (index_buffer, index_count) = create_grid_buffer_index(device, param_1.size, param_2.size, flag_pattern);
@@ -288,6 +289,7 @@ layout(set = 0, binding = 1) buffer OutputData {{
     Vertex out_buff[];
 }};
 
+{globals_header}
 
 void main() {{
     // this shader prepares the data for surface rendering.
@@ -347,20 +349,28 @@ void main() {{
     float len_n = length(normal);
     normal = (len_n > 1e-3 * len_x * len_y) ? 1.0/len_n*normal : vec3(0.0, 0.0, 0.0);
 
-    float u_delta = ({i_interval_end} - {i_interval_begin}) / (x_size - 1.0);
-    float u_coord = {i_interval_begin} + u_delta * i;
-    float v_delta = ({j_interval_end} - {j_interval_begin}) / (y_size - 1.0);
-    float v_coord = {j_interval_begin} + v_delta * j;
+    float u_coord, v_coord;
+    if ({i_interval_uv}) {{
+        float u_delta = ({i_interval_end} - {i_interval_begin}) / (x_size - 1.0);
+        u_coord = {i_interval_begin} + u_delta * i;
+    }} else {{
+        u_coord = i/(x_size-1.0);
+    }}
+    if ({j_interval_uv}) {{
+        float v_delta = ({j_interval_end} - {j_interval_begin}) / (y_size - 1.0);
+        v_coord = {j_interval_begin} + v_delta * j;
+    }} else {{
+        v_coord = j/(y_size-1.0);
+    }}
 
     out_buff[idx].position = in_buff[idx];
     out_buff[idx].normal = vec4(normal, 0.0);
     out_buff[idx].uv_coords = vec2(u_coord, v_coord);
-    //out_buff[idx].uv_coords = vec2(i/(x_size-1.0), j/(y_size-1.0));
     out_buff[idx]._padding = vec2(0.0, 0.0);
 }}
-"##, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y,
-i_interval_begin=&param_1.begin, i_interval_end=&param_1.end,
-j_interval_begin=&param_2.begin, j_interval_end=&param_2.end);
+"##, globals_header=&globals.shader_header, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y,
+i_interval_begin=&param_1.begin, i_interval_end=&param_1.end, i_interval_uv=param_1.use_interval_as_uv,
+j_interval_begin=&param_2.begin, j_interval_end=&param_2.end, j_interval_uv=param_2.use_interval_as_uv);
 
         let bindings = [
             // add descriptor for input buffers
@@ -376,7 +386,7 @@ j_interval_begin=&param_2.begin, j_interval_end=&param_2.end);
         ];
 
         use crate::shader_processing::*;
-        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Surface Normals"))?;
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, Some(&globals.bind_layout), Some("Surface Normals"))?;
 
         Ok(Self {
             mask_id: descriptor.mask,
@@ -391,7 +401,7 @@ j_interval_begin=&param_2.begin, j_interval_end=&param_2.end);
 
     }
 
-    fn setup_3d_geometry(device: &wgpu::Device, models: &[Model], data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
+    fn setup_3d_geometry(device: &wgpu::Device, globals: &Globals, models: &[Model], data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
         let (vertex_count, prefab_id) = dimensions.as_3d()?;
         let model = models.get(prefab_id as usize).unwrap();
 
@@ -435,7 +445,7 @@ void main() {{
         ];
 
         use crate::shader_processing::*;
-        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, None, Some("Copy 3D data"))?;
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, &shader_source, &bindings, Some(&globals.bind_layout), Some("Copy 3D data"))?;
 
         Ok(Self {
             mask_id: descriptor.mask,
@@ -450,12 +460,13 @@ void main() {{
 
     }
 
-    pub fn encode(&self, encoder: &mut wgpu::CommandEncoder) {
+    pub fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
         let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor{
             label: Some("rendering compute pass")
         });
         compute_pass.set_pipeline(&self.compute_pipeline);
         compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
+        compute_pass.set_bind_group(1, variables_bind_group, &[]);
         match &self.out_dim {
             Dimensions::D0 => {
                 // BEWARE: as described before, we wrote the size of the buffer inside the local shader

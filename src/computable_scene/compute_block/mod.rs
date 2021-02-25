@@ -176,7 +176,7 @@ impl ComputeBlock {
             Self::Surface(data) => data.encode(globals_bind_group, encoder),
             Self::Matrix(data) => data.encode(globals_bind_group, encoder),
             Self::Transform(data) => data.encode(encoder),
-            Self::Rendering(data) => data.encode(encoder),
+            Self::Rendering(data) => data.encode(globals_bind_group, encoder),
             Self::VectorRendering(data) => data.encode(encoder),
             Self::Prefab(data) => data.encode(globals_bind_group, encoder),
         }
@@ -329,7 +329,7 @@ impl ComputeBlock {
                     material: graph.get_attribute_as_usize(material).unwrap(),
                     thickness: graph.get_attribute_as_usize(thickness).unwrap(),
                 };
-                rendering_descriptor.make_block(device, models, processed_blocks)
+                rendering_descriptor.make_block(device, globals, models, processed_blocks)
             },
             NodeContents::VectorRendering {
                 application_point, vector, thickness, material,
