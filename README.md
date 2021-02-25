@@ -10,6 +10,7 @@ Feature per la release per gli studenti:
 - [x] Settings per la telecamera - orbit sempre verticale?
 - [x] Aggiunta delle primitive mancanti
 - [x] Rimozione dei materiali non strettamente necessari
+- [x] Aggiunta del timestamp ai file
 - [] Update all'ultima versione di imnodes per i bugfix
 - [] Etichettare gli assi
 - [] Pan della telecamera

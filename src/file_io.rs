@@ -1,53 +1,16 @@
-use nfd2::Response;
 use winit::event_loop::EventLoopProxy;
 
 use super::CustomEvent;
+use super::Executor;
 // TODO: Check if there is proper support for utf-8 under windows.
-// and if we can get an updated C lib, there are important fixes.
-// Also, see if save file filters are handled correctly on every platform.
-// If not, maybe find another equivalent library to do dialogs.
-// Possible alternatives:
-// - wrap https://github.com/mlabbe/nativefiledialog
-// - wrap https://github.com/AndrewBelt/osdialog
-// - wait for https://github.com/balthild/native-dialog-rs to add support for save dialogs
-// - embed a kdialog-like application which handles save file filters correctly in your binary,
-//   unpackage it at a temp location and use std::process::Command to run it.
-fn show_save_dialog(proxy: EventLoopProxy<CustomEvent>) {
-    //if let Some(file_path) = dialog_result {
-        //if !filename.is_empty() {
-        //    dbg!(&filename);
-        //    let mut file_path = std::path::PathBuf::from(filename);
-        //    file_path.set_extension("frzp");
-        //    proxy.send_event(CustomEvent::SaveFile(file_path)).unwrap();
-        //}
-    //}
-    // if the user cancelled the dialog, do nothing
-}
-
-fn show_open_dialog(proxy: EventLoopProxy<CustomEvent>) {
-    //match nfd2::open_file_dialog(None, None).expect("oh no") {
-    //    Response::Okay(file_path) => println!("File path = {:?}", file_path),
-    //    Response::OkayMultiple(files) => println!("Files {:?}", files),
-    //    Response::Cancel => println!("User canceled"),
-    //}
-    //if let Some(file_path) = dialog_result {
-    //    if !file_path.exists() {
-    //        dbg!(&file_path);
-    //        proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
-    //    }
-    //}
-    // if the user cancelled the dialog, do nothing
-}
-
 // TODO: we probably would like to check if we have an open dialog/
 // a background thread already already, to prevent the user from
 // opening tons of them by accident.
-pub fn background_file_save(proxy: EventLoopProxy<CustomEvent>, executor: &super::Executor) {
+pub fn async_pick_save(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor) {
     let dialog = rfd::AsyncFileDialog::new()
         .add_filter("Franzplot", &["frzp"])
         .save_file();
 
-    let event_loop_proxy = proxy.clone();
     executor.execut(async move {
         let file = dialog.await;
         if let Some(handle) = file {
@@ -56,12 +19,56 @@ pub fn background_file_save(proxy: EventLoopProxy<CustomEvent>, executor: &super
     });
 }
 
-pub fn background_file_open(proxy: EventLoopProxy<CustomEvent>, executor: &super::Executor) {
+pub fn async_confirm_exit(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor) {
+    let confirm_exit = rfd::AsyncMessageDialog::new()
+        .set_level(rfd::MessageLevel::Warning)
+        .set_description("The current file has unsaved changes. Are you sure you want to exit?")
+        .set_buttons(rfd::MessageButtons::YesNo)
+        .show();
+
+    executor.execut(async move {
+        let confirmed = confirm_exit.await;
+        if confirmed {
+            event_loop_proxy.send_event(CustomEvent::RequestExit);
+        }
+    });
+}
+
+pub fn async_confirm_new(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor) {
+    let confirm_new = rfd::AsyncMessageDialog::new()
+        .set_level(rfd::MessageLevel::Warning)
+        .set_description("The current file has unsaved changes. Are you sure you want to discard changes and create a new file?")
+        .set_buttons(rfd::MessageButtons::YesNo)
+        .show();
+
+    executor.execut(async move {
+        let confirmed = confirm_new.await;
+        if confirmed {
+            event_loop_proxy.send_event(CustomEvent::NewFile);
+        }
+    });
+}
+
+pub fn async_confirm_open(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor) {
+    let confirm_open = rfd::AsyncMessageDialog::new()
+        .set_level(rfd::MessageLevel::Warning)
+        .set_description("The current file has unsaved changes. Are you sure you want to discard changes and open a file?")
+        .set_buttons(rfd::MessageButtons::YesNo)
+        .show();
+
+    executor.execut(async move {
+        let confirmed = confirm_open.await;
+        if confirmed {
+            event_loop_proxy.send_event(CustomEvent::ShowOpenDialog);
+        }
+    });
+}
+
+pub fn async_pick_open(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor) {
     let dialog = rfd::AsyncFileDialog::new()
         .add_filter("Franzplot", &["frzp"])
         .pick_file();
 
-    let event_loop_proxy = proxy.clone();
     executor.execut(async move {
         let file = dialog.await;
         if let Some(handle) = file {

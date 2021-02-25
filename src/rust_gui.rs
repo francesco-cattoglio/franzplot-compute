@@ -20,6 +20,7 @@ pub struct Gui {
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
     undo_stack: std::collections::VecDeque<(f64, String)>,
     undo_cursor: usize,
+    pub graph_edited: bool,
     pub added_zoom: f32,
     accumulated_zoom: f32,
     selected_object: Option<BlockId>,
@@ -38,17 +39,32 @@ impl Gui {
         use super::node_graph::NodeGraph;
         let empty_graph = NodeGraph::default();
         Self {
-            new_global_buffer: ImString::with_capacity(8),
+            accumulated_zoom: 0.0,
+            added_zoom: 0.0,
+            availables,
             scene_texture_id,
             graph_fonts,
             winit_proxy,
             undo_stack: vec![(0.0, serde_json::to_string(&empty_graph).unwrap())].into(),
             undo_cursor: 0,
+            new_global_buffer: ImString::with_capacity(8),
+            graph_edited: false,
             selected_object: None,
-            availables,
-            accumulated_zoom: 0.0,
-            added_zoom: 0.0,
         }
+    }
+
+    /// this function clears up the user undo history, setting the current state as the
+    /// only existing one on the undo stack.
+    /// an action that is required when creating a new file or opening an existing one
+    pub fn reset_undo_history(&mut self, state: &State) {
+        self.undo_stack = vec![(0.0, serde_json::to_string(&state.user.graph).unwrap())].into();
+        self.undo_cursor = 0;
+        self.graph_edited = false;
+    }
+
+    pub fn reset_nongraph_data(&mut self) {
+        self.selected_object = None;
+        self.new_global_buffer.clear();
     }
 
     pub fn issue_undo(&mut self, state: &mut State, timestamp: f64) {
@@ -90,6 +106,7 @@ impl Gui {
         }
         let serialized_graph = serde_json::to_string(&state.user.graph).unwrap();
         self.undo_stack.push_back((timestamp, serialized_graph));
+        self.graph_edited = true;
     }
 
     pub fn issue_redo(&mut self, state: &mut State) {
@@ -101,6 +118,7 @@ impl Gui {
             state.user.graph = serde_json::from_str(&restored_state.1).unwrap();
             state.user.graph.zoom_level = zoom_level;
             state.user.graph.push_positions_to_imnodes();
+            self.graph_edited = true;
         }
     }
 
@@ -120,20 +138,32 @@ impl Gui {
             // menu bar
             if let Some(menu_bar_token) = ui.begin_menu_bar() {
                 ui.menu(im_str!("File"), true, || {
-                    if MenuItem::new(im_str!("Save")).build(ui) {
-                        println!("save file entry clicked");
-                        file_io::background_file_save(self.winit_proxy.clone(), executor);
+                    if MenuItem::new(im_str!("New")).build(ui) {
+                        if self.graph_edited {
+                            file_io::async_confirm_new(self.winit_proxy.clone(), executor);
+                        } else {
+                            state.new_file();
+                        }
                     }
+                    ui.separator();
                     if MenuItem::new(im_str!("Open")).build(ui) {
-                        println!("open file entry clicked");
-                        file_io::background_file_open(self.winit_proxy.clone(), executor);
+                        if self.graph_edited {
+                            file_io::async_confirm_open(self.winit_proxy.clone(), executor);
+                        } else {
+                            file_io::async_pick_open(self.winit_proxy.clone(), executor);
+                        }
+                    }
+                    if MenuItem::new(im_str!("Save")).build(ui) {
+                        file_io::async_pick_save(self.winit_proxy.clone(), executor);
                     }
                     ui.separator();
                     if MenuItem::new(im_str!("Exit")).build(ui) {
-                        println!("exit entry clicked");
-                        use crate::CustomEvent;
-                        self.winit_proxy.send_event(CustomEvent::RequestExit);
-                        file_io::background_file_open(self.winit_proxy.clone(), executor);
+                        if self.graph_edited {
+                            file_io::async_confirm_exit(self.winit_proxy.clone(), executor);
+                        } else {
+                            use crate::CustomEvent;
+                            self.winit_proxy.send_event(CustomEvent::RequestExit);
+                        }
                     }
                 });
                 if MenuItem::new(im_str!("About")).build(ui) {
@@ -180,6 +210,17 @@ impl Gui {
         ui.same_line(0.0);
         if ui.button(im_str!("Redo"), [0.0, 0.0]) {
             self.issue_redo(state);
+        }
+
+        if cfg!(feature = "show-timestamps") {
+            use chrono::TimeZone;
+            let file_info = im_str!("Created: {}; edited: {}; rn: {:X}",
+                chrono::Utc.timestamp(state.time_stamps.fc, 0).to_string(),
+                chrono::Utc.timestamp(state.time_stamps.fs, 0).to_string(),
+                state.time_stamps.vn,
+            );
+            ui.same_line(0.0);
+            ui.text(file_info);
         }
 
         ui.columns(2, im_str!("editor columns"), false);

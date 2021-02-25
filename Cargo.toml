@@ -8,7 +8,12 @@ edition = "2018"
 name = "franzplot"
 path = "src/main.rs"
 
+[features]
+show-timestamps = []
+
 [dependencies]
+chrono = { version = "0.4", features = ["serde"] }
+uptime_lib = "0.2.1"
 bytemuck = "1.2"
 wgpu = "0.7"
 shaderc = "0.7"
@@ -32,9 +37,12 @@ wgpu-subscriber = "0.1"
 cxx = "1.0.9"
 pathfinding = "2.0"
 indexmap = "1.6"
+rand = "0.8"
 nfd2 = "0.2"
 hexasphere = "3.1"
 
+#TODO: temporary workaround for build breakage due to bitvec/funty incompatibilities
+funty = "=1.1"
 #TODO: when a new release happens, just switch back to normal rfd from crates.io
 rfd = { git = "https://github.com/PolyMeilex/rfd.git", rev = "7b5e29f" }
 

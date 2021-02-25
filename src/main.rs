@@ -30,6 +30,8 @@ fn print_usage(program: &str, opts: Options) {
 #[allow(unused)]
 #[derive(Debug)]
 pub enum CustomEvent {
+    NewFile,
+    ShowOpenDialog,
     OpenFile(std::path::PathBuf),
     SaveFile(std::path::PathBuf),
     RequestExit,
@@ -287,6 +289,7 @@ fn main() {
         model_names,
     };
     let executor = Executor::new();
+    let event_loop_proxy = event_loop.create_proxy();
     let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, availables, graph_fonts);
     let mut state = state::State::new(device_manager, assets);
 
@@ -402,15 +405,25 @@ fn main() {
             // to winit that have to be executed during the next frame.
             Event::UserEvent(user_event) => {
                 match user_event {
+                    CustomEvent::ShowOpenDialog => {
+                        file_io::async_pick_open(event_loop_proxy.clone(), &executor);
+                    },
+                    CustomEvent::NewFile => {
+                        state.new_file();
+                        rust_gui.reset_undo_history(&mut state);
+                        rust_gui.reset_nongraph_data();
+                    },
                     CustomEvent::RequestExit => {
                         *control_flow = ControlFlow::Exit;
                     },
                     CustomEvent::SaveFile(path_buf) => {
-                        state.user.write_to_frzp(&path_buf);
+                        state.write_to_frzp(&path_buf);
+                        rust_gui.graph_edited = false;
                     },
                     CustomEvent::OpenFile(path_buf) => {
-                        state.user.read_from_frzp(&path_buf);
-                        rust_gui.issue_savestate(&mut state, imgui.time());
+                        state.read_from_frzp(&path_buf);
+                        rust_gui.reset_undo_history(&mut state);
+                        rust_gui.reset_nongraph_data();
                     },
                     CustomEvent::MouseFreeze => {
                         mouse_frozen = true;
@@ -429,7 +442,11 @@ fn main() {
             }
             // match a very specific WindowEvent: user-requested closing of the application
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
-                *control_flow = ControlFlow::Exit;
+                if rust_gui.graph_edited {
+                    file_io::async_confirm_exit(event_loop_proxy.clone(), &executor)
+                } else {
+                    *control_flow = ControlFlow::Exit;
+                }
             }
             // catch-all for remaining events (WindowEvent and DeviceEvent). We do this because
             // we want imgui to handle it first, and then do any kind of "post-processing"

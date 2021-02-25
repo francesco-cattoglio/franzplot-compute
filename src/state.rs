@@ -22,47 +22,43 @@ pub struct UserState {
     pub globals_init_values: Vec<f32>,
 }
 
+// This structure holds the timestamps that we add to the saved files
+#[derive(Clone, Default, Deserialize, Serialize)]
+pub struct TSs {
+    pub fc: i64,
+    pub fs: i64,
+    pub vn: u32,
+    pub hs: u64, // currently unused
+}
+
+impl TSs {
+    pub fn new_now() -> Self {
+        use rand::Rng;
+        let random_number = rand::thread_rng().gen::<u32>();
+        Self {
+            hs: 0,
+            vn: random_number,
+            fc: chrono::offset::Utc::now().timestamp(),
+            fs: chrono::offset::Utc::now().timestamp(),
+        }
+    }
+
+    pub fn new_unknown() -> Self {
+        use rand::Rng;
+        let random_number = rand::thread_rng().gen::<u32>();
+        Self {
+            hs: 0,
+            vn: random_number,
+            fc: 0,
+            fs: 0,
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize)]
 enum FileVersion {
     V0(UserState),
-}
-
-impl UserState {
-    pub fn write_to_frzp(&self, path: &std::path::PathBuf) {
-        let mut file = std::fs::File::create(path).unwrap();
-        let ser_config = ron::ser::PrettyConfig::new()
-            .with_depth_limit(5)
-            .with_indentor("  ".to_owned())
-            .with_separate_tuple_members(true)
-            .with_enumerate_arrays(true);
-        let to_serialize = FileVersion::V0(self.clone());
-        let serialized_data = ron::ser::to_string_pretty(&to_serialize, ser_config).unwrap();
-        let mut contents = r##"//// FRANZPLOT DATA FILE V0 \\\\
-
-//   This file should not be edited by hand,
-//   as doing so might easily corrupt the data.
-//   To edit this file, open it in Franzplot, version 21.01 or higher
-
-"##.to_string();
-
-        contents.push_str(&serialized_data);
-        use std::io::Write;
-        file.write_all(contents.as_bytes()).unwrap();
-
-    }
-
-    pub fn read_from_frzp(&mut self, path: &std::path::PathBuf) {
-        let mut file = std::fs::File::open(path).unwrap();
-        let mut contents = String::new();
-        use std::io::Read;
-        file.read_to_string(&mut contents).unwrap();
-        let saved_data: FileVersion = ron::from_str(&contents).unwrap();
-        match saved_data {
-            FileVersion::V0(user_state) => *self = user_state,
-        }
-        dbg!(&self.graph.zoom_level);
-        self.graph.push_positions_to_imnodes();
-    }
+    V1(UserState, TSs),
 }
 
 pub struct Assets {
@@ -97,7 +93,7 @@ pub struct AppState {
     pub camera_controller: Box<dyn camera::Controller>,
     pub camera_enabled: bool,
     pub camera_lock_up: bool,
-    pub camera: camera::Camera, // TODO: we might want to store camera position in user state
+    pub camera: camera::Camera,
     pub assets: Assets,
     pub manager: Manager,
     pub computable_scene: ComputableScene,
@@ -129,6 +125,7 @@ impl AppState {
 
 pub struct State {
     pub app: AppState,
+    pub time_stamps: TSs,
     pub user: UserState,
 }
 
@@ -162,8 +159,60 @@ impl State {
 
         Self {
             app,
+            time_stamps: TSs::new_now(),
             user,
         }
+    }
+
+    pub fn write_to_frzp(&mut self, path: &std::path::PathBuf) {
+        let mut file = std::fs::File::create(path).unwrap();
+        let ser_config = ron::ser::PrettyConfig::new()
+            .with_depth_limit(5)
+            .with_indentor("  ".to_owned())
+            .with_separate_tuple_members(true)
+            .with_enumerate_arrays(true);
+        // update the time_stamp to remember the last time the file was saved
+        self.time_stamps.fs = chrono::offset::Utc::now().timestamp();
+        let to_serialize = FileVersion::V1(self.user.clone(), self.time_stamps.clone());
+        let serialized_data = ron::ser::to_string_pretty(&to_serialize, ser_config).unwrap();
+        let mut contents = r##"//// FRANZPLOT DATA FILE V1 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.03 or higher
+
+"##.to_string();
+
+        contents.push_str(&serialized_data);
+        use std::io::Write;
+        file.write_all(contents.as_bytes()).unwrap();
+    }
+
+    pub fn read_from_frzp(&mut self, path: &std::path::PathBuf) {
+        let mut file = std::fs::File::open(path).unwrap();
+        let mut contents = String::new();
+        use std::io::Read;
+        file.read_to_string(&mut contents).unwrap();
+        let saved_data: FileVersion = ron::from_str(&contents).unwrap();
+        match saved_data {
+            FileVersion::V0(user_state) => {
+                // loading an older file that does NOT have timestamp infos
+                self.user = user_state;
+                self.time_stamps = TSs::new_unknown();
+            }
+            FileVersion::V1(user_state, time_stamps) => {
+                self.user = user_state;
+                self.time_stamps = time_stamps;
+            }
+        }
+        self.user.graph.push_positions_to_imnodes();
+    }
+
+    pub fn new_file(&mut self) {
+        // reset the userstate and the time stamps, clear the scene
+        self.user = UserState::default();
+        self.time_stamps = TSs::new_now();
+        self.process_user_state();
     }
 
     pub fn process_user_state(&mut self) {
