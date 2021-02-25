@@ -59,6 +59,7 @@ impl IntervalData {
             begin: descriptor.begin.clone(),
             end: descriptor.end.clone(),
             size: n_evals,
+            use_interval_as_uv: false,
         };
 
         // Optimization note: an interval, will always fit a single compute local group,

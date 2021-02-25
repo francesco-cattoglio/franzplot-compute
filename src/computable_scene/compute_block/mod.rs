@@ -75,6 +75,7 @@ pub struct Parameter {
     pub size: usize,
     pub begin: String,
     pub end: String,
+    pub use_interval_as_uv: bool,
 }
 
 impl Parameter {
@@ -261,11 +262,12 @@ impl ComputeBlock {
                 curve_descriptor.make_block(device, globals, processed_blocks)
             },
             NodeContents::Plane {
-                center, normal, ..
+                center, normal, size, ..
             } => {
                 let plane_descriptor = PlaneBlockDescriptor {
                     center: graph.get_attribute_as_linked_node(center),
                     normal: graph.get_attribute_as_linked_node(normal),
+                    side_length: graph.get_attribute_as_usize(size).unwrap(),
                 };
                 plane_descriptor.make_block(device, processed_blocks)
             },

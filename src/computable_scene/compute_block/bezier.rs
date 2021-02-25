@@ -57,6 +57,7 @@ impl BezierData {
             begin: "0.0".into(),
             end: "1.0".into(),
             size: 16 * quality,
+            use_interval_as_uv: false,
         }
     }
     pub fn new_degree_1(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: BezierBlockDescriptor) -> Result<Self, BlockCreationError> {

@@ -225,7 +225,8 @@ fn create_arrow_buffers(device: &wgpu::Device, radius: f32, circle_points: usize
         // start with the first circle
         for i in 0 .. circle_points {
             let theta = 2.0 * std::f32::consts::PI * i as f32 / (circle_points - 1) as f32;
-            let position = [0.5*radius*theta.cos(), 0.5*radius*theta.sin(), 0.0, 1.0];
+            // we add a very tiny amount of bias to z to prevent z-fighting when showing the vector of a plane
+            let position = [0.5*radius*theta.cos(), 0.5*radius*theta.sin(), 0.001, 1.0];
             let normal = [theta.cos(), theta.sin(), 0.0, 0.0];
             vertex_vector.push(StandardVertexData {
                 position,

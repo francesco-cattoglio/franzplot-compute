@@ -341,18 +341,26 @@ void main() {{
      * length of the cross is far smaller then the product of the two lengths.
      */
 
-    vec3 normal = cross(y_tangent, x_tangent);
+    vec3 normal = cross(x_tangent, y_tangent);
     float len_x = length(x_tangent);
     float len_y = length(y_tangent);
     float len_n = length(normal);
     normal = (len_n > 1e-3 * len_x * len_y) ? 1.0/len_n*normal : vec3(0.0, 0.0, 0.0);
 
+    float u_delta = ({i_interval_end} - {i_interval_begin}) / (x_size - 1.0);
+    float u_coord = {i_interval_begin} + u_delta * i;
+    float v_delta = ({j_interval_end} - {j_interval_begin}) / (y_size - 1.0);
+    float v_coord = {j_interval_begin} + v_delta * j;
+
     out_buff[idx].position = in_buff[idx];
     out_buff[idx].normal = vec4(normal, 0.0);
-    out_buff[idx].uv_coords = vec2(i/(x_size-1.0), j/(y_size-1.0));
+    out_buff[idx].uv_coords = vec2(u_coord, v_coord);
+    //out_buff[idx].uv_coords = vec2(i/(x_size-1.0), j/(y_size-1.0));
     out_buff[idx]._padding = vec2(0.0, 0.0);
 }}
-"##, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
+"##, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y,
+i_interval_begin=&param_1.begin, i_interval_end=&param_1.end,
+j_interval_begin=&param_2.begin, j_interval_end=&param_2.end);
 
         let bindings = [
             // add descriptor for input buffers

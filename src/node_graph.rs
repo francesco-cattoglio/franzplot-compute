@@ -383,7 +383,7 @@ impl Attribute {
                 ui.set_next_item_width(widget_width);
                 let mut value_changed = false;
                 let list: Vec<&ImString> = availables.model_names.iter().collect();
-                if ComboBox::new(im_str!("##material")).build_simple_string(ui, selected, &list) {
+                if ComboBox::new(im_str!("##primitive")).build_simple_string(ui, selected, &list) {
                     value_changed = true;
                 }
                 imnodes::EndStaticAttribute();

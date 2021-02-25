@@ -54,8 +54,9 @@ void main() {
     f_color = texture(sampler2D(t_diffuse, s_diffuse), vec2(muv.x, 1.0-muv.y));
 
     // final color
-    float highlight_coeff = (object_idx == highlight_idx) ? 1.5 : 1.0;
-    f_color = highlight_coeff * mask_value * f_color;
+    float highlight_coeff = (object_idx == highlight_idx) ? 1.4 : 1.0;
+    float z_light_coeff = 1 + v_n_vector.z * 0.2;
+    f_color = z_light_coeff * highlight_coeff * mask_value * f_color;
     f_color.a = 1.0;
 
     // if you want to enable "printf debug", overwrite f_color before returning
