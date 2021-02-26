@@ -13,7 +13,6 @@ show-timestamps = []
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
-uptime_lib = "0.2.1"
 bytemuck = "1.2"
 wgpu = "0.7"
 shaderc = "0.7"

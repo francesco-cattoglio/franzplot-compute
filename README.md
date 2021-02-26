@@ -40,6 +40,7 @@ Le tre dipendenze per compilare il contenuto del repository sotto linux sono:
 - la toolchain per il linguaggio Rust, *versione minima 1.48*
 - le librerie per lo sviluppo della API grafica vulkan
 - un compilatore C++11 e CMake (necessari per le dipendenze)
+- sotto linux, le librerie di sviluppo per gtk3
 
 ### Toolchain Rust
 Il consiglio è quello di seguire le istruzioni che trovate sul sito ufficiale: https://www.rust-lang.org/tools/install
