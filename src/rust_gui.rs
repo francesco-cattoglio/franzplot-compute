@@ -25,6 +25,8 @@ pub struct Gui {
     accumulated_zoom: f32,
     selected_object: Option<BlockId>,
     availables: Availables,
+    axes_length: i32,
+    axes_marks_size: f32,
 }
 
 #[derive(Debug)]
@@ -50,6 +52,8 @@ impl Gui {
             new_global_buffer: ImString::with_capacity(8),
             graph_edited: false,
             selected_object: None,
+            axes_length: 2,
+            axes_marks_size: 0.075,
         }
     }
 
@@ -372,7 +376,7 @@ impl Gui {
         }
     }
 
-    fn render_settings_tab(&self, ui: &Ui<'_>, state: &mut State) {
+    fn render_settings_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
         let sensitivity = &mut state.app.sensitivity;
         ui.text(im_str!("Zoom sensitivity"));
         let width_token = ui.push_item_width(120.0);
@@ -408,6 +412,20 @@ impl Gui {
             .display_format(im_str!("%.2f"))
             .flags(SliderFlags::NO_INPUT)
             .build(ui, &mut sensitivity.camera_vertical);
+        ui.text(im_str!("Axes and labels"));
+        let mut recreate_axes = false;
+        recreate_axes |= imgui::Slider::new(im_str!("length of x, y and z axes"))
+            .range(0 ..= 16)
+            .flags(SliderFlags::NO_INPUT)
+            .build(ui, &mut self.axes_length);
+        recreate_axes |= imgui::Slider::new(im_str!("size of unit marks along axes"))
+            .range(0.0 ..= 0.25)
+            .display_format(im_str!("%.3f"))
+            .flags(SliderFlags::NO_INPUT)
+            .build(ui, &mut self.axes_marks_size);
+        if recreate_axes {
+            state.app.set_wireframe_axes(self.axes_length, self.axes_marks_size);
+        }
         width_token.pop(ui);
     }
 }

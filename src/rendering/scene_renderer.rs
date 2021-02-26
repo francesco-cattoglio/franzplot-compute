@@ -44,11 +44,12 @@ impl Uniforms {
 ///
 pub struct SceneRenderer {
     solid_pipeline: wgpu::RenderPipeline,
+    axes_pipeline: wgpu::RenderPipeline,
     wireframe_pipeline: wgpu::RenderPipeline,
     picking_buffer_length: usize,
     picking_buffer: wgpu::Buffer,
     picking_bind_group: wgpu::BindGroup,
-    wireframes: Vec<wgpu::RenderBundle>,
+    wireframe_axes: Option<wgpu::RenderBundle>,
     renderables: Vec<wgpu::RenderBundle>,
     renderable_ids: Vec<BlockId>,
     uniforms: Uniforms,
@@ -61,7 +62,8 @@ pub struct SceneRenderer {
 impl SceneRenderer {
     pub fn new_with_axes(device: &wgpu::Device) -> Self {
         let mut renderer = Self::new(device);
-        renderer.add_wireframe_axes(device);
+        renderer.set_wireframe_axes(2, 0.075, device);
+        //renderer.add_test_axis(device);
         renderer
     }
 
@@ -107,6 +109,7 @@ impl SceneRenderer {
         // set up pipeline and render targets
         let solid_pipeline = create_solid_pipeline(&device, &uniforms_bind_layout, &picking_bind_layout);
         let wireframe_pipeline = create_wireframe_pipeline(&device, &uniforms_bind_layout);
+        let axes_pipeline = create_axes_pipeline(&device, &uniforms_bind_layout);
         let depth_texture = Texture::create_depth_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
         let output_texture = Texture::create_output_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
 
@@ -114,7 +117,7 @@ impl SceneRenderer {
             picking_buffer_length,
             picking_buffer,
             picking_bind_group,
-            wireframes: Vec::new(),
+            wireframe_axes: None,
             renderables: Vec::new(),
             renderable_ids: Vec::new(),
             depth_texture,
@@ -124,6 +127,7 @@ impl SceneRenderer {
             uniforms_bind_group,
             solid_pipeline,
             wireframe_pipeline,
+            axes_pipeline,
         }
     }
 
@@ -186,7 +190,12 @@ impl SceneRenderer {
         }
     }
 
-    fn add_wireframe_axes(&mut self, device: &wgpu::Device) {
+    #[allow(unused)]
+    pub fn clear_wireframe_axes(&mut self) {
+        self.wireframe_axes = None;
+    }
+
+    pub fn set_wireframe_axes(&mut self, length: i32, cross_size: f32, device: &wgpu::Device) {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for RenderingData"),
@@ -196,19 +205,36 @@ impl SceneRenderer {
             }
         );
 
-        let vertices: Vec<WireframeVertexData> = vec![
-            WireframeVertexData { position: [0.0, 0.0, 0.0], color: [255, 0, 0, 255] },
-            WireframeVertexData { position: [1.0, 0.0, 0.0], color: [255, 0, 0, 255] },
-            WireframeVertexData { position: [0.0, 0.0, 0.0], color: [0, 255, 0, 255] },
-            WireframeVertexData { position: [0.0, 1.0, 0.0], color: [0, 255, 0, 255] },
-            WireframeVertexData { position: [0.0, 0.0, 0.0], color: [0, 0, 255, 255] },
-            WireframeVertexData { position: [0.0, 0.0, 1.0], color: [0, 0, 255, 255] },
-        ];
-        let indices: Vec<u32> = vec![
-            0, 1,
-            2, 3,
-            4, 5,
-        ];
+        // for each of the three axis
+        // create a line plus as many small cross as needed, to help visualize unit lengths
+        let mut vertices = Vec::new();
+
+        let colo_h = 255u8;
+        let colo_l = 63u8;
+        for i in 1..=length {
+            vertices.append(&mut create_wireframe_cross( i as f32*glam::Vec3::unit_x(), cross_size, [colo_h, 0, 0, 255]));
+            vertices.append(&mut create_wireframe_cross(-i as f32*glam::Vec3::unit_x(), cross_size, [colo_l, 0, 0, 255]));
+            vertices.append(&mut create_wireframe_cross( i as f32*glam::Vec3::unit_y(), cross_size, [0, colo_h, 0, 255]));
+            vertices.append(&mut create_wireframe_cross(-i as f32*glam::Vec3::unit_y(), cross_size, [0, colo_l, 0, 255]));
+            vertices.append(&mut create_wireframe_cross( i as f32*glam::Vec3::unit_z(), cross_size, [0, 0, colo_h, 255]));
+            vertices.append(&mut create_wireframe_cross(-i as f32*glam::Vec3::unit_z(), cross_size, [0, 0, colo_l, 255]));
+        }
+        // add the actual lines
+        vertices.append(&mut vec![
+            WireframeVertexData { position: [ length as f32, 0.0, 0.0], color: [colo_h, 0, 0, 255] },
+            WireframeVertexData { position: [           0.0, 0.0, 0.0], color: [colo_h, 0, 0, 255] },
+            WireframeVertexData { position: [-length as f32, 0.0, 0.0], color: [colo_l, 0, 0, 255] },
+            WireframeVertexData { position: [           0.0, 0.0, 0.0], color: [colo_l, 0, 0, 255] },
+            WireframeVertexData { position: [0.0,  length as f32, 0.0], color: [0, colo_h, 0, 255] },
+            WireframeVertexData { position: [0.0,            0.0, 0.0], color: [0, colo_h, 0, 255] },
+            WireframeVertexData { position: [0.0, -length as f32, 0.0], color: [0, colo_l, 0, 255] },
+            WireframeVertexData { position: [0.0,            0.0, 0.0], color: [0, colo_l, 0, 255] },
+            WireframeVertexData { position: [0.0, 0.0,  length as f32], color: [0, 0, colo_h, 255] },
+            WireframeVertexData { position: [0.0, 0.0,            0.0], color: [0, 0, colo_h, 255] },
+            WireframeVertexData { position: [0.0, 0.0, -length as f32], color: [0, 0, colo_l, 255] },
+            WireframeVertexData { position: [0.0, 0.0,            0.0], color: [0, 0, colo_l, 255] },
+        ]);
+        let indices: Vec<u32> = num_iter::range(0, vertices.len() as u32).collect();
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
@@ -230,7 +256,7 @@ impl SceneRenderer {
         let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
             label: Some("Render bundle for wireframe"),
         });
-        self.wireframes.push(render_bundle);
+        self.wireframe_axes = Some(render_bundle);
     }
 
     fn add_renderable(&mut self, device: &wgpu::Device, assets: &Assets, rendering_data: &RenderingData, object_id: u32) {
@@ -342,7 +368,7 @@ impl SceneRenderer {
             });
 
             // actual render calls
-            render_pass.execute_bundles(self.wireframes.iter());
+            render_pass.execute_bundles(self.wireframe_axes.iter());
             render_pass.execute_bundles(self.renderables.iter());
         }
         let render_queue = encoder.finish();
@@ -402,6 +428,82 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
         });
 
         (picking_buffer, picking_bind_layout, picking_bind_group)
+}
+
+fn create_axes_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
+    // shader compiling
+    let mut shader_compiler = shaderc::Compiler::new().unwrap();
+    let vert_src = include_str!("axes.vert");
+    let frag_src = include_str!("axes.frag");
+    let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "axes.vert", "main", None).unwrap();
+    let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "axes.frag", "main", None).unwrap();
+    let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
+    let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
+    let vert_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
+        label: Some("axes vertex shader module"),
+        source: vert_data,
+        flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
+    });
+    let frag_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
+        label: Some("axes fragment shader module"),
+        source: frag_data,
+        flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
+    });
+
+    let render_pipeline_layout =
+        device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: None,
+            push_constant_ranges: &[],
+            bind_group_layouts: &[uniforms_bind_layout]
+        });
+
+    let vertex_buffer_layout = wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<WireframeVertexData>() as wgpu::BufferAddress,
+        step_mode: wgpu::InputStepMode::Vertex,
+        attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Uchar4Norm],
+    };
+    let color_target_state = wgpu::ColorTargetState {
+        format: super::SWAPCHAIN_FORMAT,
+        blend: Some(wgpu::BlendState{
+            alpha: wgpu::BlendComponent::REPLACE,
+            color: wgpu::BlendComponent::REPLACE,
+        }),
+        write_mask: wgpu::ColorWrite::ALL,
+    };
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
+        layout: Some(&render_pipeline_layout),
+        label: None,
+        vertex: wgpu::VertexState {
+            module: &vert_module,
+            entry_point: "main",
+            buffers: &[vertex_buffer_layout],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            strip_index_format: None,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            polygon_mode: wgpu::PolygonMode::Fill,
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &frag_module,
+            entry_point: "main",
+            targets: &[color_target_state],
+        }),
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: super::DEPTH_FORMAT,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::Less,
+            bias: wgpu::DepthBiasState::default(),
+            stencil: wgpu::StencilState::default(),
+            clamp_depth: false,
+        }),
+        multisample: wgpu::MultisampleState {
+            count: SAMPLE_COUNT,
+            mask: !0,
+            alpha_to_coverage_enabled: false,
+        },
+    })
 }
 
 fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
@@ -556,3 +658,15 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
         },
     })
 }
+
+fn create_wireframe_cross(pos: glam::Vec3, size: f32, color: [u8; 4]) -> Vec<WireframeVertexData> {
+    vec![
+        WireframeVertexData { position: (pos - size*glam::Vec3::unit_x()).into(), color },
+        WireframeVertexData { position: (pos + size*glam::Vec3::unit_x()).into(), color },
+        WireframeVertexData { position: (pos - size*glam::Vec3::unit_y()).into(), color },
+        WireframeVertexData { position: (pos + size*glam::Vec3::unit_y()).into(), color },
+        WireframeVertexData { position: (pos - size*glam::Vec3::unit_z()).into(), color },
+        WireframeVertexData { position: (pos + size*glam::Vec3::unit_z()).into(), color },
+    ]
+}
+

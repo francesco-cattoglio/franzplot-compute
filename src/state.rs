@@ -101,6 +101,10 @@ pub struct AppState {
 }
 
 impl AppState {
+    pub fn set_wireframe_axes(&mut self, length: i32, cross_size: f32) {
+        self.computable_scene.renderer.set_wireframe_axes(length, cross_size, &self.manager.device);
+    }
+
     pub fn update_depth_buffer(&mut self, size: wgpu::Extent3d) {
         self.computable_scene.renderer.update_depth_buffer_size(&self.manager.device, size);
     }

@@ -592,6 +592,7 @@ dependencies = [
  "indexmap",
  "maplit",
  "nfd2",
+ "num-iter",
  "obj",
  "pathfinding",
  "rand",
