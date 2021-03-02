@@ -44,11 +44,12 @@ impl Uniforms {
 ///
 pub struct SceneRenderer {
     solid_pipeline: wgpu::RenderPipeline,
-    axes_pipeline: wgpu::RenderPipeline,
+    billboard_pipeline: wgpu::RenderPipeline,
     wireframe_pipeline: wgpu::RenderPipeline,
     picking_buffer_length: usize,
     picking_buffer: wgpu::Buffer,
     picking_bind_group: wgpu::BindGroup,
+    billboards: Vec<wgpu::RenderBundle>,
     wireframe_axes: Option<wgpu::RenderBundle>,
     renderables: Vec<wgpu::RenderBundle>,
     renderable_ids: Vec<BlockId>,
@@ -63,6 +64,7 @@ impl SceneRenderer {
     pub fn new_with_axes(device: &wgpu::Device) -> Self {
         let mut renderer = Self::new(device);
         renderer.set_wireframe_axes(2, 0.075, device);
+        renderer.set_axes_labels(2, 0.15, device);
         //renderer.add_test_axis(device);
         renderer
     }
@@ -109,7 +111,7 @@ impl SceneRenderer {
         // set up pipeline and render targets
         let solid_pipeline = create_solid_pipeline(&device, &uniforms_bind_layout, &picking_bind_layout);
         let wireframe_pipeline = create_wireframe_pipeline(&device, &uniforms_bind_layout);
-        let axes_pipeline = create_axes_pipeline(&device, &uniforms_bind_layout);
+        let billboard_pipeline = create_billboard_pipeline(&device, &uniforms_bind_layout);
         let depth_texture = Texture::create_depth_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
         let output_texture = Texture::create_output_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
 
@@ -118,6 +120,7 @@ impl SceneRenderer {
             picking_buffer,
             picking_bind_group,
             wireframe_axes: None,
+            billboards: Vec::new(),
             renderables: Vec::new(),
             renderable_ids: Vec::new(),
             depth_texture,
@@ -127,7 +130,7 @@ impl SceneRenderer {
             uniforms_bind_group,
             solid_pipeline,
             wireframe_pipeline,
-            axes_pipeline,
+            billboard_pipeline,
         }
     }
 
@@ -195,6 +198,34 @@ impl SceneRenderer {
         self.wireframe_axes = None;
     }
 
+    pub fn set_axes_labels(&mut self, axis_length: i32, label_size: f32, device: &wgpu::Device) {
+        let (x_vertices, x_indices, x_count) = create_char_x(device, [axis_length as f32, 0.0, label_size], label_size, [255, 0, 0, 255]);
+        self.add_billboard(device, &x_vertices, &x_indices, x_count);
+        let (y_vertices, y_indices, y_count) = create_char_y(device, [0.0, axis_length as f32, label_size], label_size, [0, 255, 0, 255]);
+        self.add_billboard(device, &y_vertices, &y_indices, y_count);
+        let (z_vertices, z_indices, z_count) = create_char_z(device, [0.0, 0.0, axis_length as f32 + label_size], label_size, [0, 0, 255, 255]);
+        self.add_billboard(device, &z_vertices, &z_indices, z_count);
+    }
+
+    fn add_billboard(&mut self, device: &wgpu::Device, vertex_buffer: &wgpu::Buffer, index_buffer: &wgpu::Buffer, index_count: u32) {
+        let mut render_bundle_encoder = device.create_render_bundle_encoder(
+            &wgpu::RenderBundleEncoderDescriptor{
+                label: Some("Render bundle encoder for billboard"),
+                color_formats: &[SWAPCHAIN_FORMAT],
+                depth_stencil_format: Some(DEPTH_FORMAT),
+                sample_count: SAMPLE_COUNT,
+            }
+        );
+        render_bundle_encoder.set_pipeline(&self.billboard_pipeline);
+        render_bundle_encoder.set_vertex_buffer(0, vertex_buffer.slice(..));
+        render_bundle_encoder.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
+        render_bundle_encoder.draw_indexed(0..index_count, 0, 0..1);
+        let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
+            label: Some("Render bundle for a single billboard"),
+        });
+        self.billboards.push(render_bundle);
+    }
     pub fn set_wireframe_axes(&mut self, length: i32, cross_size: f32, device: &wgpu::Device) {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
@@ -369,6 +400,7 @@ impl SceneRenderer {
 
             // actual render calls
             render_pass.execute_bundles(self.wireframe_axes.iter());
+            render_pass.execute_bundles(self.billboards.iter());
             render_pass.execute_bundles(self.renderables.iter());
         }
         let render_queue = encoder.finish();
@@ -430,22 +462,22 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
         (picking_buffer, picking_bind_layout, picking_bind_group)
 }
 
-fn create_axes_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
+fn create_billboard_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
     // shader compiling
     let mut shader_compiler = shaderc::Compiler::new().unwrap();
-    let vert_src = include_str!("axes.vert");
-    let frag_src = include_str!("axes.frag");
-    let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "axes.vert", "main", None).unwrap();
-    let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "axes.frag", "main", None).unwrap();
+    let vert_src = include_str!("billboard.vert");
+    let frag_src = include_str!("billboard.frag");
+    let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "billboard.vert", "main", None).unwrap();
+    let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "billboard.frag", "main", None).unwrap();
     let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
     let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
     let vert_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
-        label: Some("axes vertex shader module"),
+        label: Some("billboard vert shader module"),
         source: vert_data,
         flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
     });
     let frag_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
-        label: Some("axes fragment shader module"),
+        label: Some("billboard fragment shader module"),
         source: frag_data,
         flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
     });
@@ -458,9 +490,9 @@ fn create_axes_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bind
         });
 
     let vertex_buffer_layout = wgpu::VertexBufferLayout {
-        array_stride: std::mem::size_of::<WireframeVertexData>() as wgpu::BufferAddress,
+        array_stride: std::mem::size_of::<BillboardVertexData>() as wgpu::BufferAddress,
         step_mode: wgpu::InputStepMode::Vertex,
-        attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Uchar4Norm],
+        attributes: &wgpu::vertex_attr_array![0 => Float2, 1 => Float3, 2 => Uchar4Norm],
     };
     let color_target_state = wgpu::ColorTargetState {
         format: super::SWAPCHAIN_FORMAT,
@@ -668,5 +700,125 @@ fn create_wireframe_cross(pos: glam::Vec3, size: f32, color: [u8; 4]) -> Vec<Wir
         WireframeVertexData { position: (pos - size*glam::Vec3::unit_z()).into(), color },
         WireframeVertexData { position: (pos + size*glam::Vec3::unit_z()).into(), color },
     ]
+}
+
+// TODO: w.r.t. the output buffer we should make clear which one is the vertex and which one the index
+fn create_char_x(device: &wgpu::Device, pos: [f32; 3], size: f32, color: [u8; 4]) -> (wgpu::Buffer, wgpu::Buffer, u32) {
+    let pos_2d = vec![
+            [-0.43*size, -0.50*size],
+            [-0.19*size, -0.50*size],
+            [ 0.43*size,  0.50*size],
+            [ 0.19*size,  0.50*size],
+            [-0.43*size,  0.50*size],
+            [ 0.19*size, -0.50*size],
+            [ 0.43*size, -0.50*size],
+            [-0.19*size,  0.50*size],
+    ];
+    let vertices: Vec::<BillboardVertexData> = pos_2d.iter()
+        .map(|p_2d| BillboardVertexData{
+            position: *p_2d,
+            offset: pos,
+            color,
+        })
+        .collect();
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: None,
+        contents: bytemuck::cast_slice(&vertices),
+        usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+    });
+
+    let indices = vec![
+        0, 1, 2, 2, 3, 0,
+        4, 5, 6, 6, 7, 4
+    ];
+    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: None,
+        contents: bytemuck::cast_slice(&indices),
+        usage: wgpu::BufferUsage::INDEX | wgpu::BufferUsage::COPY_DST,
+    });
+
+    (vertex_buffer, index_buffer, indices.len() as u32)
+}
+
+// TODO: DRY, maybe also move somewhere else
+fn create_char_y(device: &wgpu::Device, pos: [f32; 3], size: f32, color: [u8; 4]) -> (wgpu::Buffer, wgpu::Buffer, u32) {
+    let pos_2d = vec![
+            [-0.12*size, -0.50*size],
+            [ 0.12*size, -0.50*size],
+            [ 0.12*size, -0.16*size],
+            [-0.12*size, -0.16*size],
+            [-0.43*size,  0.50*size],
+            [-0.19*size,  0.50*size],
+            [ 0.43*size,  0.50*size],
+            [ 0.19*size,  0.50*size],
+    ];
+    let vertices: Vec::<BillboardVertexData> = pos_2d.iter()
+        .map(|p_2d| BillboardVertexData{
+            position: *p_2d,
+            offset: pos,
+            color,
+        })
+        .collect();
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: None,
+        contents: bytemuck::cast_slice(&vertices),
+        usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+    });
+
+    let indices = vec![
+        0, 1, 2, 2, 3, 0, // quad for the leg
+        3, 2, 5, 5, 4, 3, // quad for left arm
+        3, 2, 6, 6, 7, 3, // quad for right arm
+    ];
+    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: None,
+        contents: bytemuck::cast_slice(&indices),
+        usage: wgpu::BufferUsage::INDEX | wgpu::BufferUsage::COPY_DST,
+    });
+
+    (vertex_buffer, index_buffer, indices.len() as u32)
+}
+
+// TODO: DRY, maybe also move somewhere else
+fn create_char_z(device: &wgpu::Device, pos: [f32; 3], size: f32, color: [u8; 4]) -> (wgpu::Buffer, wgpu::Buffer, u32) {
+    let pos_2d = vec![
+        [-0.38*size, -0.50*size], // lower line quad
+        [ 0.38*size, -0.50*size],
+        [ 0.38*size, -0.30*size],
+        [-0.38*size, -0.30*size],
+        [-0.38*size,  0.30*size], // higher line quad
+        [ 0.38*size,  0.30*size],
+        [ 0.38*size,  0.50*size],
+        [-0.38*size,  0.50*size],
+        [-0.38*size, -0.30*size], // oblique line
+        [-0.08*size, -0.30*size],
+        [ 0.38*size,  0.30*size],
+        [ 0.08*size,  0.30*size],
+    ];
+    let vertices: Vec::<BillboardVertexData> = pos_2d.iter()
+        .map(|p_2d| BillboardVertexData{
+            position: *p_2d,
+            offset: pos,
+            color,
+        })
+        .collect();
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: None,
+        contents: bytemuck::cast_slice(&vertices),
+        usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+    });
+
+    let indices = vec![
+        0, 1, 2, 2, 3, 0, // quad for lower line
+        4, 5, 6, 6, 7, 4, // quad for higher line
+        8, 9, 10, 10, 11, 8, // quad for oblique line
+    ];
+    let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: None,
+        contents: bytemuck::cast_slice(&indices),
+        usage: wgpu::BufferUsage::INDEX | wgpu::BufferUsage::COPY_DST,
+    });
+
+    (vertex_buffer, index_buffer, indices.len() as u32)
 }
 

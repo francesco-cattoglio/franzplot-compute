@@ -7,6 +7,12 @@ pub struct CustomBindDescriptor<'a> {
     pub buffer: &'a wgpu::Buffer,
 }
 
+pub fn compile_graphics_shader(
+    device: &wgpu::Device,
+    shader_src: &str,
+    ) -> wgpu::ShaderModule {
+    todo!()
+}
 pub fn compile_compute_shader(
     device: &wgpu::Device,
     shader_src: &str,

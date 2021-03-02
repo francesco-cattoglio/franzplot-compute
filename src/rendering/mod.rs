@@ -40,6 +40,7 @@ pub struct WireframeVertexData {
     color: [u8; 4],
 }
 
+#[allow(unused)]
 pub const GLSL_WIREFRAME_VERTEX_STRUCT: & str = r##"
 struct Vertex {
     vec3 position;
@@ -49,6 +50,26 @@ struct Vertex {
 
 unsafe impl bytemuck::Pod for WireframeVertexData {}
 unsafe impl bytemuck::Zeroable for WireframeVertexData {}
+
+#[repr(C)]
+#[derive(Copy, Clone, Debug)]
+pub struct BillboardVertexData {
+    position: [f32; 2],
+    offset: [f32; 3],
+    color: [u8; 4],
+}
+
+#[allow(unused)]
+pub const GLSL_BILLBOARD_VERTEX_STRUCT: & str = r##"
+struct Vertex {
+    vec2 position;
+    vec3 offset;
+    vec4 color;
+};
+"##;
+
+unsafe impl bytemuck::Pod for BillboardVertexData {}
+unsafe impl bytemuck::Zeroable for BillboardVertexData {}
 
 
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
