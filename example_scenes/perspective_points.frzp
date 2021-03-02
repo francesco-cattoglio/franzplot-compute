@@ -1,0 +1,118 @@
+//// FRANZPLOT DATA FILE V1 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.03 or higher
+
+V1(
+  (
+    graph: (
+      nodes: [
+        Some((
+          title: "Point",
+          position: (153,89),
+          error: None,
+          contents: Point(x:0,y:1,z:2,output:3),
+        )),// [0]
+        Some((
+          title: "Rendering",
+          position: (339,90),
+          error: None,
+          contents: Rendering(geometry:4,thickness:5,mask:6,material:7),
+        )),// [1]
+        Some((
+          title: "Point",
+          position: (186,235),
+          error: None,
+          contents: Point(x:8,y:9,z:10,output:11),
+        )),// [2]
+        Some((
+          title: "Rendering",
+          position: (372,236),
+          error: None,
+          contents: Rendering(geometry:12,thickness:13,mask:14,material:15),
+        )),
+      ],
+      attributes: [
+        Some((
+          node_id: 0,
+          contents: Text(label:"x",string:"1"),
+        )),// [0]
+        Some((
+          node_id: 0,
+          contents: Text(label:"y",string:"1"),
+        )),// [1]
+        Some((
+          node_id: 0,
+          contents: Text(label:"z",string:"1"),
+        )),// [2]
+        Some((
+          node_id: 0,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [3]
+        Some((
+          node_id: 1,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [4]
+        Some((
+          node_id: 1,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [5]
+        Some((
+          node_id: 1,
+          contents: Mask(selected:0),
+        )),// [6]
+        Some((
+          node_id: 1,
+          contents: Material(selected:0),
+        )),// [7]
+        Some((
+          node_id: 2,
+          contents: Text(label:"x",string:"1"),
+        )),// [8]
+        Some((
+          node_id: 2,
+          contents: Text(label:"y",string:"-1"),
+        )),// [9]
+        Some((
+          node_id: 2,
+          contents: Text(label:"z",string:"1"),
+        )),// [10]
+        Some((
+          node_id: 2,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [11]
+        Some((
+          node_id: 3,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [12]
+        Some((
+          node_id: 3,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [13]
+        Some((
+          node_id: 3,
+          contents: Mask(selected:0),
+        )),// [14]
+        Some((
+          node_id: 3,
+          contents: Material(selected:5),
+        )),
+      ],
+      links: {
+        4: 3,
+        12: 11,
+      },
+      free_nodes_list: [],
+      free_attributes_list: [],
+    ),
+    globals_names: [],
+    globals_init_values: [],
+  ),
+  (
+    fc: 1614694453,
+    fs: 1614694561,
+    vn: 1075736274,
+    hs: 0,
+  ),
+)

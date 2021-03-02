@@ -27,6 +27,8 @@ pub struct Gui {
     availables: Availables,
     axes_length: i32,
     axes_marks_size: f32,
+    labels_enabled: bool,
+    labels_size: f32,
 }
 
 #[derive(Debug)]
@@ -54,6 +56,8 @@ impl Gui {
             selected_object: None,
             axes_length: 2,
             axes_marks_size: 0.075,
+            labels_enabled: true,
+            labels_size: 0.15,
         }
     }
 
@@ -401,6 +405,7 @@ impl Gui {
             .flags(SliderFlags::NO_INPUT)
             .build(ui, &mut sensitivity.touch_zoom_scene);
         ui.text(im_str!("Camera settings"));
+        ui.checkbox(im_str!("use orthographic projection"), &mut state.app.camera_ortho);
         ui.checkbox(im_str!("lock camera to vertical position"), &mut state.app.camera_lock_up);
         imgui::Slider::new(im_str!("horizontal sensitivity"))
             .range(0.1 ..= 2.0)
@@ -423,8 +428,20 @@ impl Gui {
             .display_format(im_str!("%.3f"))
             .flags(SliderFlags::NO_INPUT)
             .build(ui, &mut self.axes_marks_size);
+        recreate_axes |= imgui::Slider::new(im_str!("size of axis labels"))
+            .range(0.0 ..= 0.5)
+            .display_format(im_str!("%.2f"))
+            .flags(SliderFlags::NO_INPUT)
+            .build(ui, &mut self.labels_size);
         if recreate_axes {
-            state.app.set_wireframe_axes(self.axes_length, self.axes_marks_size);
+            // if the axes have length zero, we need to ALSO clear the labels.
+            if self.axes_length != 0 {
+                state.app.set_wireframe_axes(self.axes_length, self.axes_marks_size);
+                state.app.set_axes_labels(self.axes_length, self.labels_size);
+            } else {
+                state.app.clear_wireframe_axes();
+                state.app.clear_axes_labels();
+            }
         }
         width_token.pop(ui);
     }

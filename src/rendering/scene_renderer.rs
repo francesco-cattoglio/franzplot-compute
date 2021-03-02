@@ -193,12 +193,16 @@ impl SceneRenderer {
         }
     }
 
-    #[allow(unused)]
     pub fn clear_wireframe_axes(&mut self) {
         self.wireframe_axes = None;
     }
 
+    pub fn clear_axes_labels(&mut self) {
+        self.billboards.clear();
+    }
+
     pub fn set_axes_labels(&mut self, axis_length: i32, label_size: f32, device: &wgpu::Device) {
+        self.clear_axes_labels();
         let (x_vertices, x_indices, x_count) = create_char_x(device, [axis_length as f32, 0.0, label_size], label_size, [255, 0, 0, 255]);
         self.add_billboard(device, &x_vertices, &x_indices, x_count);
         let (y_vertices, y_indices, y_count) = create_char_y(device, [0.0, axis_length as f32, label_size], label_size, [0, 255, 0, 255]);
@@ -241,7 +245,7 @@ impl SceneRenderer {
         let mut vertices = Vec::new();
 
         let colo_h = 255u8;
-        let colo_l = 63u8;
+        let colo_l = 32u8;
         for i in 1..=length {
             vertices.append(&mut create_wireframe_cross( i as f32*glam::Vec3::unit_x(), cross_size, [colo_h, 0, 0, 255]));
             vertices.append(&mut create_wireframe_cross(-i as f32*glam::Vec3::unit_x(), cross_size, [colo_l, 0, 0, 255]));

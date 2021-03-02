@@ -20,7 +20,7 @@ impl Default for Camera {
             target: Vec3::new(0.0, 0.0, 0.0),
             aspect: 1.0,
             up: Vec3::new(0.0, 0.0, 1.0),
-            fov_y: 45.0,
+            fov_y: 0.2 * std::f32::consts::PI,
             z_near: 0.1,
             z_far: 100.0,
         }
@@ -44,9 +44,14 @@ impl Camera {
     }
 
     pub fn build_ortho_matrix(&self) -> Mat4 {
-        unimplemented!()
+        let relative_pos = self.eye - self.target;
+        let distance = relative_pos.length();
+        // the constant that premultiplies the distance was chosen because on my monitor
+        // it is the one that makes the switch between orthographic and perspective almost seamless
+        let half_h = 0.25 * distance;
+        let half_w = half_h * self.aspect;
         // need testing
-        //Mat4::orthographic_lh(-4.0, 4.0, -2.5, 2.5, -10.0, 10.0)
+        Mat4::orthographic_lh(-half_w, half_w, -half_h, half_h, 64.0, -64.0)
     }
 }
 

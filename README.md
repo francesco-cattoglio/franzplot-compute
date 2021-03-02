@@ -12,7 +12,7 @@ Feature per la release per gli studenti:
 - [x] Rimozione dei materiali non strettamente necessari
 - [x] Aggiunta del timestamp ai file
 - [] Update all'ultima versione di imnodes per i bugfix
-- [] Etichettare gli assi
+- [x] Etichettare gli assi
 - [] Pan della telecamera
 - [x] Dimensione del piano
 - [x] Nodi prefab per matrici di rotazione e traslazione
