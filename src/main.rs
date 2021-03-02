@@ -489,14 +489,27 @@ fn main() {
                         rust_gui.added_zoom = util::compute_graph_zoom(delta, sensitivity.mouse_zoom_graph, sensitivity.touch_zoom_graph);
                     }
                     Event::WindowEvent{ event: WindowEvent::MouseInput { state, button, .. }, ..} => {
-                        let pressed = state == ElementState::Pressed;
-                        match button {
-                            MouseButton::Left => camera_inputs.mouse_left_click = pressed,
-                            MouseButton::Right => camera_inputs.mouse_right_click = pressed,
-                            _ => {},
+                        // BEWARE: the `state` variable in this scope shadows the "application state" variable
+                        match state {
+                            ElementState::Pressed => match button {
+                                MouseButton::Left if modifiers_state.ctrl() => camera_inputs.mouse_middle_click = true,
+                                MouseButton::Left => camera_inputs.mouse_left_click = true,
+                                MouseButton::Middle => camera_inputs.mouse_middle_click = true,
+                                _ => {}
+                            },
+                            ElementState::Released => match button {
+                                // we don't know if we started with the ctrl button enabled,
+                                // which means we don't know if we are rotating or dragging.
+                                // therefore just disable both of them.
+                                MouseButton::Left => {
+                                    camera_inputs.mouse_left_click = false;
+                                    camera_inputs.mouse_middle_click = false;
+                                },
+                                MouseButton::Middle => camera_inputs.mouse_middle_click = false,
+                                _ => {}
+                            }
                         }
                     }
-
                     _ => {}
                 }
             }

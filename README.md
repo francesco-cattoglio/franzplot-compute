@@ -13,7 +13,7 @@ Feature per la release per gli studenti:
 - [x] Aggiunta del timestamp ai file
 - [] Update all'ultima versione di imnodes per i bugfix
 - [x] Etichettare gli assi
-- [] Pan della telecamera
+- [x] Pan della telecamera & proiezione ortografica
 - [x] Dimensione del piano
 - [x] Nodi prefab per matrici di rotazione e traslazione
 - [] export di png

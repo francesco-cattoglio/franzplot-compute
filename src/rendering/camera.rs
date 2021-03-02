@@ -16,7 +16,7 @@ pub struct Camera {
 impl Default for Camera {
     fn default() -> Camera {
         Camera {
-            eye: Vec3::new(3.0, 1.5, 1.5),
+            eye: Vec3::new(6.0, 4.0, 4.0),
             target: Vec3::new(0.0, 0.0, 0.0),
             aspect: 1.0,
             up: Vec3::new(0.0, 0.0, 1.0),
@@ -33,6 +33,12 @@ impl Camera {
             aspect: width/height,
             .. Default::default()
         }
+    }
+
+    pub fn reset_view(&mut self) {
+        self.eye = Vec3::new(6.0, 4.0, 4.0);
+        self.target = Vec3::new(0.0, 0.0, 0.0);
+        self.up = Vec3::new(0.0, 0.0, 1.0);
     }
 
     pub fn build_view_matrix(&self) -> Mat4 {
@@ -63,7 +69,7 @@ pub struct InputState {
     pub down: bool,
     pub left: bool,
     pub right: bool,
-    pub mouse_right_click: bool,
+    pub mouse_middle_click: bool,
     pub mouse_left_click: bool,
     pub mouse_motion: (f64, f64),
     pub mouse_wheel: f32,
@@ -87,7 +93,7 @@ impl Default for InputState {
             left: false,
             right: false,
             mouse_left_click: false,
-            mouse_right_click: false,
+            mouse_middle_click: false,
             mouse_motion: (0.0, 0.0),
         }
     }
@@ -121,9 +127,9 @@ impl Controller for VTKController {
         distance = distance.max(self.min_distance);
 
         if inputs.mouse_left_click {
-            let coeff = 0.02;
-            let x_delta = inputs.mouse_motion.0 as f32 * coeff * sensitivity.camera_horizontal;
-            let y_delta = inputs.mouse_motion.1 as f32 * coeff * sensitivity.camera_vertical;
+            let rot_coeff = 0.02;
+            let x_delta = inputs.mouse_motion.0 as f32 * rot_coeff * sensitivity.camera_horizontal;
+            let y_delta = inputs.mouse_motion.1 as f32 * rot_coeff * sensitivity.camera_vertical;
             let camera_right = camera.up.cross(pos_on_sphere.normalize());
             // we want to render the effect of the object rotating the same way
             // the mouse moves. For this reason, we need to rotate the camera
@@ -138,8 +144,19 @@ impl Controller for VTKController {
             } else {
                 camera.up = camera_right.cross(-pos_on_sphere).normalize();
             }
+        } else if inputs.mouse_middle_click {
+            // panning
+            let camera_right = camera.up.cross(pos_on_sphere.normalize());
+            // BEWARE: camera_up might be different from camera.up!
+            // camera.up might be locked due to user settings (camera.up might be locked to z axis
+            let camera_up = camera_right.cross(-pos_on_sphere).normalize();
+            let pan_coeff = 0.002 * distance;
+            let x_delta = inputs.mouse_motion.0 as f32 * pan_coeff * sensitivity.camera_horizontal;
+            let y_delta = inputs.mouse_motion.1 as f32 * pan_coeff * sensitivity.camera_vertical;
+            let position_delta = y_delta * camera_up - x_delta * camera_right;
+            camera.target += position_delta;
         }
-        camera.eye = pos_on_sphere * distance;
+        camera.eye = camera.target + pos_on_sphere * distance;
     }
 }
 
