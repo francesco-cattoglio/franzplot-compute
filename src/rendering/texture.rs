@@ -103,7 +103,7 @@ impl Texture {
             sample_count,
             dimension: wgpu::TextureDimension::D2,
             size,
-            format: super::SWAPCHAIN_FORMAT,
+            format: super::SCENE_FORMAT,
             mip_level_count: 1,
             label: Some("Depth texture"),
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT

@@ -215,7 +215,7 @@ impl SceneRenderer {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for billboard"),
-                color_formats: &[SWAPCHAIN_FORMAT],
+                color_formats: &[SCENE_FORMAT],
                 depth_stencil_format: Some(DEPTH_FORMAT),
                 sample_count: SAMPLE_COUNT,
             }
@@ -234,7 +234,7 @@ impl SceneRenderer {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for RenderingData"),
-                color_formats: &[SWAPCHAIN_FORMAT],
+                color_formats: &[SCENE_FORMAT],
                 depth_stencil_format: Some(DEPTH_FORMAT),
                 sample_count: SAMPLE_COUNT,
             }
@@ -298,7 +298,7 @@ impl SceneRenderer {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for RenderingData"),
-                color_formats: &[SWAPCHAIN_FORMAT],
+                color_formats: &[SCENE_FORMAT],
                 depth_stencil_format: Some(DEPTH_FORMAT),
                 sample_count: SAMPLE_COUNT,
             }
@@ -330,7 +330,7 @@ impl SceneRenderer {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for VectorRenderingData"),
-                color_formats: &[SWAPCHAIN_FORMAT],
+                color_formats: &[SCENE_FORMAT],
                 depth_stencil_format: Some(DEPTH_FORMAT),
                 sample_count: SAMPLE_COUNT,
             }
@@ -499,7 +499,7 @@ fn create_billboard_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
         attributes: &wgpu::vertex_attr_array![0 => Float2, 1 => Float3, 2 => Uchar4Norm],
     };
     let color_target_state = wgpu::ColorTargetState {
-        format: super::SWAPCHAIN_FORMAT,
+        format: super::SCENE_FORMAT,
         blend: Some(wgpu::BlendState{
             alpha: wgpu::BlendComponent::REPLACE,
             color: wgpu::BlendComponent::REPLACE,
@@ -575,7 +575,7 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
         attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Uchar4Norm],
     };
     let color_target_state = wgpu::ColorTargetState {
-        format: super::SWAPCHAIN_FORMAT,
+        format: super::SCENE_FORMAT,
         blend: Some(wgpu::BlendState{
             alpha: wgpu::BlendComponent::REPLACE,
             color: wgpu::BlendComponent::REPLACE,
@@ -652,7 +652,7 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
         attributes: &wgpu::vertex_attr_array![0 => Float4, 1 => Float4, 2 => Float2, 3 => Float2],
     };
     let color_target_state = wgpu::ColorTargetState {
-        format: super::SWAPCHAIN_FORMAT,
+        format: super::SCENE_FORMAT,
         blend: Some(wgpu::BlendState {
             color: wgpu::BlendComponent::REPLACE,
             alpha: wgpu::BlendComponent::REPLACE,
