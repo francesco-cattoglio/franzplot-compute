@@ -449,13 +449,16 @@ void main() {{
     // positions get multiplied by the matrix
     vec4 in_position = in_buff[idx].position;
     out_buff[idx].position = in_matrix * in_position;
-    // normals get multiplied by the inverse transpose of the matrix,
+    // for normals, we extract the linear part of the transform
+    // and premultiply the normals by the inverse transpose,
     // PROVIDED THE MATRIX IS NOT SINGULAR
     // TODO: possible optimization: precompute inverse transpose
     // directly in the matrix compute block (for 0D matrices only)
-    float determinant = determinant(in_matrix);
+    mat3 linear = mat3(in_matrix);
+    float determinant = determinant(linear);
     if (determinant > 1e-6) {{
-        out_buff[idx].normal = normalize(transpose(inverse(in_matrix))*in_buff[idx].normal);
+        out_buff[idx].normal.xyz = normalize(transpose(inverse(linear))*in_buff[idx].normal.xyz);
+        out_buff[idx].normal.w = 0.0;
     }} else {{
         // this is wrong, but at least it won't produce undefined garbage results
         out_buff[idx].normal = in_buff[idx].normal;

@@ -35,7 +35,7 @@ impl Model {
                         let normal = if let Some(n) = norm.map(|x| {data.normal[x]}) {
                             [n[0], n[1], n[2], 0.0]
                         } else {
-                            [0.0, 0.0, 0.0, 1.0]
+                            [0.0, 0.0, 0.0, 0.0]
                         };
                         let uv_coords = if let Some(coords) = uv.map(|x| {data.texture[x]}) {
                             [coords[0], coords[1]]
