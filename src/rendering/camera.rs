@@ -146,7 +146,7 @@ impl Controller for VTKController {
             }
         } else if inputs.mouse_middle_click {
             // panning
-            let camera_right = camera.up.cross(pos_on_sphere.normalize());
+            let camera_right = camera.up.cross(pos_on_sphere).normalize();
             // BEWARE: camera_up might be different from camera.up!
             // camera.up might be locked due to user settings (camera.up might be locked to z axis
             let camera_up = camera_right.cross(-pos_on_sphere).normalize();
