@@ -165,6 +165,11 @@ impl Gui {
                         file_io::async_pick_save(self.winit_proxy.clone(), executor);
                     }
                     ui.separator();
+                    if MenuItem::new(im_str!("Export scene")).build(ui) {
+                        use crate::CustomEvent;
+                        self.winit_proxy.send_event(CustomEvent::ScenePng("garbage/test.png".into()));
+                    }
+                    ui.separator();
                     if MenuItem::new(im_str!("Exit")).build(ui) {
                         if self.graph_edited {
                             file_io::async_confirm_exit(self.winit_proxy.clone(), executor);

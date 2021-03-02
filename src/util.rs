@@ -186,3 +186,121 @@ pub fn copy_buffer_as<T: FourBytes>(buffer: &wgpu::Buffer, device: &wgpu::Device
     result
 }
 
+/// support struct for copying textures to png
+struct BufferDimensions {
+    width: usize,
+    height: usize,
+    unpadded_bytes_per_row: usize,
+    padded_bytes_per_row: usize,
+}
+
+impl BufferDimensions {
+    fn new(width: usize, height: usize) -> Self {
+        let bytes_per_pixel = std::mem::size_of::<u32>();
+        let unpadded_bytes_per_row = width * bytes_per_pixel;
+        let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT as usize;
+        let padded_bytes_per_row_padding = (align - unpadded_bytes_per_row % align) % align;
+        let padded_bytes_per_row = unpadded_bytes_per_row + padded_bytes_per_row_padding;
+        Self {
+            width,
+            height,
+            unpadded_bytes_per_row,
+            padded_bytes_per_row,
+        }
+    }
+}
+
+use crate::state::State;
+pub fn create_png<P: AsRef<std::path::Path>>(state: &mut State, output_path: &P) {
+    let height = 1080;
+    let width = 1920;
+    let texture_size = wgpu::Extent3d {
+        height,
+        width,
+        depth: 1,
+    };
+    state.app.update_depth_buffer(texture_size);
+    state.app.update_projection_matrix(texture_size);
+    let output_texture = super::rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
+    state.app.update_scene(&output_texture.view);
+
+    let buffer_dimensions = BufferDimensions::new(width as usize, height as usize);
+    // The output buffer lets us retrieve the data as an array
+    let png_buffer = state.app.manager.device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: (buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height) as u64,
+        usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
+        mapped_at_creation: false,
+    });
+
+    let command_buffer = {
+        let mut encoder = state.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+        // Copy the data from the texture to the buffer
+        encoder.copy_texture_to_buffer(
+            wgpu::TextureCopyView {
+                texture: &output_texture.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+            },
+            wgpu::BufferCopyView {
+                buffer: &png_buffer,
+                layout: wgpu::TextureDataLayout {
+                    offset: 0,
+                    bytes_per_row: buffer_dimensions.padded_bytes_per_row as u32,
+                    rows_per_image: 0,
+                },
+            },
+            texture_size,
+        );
+
+        encoder.finish()
+    };
+
+    state.app.manager.queue.submit(Some(command_buffer));
+
+    let buffer_slice = png_buffer.slice(..);
+    let buffer_future = buffer_slice.map_async(wgpu::MapMode::Read);
+
+    // Poll the device in a blocking manner so that our future resolves.
+    // In an actual application, `device.poll(...)` should
+    // be called in an event loop or on another thread.
+    state.app.manager.device.poll(wgpu::Maintain::Wait);
+    // If a file system is available, write the buffer as a PNG
+    let has_file_system_available = cfg!(not(target_arch = "wasm32"));
+    if !has_file_system_available {
+        return;
+    }
+
+    use futures::executor::block_on;
+    block_on(buffer_future).unwrap();
+    let padded_buffer = buffer_slice.get_mapped_range();
+
+    let mut png_encoder = png::Encoder::new(
+        std::fs::File::create(output_path).unwrap(),
+        buffer_dimensions.width as u32,
+        buffer_dimensions.height as u32,
+    );
+    png_encoder.set_depth(png::BitDepth::Eight);
+    png_encoder.set_color(png::ColorType::RGBA);
+    let mut png_writer = png_encoder
+        .write_header()
+        .unwrap()
+        .into_stream_writer_with_size(buffer_dimensions.unpadded_bytes_per_row);
+
+    // from the padded_buffer we write just the unpadded bytes into the image
+    use std::io::Write;
+    for chunk in padded_buffer.chunks(buffer_dimensions.padded_bytes_per_row) {
+        png_writer
+            .write(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
+            .unwrap();
+    }
+    png_writer.finish().unwrap();
+
+    // With the current interface, we have to make sure all mapped views are
+    // dropped before we unmap the buffer.
+    drop(padded_buffer);
+
+    png_buffer.unmap();
+}
+

@@ -595,6 +595,7 @@ dependencies = [
  "num-iter",
  "obj",
  "pathfinding",
+ "png",
  "rand",
  "rfd",
  "ron",

@@ -126,13 +126,17 @@ impl AppState {
         self.camera.aspect = size.width as f32/size.height as f32;
     }
 
-    pub fn update_scene(&mut self, target_texture: &wgpu::TextureView, camera_inputs: &camera::InputState) {
-        // TODO: make sure this is done only when it is really needed!
-        self.computable_scene.globals.update_buffer(&self.manager.queue);
-        self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
+
+    pub fn update_camera(&mut self, camera_inputs: &camera::InputState) {
         if self.camera_enabled {
             self.camera_controller.update_camera(&mut self.camera, camera_inputs, &self.sensitivity, self.camera_lock_up);
         }
+    }
+
+    pub fn update_scene(&mut self, target_texture: &wgpu::TextureView) {
+        // TODO: make sure this is done only when it is really needed!
+        self.computable_scene.globals.update_buffer(&self.manager.queue);
+        self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
         if self.camera_ortho {
             // this is here instead of inside `update_projection_matrix` because
             // we are currently using the zoom level to build the orthographic matrix,

@@ -34,6 +34,7 @@ pub enum CustomEvent {
     ShowOpenDialog,
     OpenFile(std::path::PathBuf),
     SaveFile(std::path::PathBuf),
+    ScenePng(std::path::PathBuf),
     RequestExit,
     MouseFreeze,
     MouseThaw,
@@ -377,7 +378,8 @@ fn main() {
                         cursor_position.y - physical_rectangle.position.y,
                     ];
                     state.app.computable_scene.renderer.update_mouse_pos(&relative_pos);
-                    state.app.update_scene(scene_texture_view, &camera_inputs);
+                    state.app.update_camera(&camera_inputs);
+                    state.app.update_scene(scene_texture_view);
                 }
 
                 platform.prepare_render(&ui, &window);
@@ -424,6 +426,22 @@ fn main() {
                         state.read_from_frzp(&path_buf);
                         rust_gui.reset_undo_history(&mut state);
                         rust_gui.reset_nongraph_data();
+                    },
+                    CustomEvent::ScenePng(path_buf) => {
+                        util::create_png(&mut state, &path_buf);
+                        // TODO: this is hacked in and needs cleanup:
+                        // util::create_png modifies the state changing the depth buffer and the
+                        // projection because we run the rendering on the output png size.
+                        // before we continue with our normal execution we need to resize
+                        // everything back
+                        let scene_texture = renderer.textures.get(scene_texture_id).unwrap();
+                        let texture_size = wgpu::Extent3d {
+                            height: scene_texture.height(),
+                            width: scene_texture.width(),
+                            depth: 1,
+                        };
+                        state.app.update_depth_buffer(texture_size);
+                        state.app.update_projection_matrix(texture_size);
                     },
                     CustomEvent::MouseFreeze => {
                         mouse_frozen = true;
