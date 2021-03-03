@@ -15,15 +15,17 @@ pub struct Camera {
 
 impl Default for Camera {
     fn default() -> Camera {
-        Camera {
-            eye: Vec3::new(6.0, 4.0, 4.0),
-            target: Vec3::new(0.0, 0.0, 0.0),
-            aspect: 1.0,
-            up: Vec3::new(0.0, 0.0, 1.0),
+        let mut new_camera = Camera {
             fov_y: 0.2 * std::f32::consts::PI,
             z_near: 0.1,
             z_far: 100.0,
-        }
+            aspect: 1.0,
+            eye: Vec3::default(),
+            target: Vec3::default(),
+            up: Vec3::default(),
+        };
+        new_camera.default_view();
+        new_camera
     }
 }
 
@@ -35,10 +37,12 @@ impl Camera {
         }
     }
 
-    pub fn reset_view(&mut self) {
+    pub fn default_view(&mut self) {
         self.eye = Vec3::new(6.0, 4.0, 4.0);
         self.target = Vec3::new(0.0, 0.0, 0.0);
-        self.up = Vec3::new(0.0, 0.0, 1.0);
+        let relative_pos = self.eye - self.target;
+        let right = relative_pos.cross(Vec3::unit_z());
+        self.up = right.cross(relative_pos).normalize();
     }
 
     pub fn build_view_matrix(&self) -> Mat4 {
@@ -58,6 +62,38 @@ impl Camera {
         let half_w = half_h * self.aspect;
         // need testing
         Mat4::orthographic_lh(-half_w, half_w, -half_h, half_h, 64.0, -64.0)
+    }
+
+    pub fn set_xz_plane(&mut self) {
+        let relative_pos = self.eye - self.target;
+        let distance = relative_pos.length();
+        self.target = Vec3::zero();
+        self.eye = -distance * Vec3::unit_y();
+        self.up = Vec3::unit_z();
+    }
+
+    pub fn set_xy_plane(&mut self) {
+        let relative_pos = self.eye - self.target;
+        let distance = relative_pos.length();
+        self.target = Vec3::zero();
+        self.eye = distance * Vec3::unit_z();
+        self.up = Vec3::unit_y();
+    }
+
+    pub fn set_yz_plane(&mut self) {
+        let relative_pos = self.eye - self.target;
+        let distance = relative_pos.length();
+        self.target = Vec3::zero();
+        self.eye = distance * Vec3::unit_x();
+        self.up = Vec3::unit_z();
+    }
+
+    pub fn set_x1_y1_z1_point(&mut self) {
+        let relative_pos = self.eye - self.target;
+        let distance = relative_pos.length();
+        self.target = Vec3::zero();
+        self.eye = distance * Vec3::one().normalize();
+        self.up = Vec3::unit_z();
     }
 }
 
@@ -127,23 +163,46 @@ impl Controller for VTKController {
         distance = distance.max(self.min_distance);
 
         if inputs.mouse_left_click {
-            let rot_coeff = 0.02;
+            let rot_coeff = -0.01;
             let x_delta = inputs.mouse_motion.0 as f32 * rot_coeff * sensitivity.camera_horizontal;
             let y_delta = inputs.mouse_motion.1 as f32 * rot_coeff * sensitivity.camera_vertical;
-            let camera_right = camera.up.cross(pos_on_sphere.normalize());
-            // we want to render the effect of the object rotating the same way
-            // the mouse moves. For this reason, we need to rotate the camera
-            // in the opposite direction along "camera.right"!
-            // The movement along the "camera.up" direction does not need to be inverted
-            // because screen coordinates are already "y points downwards"
-            let position_delta =  y_delta * camera.up - x_delta * camera_right;
-            // for small angles, sin(theta) = theta!
-            pos_on_sphere = (pos_on_sphere + position_delta).normalize();
+            let camera_right = camera.up.cross(pos_on_sphere).normalize();
+            // first compute the change in pitch
+            let pitch = glam::Mat3::from_axis_angle(camera_right, y_delta);
+            pos_on_sphere = pitch * pos_on_sphere;
+            camera.up = pitch * camera.up;
+            // now we do something different depending on whether the camera is locked
             if lock_z_up {
-                camera.up = Vec3::unit_z();
+                // First, the camera might need to be reset. We can check on the z
+                // component of the right axis to know if the camera is not straight up anymore
+                let tilt_angle = camera_right.z.asin();
+                if tilt_angle.abs() > 42.0 * std::f32::EPSILON {
+                    // do not de-tilt in one single shot, de-tilt a bit for each frame, this way
+                    // the user can at least understand what is happening
+                    let untilt = glam::Mat3::from_axis_angle(pos_on_sphere, -0.2 * tilt_angle);
+                    camera.up = untilt * camera.up;
+                }
+                // then we need to check if the camera went upside-down. If that happened,
+                // we rotate around the camera_right axis to bring the camera and the position
+                // on the sphere to the correct values
+                if camera.up.z < 42.0 * std::f32::EPSILON {
+                    let angle = pos_on_sphere.z.signum() * camera.up.z.atan2(Vec3::new(camera.up.x, camera.up.y, 0.0).length());
+                    // same as before, apply rotation a bit per frame
+                    let rot_around_right = glam::Mat3::from_axis_angle(camera_right, -0.25 * angle);
+                    camera.up = rot_around_right * camera.up;
+                    pos_on_sphere = rot_around_right * pos_on_sphere;
+                }
+
+                // after fixing the camera, we can do standard processing of user input
+                let rot_z = glam::Mat3::from_rotation_z(x_delta);
+                pos_on_sphere = rot_z * pos_on_sphere;
+                camera.up = rot_z * camera.up;
             } else {
-                camera.up = camera_right.cross(-pos_on_sphere).normalize();
-            }
+                let yaw = glam::Mat3::from_axis_angle(camera.up, x_delta);
+                pos_on_sphere = yaw * pos_on_sphere;
+            };
+            pos_on_sphere = pos_on_sphere.normalize();
+            camera.up = camera.up.normalize();
         } else if inputs.mouse_middle_click {
             // panning
             let camera_right = camera.up.cross(pos_on_sphere).normalize();

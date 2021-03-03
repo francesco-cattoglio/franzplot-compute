@@ -486,7 +486,7 @@ fn main() {
                     Event::WindowEvent{ event: WindowEvent::ModifiersChanged(modifiers), ..} => {
                         modifiers_state = modifiers;
                     }
-                    // shortcuts processing goes here
+                    // shortcuts and other keyboard processing goes here
                     Event::WindowEvent{ event: WindowEvent::KeyboardInput { input, .. }, .. } => {
                         if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Z) {
                             if modifiers_state.ctrl() && modifiers_state.shift() {
@@ -494,6 +494,18 @@ fn main() {
                             } else if modifiers_state.ctrl() {
                                 rust_gui.issue_undo(&mut state, imgui.time());
                             }
+                        }
+                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key1) {
+                            state.app.camera.set_xz_plane();
+                        }
+                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key2) {
+                            state.app.camera.set_yz_plane();
+                        }
+                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key3) {
+                            state.app.camera.set_xy_plane();
+                        }
+                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key4) {
+                            state.app.camera.set_x1_y1_z1_point();
                         }
                     }
                     Event::DeviceEvent{ event: DeviceEvent::MouseMotion { delta }, ..} => {

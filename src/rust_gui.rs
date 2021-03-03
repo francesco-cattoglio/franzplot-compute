@@ -421,9 +421,6 @@ impl Gui {
             .display_format(im_str!("%.2f"))
             .flags(SliderFlags::NO_INPUT)
             .build(ui, &mut sensitivity.camera_vertical);
-        if ui.button(im_str!("Reset camera"), [0.0, 0.0]) {
-            state.app.camera.reset_view();
-        }
         ui.text(im_str!("Axes and labels"));
         let mut recreate_axes = false;
         recreate_axes |= imgui::Slider::new(im_str!("length of x, y and z axes"))
