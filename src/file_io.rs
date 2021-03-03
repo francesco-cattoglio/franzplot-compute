@@ -19,6 +19,19 @@ pub fn async_pick_save(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: 
     });
 }
 
+pub fn async_pick_png(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor) {
+    let dialog = rfd::AsyncFileDialog::new()
+        .add_filter("Png image", &["png"])
+        .save_file();
+
+    executor.execut(async move {
+        let file = dialog.await;
+        if let Some(handle) = file {
+            event_loop_proxy.send_event(CustomEvent::ExportPng(handle.path().into()));
+        }
+    });
+}
+
 pub fn async_confirm_exit(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor) {
     let confirm_exit = rfd::AsyncMessageDialog::new()
         .set_level(rfd::MessageLevel::Warning)

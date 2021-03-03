@@ -34,11 +34,10 @@ pub enum CustomEvent {
     ShowOpenDialog,
     OpenFile(std::path::PathBuf),
     SaveFile(std::path::PathBuf),
-    ScenePng(std::path::PathBuf),
+    ExportPng(std::path::PathBuf),
     RequestExit,
     MouseFreeze,
     MouseThaw,
-    CurrentlyUnused,
 }
 
 
@@ -427,9 +426,9 @@ fn main() {
                         rust_gui.reset_undo_history(&mut state);
                         rust_gui.reset_nongraph_data();
                     },
-                    CustomEvent::ScenePng(path_buf) => {
+                    CustomEvent::ExportPng(path_buf) => {
                         util::create_png(&mut state, &path_buf);
-                        // TODO: this is hacked in and needs cleanup:
+                        // TODO: this is hacked in and needs some refactoring:
                         // util::create_png modifies the state changing the depth buffer and the
                         // projection because we run the rendering on the output png size.
                         // before we continue with our normal execution we need to resize
@@ -451,7 +450,6 @@ fn main() {
                         mouse_frozen = false;
                         window.set_cursor_grab(false).unwrap();
                     },
-                    CustomEvent::CurrentlyUnused => println!("received a custom user event")
                 }
             }
             // Emitted when the event loop is being shut down.

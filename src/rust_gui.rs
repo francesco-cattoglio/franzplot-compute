@@ -166,8 +166,7 @@ impl Gui {
                     }
                     ui.separator();
                     if MenuItem::new(im_str!("Export scene")).build(ui) {
-                        use crate::CustomEvent;
-                        self.winit_proxy.send_event(CustomEvent::ScenePng("garbage/test.png".into()));
+                        file_io::async_pick_png(self.winit_proxy.clone(), executor);
                     }
                     ui.separator();
                     if MenuItem::new(im_str!("Exit")).build(ui) {
