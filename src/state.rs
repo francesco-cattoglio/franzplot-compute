@@ -2,7 +2,7 @@ use crate::computable_scene::*;
 use crate::device_manager::Manager;
 use crate::rendering::camera;
 use crate::rendering::SceneRenderer;
-use crate::rendering::texture::{Texture, Masks, Materials};
+use crate::rendering::texture::{Texture, Masks,};
 use crate::rendering::model::Model;
 use crate::node_graph;
 use serde::{Serialize, Deserialize};

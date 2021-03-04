@@ -53,7 +53,6 @@ impl Model {
                 }
             }
         }
-        dbg!(&vertices.len());
 
         let vertices_remainder = vertices.len() % MODEL_CHUNK_VERTICES;
         if vertices_remainder != 0 {
@@ -61,7 +60,6 @@ impl Model {
             let new_size = vertices.len() + (MODEL_CHUNK_VERTICES - vertices_remainder);
             vertices.resize_with(new_size, StandardVertexData::default);
         }
-        dbg!(&vertices.len());
 
         use wgpu::util::DeviceExt;
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor{

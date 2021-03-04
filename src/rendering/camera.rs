@@ -1,5 +1,4 @@
 use glam::{Vec3, Mat4};
-use winit::event::*;
 use crate::state::Sensitivity;
 
 #[derive(Debug)]

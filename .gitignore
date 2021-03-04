@@ -19,3 +19,6 @@
 
 # Local Cargo configs.
 /.cargo/
+
+# MacOS folder files
+.DS_Store

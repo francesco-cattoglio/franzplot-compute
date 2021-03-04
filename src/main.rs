@@ -324,7 +324,7 @@ fn main() {
             // into a single event, to help avoid duplicating rendering work.
             Event::RedrawRequested(_window_id) => {
                 // acquire next frame, or update the swapchain if a resize occurred
-                let frame = if let Some(frame) = state.app.manager.get_frame(&window) {
+                let frame = if let Some(frame) = state.app.manager.get_frame() {
                     frame
                 } else {
                     // if we are unable to get a frame, skip rendering altogether

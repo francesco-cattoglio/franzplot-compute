@@ -1518,6 +1518,7 @@ impl NodeGraph {
         }
     }
 
+    #[allow(unused)]
     pub fn get_attribute_as_color(&self, attribute_id: AttributeID) -> Option<[f32; 3]> {
         // first, we need to check if the attribute_id actually exists in our attributes map
         let attribute_slot = self.attributes.get(attribute_id as usize)?;

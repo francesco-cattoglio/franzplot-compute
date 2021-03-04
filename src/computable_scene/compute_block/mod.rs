@@ -13,7 +13,7 @@ pub mod curve;
 pub use curve::{CurveBlockDescriptor, CurveData};
 
 pub mod plane;
-pub use plane::{PlaneData, PlaneBlockDescriptor};
+pub use plane::{PlaneBlockDescriptor};
 
 pub mod surface;
 pub use surface::{SurfaceData, SurfaceBlockDescriptor};

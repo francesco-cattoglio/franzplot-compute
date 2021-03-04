@@ -64,7 +64,7 @@ impl Manager {
         }
     }
 
-    pub fn get_frame(&mut self, window: &winit::window::Window) -> Option<wgpu::SwapChainFrame> {
+    pub fn get_frame(&mut self) -> Option<wgpu::SwapChainFrame> {
         // get the framebuffer frame. We might need to re-create the swapchain if for some
         // reason our current one is outdated
         let maybe_frame = self.swap_chain.get_current_frame();
@@ -95,6 +95,7 @@ impl Manager {
         }
     }
 
+    #[allow(unused)]
     pub fn update_swapchain(&mut self, window: &Window) {
         let size = window.inner_size();
         let swapchain_descriptor = wgpu::SwapChainDescriptor {

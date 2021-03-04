@@ -1,11 +1,7 @@
 use crate::rendering::{StandardVertexData, GLSL_STANDARD_VERTEX_STRUCT};
 use crate::node_graph::AVAILABLE_SIZES;
-use crate::rendering::model::{ Model, MODEL_CHUNK_VERTICES };
-use super::{ComputeBlock, BlockCreationError, Dimensions, BlockId};
+use super::{ComputeBlock, BlockCreationError, BlockId};
 use super::{ProcessedMap, ProcessingResult};
-
-const LOCAL_SIZE_X: usize = 16;
-const LOCAL_SIZE_Y: usize = 16;
 
 #[derive(Debug)]
 pub struct VectorRenderingBlockDescriptor {
