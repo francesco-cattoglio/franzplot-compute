@@ -1,6 +1,6 @@
 [package]
 name = "franzplot-compute"
-version = "0.1.0"
+version = "21.3.0"
 authors = ["francesco.cattoglio <francesco.cattoglio@gmail.com>"]
 edition = "2018"
 

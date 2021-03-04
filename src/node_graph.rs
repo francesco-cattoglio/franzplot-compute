@@ -1130,7 +1130,6 @@ impl NodeGraph {
 
         let mut selected_nodes_ids = imnodes::GetSelectedNodes();
         if right_click_popup {
-            println!("rcd");
             let mut hovered_id: i32 = -1;
             if imnodes::IsNodeHovered(&mut hovered_id) {
                 // Right-clicking on a node does not select it. This means that if a user right clicks
