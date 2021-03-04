@@ -1234,10 +1234,6 @@ impl NodeGraph {
             }
 
             ui.menu(im_str!("Geometries"), true, || {
-                if MenuItem::new(im_str!("Primitive")).build(ui) {
-                    self.add_primitive_node(node_pos);
-                    request_savestate = Some(ui.time());
-                }
                 if MenuItem::new(im_str!("Curve")).build(ui) {
                     self.add_curve_node(node_pos);
                     request_savestate = Some(ui.time());
@@ -1252,6 +1248,10 @@ impl NodeGraph {
                 }
                 if MenuItem::new(im_str!("Plane")).build(ui) {
                     self.add_plane_node(node_pos);
+                    request_savestate = Some(ui.time());
+                }
+                if MenuItem::new(im_str!("Primitive")).build(ui) {
+                    self.add_primitive_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
             }); // Geometries menu ends here

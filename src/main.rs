@@ -83,14 +83,13 @@ impl PhysicalRectangle {
 }
 
 fn add_custom_font(imgui_context: &mut imgui::Context, font_size: f32) -> imgui::FontId {
-    println!("adding font with size {}", font_size);
     let glyph_range = FontGlyphRanges::from_slice(&[
         0x0020, 0x00FF, // Basic Latin + Latin Supplement
         0x2200, 0x22FF, // this range contains the miscellaneous symbols and arrows
         0x2600, 0x26FF, // miscelaneous symbols
         0]);
     imgui_context.fonts().add_font(&[FontSource::TtfData {
-        data: include_bytes!("../resources/DejaVuSansCustom.ttf"),
+        data: include_bytes!("../compile_resources/DejaVuSansCustom.ttf"),
         size_pixels: font_size,
         config: Some(imgui::FontConfig {
             oversample_h: 2,
