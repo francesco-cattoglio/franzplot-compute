@@ -124,10 +124,20 @@ fn main() {
     wgpu_subscriber::initialize_default_subscriber(None);
 
     let event_loop = EventLoop::<CustomEvent>::with_user_event();
+
+    let window_size = if let Some(monitor) = event_loop.primary_monitor() {
+        // web winit always reports a size of zero
+        #[cfg(not(target_arch = "wasm32"))]
+        let screen_size = monitor.size();
+        winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
+    } else {
+        winit::dpi::PhysicalSize::new(1280, 800)
+    };
+
     let mut builder = winit::window::WindowBuilder::new();
     builder = builder
         .with_title("test")
-        .with_inner_size(winit::dpi::PhysicalSize::new(1280, 800));
+        .with_inner_size(window_size);
     #[cfg(windows_OFF)] // TODO check for news regarding this
     {
         use winit::platform::windows::WindowBuilderExtWindows;
