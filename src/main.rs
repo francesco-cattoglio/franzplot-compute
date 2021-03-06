@@ -427,7 +427,7 @@ fn main() {
                                 rust_gui.reset_nongraph_data();
                             },
                             Err(error) => {
-                                file_io::async_dialog_failure(event_loop_proxy.clone(), &executor, error);
+                                file_io::async_dialog_failure(&executor, error);
                             }
                         }
                     },
