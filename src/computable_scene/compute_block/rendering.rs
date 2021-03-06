@@ -402,7 +402,7 @@ j_interval_begin=&param_2.begin, j_interval_end=&param_2.end, j_interval_uv=para
     }
 
     fn setup_3d_geometry(device: &wgpu::Device, globals: &Globals, models: &[Model], data_buffer: &wgpu::Buffer, dimensions: &Dimensions, descriptor: RenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
-        let (vertex_count, prefab_id) = dimensions.as_3d()?;
+        let (_vertex_count, prefab_id) = dimensions.as_3d()?;
         let model = models.get(prefab_id as usize).unwrap();
 
         let index_count = model.index_count;

@@ -75,14 +75,13 @@ impl PhysicalRectangle {
 }
 
 fn add_custom_font(imgui_context: &mut imgui::Context, font_size: f32) -> imgui::FontId {
-    println!("adding font with size {}", font_size);
     let glyph_range = FontGlyphRanges::from_slice(&[
         0x0020, 0x00FF, // Basic Latin + Latin Supplement
         0x2200, 0x22FF, // this range contains the miscellaneous symbols and arrows
         0x2600, 0x26FF, // miscelaneous symbols
         0]);
     imgui_context.fonts().add_font(&[FontSource::TtfData {
-        data: include_bytes!("../resources/DejaVuSansCustom.ttf"),
+        data: include_bytes!("../compile_resources/DejaVuSansCustom.ttf"),
         size_pixels: font_size,
         config: Some(imgui::FontConfig {
             oversample_h: 2,
@@ -111,10 +110,20 @@ fn main() {
     wgpu_subscriber::initialize_default_subscriber(None);
 
     let event_loop = EventLoop::<CustomEvent>::with_user_event();
+
+    let window_size = if let Some(monitor) = event_loop.primary_monitor() {
+        // web winit always reports a size of zero
+        #[cfg(not(target_arch = "wasm32"))]
+        let screen_size = monitor.size();
+        winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
+    } else {
+        winit::dpi::PhysicalSize::new(1280, 800)
+    };
+
     let mut builder = winit::window::WindowBuilder::new();
     builder = builder
         .with_title("test")
-        .with_inner_size(winit::dpi::PhysicalSize::new(1280, 800));
+        .with_inner_size(window_size);
     #[cfg(windows_OFF)] // TODO check for news regarding this
     {
         use winit::platform::windows::WindowBuilderExtWindows;
@@ -316,7 +325,7 @@ fn main() {
             // into a single event, to help avoid duplicating rendering work.
             Event::RedrawRequested(_window_id) => {
                 // acquire next frame, or update the swapchain if a resize occurred
-                let frame = if let Some(frame) = state.app.manager.get_frame(&window) {
+                let frame = if let Some(frame) = state.app.manager.get_frame() {
                     frame
                 } else {
                     // if we are unable to get a frame, skip rendering altogether

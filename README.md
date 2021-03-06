@@ -11,13 +11,12 @@ Feature per la release per gli studenti:
 - [x] Aggiunta delle primitive mancanti
 - [x] Rimozione dei materiali non strettamente necessari
 - [x] Aggiunta del timestamp ai file
-- [] Update all'ultima versione di imnodes per i bugfix
+- [x] Update all'ultima versione di imnodes per i bugfix
 - [x] Etichettare gli assi
 - [x] Pan della telecamera & proiezione ortografica
 - [x] Dimensione del piano
 - [x] Nodi prefab per matrici di rotazione e traslazione
-- [] export di png
-- [] implementazione della visualizzazione delle curve u-v sulle superfici
+- [x] export di png
 
 Known bugs & issues:
 - in Debug l'avvio è piuttosto lento; in Release l'avvio è molto più veloce (5 secondi vs 0.5).
@@ -27,9 +26,9 @@ Known bugs & issues:
   compute block.
 
 Features a data da destinarsi:
+- implementazione della visualizzazione delle curve u-v sulle superfici
 - raggruppamento dei nodi
 - dump del grafo in caso di crash
-- settings (tipo di telecamera, visualizzazione degli assi cartesiani, visualizzazioni di piani, eccetera
 - widget a-la Blender per visualizzazione degli assi e possibile switch a prospettiva ortografica
 - import/export di mesh
 - export di video

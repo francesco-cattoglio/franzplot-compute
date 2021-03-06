@@ -27,7 +27,6 @@ pub struct Gui {
     availables: Availables,
     axes_length: i32,
     axes_marks_size: f32,
-    labels_enabled: bool,
     labels_size: f32,
 }
 
@@ -56,7 +55,6 @@ impl Gui {
             selected_object: None,
             axes_length: 2,
             axes_marks_size: 0.075,
-            labels_enabled: true,
             labels_size: 0.15,
         }
     }
@@ -174,7 +172,7 @@ impl Gui {
                             file_io::async_confirm_exit(self.winit_proxy.clone(), executor);
                         } else {
                             use crate::CustomEvent;
-                            self.winit_proxy.send_event(CustomEvent::RequestExit);
+                            self.winit_proxy.send_event(CustomEvent::RequestExit).unwrap();
                         }
                     }
                 });

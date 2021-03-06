@@ -14,7 +14,7 @@ pub fn async_pick_save(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: 
     executor.execut(async move {
         let file = dialog.await;
         if let Some(handle) = file {
-            event_loop_proxy.send_event(CustomEvent::SaveFile(handle.path().into()));
+            event_loop_proxy.send_event(CustomEvent::SaveFile(handle.path().into())).unwrap();
         }
     });
 }
@@ -69,7 +69,7 @@ pub fn async_confirm_exit(event_loop_proxy: EventLoopProxy<CustomEvent>, executo
     executor.execut(async move {
         let confirmed = confirm_exit.await;
         if confirmed {
-            event_loop_proxy.send_event(CustomEvent::RequestExit);
+            event_loop_proxy.send_event(CustomEvent::RequestExit).unwrap();
         }
     });
 }
@@ -84,7 +84,7 @@ pub fn async_confirm_new(event_loop_proxy: EventLoopProxy<CustomEvent>, executor
     executor.execut(async move {
         let confirmed = confirm_new.await;
         if confirmed {
-            event_loop_proxy.send_event(CustomEvent::NewFile);
+            event_loop_proxy.send_event(CustomEvent::NewFile).unwrap();
         }
     });
 }
@@ -99,7 +99,7 @@ pub fn async_confirm_open(event_loop_proxy: EventLoopProxy<CustomEvent>, executo
     executor.execut(async move {
         let confirmed = confirm_open.await;
         if confirmed {
-            event_loop_proxy.send_event(CustomEvent::ShowOpenDialog);
+            event_loop_proxy.send_event(CustomEvent::ShowOpenDialog).unwrap();
         }
     });
 }
@@ -112,7 +112,7 @@ pub fn async_pick_open(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: 
     executor.execut(async move {
         let file = dialog.await;
         if let Some(handle) = file {
-            event_loop_proxy.send_event(CustomEvent::OpenFile(handle.path().into()));
+            event_loop_proxy.send_event(CustomEvent::OpenFile(handle.path().into())).unwrap();
         }
     });
 }

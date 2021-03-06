@@ -30,8 +30,6 @@ impl PrefabData {
             return Err(BlockCreationError::IncorrectAttributes(" please provide a value \n for the primitive size "));
         }
 
-        dbg!(models.len());
-        dbg!(descriptor.prefab_id);
         let model = models.get(descriptor.prefab_id as usize).unwrap();
 
         let shader_source = format!(r##"

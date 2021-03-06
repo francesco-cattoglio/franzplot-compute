@@ -62,7 +62,7 @@ pub fn load_models<P: AsRef<std::path::Path>>(device: &wgpu::Device, files: &[P]
 }
 
 use winit::event::MouseScrollDelta;
-
+//TODO: DRY? We might want to unify the two compute_graph_zoom and compute_scene_zoom functions
 #[cfg(target_os = "macos")]
 // On MacOS:
 // - the mouse wheel reports as LineDelta with fractional floats,
@@ -86,6 +86,26 @@ pub fn compute_scene_zoom(delta: MouseScrollDelta, mouse_sensitivity: f32, touch
             // scrolling on the touch pad reports some more normal values, so we just
             // need to convert to float and multiplying by the sensitivity
             coeff * touchpad_sensitivity * y as f32
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub fn compute_graph_zoom(delta: MouseScrollDelta, mouse_sensitivity: f32, touchpad_sensitivity: f32) -> f32 {
+    // Since we want to give the user reasonable numbers shown as sensitivity settings,
+    // a hidden coefficient helps with keeping the numbers all in the same range
+    let coeff = 0.2;
+    match delta {
+        MouseScrollDelta::LineDelta(_x, y) => {
+            // mouse got scrolled, due to the way this gets reported, we want to squash it
+            // as close as possible to 1 by applying a cube root, then multiplying it
+            // by the sensitivity
+            -coeff * mouse_sensitivity * y.cbrt()
+        },
+        MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition {y, ..}) => {
+            // scrolling on the touch pad reports some more normal values, so we just
+            // need to convert to float and multiplying by the sensitivity
+            -coeff * touchpad_sensitivity * y as f32
         }
     }
 }

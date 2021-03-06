@@ -8,11 +8,12 @@ pub struct CustomBindDescriptor<'a> {
 }
 
 pub fn compile_graphics_shader(
-    device: &wgpu::Device,
-    shader_src: &str,
+    _device: &wgpu::Device,
+    _shader_src: &str,
     ) -> wgpu::ShaderModule {
     todo!()
 }
+
 pub fn compile_compute_shader(
     device: &wgpu::Device,
     shader_src: &str,
@@ -23,7 +24,7 @@ pub fn compile_compute_shader(
         let mut shader_compiler = shaderc::Compiler::new().ok_or(BlockCreationError::InternalError("unable to initialize shader compiler"))?;
         let comp_spirv = shader_compiler.compile_into_spirv(shader_src, shaderc::ShaderKind::Compute, "shader.comp", "main", None)
         .map_err(|error: shaderc::Error| {
-            dbg!(&error);
+            dbg!(error);
             BlockCreationError::IncorrectAttributes(" check the expressions \n for errors ")
         })?;
         let comp_data = wgpu::util::make_spirv(comp_spirv.as_binary_u8());

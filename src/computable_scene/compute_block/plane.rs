@@ -1,4 +1,3 @@
-use crate::computable_scene::globals::Globals;
 use crate::shader_processing::*;
 use super::{ComputeBlock, BlockId};
 use super::Parameter;
@@ -18,19 +17,10 @@ pub struct PlaneBlockDescriptor {
 }
 impl PlaneBlockDescriptor {
     pub fn make_block(self, device: &wgpu::Device, processed_blocks: &ProcessedMap) -> ProcessingResult {
-        Ok(ComputeBlock::Surface(PlaneData::new(device, processed_blocks, self)?))
+        Ok(ComputeBlock::Surface(Self::create_surface_data(device, processed_blocks, self)?))
     }
-}
 
-pub struct PlaneData {
-    pub out_buffer: wgpu::Buffer,
-    pub compute_pipeline: wgpu::ComputePipeline,
-    compute_bind_group: wgpu::BindGroup,
-    pub out_dim: Dimensions,
-}
-
-impl PlaneData {
-    pub fn new(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: PlaneBlockDescriptor) -> Result<SurfaceData, BlockCreationError> {
+    fn create_surface_data(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: PlaneBlockDescriptor) -> Result<SurfaceData, BlockCreationError> {
         let center_id = descriptor.center.ok_or(BlockCreationError::InputMissing(" This Plane node \n is missing the point input "))?;
         let found_element = processed_blocks.get(&center_id).ok_or(BlockCreationError::InternalError("Plane point input does not exist in the block map"))?;
         let center_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
@@ -39,7 +29,6 @@ impl PlaneData {
             ComputeBlock::Point(data) => data,
             _ => return Err(BlockCreationError::InputInvalid(" Plane first input \n is not a point "))
         };
-
 
         let normal_id = descriptor.normal.ok_or(BlockCreationError::InputMissing(" This Plane node \n is missing the normal input "))?;
         let found_element = processed_blocks.get(&normal_id).ok_or(BlockCreationError::InternalError("Plane normal input does not exist in the block map"))?;

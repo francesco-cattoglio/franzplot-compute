@@ -1,4 +1,3 @@
-use crate::computable_scene::globals::Globals;
 use crate::shader_processing::*;
 use super::ComputeBlock;
 use super::BlockId;

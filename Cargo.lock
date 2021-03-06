@@ -582,7 +582,7 @@ checksum = "00b0228411908ca8685dba7fc2cdd70ec9990a6e753e89b6ac91a84c40fbaf4b"
 
 [[package]]
 name = "franzplot-compute"
-version = "0.1.0"
+version = "21.3.0"
 dependencies = [
  "anyhow",
  "bytemuck",

@@ -454,10 +454,23 @@ void main() {{
     // PROVIDED THE MATRIX IS NOT SINGULAR
     // TODO: possible optimization: precompute inverse transpose
     // directly in the matrix compute block (for 0D matrices only)
-    mat3 linear = mat3(in_matrix);
-    float determinant = determinant(linear);
+    mat3 A = mat3(in_matrix);
+    float determinant = determinant(A);
     if (determinant > 1e-6) {{
-        out_buff[idx].normal.xyz = normalize(transpose(inverse(linear))*in_buff[idx].normal.xyz);
+        // WORKAROUND for a naga bug under MacOS: compute the inverse transpose by hand
+        mat3 inv_t;
+        float invdet = 1/determinant;
+        inv_t[0][0] =  (A[1][1]*A[2][2]-A[2][1]*A[1][2])*invdet;
+        inv_t[1][0] = -(A[0][1]*A[2][2]-A[0][2]*A[2][1])*invdet;
+        inv_t[2][0] =  (A[0][1]*A[1][2]-A[0][2]*A[1][1])*invdet;
+        inv_t[0][1] = -(A[1][0]*A[2][2]-A[1][2]*A[2][0])*invdet;
+        inv_t[1][1] =  (A[0][0]*A[2][2]-A[0][2]*A[2][0])*invdet;
+        inv_t[2][1] = -(A[0][0]*A[1][2]-A[1][0]*A[0][2])*invdet;
+        inv_t[0][2] =  (A[1][0]*A[2][1]-A[2][0]*A[1][1])*invdet;
+        inv_t[1][2] = -(A[0][0]*A[2][1]-A[2][0]*A[0][1])*invdet;
+        inv_t[2][2] =  (A[0][0]*A[1][1]-A[1][0]*A[0][1])*invdet;
+
+        out_buff[idx].normal.xyz = normalize(inv_t*in_buff[idx].normal.xyz);
         out_buff[idx].normal.w = 0.0;
     }} else {{
         // this is wrong, but at least it won't produce undefined garbage results
