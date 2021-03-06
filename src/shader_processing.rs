@@ -54,7 +54,6 @@ pub fn compile_compute_shader(
                     resource: binding.buffer.as_entire_binding(),
                     });
         }
-        dbg!(&layout_entries);
         let compute_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
                 entries: &layout_entries,

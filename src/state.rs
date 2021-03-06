@@ -2,7 +2,7 @@ use crate::computable_scene::*;
 use crate::device_manager::Manager;
 use crate::rendering::camera;
 use crate::rendering::SceneRenderer;
-use crate::rendering::texture::{Texture, Masks, Materials};
+use crate::rendering::texture::{Texture, Masks};
 use crate::rendering::model::Model;
 use crate::node_graph;
 use serde::{Serialize, Deserialize};
@@ -217,12 +217,14 @@ impl State {
         file.write_all(contents.as_bytes()).unwrap();
     }
 
-    pub fn read_from_frzp(&mut self, path: &std::path::PathBuf) {
+    pub fn read_from_frzp(&mut self, path: &std::path::PathBuf) -> Result<(), &'static str> {
         let mut file = std::fs::File::open(path).unwrap();
         let mut contents = String::new();
         use std::io::Read;
-        file.read_to_string(&mut contents).unwrap();
-        let saved_data: FileVersion = ron::from_str(&contents).unwrap();
+        file.read_to_string(&mut contents)
+            .or(Err("Error opening file. Content is not UTF-8."))?;
+        let saved_data: FileVersion = ron::from_str(&contents)
+            .or(Err("Error reading file contents. Is this a franzplot file?"))?;
         match saved_data {
             FileVersion::V0(user_state) => {
                 // loading an older file that does NOT have timestamp infos
@@ -235,6 +237,7 @@ impl State {
             }
         }
         self.user.graph.push_positions_to_imnodes();
+        Ok(())
     }
 
     pub fn new_file(&mut self) {

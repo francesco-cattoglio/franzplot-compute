@@ -18,14 +18,7 @@ mod file_io;
 #[cfg(test)]
 mod tests;
 
-use getopts::Options;
 use std::env;
-
-
-fn print_usage(program: &str, opts: Options) {
-    let brief = format!("Usage: {} [options]", program);
-    print!("{}", opts.usage(&brief));
-}
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -39,7 +32,6 @@ pub enum CustomEvent {
     MouseFreeze,
     MouseThaw,
 }
-
 
 use std::future::Future;
 
@@ -104,22 +96,17 @@ fn add_custom_font(imgui_context: &mut imgui::Context, font_size: f32) -> imgui:
 }
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let program = args[0].clone();
+    let matches = clap::App::new("Franzplot")
+        .version(clap::crate_version!())
+        .author("Francesco Cattoglio")
+        .about("a tool to create and visualize parametric curves and surfaces")
+        .arg(clap::Arg::with_name("INPUT")
+            .help("Open an existing file instead of starting from a new one")
+            .required(false)
+            .index(1))
+        .get_matches();
 
-    let mut opts = Options::new();
-    opts.optopt("i", "", "set input file name", "NAME");
-    opts.optflag("h", "help", "print this help menu");
-    let matches = match opts.parse(&args[1..]) {
-        Ok(m) => { m }
-        Err(f) => { panic!(f.to_string()) }
-    };
-    if matches.opt_present("h") {
-        print_usage(&program, opts);
-        return;
-    }
-
-    let _input_file = matches.opt_str("i");
+    let maybe_input_file = matches.value_of("INPUT");
 
     wgpu_subscriber::initialize_default_subscriber(None);
 
@@ -293,6 +280,11 @@ fn main() {
     let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, availables, graph_fonts);
     let mut state = state::State::new(device_manager, assets);
 
+    if let Some(file) = maybe_input_file {
+        let file_path = std::path::PathBuf::from(file);
+        event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
+    }
+
     let mut old_instant = std::time::Instant::now();
     let mut modifiers_state = winit::event::ModifiersState::default();
 
@@ -402,8 +394,6 @@ fn main() {
                 camera_inputs.reset_deltas();
             }
             // Emitted when an event is sent from EventLoopProxy::send_event
-            // We are not currently using it, but this might become useful for issuing commands
-            // to winit that have to be executed during the next frame.
             Event::UserEvent(user_event) => {
                 match user_event {
                     CustomEvent::ShowOpenDialog => {
@@ -422,9 +412,15 @@ fn main() {
                         rust_gui.graph_edited = false;
                     },
                     CustomEvent::OpenFile(path_buf) => {
-                        state.read_from_frzp(&path_buf);
-                        rust_gui.reset_undo_history(&mut state);
-                        rust_gui.reset_nongraph_data();
+                        match state.read_from_frzp(&path_buf) {
+                            Ok(()) => {
+                                rust_gui.reset_undo_history(&mut state);
+                                rust_gui.reset_nongraph_data();
+                            },
+                            Err(error) => {
+                                file_io::async_dialog_failure(event_loop_proxy.clone(), &executor, error);
+                            }
+                        }
                     },
                     CustomEvent::ExportPng(path_buf) => {
                         util::create_png(&mut state, &path_buf);
@@ -464,6 +460,13 @@ fn main() {
                     *control_flow = ControlFlow::Exit;
                 }
             }
+            Event::WindowEvent { event: WindowEvent::DroppedFile(file_path), .. } => {
+                if rust_gui.graph_edited {
+                    file_io::async_confirm_load(event_loop_proxy.clone(), &executor, file_path);
+                } else {
+                    event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
+                }
+            },
             // catch-all for remaining events (WindowEvent and DeviceEvent). We do this because
             // we want imgui to handle it first, and then do any kind of "post-processing"
             // that we might be thinking of.

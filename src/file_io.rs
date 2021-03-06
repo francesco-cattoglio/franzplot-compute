@@ -27,8 +27,35 @@ pub fn async_pick_png(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &
     executor.execut(async move {
         let file = dialog.await;
         if let Some(handle) = file {
-            event_loop_proxy.send_event(CustomEvent::ExportPng(handle.path().into()));
+            event_loop_proxy.send_event(CustomEvent::ExportPng(handle.path().into())).unwrap();
         }
+    });
+}
+
+pub fn async_confirm_load(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor, file_path: std::path::PathBuf) {
+    let confirm_load = rfd::AsyncMessageDialog::new()
+        .set_level(rfd::MessageLevel::Warning)
+        .set_description("The current file has unsaved changes. Are you sure you want to load this new file?")
+        .set_buttons(rfd::MessageButtons::YesNo)
+        .show();
+
+    executor.execut(async move {
+        let confirmed = confirm_load.await;
+        if confirmed {
+            event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
+        }
+    });
+}
+
+pub fn async_dialog_failure(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor, error: &'static str) {
+    let error_dialog = rfd::AsyncMessageDialog::new()
+        .set_level(rfd::MessageLevel::Error)
+        .set_description(error)
+        .set_buttons(rfd::MessageButtons::Ok)
+        .show();
+
+    executor.execut(async move {
+        let _aknowledged = error_dialog.await;
     });
 }
 
