@@ -523,10 +523,10 @@ fn main() {
                     Event::DeviceEvent{ event: DeviceEvent::MouseMotion { delta }, ..} => {
                         camera_inputs.mouse_motion = delta;
                     }
-                    Event::DeviceEvent{ event: DeviceEvent::MouseWheel { delta }, ..} => {
+                    Event::WindowEvent{ event: WindowEvent::MouseWheel { delta, .. }, ..} => {
                         let sensitivity = &state.app.sensitivity;
-                        camera_inputs.mouse_wheel = util::compute_scene_zoom(delta, sensitivity.mouse_zoom_scene, sensitivity.touch_zoom_scene);
-                        rust_gui.added_zoom = util::compute_graph_zoom(delta, sensitivity.mouse_zoom_graph, sensitivity.touch_zoom_graph);
+                        camera_inputs.mouse_wheel = util::compute_scene_zoom(delta, sensitivity.scene_zoom);
+                        rust_gui.added_zoom = util::compute_graph_zoom(delta, sensitivity.graph_zoom);
                     }
                     Event::WindowEvent{ event: WindowEvent::MouseInput { state, button, .. }, ..} => {
                         // BEWARE: the `state` variable in this scope shadows the "application state" variable

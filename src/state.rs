@@ -68,10 +68,8 @@ pub struct Assets {
 }
 
 pub struct Sensitivity {
-    pub mouse_zoom_graph: f32,
-    pub mouse_zoom_scene: f32,
-    pub touch_zoom_graph: f32,
-    pub touch_zoom_scene: f32,
+    pub graph_zoom: f32,
+    pub scene_zoom: f32,
     pub camera_horizontal: f32,
     pub camera_vertical: f32,
 }
@@ -79,10 +77,8 @@ pub struct Sensitivity {
 impl Default for Sensitivity {
     fn default() -> Self {
         Sensitivity {
-            mouse_zoom_graph: 1.0,
-            mouse_zoom_scene: 0.8,
-            touch_zoom_graph: 0.8,
-            touch_zoom_scene: 1.0,
+            graph_zoom: 1.0,
+            scene_zoom: 1.0,
             camera_horizontal: 0.8,
             camera_vertical: 1.0,
         }

@@ -386,26 +386,18 @@ impl Gui {
         let sensitivity = &mut state.app.sensitivity;
         ui.text(im_str!("Zoom sensitivity"));
         let width_token = ui.push_item_width(120.0);
-        imgui::Slider::new(im_str!("mouse zoom speed for graph"))
-            .range(0.1 ..= 2.0)
+        imgui::Slider::new(im_str!("zoom speed for graph"))
+            .range(0.25 ..= 4.0)
             .display_format(im_str!("%.2f"))
             .flags(SliderFlags::NO_INPUT)
-            .build(ui, &mut sensitivity.mouse_zoom_graph);
-        imgui::Slider::new(im_str!("mouse zoom speed for scene"))
-            .range(0.1 ..= 2.0)
+            .flags(SliderFlags::LOGARITHMIC)
+            .build(ui, &mut sensitivity.graph_zoom);
+        imgui::Slider::new(im_str!("zoom speed for scene"))
+            .range(0.25 ..= 4.0)
             .display_format(im_str!("%.2f"))
             .flags(SliderFlags::NO_INPUT)
-            .build(ui, &mut sensitivity.mouse_zoom_scene);
-        imgui::Slider::new(im_str!("touchpad zoom speed for graph"))
-            .range(0.1 ..= 2.0)
-            .display_format(im_str!("%.2f"))
-            .flags(SliderFlags::NO_INPUT)
-            .build(ui, &mut sensitivity.touch_zoom_graph);
-        imgui::Slider::new(im_str!("touchpad zoom speed for scene"))
-            .range(0.1 ..= 2.0)
-            .display_format(im_str!("%.2f"))
-            .flags(SliderFlags::NO_INPUT)
-            .build(ui, &mut sensitivity.touch_zoom_scene);
+            .flags(SliderFlags::LOGARITHMIC)
+            .build(ui, &mut sensitivity.scene_zoom);
         ui.text(im_str!("Camera settings"));
         ui.checkbox(im_str!("use orthographic projection"), &mut state.app.camera_ortho);
         ui.checkbox(im_str!("lock camera to vertical position"), &mut state.app.camera_lock_up);

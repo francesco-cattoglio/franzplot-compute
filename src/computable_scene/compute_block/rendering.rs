@@ -500,7 +500,7 @@ fn create_point_data(device: &wgpu::Device, refine: usize) -> (String, usize, wg
 
     let points = sphere.raw_points();
     let point_count = points.len();
-    dbg!(point_count);
+
     let mut shader_consts = String::new();
     shader_consts += &format!("const vec3 sphere_points[{n}] = {{\n", n=point_count);
     for p in points {

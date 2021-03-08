@@ -62,108 +62,55 @@ pub fn load_models<P: AsRef<std::path::Path>>(device: &wgpu::Device, files: &[P]
 }
 
 use winit::event::MouseScrollDelta;
-//TODO: DRY? We might want to unify the two compute_graph_zoom and compute_scene_zoom functions
-#[cfg(target_os = "macos")]
-// On MacOS:
-// - the mouse wheel reports as LineDelta with fractional floats,
-// and the value accelerates quickly depending on how many lines one
-// scrolled. (one tick starts as 0.1, can easily go up to 10.1 for
-// EACH tick on a scroll. "Compressing" with a sqrt or by ^0.3333 might
-// be a good idea!)
-// - the scroll pad reports as a PhysicalPosition, and has inertia!
-pub fn compute_scene_zoom(delta: MouseScrollDelta, mouse_sensitivity: f32, touchpad_sensitivity: f32) -> f32 {
-    // Since we want to give the user reasonable numbers shown as sensitivity settings,
-    // a hidden coefficient helps with keeping the numbers all in the same range
-    let coeff = 0.1;
+
+// handling sensitivity is a bit messy, due to the fact that every platform handles things
+// differently, and as a bonus, the MouseScrollDelta reported by a WindowEvent can be different
+// from the MouseScrollDelta in a DeviceEvent.
+#[cfg(target_os = "windows")]
+pub fn compute_scroll(delta: MouseScrollDelta, sensitivity: f32) -> f32 {
     match delta {
         MouseScrollDelta::LineDelta(_x, y) => {
-            // mouse got scrolled, due to the way this gets reported, we want to squash it
-            // as close as possible to 1 by applying a cube root, then multiplying it
-            // by the sensitivity
-            coeff * mouse_sensitivity * y.cbrt()
+            sensitivity * y.cbrt()
         },
         MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition {y, ..}) => {
-            // scrolling on the touch pad reports some more normal values, so we just
-            // need to convert to float and multiplying by the sensitivity
-            coeff * touchpad_sensitivity * y as f32
+            sensitivity * y as f32
         }
     }
 }
 
 #[cfg(target_os = "macos")]
-pub fn compute_graph_zoom(delta: MouseScrollDelta, mouse_sensitivity: f32, touchpad_sensitivity: f32) -> f32 {
-    // Since we want to give the user reasonable numbers shown as sensitivity settings,
-    // a hidden coefficient helps with keeping the numbers all in the same range
-    let coeff = 0.2;
+pub fn compute_scroll(delta: MouseScrollDelta, sensitivity: f32) -> f32 {
     match delta {
         MouseScrollDelta::LineDelta(_x, y) => {
-            // mouse got scrolled, due to the way this gets reported, we want to squash it
-            // as close as possible to 1 by applying a cube root, then multiplying it
-            // by the sensitivity
-            -coeff * mouse_sensitivity * y.cbrt()
+            sensitivity * y.cbrt()
         },
         MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition {y, ..}) => {
-            // scrolling on the touch pad reports some more normal values, so we just
-            // need to convert to float and multiplying by the sensitivity
-            -coeff * touchpad_sensitivity * y as f32
-        }
-    }
-}
-
-// On my Linux setup (Arch, X11):
-// - the mouse wheel reports as LineDelta with "integral" floats.
-// - the touch pad reports as LineDelta with real floats.
-// - both values are really similar though,
-#[cfg(target_os = "linux")]
-pub fn compute_scene_zoom(delta: MouseScrollDelta, mouse_sensitivity: f32, touchpad_sensitivity: f32) -> f32 {
-    // Since we want to give the user reasonable numbers shown as sensitivity settings,
-    // a hidden coefficient helps with keeping the numbers all in the same range
-    let coeff = 0.1;
-    match delta {
-        MouseScrollDelta::LineDelta(_x, y) => {
-            // to differentiate between mouse and touchpad, compute the fractional part and check
-            // if it exists or not
-            let frac = y.fract();
-            if frac.abs() < 42.0*std::f32::EPSILON {
-                // no fractional part, mouse input!
-                coeff * mouse_sensitivity * y
-            } else {
-                coeff * touchpad_sensitivity * y
-            }
-        },
-        MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition {y, ..}) => {
-            // this never gets reported on my linux, but if it ever happens we can just assume
-            // it is from touchpad
-            coeff * touchpad_sensitivity * y as f32
+            sensitivity * y as f32
         }
     }
 }
 
 #[cfg(target_os = "linux")]
-pub fn compute_graph_zoom(delta: MouseScrollDelta, mouse_sensitivity: f32, touchpad_sensitivity: f32) -> f32 {
-    // Since we want to give the user reasonable numbers shown as sensitivity settings,
-    // a hidden coefficient helps with keeping the numbers all in the same range
-    let coeff = 0.2;
+pub fn compute_scroll(delta: MouseScrollDelta, sensitivity: f32) -> f32 {
     match delta {
         MouseScrollDelta::LineDelta(_x, y) => {
-            // to differentiate between mouse and touchpad, compute the fractional part and check
-            // if it exists or not
-            let frac = y.fract();
-            if frac.abs() < 42.0*std::f32::EPSILON {
-                // no fractional part, mouse input!
-                -coeff * mouse_sensitivity * y
-            } else {
-                -coeff * touchpad_sensitivity * y
-            }
+            sensitivity * y
         },
         MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition {y, ..}) => {
-            // this never gets reported on my linux, but if it ever happens we can just assume
-            // it is from touchpad
-            -coeff * touchpad_sensitivity * y as f32
+            sensitivity * y as f32
         }
     }
 }
 
+pub fn compute_scene_zoom(delta: MouseScrollDelta, sensitivity: f32) -> f32 {
+    let coeff = -1.0;
+    coeff * compute_scroll(delta, sensitivity)
+}
+
+pub fn compute_graph_zoom(delta: MouseScrollDelta, sensitivity: f32) -> f32 {
+    let coeff = 1.0;
+    coeff * compute_scroll(delta, sensitivity)
+}
 
 pub trait FourBytes {
     fn from_bytes(bytes: [u8; 4]) -> Self;
