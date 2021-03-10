@@ -103,11 +103,27 @@ fn main() {
             .help("Open an existing file instead of starting from a new one")
             .required(false)
             .index(1))
+        .arg(clap::Arg::with_name("config")
+            .short("t")
+            .long("tracing")
+            .value_name("TRACE_PATH")
+            .help("Sets a path for tracing output")
+            .takes_value(true))
+            .arg(clap::Arg::with_name("p")
+                .short("p")
+                .multiple(true)
+                .help("Pause the execution before creating a device. Useful for attaching a debugger to a process. Each p is 5 secs"))
         .get_matches();
 
-    let maybe_input_file = matches.value_of("INPUT");
+    use std::{thread, time};
+    let seconds_to_wait = 5 * matches.occurrences_of("p");
+    thread::sleep(time::Duration::from_secs(seconds_to_wait));
 
-    wgpu_subscriber::initialize_default_subscriber(None);
+    let maybe_tracing_path = matches.value_of("TRACE_PATH");
+    let path_option = maybe_tracing_path.map(|x| std::path::Path::new(x));
+    wgpu_subscriber::initialize_default_subscriber(path_option);
+
+    let maybe_input_file = matches.value_of("INPUT");
 
     let event_loop = EventLoop::<CustomEvent>::with_user_event();
 
