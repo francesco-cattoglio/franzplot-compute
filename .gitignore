@@ -22,3 +22,6 @@
 
 # MacOS folder files
 .DS_Store
+
+# Microsoft Visual Studio folder
+/.vs
