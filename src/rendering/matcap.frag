@@ -32,7 +32,7 @@ void main() {
     int pixel_x = int(gl_FragCoord.x);
     int pixel_y = int(gl_FragCoord.y);
     if (pixel_x == u_mouse_pos.x && pixel_y == u_mouse_pos.y) {
-        atomicMin(picking[object_idx], floatBitsToInt(approx_z));
+    //    atomicMin(picking[object_idx], floatBitsToInt(approx_z));
     }
 
     vec4 mask_color = texture(sampler2D(mask_texture, mask_sampler), v_uv_coords);

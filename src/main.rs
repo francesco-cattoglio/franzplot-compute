@@ -363,7 +363,7 @@ fn main() {
                         let texture_size = wgpu::Extent3d {
                             height: physical_rectangle.size.height,
                             width: physical_rectangle.size.width,
-                            depth: 1,
+                            depth_or_array_layers: 1,
                         };
                         state.app.update_depth_buffer(texture_size);
                         state.app.update_projection_matrix(texture_size);
@@ -442,7 +442,7 @@ fn main() {
                         let texture_size = wgpu::Extent3d {
                             height: scene_texture.height(),
                             width: scene_texture.width(),
-                            depth: 1,
+                            depth_or_array_layers: 1,
                         };
                         state.app.update_depth_buffer(texture_size);
                         state.app.update_projection_matrix(texture_size);

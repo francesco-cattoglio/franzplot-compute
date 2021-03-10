@@ -177,7 +177,7 @@ layout(set = 0, binding = 1) buffer OutputData {{
 void main() {{
     // this shader prepares the data for curve rendering.
 
-    uint x_size = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+    uint x_size = {dimx};
 
     uint idx = gl_GlobalInvocationID.x;
 

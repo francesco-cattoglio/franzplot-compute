@@ -319,7 +319,8 @@ impl SceneRenderer {
         // encode the object_id in the instance used for indexed rendering, so that the shader
         // will be able to recover the id by reading the gl_InstanceIndex variable
         let instance_id = object_id;
-        render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, instance_id..instance_id+1);
+        //render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, instance_id..instance_id+1);
+        render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, 0..1);
         let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
             label: Some("Render bundle for a single scene object"),
         });
@@ -496,7 +497,7 @@ fn create_billboard_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
     let vertex_buffer_layout = wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<BillboardVertexData>() as wgpu::BufferAddress,
         step_mode: wgpu::InputStepMode::Vertex,
-        attributes: &wgpu::vertex_attr_array![0 => Float2, 1 => Float3, 2 => Uchar4Norm],
+        attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x3, 2 => Unorm8x4],
     };
     let color_target_state = wgpu::ColorTargetState {
         format: super::SCENE_FORMAT,
@@ -572,7 +573,7 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
     let vertex_buffer_layout = wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<WireframeVertexData>() as wgpu::BufferAddress,
         step_mode: wgpu::InputStepMode::Vertex,
-        attributes: &wgpu::vertex_attr_array![0 => Float3, 1 => Uchar4Norm],
+        attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Unorm8x4],
     };
     let color_target_state = wgpu::ColorTargetState {
         format: super::SCENE_FORMAT,
@@ -649,7 +650,7 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
     let vertex_buffer_descriptor = wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<StandardVertexData>() as wgpu::BufferAddress,
         step_mode: wgpu::InputStepMode::Vertex,
-        attributes: &wgpu::vertex_attr_array![0 => Float4, 1 => Float4, 2 => Float2, 3 => Float2],
+        attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2],
     };
     let color_target_state = wgpu::ColorTargetState {
         format: super::SCENE_FORMAT,

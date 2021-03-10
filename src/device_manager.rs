@@ -15,7 +15,7 @@ pub struct Manager {
 impl Manager {
     pub fn new(window: &Window) -> Self {
         use futures::executor::block_on;
-        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
+        let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
 
         let (size, surface) = unsafe {
             let size = window.inner_size();

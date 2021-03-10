@@ -184,7 +184,7 @@ pub fn create_png<P: AsRef<std::path::Path>>(state: &mut State, output_path: &P)
     let texture_size = wgpu::Extent3d {
         height,
         width,
-        depth: 1,
+        depth_or_array_layers: 1,
     };
     state.app.update_depth_buffer(texture_size);
     state.app.update_projection_matrix(texture_size);
