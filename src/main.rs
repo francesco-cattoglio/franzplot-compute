@@ -103,7 +103,7 @@ fn main() {
             .help("Open an existing file instead of starting from a new one")
             .required(false)
             .index(1))
-        .arg(clap::Arg::with_name("config")
+        .arg(clap::Arg::with_name("tracing")
             .short("t")
             .long("tracing")
             .value_name("TRACE_PATH")
@@ -115,13 +115,14 @@ fn main() {
                 .help("Pause the execution before creating a device. Useful for attaching a debugger to a process. Each p is 5 secs"))
         .get_matches();
 
+    wgpu_subscriber::initialize_default_subscriber(None);
+
     use std::{thread, time};
     let seconds_to_wait = 5 * matches.occurrences_of("p");
     thread::sleep(time::Duration::from_secs(seconds_to_wait));
 
-    let maybe_tracing_path = matches.value_of("TRACE_PATH");
-    let path_option = maybe_tracing_path.map(|x| std::path::Path::new(x));
-    wgpu_subscriber::initialize_default_subscriber(path_option);
+    let maybe_tracing_path = matches.value_of("tracing");dbg!(&maybe_tracing_path);
+    let tracing_path_option = maybe_tracing_path.map(|x| std::path::Path::new(x));
 
     let maybe_input_file = matches.value_of("INPUT");
 
@@ -149,7 +150,7 @@ fn main() {
 
     let hidpi_factor = window.scale_factor();
 
-    let device_manager = device_manager::Manager::new(&window);
+    let device_manager = device_manager::Manager::new(&window, tracing_path_option);
 
     // Set up dear imgui
     let mut imgui = imgui::Context::create();

@@ -13,7 +13,7 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub fn new(window: &Window) -> Self {
+    pub fn new(window: &Window, trace_path: Option<&std::path::Path>) -> Self {
         use futures::executor::block_on;
         let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
 
@@ -40,7 +40,7 @@ impl Manager {
                     .. Default::default()
                 },
             },
-            None
+            trace_path,
         );
         let (device, queue) = block_on(device_future).expect("unable to get a device and a queue");
 
