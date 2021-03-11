@@ -34,7 +34,7 @@ impl Manager {
         let device_future = adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: Some("requested device"),
-                features: adapter.features(),
+                features: wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
                 limits: wgpu::Limits {
                     max_storage_buffers_per_shader_stage: 6, // TODO: we need to make sure that every possible GPU supports this
                     .. Default::default()
