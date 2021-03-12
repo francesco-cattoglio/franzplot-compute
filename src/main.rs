@@ -109,10 +109,16 @@ fn main() {
             .value_name("TRACE_PATH")
             .help("Sets a path for tracing output")
             .takes_value(true))
-            .arg(clap::Arg::with_name("p")
-                .short("p")
-                .multiple(true)
-                .help("Pause the execution before creating a device. Useful for attaching a debugger to a process. Each p is 5 secs"))
+        .arg(clap::Arg::with_name("backend")
+            .short("b")
+            .long("backend")
+            .value_name("WGPU_BACKEND")
+            .help("Chose a different backend from the standard one")
+            .takes_value(true))
+        .arg(clap::Arg::with_name("p")
+            .short("p")
+            .multiple(true)
+            .help("Pause the execution before creating a device. Useful for attaching a debugger to a process. Each p is 5 secs"))
         .get_matches();
 
     wgpu_subscriber::initialize_default_subscriber(None);
@@ -121,10 +127,22 @@ fn main() {
     let seconds_to_wait = 5 * matches.occurrences_of("p");
     thread::sleep(time::Duration::from_secs(seconds_to_wait));
 
-    let maybe_tracing_path = matches.value_of("tracing");dbg!(&maybe_tracing_path);
+    let maybe_tracing_path = matches.value_of("tracing");
     let tracing_path_option = maybe_tracing_path.map(|x| std::path::Path::new(x));
 
     let maybe_input_file = matches.value_of("INPUT");
+
+    let maybe_backend = matches.value_of("backend").map(|name| {
+        match name.to_lowercase().as_str()  {
+            "vulkan" => wgpu::BackendBit::VULKAN,
+            "metal" => wgpu::BackendBit::METAL,
+            "dx12" => wgpu::BackendBit::DX12,
+            "dx11" => wgpu::BackendBit::DX11,
+            "gl" => wgpu::BackendBit::GL,
+            "webgpu" => wgpu::BackendBit::BROWSER_WEBGPU,
+            other => panic!("Unknown backend: {}", other),
+        }
+    });
 
     let event_loop = EventLoop::<CustomEvent>::with_user_event();
 
@@ -150,7 +168,7 @@ fn main() {
 
     let hidpi_factor = window.scale_factor();
 
-    let device_manager = device_manager::Manager::new(&window, tracing_path_option);
+    let device_manager = device_manager::Manager::new(&window, tracing_path_option, maybe_backend);
 
     // Set up dear imgui
     let mut imgui = imgui::Context::create();

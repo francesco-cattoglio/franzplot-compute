@@ -12,10 +12,20 @@ pub struct Manager {
     pub swap_chain: wgpu::SwapChain,
 }
 
+
+#[cfg(target_os = "windows")]
+const DEFAULT_BACKEND: wgpu::BackendBit = wgpu::BackendBit::DX12;
+
+#[cfg(target_os = "macos")]
+const DEFAULT_BACKEND: wgpu::BackendBit = wgpu::BackendBit::METAL;
+
+#[cfg(target_os = "linux")]
+const DEFAULT_BACKEND: wgpu::BackendBit = wgpu::BackendBit::VULKAN;
+
 impl Manager {
-    pub fn new(window: &Window, trace_path: Option<&std::path::Path>) -> Self {
+    pub fn new(window: &Window, trace_path: Option<&std::path::Path>, backend_override: Option<wgpu::BackendBit>) -> Self {
         use futures::executor::block_on;
-        let instance = wgpu::Instance::new(wgpu::BackendBit::VULKAN);
+        let instance = wgpu::Instance::new(backend_override.unwrap_or(DEFAULT_BACKEND));
 
         let (size, surface) = unsafe {
             let size = window.inner_size();
