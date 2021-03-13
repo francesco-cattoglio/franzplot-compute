@@ -65,7 +65,7 @@ impl Model {
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor{
             label: Some("model vertex buffer"),
             contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
+            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE,// | wgpu::BufferUsage::MAP_READ,
         });
         let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor{
             label: Some("model index buffer"),

@@ -194,7 +194,7 @@ impl Gui {
             unsafe {
                 COUNTER += 1;
                 if COUNTER > 3 {
-                    self.winit_proxy.send_event(CustomEvent::RequestExit).unwrap();
+                    //self.winit_proxy.send_event(CustomEvent::RequestExit).unwrap();
                 }
             }
 
