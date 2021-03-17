@@ -98,12 +98,10 @@ impl Camera {
 
 #[derive(Debug)]
 pub struct InputState {
-    pub forward: bool,
-    pub back: bool,
-    pub up: bool,
-    pub down: bool,
-    pub left: bool,
-    pub right: bool,
+    pub reset_to_xy: bool,
+    pub reset_to_xz: bool,
+    pub reset_to_yz: bool,
+    pub reset_to_xyz: bool,
     pub mouse_middle_click: bool,
     pub mouse_left_click: bool,
     pub mouse_motion: (f64, f64),
@@ -112,6 +110,10 @@ pub struct InputState {
 
 impl InputState {
     pub fn reset_deltas(&mut self) {
+        self.reset_to_xy = false;
+        self.reset_to_xz = false;
+        self.reset_to_yz = false;
+        self.reset_to_xyz = false;
         self.mouse_motion = (0.0, 0.0);
         self.mouse_wheel = 0.0;
     }
@@ -120,13 +122,11 @@ impl InputState {
 impl Default for InputState {
     fn default() -> Self {
         InputState {
+            reset_to_xy: false,
+            reset_to_xz: false,
+            reset_to_yz: false,
+            reset_to_xyz: false,
             mouse_wheel: 0.0,
-            forward: false,
-            back: false,
-            up: false,
-            down: false,
-            left: false,
-            right: false,
             mouse_left_click: false,
             mouse_middle_click: false,
             mouse_motion: (0.0, 0.0),
@@ -155,6 +155,23 @@ impl VTKController {
 
 impl Controller for VTKController {
     fn update_camera(&self, camera: &mut Camera, inputs: &InputState, sensitivity: &Sensitivity, lock_z_up: bool) {
+        if inputs.reset_to_xz {
+            camera.set_xz_plane();
+            return;
+        }
+        if inputs.reset_to_xy {
+            camera.set_xy_plane();
+            return;
+        }
+        if inputs.reset_to_yz {
+            camera.set_yz_plane();
+            return;
+        }
+        if inputs.reset_to_xyz {
+            camera.set_x1_y1_z1_point();
+            return;
+        }
+
         let relative_pos = camera.eye - camera.target;
         let mut distance = relative_pos.length();
         let mut pos_on_sphere = relative_pos.normalize();

@@ -543,16 +543,16 @@ fn main() {
                             }
                         }
                         if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key1) {
-                            state.app.camera.set_xz_plane();
+                            camera_inputs.reset_to_xz = true;
                         }
                         if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key2) {
-                            state.app.camera.set_yz_plane();
+                            camera_inputs.reset_to_yz = true;
                         }
                         if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key3) {
-                            state.app.camera.set_xy_plane();
+                            camera_inputs.reset_to_xy = true;
                         }
                         if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key4) {
-                            state.app.camera.set_x1_y1_z1_point();
+                            camera_inputs.reset_to_xyz = true;
                         }
                     }
                     Event::DeviceEvent{ event: DeviceEvent::MouseMotion { delta }, ..} => {
