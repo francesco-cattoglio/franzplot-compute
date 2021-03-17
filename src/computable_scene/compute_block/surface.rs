@@ -82,7 +82,7 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
 void main() {{
     uint par1_idx = gl_GlobalInvocationID.x;
     uint par2_idx = gl_GlobalInvocationID.y;
-    uint index = gl_GlobalInvocationID.x + gl_NumWorkGroups.x * gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    uint index = gl_GlobalInvocationID.x + {size_x} * gl_GlobalInvocationID.y;
     float {par1} = par1_buff[par1_idx];
     float {par2} = par2_buff[par2_idx];
     out_buff[index].x = {fx};
@@ -90,7 +90,8 @@ void main() {{
     out_buff[index].z = {fz};
     out_buff[index].w = 1;
 }}
-"##, header=&globals.shader_header, par1=par_1_name, par2=par_2_name, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+"##, header=&globals.shader_header, par1=par_1_name, par2=par_2_name, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, size_x=par_1.size,
+fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
 
         let out_dim = Dimensions::D2(par_1, par_2);
         let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);

@@ -74,7 +74,7 @@ layout(set = 0, binding = 2) buffer OutputBuffer {{
 void main() {{
     uint par1_idx = gl_GlobalInvocationID.x;
     uint par2_idx = gl_GlobalInvocationID.y;
-    uint index = gl_GlobalInvocationID.x + gl_NumWorkGroups.x * gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    uint index = gl_GlobalInvocationID.x + {size_x} * gl_GlobalInvocationID.y;
     vec3 versor = normalize(normal.xyz);
     vec3 cross_me = (abs(versor.z) > 0.01) ? vec3(0.0, 1.0, 0.0) : vec3(0.0, 0.0, 1.0);
     vec3 v1 = normalize(cross(cross_me, versor));
@@ -85,7 +85,8 @@ void main() {{
     float delta_y = -0.5*{side_length} + delta * par2_idx;
     out_buff[index] = center + delta_x * vec4(v1, 0.0) + delta_y * vec4(v2, 0.0);
 }}
-"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, side_length=descriptor.side_length, n_points=param.size);
+"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, side_length=descriptor.side_length, n_points=param.size,
+size_x=param.size);
 
         let out_dim = Dimensions::D2(param.clone(), param.clone());
         let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
