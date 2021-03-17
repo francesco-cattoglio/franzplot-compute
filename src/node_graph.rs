@@ -1228,17 +1228,13 @@ impl NodeGraph {
             let editor_pos_y = click_pos_y - editor_ne_point[1] - pan_y;
             let zoom = ZOOM_LEVELS[self.zoom_level];
             let node_pos = [editor_pos_x/zoom, editor_pos_y/zoom];
-            if MenuItem::new(im_str!("Interval")).build(ui) {
-                self.add_interval_node(node_pos);
-                request_savestate = Some(ui.time());
-            }
 
             ui.menu(im_str!("Geometries"), true, || {
                 if MenuItem::new(im_str!("Curve")).build(ui) {
                     self.add_curve_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("Bezier")).build(ui) {
+                if MenuItem::new(im_str!("Bezier Curve")).build(ui) {
                     self.add_bezier_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
@@ -1256,12 +1252,15 @@ impl NodeGraph {
                 }
             }); // Geometries menu ends here
 
-            ui.menu(im_str!("Transformations"), true, || {
-                if MenuItem::new(im_str!("Transform")).build(ui) {
-                    self.add_transform_node(node_pos);
+            ui.menu(im_str!("Parameters"), true, || {
+                if MenuItem::new(im_str!("Interval")).build(ui) {
+                    self.add_interval_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("Matrix")).build(ui) {
+            }); // Geometries menu ends here
+
+            ui.menu(im_str!("Transformations"), true, || {
+                if MenuItem::new(im_str!("Generic Matrix")).build(ui) {
                     self.add_matrix_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
@@ -1271,6 +1270,10 @@ impl NodeGraph {
                 }
                 if MenuItem::new(im_str!("Translation Matrix")).build(ui) {
                     self.add_translation_matrix_node(node_pos);
+                    request_savestate = Some(ui.time());
+                }
+                if MenuItem::new(im_str!("Transform")).build(ui) {
+                    self.add_transform_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
             }); // Transformations menu ends here
@@ -1283,7 +1286,7 @@ impl NodeGraph {
                 self.add_vector_node(node_pos);
                 request_savestate = Some(ui.time());
             }
-            if MenuItem::new(im_str!("Rendering")).build(ui) {
+            if MenuItem::new(im_str!("Geometry Rendering")).build(ui) {
                 self.add_rendering_node(node_pos);
                 request_savestate = Some(ui.time());
             }
