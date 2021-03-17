@@ -12,10 +12,20 @@ pub struct Manager {
     pub swap_chain: wgpu::SwapChain,
 }
 
+
+#[cfg(target_os = "windows")]
+const DEFAULT_BACKEND: wgpu::BackendBit = wgpu::BackendBit::DX12;
+
+#[cfg(target_os = "macos")]
+const DEFAULT_BACKEND: wgpu::BackendBit = wgpu::BackendBit::METAL;
+
+#[cfg(target_os = "linux")]
+const DEFAULT_BACKEND: wgpu::BackendBit = wgpu::BackendBit::VULKAN;
+
 impl Manager {
-    pub fn new(window: &Window) -> Self {
+    pub fn new(window: &Window, trace_path: Option<&std::path::Path>, backend_override: Option<wgpu::BackendBit>) -> Self {
         use futures::executor::block_on;
-        let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
+        let instance = wgpu::Instance::new(backend_override.unwrap_or(DEFAULT_BACKEND));
 
         let (size, surface) = unsafe {
             let size = window.inner_size();
@@ -25,7 +35,7 @@ impl Manager {
 
         let adapter_future = instance.request_adapter(
             &wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance, // TODO: investigate, this could be useful!
+                power_preference: wgpu::PowerPreference::LowPower, // TODO: HighPower caused an issue on at least one AMD discrete GPU card
                 compatible_surface: Some(&surface),
             }
         );
@@ -34,13 +44,13 @@ impl Manager {
         let device_future = adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: Some("requested device"),
-                features: adapter.features(),
+                features: wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
                 limits: wgpu::Limits {
                     max_storage_buffers_per_shader_stage: 6, // TODO: we need to make sure that every possible GPU supports this
                     .. Default::default()
                 },
             },
-            None
+            trace_path,
         );
         let (device, queue) = block_on(device_future).expect("unable to get a device and a queue");
 

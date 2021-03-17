@@ -1,9 +1,6 @@
 #include "imnodes_shims.h"
+#include "imgui.h"
 #include "franzplot-compute/src/cpp_gui/mod.rs.h"
-
-struct ImVec2 {
-    float x, y;
-};
 
 namespace imnodes {
 

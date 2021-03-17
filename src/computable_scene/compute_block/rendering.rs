@@ -177,7 +177,7 @@ layout(set = 0, binding = 1) buffer OutputData {{
 void main() {{
     // this shader prepares the data for curve rendering.
 
-    uint x_size = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
+    uint x_size = {dimx};
 
     uint idx = gl_GlobalInvocationID.x;
 
@@ -299,8 +299,8 @@ void main() {{
 
     // normal computation is done computing the tangent and cotangent of the surface via finite differences
     // and then crossing the two vectors.
-    uint x_size = gl_NumWorkGroups.x * gl_WorkGroupSize.x;
-    uint y_size = gl_NumWorkGroups.y * gl_WorkGroupSize.y;
+    uint x_size = {size_x};
+    uint y_size = {size_y};
 
     // I still need to test how bad the performance can be when branching inside a compute shader.
     uint i = gl_GlobalInvocationID.x;
@@ -370,7 +370,8 @@ void main() {{
 }}
 "##, globals_header=&globals.shader_header, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y,
 i_interval_begin=&param_1.begin, i_interval_end=&param_1.end, i_interval_uv=param_1.use_interval_as_uv,
-j_interval_begin=&param_2.begin, j_interval_end=&param_2.end, j_interval_uv=param_2.use_interval_as_uv);
+j_interval_begin=&param_2.begin, j_interval_end=&param_2.end, j_interval_uv=param_2.use_interval_as_uv,
+size_x=param_1.size, size_y=param_2.size);
 
         let bindings = [
             // add descriptor for input buffers
@@ -500,7 +501,7 @@ fn create_point_data(device: &wgpu::Device, refine: usize) -> (String, usize, wg
 
     let points = sphere.raw_points();
     let point_count = points.len();
-    dbg!(point_count);
+
     let mut shader_consts = String::new();
     shader_consts += &format!("const vec3 sphere_points[{n}] = {{\n", n=point_count);
     for p in points {

@@ -125,6 +125,7 @@ impl TransformData {
                     geometry_buffer,
                     matrix_buffer,
                     &out_buffer,
+                    geo_param.size,
                     )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
@@ -138,6 +139,7 @@ impl TransformData {
                     geometry_buffer,
                     matrix_buffer,
                     &out_buffer,
+                    geo_p1.size,
                     )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
@@ -151,7 +153,8 @@ impl TransformData {
                     geometry_buffer,
                     matrix_buffer,
                     &out_buffer,
-                    1
+                    1,
+                    geo_p1.size,
                     )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
@@ -165,7 +168,8 @@ impl TransformData {
                     geometry_buffer,
                     matrix_buffer,
                     &out_buffer,
-                    2
+                    2,
+                    geo_p1.size,
                     )?;
                 compute_pipeline = pipeline;
                 compute_bind_group = bind_group;
@@ -235,7 +239,7 @@ void main() {{
     out_buff = in_matrix * in_buff;
 }}
 "##);
-        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -279,7 +283,7 @@ void main() {{
     out_buff[index] = in_matrix[index] * in_point;
 }}
 "##, dimx=LOCAL_SIZE_X);
-        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -320,7 +324,7 @@ void main() {{
     out_buff[index] = in_matrix * in_buff[index];
 }}
 "##, dimx=LOCAL_SIZE_X);
-        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -361,7 +365,7 @@ void main() {{
     out_buff[index] = in_matrix[index] * in_buff[index];
 }}
 "##, dimx=LOCAL_SIZE_X);
-        //println!("debug info for 1d multi 1d transform shader: \n{}", shader_source);
+
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -380,7 +384,7 @@ void main() {{
         compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_2d_2d(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer) -> CompilationResult {
+    fn transform_2d_2d(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer, param_1_size: usize) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
@@ -401,11 +405,11 @@ void main() {{
     // the only difference between the 1d->1d and the 2d->2d shader is the local_sizes and the indexing
     uint par1_idx = gl_GlobalInvocationID.x;
     uint par2_idx = gl_GlobalInvocationID.y;
-    uint index = gl_GlobalInvocationID.x + gl_NumWorkGroups.x * gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    uint index = gl_GlobalInvocationID.x + {size_x} * gl_GlobalInvocationID.y;
     out_buff[index] = in_matrix * in_buff[index];
 }}
-"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
-        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, size_x=param_1_size);
+
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -455,11 +459,11 @@ void main() {{
     // TODO: possible optimization: precompute inverse transpose
     // directly in the matrix compute block (for 0D matrices only)
     mat3 A = mat3(in_matrix);
-    float determinant = determinant(A);
-    if (determinant > 1e-6) {{
+    float det = determinant(A);
+    if (det > 1e-6) {{
         // WORKAROUND for a naga bug under MacOS: compute the inverse transpose by hand
         mat3 inv_t;
-        float invdet = 1/determinant;
+        float invdet = 1/det;
         inv_t[0][0] =  (A[1][1]*A[2][2]-A[2][1]*A[1][2])*invdet;
         inv_t[1][0] = -(A[0][1]*A[2][2]-A[0][2]*A[2][1])*invdet;
         inv_t[2][0] =  (A[0][1]*A[1][2]-A[0][2]*A[1][1])*invdet;
@@ -480,7 +484,7 @@ void main() {{
     out_buff[idx]._padding = in_buff[idx]._padding;
 }}
 "##, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, dimx=MODEL_CHUNK_VERTICES);
-        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -499,7 +503,7 @@ void main() {{
         compile_compute_shader(device, shader_source.as_str(), &bindings, None, Some("Transform"))
     }
 
-    fn transform_1d_up2(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer) -> CompilationResult {
+    fn transform_1d_up2(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer, param_1_size: usize) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
@@ -520,12 +524,12 @@ void main() {{
     // the output index should be the same as the common 2D -> 2D transform
     uint par1_idx = gl_GlobalInvocationID.x;
     uint par2_idx = gl_GlobalInvocationID.y;
-    uint index = gl_GlobalInvocationID.x + gl_NumWorkGroups.x * gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    uint index = gl_GlobalInvocationID.x + {size_x} * gl_GlobalInvocationID.y;
     // while the index used for accessing the inputs are the global invocation id for x and y
     out_buff[index] = in_matrix[par2_idx] * in_buff[par1_idx];
 }}
-"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y);
-        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, size_x=param_1_size);
+
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {
@@ -545,7 +549,7 @@ void main() {{
     }
 
     fn transform_2d_same_param(device: &wgpu::Device, in_buff: &wgpu::Buffer, in_matrix: &wgpu::Buffer, out_buff: &wgpu::Buffer,
-        which_param: u32) -> CompilationResult {
+        which_param: u32, param_1_size: usize) -> CompilationResult {
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
@@ -566,11 +570,11 @@ void main() {{
     uint index_1 = gl_GlobalInvocationID.x;
     uint index_2 = gl_GlobalInvocationID.y;
     // the only difference between the 1d->1d and the 2d->2d shader is the local_sizes and the indexing
-    uint index = gl_GlobalInvocationID.x + gl_NumWorkGroups.x * gl_WorkGroupSize.x * gl_GlobalInvocationID.y;
+    uint index = gl_GlobalInvocationID.x + {size_x} * gl_GlobalInvocationID.y;
     out_buff[index] = in_matrix[index_{which_idx}] * in_buff[index];
 }}
-"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, which_idx=which_param);
-        //println!("debug info for 1d->1d transform shader: \n{}", shader_source);
+"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, which_idx=which_param, size_x=param_1_size);
+
         let mut bindings = Vec::<CustomBindDescriptor>::new();
         // add descriptor for input buffer
         bindings.push(CustomBindDescriptor {

@@ -19,7 +19,6 @@ fn main() {
         .files(&cpp_files)
         .include("src/cpp_gui/imgui-1.80/")
         .include("src/cpp_gui/imnodes-ee6d407/")
-        .include("src/cpp_gui/include/")
         .flag_if_supported("-std=c++11")
         .compile("cxxbridge-gui");
 

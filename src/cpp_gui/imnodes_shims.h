@@ -1,8 +1,7 @@
 #pragma once
 
 #include "rust/cxx.h"
-
-struct ImVec2;
+#include "imgui.h"
 
 namespace imnodes {
     struct StyleShim;

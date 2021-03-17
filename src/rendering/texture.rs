@@ -105,7 +105,7 @@ impl Texture {
             size,
             format: super::SCENE_FORMAT,
             mip_level_count: 1,
-            label: Some("Depth texture"),
+            label: Some("Scene output texture"),
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT
                 | wgpu::TextureUsage::SAMPLED
                 | wgpu::TextureUsage::COPY_SRC
@@ -200,7 +200,7 @@ impl Texture {
     pub fn from_image(device: &wgpu::Device, queue: &wgpu::Queue, image: &image::DynamicImage, tex_label: Option<&str>) -> anyhow::Result<Self> {
         let image_size = image.dimensions();
         let size = wgpu::Extent3d {
-            depth: 1,
+            depth_or_array_layers: 1,
             height: image_size.1,
             width: image_size.0,
         };

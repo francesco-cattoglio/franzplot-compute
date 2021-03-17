@@ -14,8 +14,9 @@ show-timestamps = []
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 bytemuck = "1.2"
-wgpu = "0.7"
-shaderc = "0.7"
+wgpu = { git = 'https://github.com/gfx-rs/wgpu-rs.git', rev = '5c249c4375ae779c494028398e5de7c798e41735' }
+#wgpu = { version = "0.7", features = ["trace"] }
+shaderc = "0.6"
 num-iter = "0.1"
 anyhow = "1.0"
 futures = {version="0.3.10",features=["thread-pool"]}
@@ -35,17 +36,13 @@ imgui = "0.7.0"
 imgui-winit-support = "0.7.0"
 imgui-wgpu = "*"
 wgpu-subscriber = "0.1"
-cxx = "1.0.9"
+cxx = "1.0.32"
 pathfinding = "2.0"
 indexmap = "1.6"
 rand = "0.8"
 nfd2 = "0.2"
 hexasphere = "3.1"
-
-#TODO: temporary workaround for build breakage due to bitvec/funty incompatibilities
-funty = "=1.1"
-#TODO: when a new release happens, just switch back to normal rfd from crates.io
-rfd = { git = "https://github.com/PolyMeilex/rfd.git", rev = "7b5e29f" }
+rfd = "0.2.1"
 
 [build-dependencies]
 cxx-build = "1.0"
@@ -54,5 +51,17 @@ cxx-build = "1.0"
 opt-level = 2
 
 [patch.crates-io]
-imgui-wgpu = { git = 'https://github.com/francesco-cattoglio/imgui-wgpu-rs.git', rev = 'acd63b7' }
-wgpu = { git = 'https://github.com/gfx-rs/wgpu-rs', rev = '75e77d18'}
+imgui-wgpu = { git = 'https://github.com/francesco-cattoglio/imgui-wgpu-rs.git', rev = 'a346fbb0c7dee98da980b32baa780064af4cee61' }
+
+#[patch."https://github.com/gfx-rs/wgpu"]
+#wgpu-types = { path = "../wgpu/wgpu-types" }
+#wgpu-core = { path = "../wgpu/wgpu-core" }
+
+#[patch."https://github.com/gfx-rs/gfx"]
+#gfx-hal = { path = "../gfx/src/hal" }
+#gfx-backend-empty = { path = "../gfx/src/backend/empty" }
+#gfx-backend-vulkan = { path = "../gfx/src/backend/vulkan" }
+#gfx-backend-gl = { path = "../gfx/src/backend/gl" }
+#gfx-backend-dx12 = { path = "../gfx/src/backend/dx12" }
+#gfx-backend-dx11 = { path = "../gfx/src/backend/dx11" }
+#gfx-backend-metal = { path = "../gfx/src/backend/metal" }
