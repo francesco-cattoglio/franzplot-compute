@@ -28,6 +28,7 @@ pub struct Gui {
     axes_length: i32,
     axes_marks_size: f32,
     labels_size: f32,
+    pub opened_tab: [bool; 3],
 }
 
 #[derive(Debug)]
@@ -56,6 +57,7 @@ impl Gui {
             axes_length: 2,
             axes_marks_size: 0.075,
             labels_size: 0.15,
+            opened_tab: [true, false, false],
         }
     }
 
@@ -188,20 +190,54 @@ impl Gui {
 
 
             if let Some(tab_bar_token) = tab_bar_begun {
-                TabItem::new(im_str!("Node editor"))
-                    .build(ui, || {
-                        self.render_editor_tab(ui, state);
-                    });
 
-                TabItem::new(im_str!("Scene"))
-                    .build(ui, || {
-                        requested_scene_rectangle = Some(self.render_scene_tab(ui, state));
-                    });
+                // NODE EDITOR TAB LOGIC
+                let force_selected;
+                if self.opened_tab[0] {
+                    self.opened_tab[0] = false;
+                    force_selected = TabItemFlags::SET_SELECTED;
+                } else {
+                    force_selected = TabItemFlags::empty();
+                }
+                let node_tab_token = TabItem::new(im_str!("Node editor"))
+                    .flags(force_selected)
+                    .begin(ui);
+                if let Some(token) = node_tab_token {
+                    self.render_editor_tab(ui, state);
+                    token.end(ui);
+                }
 
-                TabItem::new(im_str!("Settings"))
-                    .build(ui, || {
-                        self.render_settings_tab(ui, state);
-                    });
+                // SCENE VISUALIZATION TAB LOGIC
+                let force_selected;
+                if self.opened_tab[1] {
+                    self.opened_tab[1] = false;
+                    force_selected = TabItemFlags::SET_SELECTED;
+                } else {
+                    force_selected = TabItemFlags::empty();
+                }
+                let scene_tab_token = TabItem::new(im_str!("Scene"))
+                    .flags(force_selected)
+                    .begin(ui);
+                if let Some(token) = scene_tab_token {
+                    requested_scene_rectangle = Some(self.render_scene_tab(ui, state));
+                    token.end(ui);
+                }
+
+                // SETTINGS TAB LOGIC
+                let force_selected;
+                if self.opened_tab[2] {
+                    self.opened_tab[2] = false;
+                    force_selected = TabItemFlags::SET_SELECTED;
+                } else {
+                    force_selected = TabItemFlags::empty();
+                }
+                let settings_tab_token = TabItem::new(im_str!("Settings"))
+                    .flags(force_selected)
+                    .begin(ui);
+                if let Some(token) = settings_tab_token {
+                    self.render_settings_tab(ui, state);
+                    token.end(ui);
+                }
 
                 tab_bar_token.end(ui);
             }
@@ -212,7 +248,10 @@ impl Gui {
 
     fn render_editor_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
         if ui.button(im_str!("Render"), [0.0, 0.0]) {
-            state.process_user_state();
+            let processing_succesful = state.process_user_state();
+            if processing_succesful {
+                self.opened_tab[1] = true;
+            }
         }
         ui.same_line(0.0);
         if ui.button(im_str!("Undo"), [0.0, 0.0]) {
@@ -242,20 +281,23 @@ impl Gui {
         let globals_names = &mut state.user.globals_names;
         let globals_init_values = &mut state.user.globals_init_values;
         while i != globals_names.len() {
+            // to make each variable unique, we are gonna push an ID
+            let id_token = ui.push_id(i as i32);
             ui.set_next_item_width(80.0);
             ui.text(&globals_names[i]);
             ui.same_line(0.0);
+            // this is safe because there is no way that the user clicks two buttons in a single
+            // frame
             if ui.small_button(im_str!("X")) {
                 globals_init_values.remove(i);
                 globals_names.remove(i);
             } else {
-                // to make each slider unique, we are gonna push an invisible unique imgui label
-                let imgui_name = ImString::new("##".to_string() + &globals_names[i]);
-                Drag::new(&imgui_name)
+                Drag::new(im_str!(""))
                     .speed(0.01)
                     .build(ui, &mut globals_init_values[i]);
                 i += 1;
             }
+            id_token.pop(ui);
         }
         ui.text(im_str!("add new variable:"));
         ui.set_next_item_width(75.0);
@@ -264,9 +306,13 @@ impl Gui {
             .build();
         ui.same_line(0.0);
         if ui.button(im_str!("New"), [0.0, 0.0]) { // TODO: we need a check: the name must be valid!
-            globals_names.push(self.new_global_buffer.to_string());
-            globals_init_values.push(0.0);
-            self.new_global_buffer.clear();
+            let new_name = self.new_global_buffer.to_string();
+            use crate::computable_scene::globals::Globals;
+            if Globals::valid_name(&new_name) {
+                globals_names.push(self.new_global_buffer.to_string());
+                globals_init_values.push(0.0);
+                self.new_global_buffer.clear();
+            }
         }
 
         ui.next_column();

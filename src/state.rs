@@ -243,7 +243,8 @@ impl State {
         self.process_user_state();
     }
 
-    pub fn process_user_state(&mut self) {
+    // process the user graph, and return true if no errors were detected
+    pub fn process_user_state(&mut self) -> bool {
         // try to build a new compute chain.
         // clear all errors
         self.user.graph.clear_all_errors();
@@ -252,8 +253,10 @@ impl State {
         // create a new Globals from the user defined names
         let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
         let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.assets, &mut self.user.graph, globals);
+        let no_errors_detected = graph_errors.is_empty();
         for error in graph_errors.into_iter() {
             self.user.graph.mark_error(error);
         }
+        return no_errors_detected;
     }
 }

@@ -13,12 +13,32 @@ pub struct Globals {
 const GLOBAL_CONSTANTS: &[(&str, f32)] = &[
     ("pi", std::f32::consts::PI)
 ];
+const KEYWORDS: &[&str] = &[
+    "sin", "cos", "tan",
+    "asin", "acos", "atan",
+    "int", "float", "double",
+];
 const MAX_NUM_VARIABLES: usize = 31;
 
 impl Globals {
-    fn valid_name(variable_name: &str) -> bool {
+    pub fn valid_name(variable_name: &str) -> bool {
+        // if the first character exists, return false if the first char is not alphabetic.
+        if let Some(first_char) = variable_name.chars().next() {
+            if !first_char.is_alphabetic() {
+                return false;
+            };
+        } else { // also return false if the first characted does NOT exist, i.e. string is empty
+            return false;
+        }
         for (constant_name, _value) in GLOBAL_CONSTANTS {
             if variable_name == *constant_name {
+                // TODO: this should be logged in as warning!
+                println!("Warning, invalid variable name used: {}", variable_name);
+                return false;
+            }
+        }
+        for keyword_name in KEYWORDS {
+            if variable_name == *keyword_name {
                 // TODO: this should be logged in as warning!
                 println!("Warning, invalid variable name used: {}", variable_name);
                 return false;
