@@ -516,6 +516,7 @@ fn create_billboard_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
             buffers: &[vertex_buffer_layout],
         },
         primitive: wgpu::PrimitiveState {
+            conservative: false,
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
@@ -592,6 +593,7 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
             buffers: &[vertex_buffer_layout],
         },
         primitive: wgpu::PrimitiveState {
+            conservative: false,
             topology: wgpu::PrimitiveTopology::LineList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
@@ -669,6 +671,7 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
             buffers: &[vertex_buffer_descriptor],
         },
         primitive: wgpu::PrimitiveState {
+            conservative: false,
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
             front_face: wgpu::FrontFace::Ccw,
