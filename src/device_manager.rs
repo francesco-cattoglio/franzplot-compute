@@ -97,10 +97,12 @@ impl Manager {
                     panic!("Out Of Memory error in frame rendering");
                 }
                 Err(wgpu::SwapChainError::Timeout) => {
-                    panic!("Timeout error in frame rendering");
+                    println!("Warning: timeout error in frame rendering!");
+                    None
                 }
                 Err(wgpu::SwapChainError::Lost) => {
-                    panic!("Frame Lost error in frame rendering");
+                    println!("Warning: frame Lost error in frame rendering");
+                    None
                 }
         }
     }
@@ -123,9 +125,13 @@ impl Manager {
     }
 
     pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
-        self.sc_desc.width = size.width as u32;
-        self.sc_desc.height = size.height as u32;
-        self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
+        let height = size.height as u32;
+        let width = size.width as u32;
+        if height >= 8 && width >= 8 {
+            self.sc_desc.width = width;
+            self.sc_desc.height = height;
+            self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
+        }
     }
 
 }
