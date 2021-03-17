@@ -20,6 +20,7 @@ Feature per la release per gli studenti:
 
 Known bugs & issues:
 - in Debug l'avvio è piuttosto lento; in Release l'avvio è molto più veloce (5 secondi vs 0.5).
+- sotto MacOS il drag&drop dei file non funziona correttamente e può crashare l'applicazione
 - la Translation Matrix è stata implementata con un metodo quick&dirt, qualora si decidesse di
   aggiungere la possibilità di operare sui vettori in qualsiasi maniera (ad es, applicargli trasformazioni
   o calcolarli come sottrazione di due punti), sarà necessario re-implementarla usando un nuovo tipo di
@@ -34,12 +35,20 @@ Features a data da destinarsi:
 - export di video
 
 ## Come compilare il progetto
-
-Le tre dipendenze per compilare il contenuto del repository sotto linux sono:
+Sono indispensabili su tutte le piattaforme:
 - la toolchain per il linguaggio Rust, *versione minima 1.48*
+- un compilatore C++11 e CMake (necessari per le dipendenze). Per CMake sotto MacOS va bene la versione installabile via homebrew.
+
+Sotto windows, è necessario avere:
+- il compilatore C++ msvc. Mingw64 ha dato problemi in passato, quindi si consiglia di evitarlo.
+- il build tool ninja (https://github.com/ninja-build/ninja/releases), l'eseguibile deve trovarsi in una cartella che faccia parte del PATH.
+
+Sotto Linux:
 - le librerie per lo sviluppo della API grafica vulkan
-- un compilatore C++11 e CMake (necessari per le dipendenze)
-- sotto linux, le librerie di sviluppo per gtk3
+- le librerie di sviluppo per gtk3
+
+Sotto MacOS:
+- sono necessari i tool per compilare da riga di comando; se a build compare un errore, tramite google si trova facilmente una risposta a come installarli
 
 ### Toolchain Rust
 Il consiglio è quello di seguire le istruzioni che trovate sul sito ufficiale: https://www.rust-lang.org/tools/install
@@ -51,4 +60,7 @@ Queste le potete installare direttamente dai repository della vostra distribuzio
 
 ### Compilazione
 Una volta che avete i prerequisiti, dovrebbe essere sufficiente dare il comando `cargo run` all'interno della cartella principale del repository per scaricare tutte le altre dipendenze, compilarle in automatico e infine compilare il franzplot e lanciarlo. L'eseguibile viene creato nella sottocartella `target`; come alternativa se volete solo compilare basta il comando `cargo build`.
+
 Per compilare in release, `cargo build --release` o `cargo run --release`.
+
+Per compilare con la feature che consente di visualizzare i timestamp dei file aperti, dare il comando `cargo build --features "show-timestamps"`
