@@ -435,7 +435,7 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
             mapped_at_creation: false,
             label: None,
             size: (length * std::mem::size_of::<i32>()) as wgpu::BufferAddress,
-            usage: wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE,// | wgpu::BufferUsage::MAP_READ,
+            usage: wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
         });
         let picking_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[

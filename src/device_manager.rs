@@ -35,7 +35,7 @@ impl Manager {
 
         let adapter_future = instance.request_adapter(
             &wgpu::RequestAdapterOptions {
-                power_preference: wgpu::PowerPreference::HighPerformance, // TODO: investigate, this could be useful!
+                power_preference: wgpu::PowerPreference::LowPower, // TODO: HighPower caused an issue on at least one AMD discrete GPU card
                 compatible_surface: Some(&surface),
             }
         );
@@ -44,7 +44,7 @@ impl Manager {
         let device_future = adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: Some("requested device"),
-                features: wgpu::Features::empty(),
+                features: wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
                 limits: wgpu::Limits {
                     max_storage_buffers_per_shader_stage: 6, // TODO: we need to make sure that every possible GPU supports this
                     .. Default::default()

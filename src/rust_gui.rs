@@ -30,9 +30,6 @@ pub struct Gui {
     labels_size: f32,
 }
 
-// 1-frame trace recording edits, TODO: restore to original
-static mut COUNTER: i32 = 0;
-
 #[derive(Debug)]
 pub struct SceneRectangle {
     pub position: [f32; 2],
@@ -189,21 +186,12 @@ impl Gui {
             let tab_bar_begun = TabBar::new(im_str!("main tab bar"))
                 .begin(ui);
 
-            // 1-frame trace recording edits, TODO: restore to original
-            use crate::CustomEvent;
-            unsafe {
-                COUNTER += 1;
-                if COUNTER > 3 {
-                    //self.winit_proxy.send_event(CustomEvent::RequestExit).unwrap();
-                }
-            }
 
             if let Some(tab_bar_token) = tab_bar_begun {
-            // 1-frame trace recording edits, TODO: restore to original
-            //    TabItem::new(im_str!("Node editor"))
-            //        .build(ui, || {
-            //            self.render_editor_tab(ui, state);
-            //        });
+                TabItem::new(im_str!("Node editor"))
+                    .build(ui, || {
+                        self.render_editor_tab(ui, state);
+                    });
 
                 TabItem::new(im_str!("Scene"))
                     .build(ui, || {
