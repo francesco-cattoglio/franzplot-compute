@@ -455,11 +455,11 @@ void main() {{
     // TODO: possible optimization: precompute inverse transpose
     // directly in the matrix compute block (for 0D matrices only)
     mat3 A = mat3(in_matrix);
-    float determinant = determinant(A);
-    if (determinant > 1e-6) {{
+    float det = determinant(A);
+    if (det > 1e-6) {{
         // WORKAROUND for a naga bug under MacOS: compute the inverse transpose by hand
         mat3 inv_t;
-        float invdet = 1/determinant;
+        float invdet = 1/det;
         inv_t[0][0] =  (A[1][1]*A[2][2]-A[2][1]*A[1][2])*invdet;
         inv_t[1][0] = -(A[0][1]*A[2][2]-A[0][2]*A[2][1])*invdet;
         inv_t[2][0] =  (A[0][1]*A[1][2]-A[0][2]*A[1][1])*invdet;
