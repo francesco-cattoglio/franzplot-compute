@@ -171,6 +171,8 @@ struct PinData
           shape(PinShape_CircleFilled), pos(), flags(AttributeFlags_None), color_style()
     {
     }
+
+    ~PinData() { id = INT_MIN; }
 };
 
 struct LinkData
@@ -827,6 +829,24 @@ void object_pool_update(ObjectPool<T>& objects)
             objects.id_map.SetInt(objects.pool[i].id, -1);
             objects.free_list.push_back(i);
             (objects.pool.Data + i)->~T();
+        }
+    }
+}
+
+template<>
+void object_pool_update(ObjectPool<PinData>& objects)
+{
+    objects.free_list.clear();
+    for (int i = 0; i < objects.in_use.size(); ++i)
+    {
+        if (!objects.in_use[i])
+        {
+            const int previous_id = objects.pool[i].id;
+            if (previous_id != INT_MIN) {
+                objects.id_map.SetInt(objects.pool[i].id, -1);
+                objects.free_list.push_back(i);
+                (objects.pool.Data + i)->~PinData();
+            }
         }
     }
 }
