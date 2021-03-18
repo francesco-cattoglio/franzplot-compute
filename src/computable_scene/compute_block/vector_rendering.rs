@@ -82,7 +82,17 @@ void main() {{
     Vertex in_vertex = arrow_vertices[idx];
     float s_z = length(vector); // to make the vector of the correct length, scale along z
     vec4 direction = normalize(vector);
-    float angle_z = -1.0 * atan(direction.x, direction.y);
+    float angle_z;
+    // workaround MacOS bug: atan2 seems to give the wrong result
+    if (direction.y == 0.0) {{
+        if (direction.x > 0) {{
+            angle_z = -0.5*3.141527;
+        }} else {{
+            angle_z =  0.5*3.141527;
+        }}
+    }} else {{
+        angle_z = -1.0 * atan(direction.x, direction.y);
+    }}
     float angle_x = -1.0 * acos(direction.z);
     float cos_t = cos(angle_z);
     float sin_t = sin(angle_z);

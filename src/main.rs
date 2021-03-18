@@ -167,7 +167,7 @@ fn main() {
     let window = builder.build(&event_loop).unwrap();
 
     let hidpi_factor = window.scale_factor();
-
+    window.set_min_inner_size(Some(winit::dpi::LogicalSize::new(200.0, 100.0)));
     let device_manager = device_manager::Manager::new(&window, tracing_path_option, maybe_backend);
 
     // Set up dear imgui
@@ -394,7 +394,8 @@ fn main() {
                     let scene_texture = renderer.textures.get(scene_texture_id).unwrap();
                     // first, check if the scene size has changed. If so, re-create the scene
                     // texture and depth buffer
-                    if physical_rectangle.size.width != scene_texture.width() || physical_rectangle.size.height != scene_texture.height() {
+                    if (physical_rectangle.size.width != scene_texture.width() || physical_rectangle.size.height != scene_texture.height())
+                            && (physical_rectangle.size.width > 8 && physical_rectangle.size.height > 8) {
                         let texture_size = wgpu::Extent3d {
                             height: physical_rectangle.size.height,
                             width: physical_rectangle.size.width,
