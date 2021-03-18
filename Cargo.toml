@@ -40,17 +40,22 @@ cxx = "1.0.32"
 pathfinding = "2.0"
 indexmap = "1.6"
 rand = "0.8"
-nfd2 = "0.2"
 hexasphere = "3.1"
-rfd = "0.2.1"
+
+#TODO: switch back to official repo once pull request is succesfully accepted
+rfd = { git = 'https://github.com/francesco-cattoglio/rfd.git', rev = '6b41adde878b2070c546d4d8559b24e27053ef4f'}
 
 [build-dependencies]
 cxx-build = "1.0"
+
+[profile.release]
+debug = true
 
 [profile.dev.package.image]
 opt-level = 2
 
 [patch.crates-io]
+
 imgui-wgpu = { git = 'https://github.com/francesco-cattoglio/imgui-wgpu-rs.git', rev = 'a346fbb0c7dee98da980b32baa780064af4cee61' }
 
 #[patch."https://github.com/gfx-rs/wgpu"]

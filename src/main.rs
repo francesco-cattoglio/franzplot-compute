@@ -121,7 +121,7 @@ fn main() {
             .help("Pause the execution before creating a device. Useful for attaching a debugger to a process. Each p is 5 secs"))
         .get_matches();
 
-    wgpu_subscriber::initialize_default_subscriber(None);
+    //wgpu_subscriber::initialize_default_subscriber(None);
 
     use std::{thread, time};
     let seconds_to_wait = 5 * matches.occurrences_of("p");

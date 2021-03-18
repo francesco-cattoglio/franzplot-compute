@@ -634,7 +634,6 @@ dependencies = [
  "imgui-winit-support",
  "indexmap",
  "maplit",
- "nfd2",
  "num-iter",
  "obj",
  "pathfinding",
@@ -1554,15 +1553,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nfd2"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cedbdc1ecacd67f890b05bf38d268cf42dd070a4b44e82b89c4757998e7250d5"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "nix"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1977,8 +1967,7 @@ checksum = "24d5f089152e60f62d28b835fbff2cd2e8dc0baf1ac13343bef92ab7eed84548"
 [[package]]
 name = "rfd"
 version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3de7c6d5eab0f6b212d1b5a376639d91061bbfbdc2d7c7c5214063bd6ce99581"
+source = "git+https://github.com/francesco-cattoglio/rfd.git?rev=6b41adde878b2070c546d4d8559b24e27053ef4f#6b41adde878b2070c546d4d8559b24e27053ef4f"
 dependencies = [
  "block",
  "cocoa-foundation",

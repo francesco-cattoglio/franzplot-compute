@@ -247,7 +247,7 @@ impl Gui {
     }
 
     fn render_editor_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
-        if ui.button(im_str!("Render"), [0.0, 0.0]) {
+        if ui.button(im_str!("Generate Scene"), [0.0, 0.0]) {
             let processing_succesful = state.process_user_state();
             if processing_succesful {
                 self.opened_tab[1] = true;
