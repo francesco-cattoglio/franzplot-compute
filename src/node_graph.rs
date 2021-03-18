@@ -8,7 +8,7 @@ use imgui::*;
 pub type AttributeID = i32;
 pub type NodeID = i32;
 
-#[derive(Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, PartialEq, Deserialize, Serialize, Debug,)]
 pub enum DataKind {
     Interval,
     Geometry,
@@ -44,26 +44,26 @@ impl DataKind {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, Debug,)]
 pub struct Attribute {
     node_id: NodeID,
     contents: AttributeContents,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, Debug,)]
 pub enum SliderMode {
     IntRange(i32, i32),
     SizeLabels,
 }
 
-#[derive(Copy, Clone, Deserialize, Serialize)]
+#[derive(Copy, Clone, Deserialize, Serialize, Debug,)]
 pub enum Axis {
     X,
     Y,
     Z,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, Debug,)]
 pub enum AttributeContents {
     InputPin {
         label: String,
@@ -410,7 +410,7 @@ impl Attribute {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, Debug,)]
 pub enum NodeContents {
     Interval {
         variable: AttributeID,
@@ -840,7 +840,7 @@ impl NodeContents {
 }
 
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, Debug,)]
 pub struct Node {
     pub title: String,
     position: [f32; 2],
@@ -898,19 +898,19 @@ impl Node {
     }
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, Debug,)]
 pub enum Severity {
     Warning,
     Error
 }
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, Debug,)]
 pub struct GraphError {
     pub node_id: NodeID,
     pub severity: Severity,
     pub message: String,
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Serialize, Debug,)]
 pub struct NodeGraph {
     nodes: Vec<Option<Node>>,
     attributes: Vec<Option<Attribute>>,
