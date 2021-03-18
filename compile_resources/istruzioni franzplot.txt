@@ -1,0 +1,19 @@
+NOTE IMPORTANTI:
+Franzplot 21.03 è una versione sperimentale del software. Sebbene lo sviluppo sia a buon punto stiamo ancora verificando che tutta l'implementazione sia corretta.
+La versione stabile nonché ufficiale del corso è la 19.08!
+
+Istruzioni per Windows (l'unico windows supportato è Windows 10):
+- scaricare il file Franzplot 21.03 - Windows 10.zip
+- scompattare l'archivio, e aprire la cartella "Franzplot 21.03" in esso contenuta
+- fare doppio click sul file "run franzplot.bat".
+- Potrebbe comparire un avviso che il file proviene da uno sviluppatore non riconosciuto. Se compare, fare click su "ulteriori informazioni" ed "esegui comunque", oppure in alternativa fare click col tasto destro del mouse, scegliere proprietà. Comparirà una nuova finestra e in basso potete sbloccare l'esecuzione del file.
+- Qualora comparisse l'errore "impossibile avviare il programma perché VCRUNTIME140_1.dll non è presente nel computer", scaricare anche il file "VC_redist-x64 per Windows 10.exe" ed installarlo.
+- Aprendo il franzplot comparirà una finestra nera contenente la shell di comando e l'applicazione vera e propria. Non chiudere la finestra contenente la shell di comando, altrimenti il programma si interrompe.
+
+
+Istruzioni per MacOS (sono supportate le versioni dalla 10.11 in poi):
+- scaricare il file Franzplot 21.03 - MacOS.zip
+- scompattare l'archivio, in una posizione a vostra scelta
+- fare click col tasto destro sul file "Franzplot 21.03", scegliere "ottieni informazioni". Si aprirà una finestra dalla quale è possibile sbloccare l'esecuzione del file.
+- da questo momento in poi è sufficiente fare doppio click sul file "Franzplot 21.03" per eseguire il programma
+
