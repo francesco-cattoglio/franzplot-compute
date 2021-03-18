@@ -79,7 +79,7 @@ impl Default for Sensitivity {
         Sensitivity {
             graph_zoom: 1.0,
             scene_zoom: 1.0,
-            camera_horizontal: 0.8,
+            camera_horizontal: 1.0,
             camera_vertical: 1.0,
         }
     }

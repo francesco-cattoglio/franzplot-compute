@@ -449,12 +449,12 @@ impl Gui {
         ui.checkbox(im_str!("use orthographic projection"), &mut state.app.camera_ortho);
         ui.checkbox(im_str!("lock camera to vertical position"), &mut state.app.camera_lock_up);
         imgui::Slider::new(im_str!("horizontal sensitivity"))
-            .range(0.1 ..= 2.0)
+            .range(0.1 ..= 5.0)
             .display_format(im_str!("%.2f"))
             .flags(SliderFlags::NO_INPUT)
             .build(ui, &mut sensitivity.camera_horizontal);
         imgui::Slider::new(im_str!("vertical sensitivity"))
-            .range(0.1 ..= 2.0)
+            .range(0.1 ..= 5.0)
             .display_format(im_str!("%.2f"))
             .flags(SliderFlags::NO_INPUT)
             .build(ui, &mut sensitivity.camera_vertical);
