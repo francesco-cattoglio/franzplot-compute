@@ -1,6 +1,6 @@
 [package]
 name = "franzplot-compute"
-version = "21.3.0"
+version = "21.4.0"
 authors = ["francesco.cattoglio <francesco.cattoglio@gmail.com>"]
 edition = "2018"
 
@@ -43,7 +43,8 @@ rand = "0.8"
 hexasphere = "3.1"
 
 #TODO: switch back to official repo once pull request is succesfully accepted
-rfd = { git = 'https://github.com/francesco-cattoglio/rfd.git', rev = '6b41adde878b2070c546d4d8559b24e27053ef4f'}
+#rfd = { git = 'https://github.com/francesco-cattoglio/rfd.git', rev = '6b41adde878b2070c546d4d8559b24e27053ef4f'}
+rfd = { git = 'https://github.com/PolyMeilex/rfd.git', rev = '657e7943cb1271daf018aa106c623d4fe2884ef4'}
 
 [build-dependencies]
 cxx-build = "1.0"

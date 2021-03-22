@@ -506,13 +506,12 @@ fn main() {
                     *control_flow = ControlFlow::Exit;
                 }
             }
-            Event::WindowEvent { event: WindowEvent::DroppedFile(_file_path), .. } => {
-                println!("Dropping file feature currently disabled due to previously reported issues");
-                //if rust_gui.graph_edited {
-                //    file_io::async_confirm_load(event_loop_proxy.clone(), &executor, file_path);
-                //} else {
-                //    event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
-                //}
+            Event::WindowEvent { event: WindowEvent::DroppedFile(file_path), .. } => {
+                if rust_gui.graph_edited {
+                    file_io::async_confirm_load(event_loop_proxy.clone(), &executor, file_path);
+                } else {
+                    event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
+                }
             },
             // catch-all for remaining events (WindowEvent and DeviceEvent). We do this because
             // we want imgui to handle it first, and then do any kind of "post-processing"
