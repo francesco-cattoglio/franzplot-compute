@@ -24,7 +24,7 @@ pub struct IntervalData {
 }
 
 impl IntervalData {
-    pub fn new(device: &wgpu::Device, globals: &Globals, mut descriptor: IntervalBlockDescriptor) -> Result<Self, BlockCreationError> {
+    pub fn new(device: &wgpu::Device, globals: &Globals, descriptor: IntervalBlockDescriptor) -> Result<Self, BlockCreationError> {
         if descriptor.quality < 1 || descriptor.quality > 16 {
             return Err(BlockCreationError::IncorrectAttributes("Interval quality attribute must be an integer in the [1, 16] range"))
         }
@@ -39,25 +39,23 @@ impl IntervalData {
         }
         let n_evals = 16 * descriptor.quality;
         // Make sure that the name does not contain any internal whitespace
-        if descriptor.name.split_whitespace().count() != 1 {
-            return Err(BlockCreationError::IncorrectAttributes(" an interval's name cannot \n contain spaces "))
-        }
-        // and then strip the leading and trailing ones
-        descriptor.name.retain(|c| !c.is_whitespace());
-        // TODO: we need to make sure that the first character is not a number!
+        let maybe_sanitized = Globals::sanitize_variable_name(&descriptor.name);
+        let sanitized_name = maybe_sanitized.ok_or(BlockCreationError::IncorrectAttributes(" this interval's name \n is not valid "))?;
 
-        // Remove any leading and trailing whitespaces from the begin and end attributes.
+        // Note that sanitizing also removes leading and trailing whitespaces in the begin and end fields.
         // This is done here because Parameters can be compared, and if we strip all
         // whitespaces here we are sure that the comparison will be succesful if the user
         // inputs the same thing in two different nodes but adds an extra whitespace.
         // TODO: if the user enters the same number but writes it differently, the comparison can
         // fail nonetheless
-        descriptor.begin.retain(|c| !c.is_whitespace());
-        descriptor.end.retain(|c| !c.is_whitespace());
+        let maybe_begin = Globals::sanitize_expression(&descriptor.begin);
+        let sanitized_begin = maybe_begin.ok_or(BlockCreationError::IncorrectAttributes(" this interval's begin \n contains invalid symbols "))?;
+        let maybe_end = Globals::sanitize_expression(&descriptor.begin);
+        let sanitized_end = maybe_end.ok_or(BlockCreationError::IncorrectAttributes(" this interval's end \n contains invalid symbols "))?;
         let param = Parameter {
-            name: Some(descriptor.name.clone()),
-            begin: descriptor.begin.clone(),
-            end: descriptor.end.clone(),
+            name: Some(sanitized_name.to_string()),
+            begin: sanitized_begin.to_string(),
+            end: sanitized_end.to_string(),
             size: n_evals,
             use_interval_as_uv: false,
         };

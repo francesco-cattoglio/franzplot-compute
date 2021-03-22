@@ -308,8 +308,8 @@ impl Gui {
         if ui.button(im_str!("New"), [0.0, 0.0]) { // TODO: we need a check: the name must be valid!
             let new_name = self.new_global_buffer.to_string();
             use crate::computable_scene::globals::Globals;
-            if Globals::valid_name(&new_name) {
-                globals_names.push(self.new_global_buffer.to_string());
+            if let Some(valid_name) = Globals::sanitize_variable_name(&new_name) {
+                globals_names.push(valid_name.to_string());
                 globals_init_values.push(0.0);
                 self.new_global_buffer.clear();
             }

@@ -21,31 +21,79 @@ const KEYWORDS: &[&str] = &[
 const MAX_NUM_VARIABLES: usize = 31;
 
 impl Globals {
-    pub fn valid_name(variable_name: &str) -> bool {
-        // if the first character exists, return false if the first char is not alphabetic.
-        if let Some(first_char) = variable_name.chars().next() {
-            if !first_char.is_alphabetic() {
-                return false;
-            };
-        } else { // also return false if the first characted does NOT exist, i.e. string is empty
-            return false;
+    /// This function sanitizes a variable name. If the variable name could be sanitized,
+    /// e.g. by removing extra spaces, then it is returned as Some(name), otherwise if the
+    /// name was invalid (e.g: was a keyword) None is returned
+    // TODO: we might want to turn this into a result, so that we can display something
+    // back to the user instead of just println!() it
+    pub fn sanitize_variable_name(name: &str) -> Option<&str> {
+        // Make sure that the name does not contain any internal whitespace
+        if name.split_whitespace().count() == 0 {
+            println!("Variables name cannot be empty");
+            return None;
         }
+        if name.split_whitespace().count() > 1 {
+            println!("Variables cannot contain spaces; {} is not a valid name", name);
+            return None;
+        }
+        // and then strip leading and trailing spaces, leaving only the actual name
+        let name = name.trim_start().trim_end();
+
+        // Check if the first character exists, and return null if it is not alphabetic.
+        let mut chars_iter = name.chars();
+        if !chars_iter.next()?.is_ascii_alphabetic() {
+            println!("The first character in a variable must be a letter; {} is not a valid name", name);
+            return None;
+        }
+
+        // Also check all the other characters, there shall only be letters, numbers, underscores
+        while let Some(character) = chars_iter.next() {
+            if !character.is_ascii_alphanumeric() && character != '_' {
+                println!("Only letters, numbers and underscores are allowed in variables; {} is not a valid name", name);
+                return None;
+            }
+        }
+
+        // the name should now be compared to global constants and keywords, and be rejected if any
+        // one matches
         for (constant_name, _value) in GLOBAL_CONSTANTS {
-            if variable_name == *constant_name {
+            if name == *constant_name {
                 // TODO: this should be logged in as warning!
-                println!("Warning, invalid variable name used: {}", variable_name);
-                return false;
+                println!("Warning, invalid variable name used: {} is reserved", name);
+                return None;
             }
         }
-        for keyword_name in KEYWORDS {
-            if variable_name == *keyword_name {
+        for keyword in KEYWORDS {
+            if name == *keyword {
                 // TODO: this should be logged in as warning!
-                println!("Warning, invalid variable name used: {}", variable_name);
-                return false;
+                println!("Warning, invalid variable name used: {} is reserved", name);
+                return None;
             }
         }
-        println!("Valid global var name: {}", variable_name);
-        true
+
+        Some(name)
+    }
+
+    pub fn sanitize_expression(expression: &str) -> Option<&str> {
+        // strip leading and trailing spaces.
+        let expression = expression.trim_start().trim_end();
+
+        // Check all the characters. Only ascii characters are allowed, and
+        // anything that contains a semicolon or an equal should be rejected.
+        // Otherwise the user could badly mess up the shader code.
+        // We also disable the '^' symbol because it was used on older versions of franzplot
+        // but it has a different meaning in GLSL
+        for character in expression.chars() {
+            if !character.is_ascii()
+                || character == '^'
+                || character == ';'
+                || character == '=' {
+                println!("Warning, invalid variable name used: {}", expression);
+                return None;
+            }
+        }
+
+        Some(expression)
     }
 
     pub fn get_variables_iter(&mut self) -> impl Iterator<Item = (&String, &mut f32)> {
@@ -118,11 +166,10 @@ impl Globals {
         // process all variables
         let zipped_iterator = variables_names.into_iter().zip(init_values.into_iter());
         for pair in zipped_iterator {
-            // if the name is not valid, just skip it!
-            if !Self::valid_name(&pair.0) {
-                continue;
-            }
-            // otherwise, print the name to the shader header and
+            // assert that all variable names have been sanitizied already.
+            assert!(Self::sanitize_variable_name(&pair.0).is_some());
+
+            // print the name to the shader header and
             // add the pair to both the 'names' and the 'values' vectors
             shader_header += &format!("\tfloat {};\n", &pair.0);
             names.push(pair.0);
