@@ -556,6 +556,15 @@ fn main() {
                         if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key4) {
                             camera_inputs.reset_to_xyz = true;
                         }
+                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key5) {
+                            camera_inputs.reset_to_minus_xz = true;
+                        }
+                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key6) {
+                            camera_inputs.reset_to_minus_yz = true;
+                        }
+                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key7) {
+                            camera_inputs.reset_to_minus_xy = true;
+                        }
                     }
                     Event::DeviceEvent{ event: DeviceEvent::MouseMotion { delta }, ..} => {
                         camera_inputs.mouse_motion = delta;

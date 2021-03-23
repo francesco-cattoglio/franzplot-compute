@@ -87,6 +87,30 @@ impl Camera {
         self.up = Vec3::unit_z();
     }
 
+    pub fn set_minus_xz_plane(&mut self) {
+        let relative_pos = self.eye - self.target;
+        let distance = relative_pos.length();
+        self.target = Vec3::zero();
+        self.eye = distance * Vec3::unit_y();
+        self.up = Vec3::unit_z();
+    }
+
+    pub fn set_minus_xy_plane(&mut self) {
+        let relative_pos = self.eye - self.target;
+        let distance = relative_pos.length();
+        self.target = Vec3::zero();
+        self.eye = -distance * Vec3::unit_z();
+        self.up = Vec3::unit_y();
+    }
+
+    pub fn set_minus_yz_plane(&mut self) {
+        let relative_pos = self.eye - self.target;
+        let distance = relative_pos.length();
+        self.target = Vec3::zero();
+        self.eye = -distance * Vec3::unit_x();
+        self.up = Vec3::unit_z();
+    }
+
     pub fn set_x1_y1_z1_point(&mut self) {
         let relative_pos = self.eye - self.target;
         let distance = relative_pos.length();
@@ -101,6 +125,9 @@ pub struct InputState {
     pub reset_to_xy: bool,
     pub reset_to_xz: bool,
     pub reset_to_yz: bool,
+    pub reset_to_minus_xy: bool,
+    pub reset_to_minus_xz: bool,
+    pub reset_to_minus_yz: bool,
     pub reset_to_xyz: bool,
     pub mouse_middle_click: bool,
     pub mouse_left_click: bool,
@@ -113,6 +140,9 @@ impl InputState {
         self.reset_to_xy = false;
         self.reset_to_xz = false;
         self.reset_to_yz = false;
+        self.reset_to_minus_xy = false;
+        self.reset_to_minus_xz = false;
+        self.reset_to_minus_yz = false;
         self.reset_to_xyz = false;
         self.mouse_motion = (0.0, 0.0);
         self.mouse_wheel = 0.0;
@@ -125,6 +155,9 @@ impl Default for InputState {
             reset_to_xy: false,
             reset_to_xz: false,
             reset_to_yz: false,
+            reset_to_minus_xy: false,
+            reset_to_minus_xz: false,
+            reset_to_minus_yz: false,
             reset_to_xyz: false,
             mouse_wheel: 0.0,
             mouse_left_click: false,
@@ -165,6 +198,18 @@ impl Controller for VTKController {
         }
         if inputs.reset_to_yz {
             camera.set_yz_plane();
+            return;
+        }
+        if inputs.reset_to_minus_xz {
+            camera.set_minus_xz_plane();
+            return;
+        }
+        if inputs.reset_to_minus_xy {
+            camera.set_minus_xy_plane();
+            return;
+        }
+        if inputs.reset_to_minus_yz {
+            camera.set_minus_yz_plane();
             return;
         }
         if inputs.reset_to_xyz {
