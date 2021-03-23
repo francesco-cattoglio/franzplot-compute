@@ -435,7 +435,9 @@ fn main() {
                 // this is the moment in which we move it back to its old position.
                 if mouse_frozen {
                     #[cfg(target_os = "windows")]
-                    {}
+                    {
+                        window.set_cursor_position(cursor_position).unwrap();
+                    }
 
                     #[cfg(target_os = "linux")]
                     {

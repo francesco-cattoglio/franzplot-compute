@@ -17,7 +17,7 @@ impl Default for Camera {
         let mut new_camera = Camera {
             fov_y: 0.2 * std::f32::consts::PI,
             z_near: 0.1,
-            z_far: 100.0,
+            z_far: 250.0,
             aspect: 1.0,
             eye: Vec3::default(),
             target: Vec3::default(),
@@ -59,8 +59,7 @@ impl Camera {
         // it is the one that makes the switch between orthographic and perspective almost seamless
         let half_h = 0.25 * distance;
         let half_w = half_h * self.aspect;
-        // need testing
-        Mat4::orthographic_lh(-half_w, half_w, -half_h, half_h, 64.0, -64.0)
+        Mat4::orthographic_lh(-half_w, half_w, -half_h, half_h, 128.0, -128.0)
     }
 
     pub fn set_xz_plane(&mut self) {
@@ -224,7 +223,7 @@ impl Controller for VTKController {
         distance = distance.max(self.min_distance);
 
         if inputs.mouse_left_click {
-            let rot_coeff = -0.01;
+            let rot_coeff = -0.005;
             let x_delta = inputs.mouse_motion.0 as f32 * rot_coeff * sensitivity.camera_horizontal;
             let y_delta = inputs.mouse_motion.1 as f32 * rot_coeff * sensitivity.camera_vertical;
             let camera_right = camera.up.cross(pos_on_sphere).normalize();
@@ -270,7 +269,7 @@ impl Controller for VTKController {
             // BEWARE: camera_up might be different from camera.up!
             // camera.up might be locked due to user settings (camera.up might be locked to z axis
             let camera_up = camera_right.cross(-pos_on_sphere).normalize();
-            let pan_coeff = 0.002 * distance;
+            let pan_coeff = 0.001 * distance;
             let x_delta = inputs.mouse_motion.0 as f32 * pan_coeff * sensitivity.camera_horizontal;
             let y_delta = inputs.mouse_motion.1 as f32 * pan_coeff * sensitivity.camera_vertical;
             let position_delta = y_delta * camera_up - x_delta * camera_right;
