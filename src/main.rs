@@ -567,7 +567,10 @@ fn main() {
                         }
                     }
                     Event::DeviceEvent{ event: DeviceEvent::MouseMotion { delta }, ..} => {
-                        camera_inputs.mouse_motion = delta;
+                        // Since we might receive many different mouse motion events in
+                        // the same frame, the correct thing to do is to accumulate them
+                        camera_inputs.mouse_motion.0 += delta.0;
+                        camera_inputs.mouse_motion.1 += delta.1;
                     }
                     Event::WindowEvent{ event: WindowEvent::MouseWheel { delta, .. }, ..} => {
                         let sensitivity = &state.app.sensitivity;
