@@ -61,6 +61,14 @@ impl SurfaceData {
         let par_1_name = par_1.name.clone().unwrap();
         let par_2_name = par_2.name.clone().unwrap();
 
+        // Sanitize all input expressions
+        let maybe_fx = Globals::sanitize_expression(&descriptor.fx);
+        let sanitized_fx = maybe_fx.ok_or(BlockCreationError::IncorrectAttributes(" the fx field \n contains invalid symbols "))?;
+        let maybe_fy = Globals::sanitize_expression(&descriptor.fy);
+        let sanitized_fy = maybe_fy.ok_or(BlockCreationError::IncorrectAttributes(" the fy field \n contains invalid symbols "))?;
+        let maybe_fz = Globals::sanitize_expression(&descriptor.fz);
+        let sanitized_fz = maybe_fz.ok_or(BlockCreationError::IncorrectAttributes(" the fz field \n contains invalid symbols "))?;
+
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = {dimy}) in;
@@ -91,7 +99,7 @@ void main() {{
     out_buff[index].w = 1;
 }}
 "##, header=&globals.shader_header, par1=par_1_name, par2=par_2_name, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y, size_x=par_1.size,
-fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz);
 
         let out_dim = Dimensions::D2(par_1, par_2);
         let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);

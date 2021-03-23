@@ -25,6 +25,15 @@ impl PointData {
     pub fn new(device: &wgpu::Device, globals: &Globals, descriptor: PointBlockDescriptor) -> Result<Self, BlockCreationError> {
         let out_dim = Dimensions::D0;
         let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
+
+        // Sanitize all input expressions
+        let maybe_fx = Globals::sanitize_expression(&descriptor.fx);
+        let sanitized_fx = maybe_fx.ok_or(BlockCreationError::IncorrectAttributes(" the x field \n contains invalid symbols "))?;
+        let maybe_fy = Globals::sanitize_expression(&descriptor.fy);
+        let sanitized_fy = maybe_fy.ok_or(BlockCreationError::IncorrectAttributes(" the y field \n contains invalid symbols "))?;
+        let maybe_fz = Globals::sanitize_expression(&descriptor.fz);
+        let sanitized_fz = maybe_fz.ok_or(BlockCreationError::IncorrectAttributes(" the z field \n contains invalid symbols "))?;
+
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = 1, local_size_y = 1) in;
@@ -41,7 +50,7 @@ void main() {{
     out_buff.z = {fz};
     out_buff.w = 1;
 }}
-"##, header=&globals.shader_header, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+"##, header=&globals.shader_header, fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz);
 
         let bindings = [
             // add descriptor for output buffer

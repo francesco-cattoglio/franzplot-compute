@@ -42,6 +42,14 @@ impl CurveData {
         let param = interval_data.out_dim.as_1d()?;
         let param_name = param.name.clone().unwrap();
 
+        // Sanitize all input expressions
+        let maybe_fx = Globals::sanitize_expression(&descriptor.fx);
+        let sanitized_fx = maybe_fx.ok_or(BlockCreationError::IncorrectAttributes(" the fx field \n contains invalid symbols "))?;
+        let maybe_fy = Globals::sanitize_expression(&descriptor.fy);
+        let sanitized_fy = maybe_fy.ok_or(BlockCreationError::IncorrectAttributes(" the fy field \n contains invalid symbols "))?;
+        let maybe_fz = Globals::sanitize_expression(&descriptor.fz);
+        let sanitized_fz = maybe_fz.ok_or(BlockCreationError::IncorrectAttributes(" the fz field \n contains invalid symbols "))?;
+
         // Optimization note: a curve, just line an interval, will always fit a single compute
         // invocation, since the limit on the size of the work group (maxComputeWorkGroupInvocations)
         // is at least 256 on every device.
@@ -67,7 +75,7 @@ void main() {{
     out_buff[index].z = {fz};
     out_buff[index].w = 1;
 }}
-"##, header=&globals.shader_header, par=param_name, dimx=param.size, fx=&descriptor.fx, fy=&descriptor.fy, fz=&descriptor.fz);
+"##, header=&globals.shader_header, par=param_name, dimx=param.size, fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz);
 
         let out_dim = Dimensions::D1(param);
         let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);

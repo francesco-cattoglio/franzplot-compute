@@ -25,6 +25,15 @@ impl VectorData {
     pub fn new(device: &wgpu::Device, globals: &Globals, descriptor: VectorBlockDescriptor) -> Result<Self, BlockCreationError> {
         let out_dim = Dimensions::D0;
         let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
+
+        // Sanitize all input expressions
+        let maybe_vx = Globals::sanitize_expression(&descriptor.vx);
+        let sanitized_vx = maybe_vx.ok_or(BlockCreationError::IncorrectAttributes(" the x field \n contains invalid symbols "))?;
+        let maybe_vy = Globals::sanitize_expression(&descriptor.vy);
+        let sanitized_vy = maybe_vy.ok_or(BlockCreationError::IncorrectAttributes(" the y field \n contains invalid symbols "))?;
+        let maybe_vz = Globals::sanitize_expression(&descriptor.vz);
+        let sanitized_vz = maybe_vz.ok_or(BlockCreationError::IncorrectAttributes(" the z field \n contains invalid symbols "))?;
+
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = 1, local_size_y = 1) in;
@@ -41,7 +50,7 @@ void main() {{
     out_buff.z = {vz};
     out_buff.w = 0.0;
 }}
-"##, header=&globals.shader_header, vx=&descriptor.vx, vy=&descriptor.vy, vz=&descriptor.vz);
+"##, header=&globals.shader_header, vx=sanitized_vx, vy=sanitized_vy, vz=sanitized_vz);
 
         let bindings = [
             // add descriptor for output buffer

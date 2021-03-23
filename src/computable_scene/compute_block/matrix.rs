@@ -20,44 +20,59 @@ impl MatrixBlockDescriptor {
         Ok(ComputeBlock::Matrix(MatrixData::new(device, globals, processed_blocks, self)?))
     }
 
-    pub fn new_from_rotation(axis: Axis, angle: String) -> Self {
+    pub fn new_from_rotation(axis: Axis, angle: String) -> Result<Self, BlockCreationError> {
         // we need to write down a different matrix depending on what rotation axis we have
         let (row_1, row_2, row_3);
+
+        // Sanitize all input expressions
+        let maybe_angle = Globals::sanitize_expression(&angle);
+        let san_a = maybe_angle.ok_or(BlockCreationError::IncorrectAttributes(" the angle field \n contains invalid symbols "))?;
         match axis {
             Axis::X => {
                 row_1 = ["1.0".into(),               "0.0".into(),                "0.0".into(), "0.0".into()];
-                row_2 = ["0.0".into(), format!("cos({})", &angle), format!("-sin({})", &angle), "0.0".into()];
-                row_3 = ["0.0".into(), format!("sin({})", &angle),  format!("cos({})", &angle), "0.0".into()];
+                row_2 = ["0.0".into(), format!("cos({})", &san_a), format!("-sin({})", &san_a), "0.0".into()];
+                row_3 = ["0.0".into(), format!("sin({})", &san_a),  format!("cos({})", &san_a), "0.0".into()];
             },
             Axis::Y => {
-                row_1 = [ format!("cos({})", &angle), "0.0".into(), format!("sin({})", &angle), "0.0".into()];
+                row_1 = [ format!("cos({})", &san_a), "0.0".into(), format!("sin({})", &san_a), "0.0".into()];
                 row_2 = [               "0.0".into(), "1.0".into(),               "0.0".into(), "0.0".into()];
-                row_3 = [format!("-sin({})", &angle), "0.0".into(), format!("cos({})", &angle), "0.0".into()];
+                row_3 = [format!("-sin({})", &san_a), "0.0".into(), format!("cos({})", &san_a), "0.0".into()];
             },
             Axis::Z => {
-                row_1 = [format!("cos({})", &angle), format!("-sin({})", &angle), "0.0".into(), "0.0".into()];
-                row_2 = [format!("sin({})", &angle),  format!("cos({})", &angle), "0.0".into(), "0.0".into()];
+                row_1 = [format!("cos({})", &san_a), format!("-sin({})", &san_a), "0.0".into(), "0.0".into()];
+                row_2 = [format!("sin({})", &san_a),  format!("cos({})", &san_a), "0.0".into(), "0.0".into()];
                 row_3 = [              "0.0".into(),                "0.0".into(), "1.0".into(), "0.0".into()];
             },
         }
-        Self {
+        Ok(Self {
             interval: None,
             row_1,
             row_2,
             row_3,
-        }
+        })
     }
 
-    pub fn new_from_translation(x: String, y: String, z: String) -> Self {
-        let row_1 = ["1.0".into(), "0.0".into(), "0.0".into(), x];
-        let row_2 = ["0.0".into(), "1.0".into(), "0.0".into(), y];
-        let row_3 = ["0.0".into(), "0.0".into(), "1.0".into(), z];
-        Self {
+    // TODO: due to the currently hacked-in mathod of translation matrix creation,
+    // this will result in errors being reported twice, once on the input vector and once in the
+    // translation matrix node
+    pub fn new_from_translation(x: String, y: String, z: String) -> Result<Self, BlockCreationError> {
+        // Sanitize all input expressions
+        let maybe_x = Globals::sanitize_expression(&x);
+        let sanitized_x = maybe_x.ok_or(BlockCreationError::IncorrectAttributes(" the x field \n contains invalid symbols "))?;
+        let maybe_y = Globals::sanitize_expression(&y);
+        let sanitized_y = maybe_y.ok_or(BlockCreationError::IncorrectAttributes(" the y field \n contains invalid symbols "))?;
+        let maybe_z = Globals::sanitize_expression(&z);
+        let sanitized_z = maybe_z.ok_or(BlockCreationError::IncorrectAttributes(" the z field \n contains invalid symbols "))?;
+
+        let row_1 = ["1.0".into(), "0.0".into(), "0.0".into(), sanitized_x.into()];
+        let row_2 = ["0.0".into(), "1.0".into(), "0.0".into(), sanitized_y.into()];
+        let row_3 = ["0.0".into(), "0.0".into(), "1.0".into(), sanitized_z.into()];
+        Ok(Self {
             interval: None,
             row_1,
             row_2,
             row_3,
-        }
+        })
     }
 }
 
@@ -111,6 +126,35 @@ impl MatrixData {
         let param = interval_data.out_dim.as_1d()?;
         let param_name = param.name.clone().unwrap();
 
+        // Sanitize all input expressions
+        // TODO: maybe macros?
+        // BEWARE: named entries follow the "maths" convention: the upper left element is the
+        // element (1, 1), but `row_n` is an array and therefore starts from 0!
+        let maybe_m11 = Globals::sanitize_expression(&desc.row_1[0]);
+        let sanitized_m11 = maybe_m11.ok_or(BlockCreationError::IncorrectAttributes(" the (1,1) entry \n contains invalid symbols "))?;
+        let maybe_m12 = Globals::sanitize_expression(&desc.row_1[1]);
+        let sanitized_m12 = maybe_m12.ok_or(BlockCreationError::IncorrectAttributes(" the (1,2) entry \n contains invalid symbols "))?;
+        let maybe_m13 = Globals::sanitize_expression(&desc.row_1[2]);
+        let sanitized_m13 = maybe_m13.ok_or(BlockCreationError::IncorrectAttributes(" the (1,3) entry \n contains invalid symbols "))?;
+        let maybe_m14 = Globals::sanitize_expression(&desc.row_1[3]);
+        let sanitized_m14 = maybe_m14.ok_or(BlockCreationError::IncorrectAttributes(" the (1,4) entry \n contains invalid symbols "))?;
+        let maybe_m21 = Globals::sanitize_expression(&desc.row_2[0]);
+        let sanitized_m21 = maybe_m21.ok_or(BlockCreationError::IncorrectAttributes(" the (2,1) entry \n contains invalid symbols "))?;
+        let maybe_m22 = Globals::sanitize_expression(&desc.row_2[1]);
+        let sanitized_m22 = maybe_m22.ok_or(BlockCreationError::IncorrectAttributes(" the (2,2) entry \n contains invalid symbols "))?;
+        let maybe_m23 = Globals::sanitize_expression(&desc.row_2[2]);
+        let sanitized_m23 = maybe_m23.ok_or(BlockCreationError::IncorrectAttributes(" the (2,3) entry \n contains invalid symbols "))?;
+        let maybe_m24 = Globals::sanitize_expression(&desc.row_2[3]);
+        let sanitized_m24 = maybe_m24.ok_or(BlockCreationError::IncorrectAttributes(" the (2,4) entry \n contains invalid symbols "))?;
+        let maybe_m31 = Globals::sanitize_expression(&desc.row_3[0]);
+        let sanitized_m31 = maybe_m31.ok_or(BlockCreationError::IncorrectAttributes(" the (3,1) entry \n contains invalid symbols "))?;
+        let maybe_m32 = Globals::sanitize_expression(&desc.row_3[1]);
+        let sanitized_m32 = maybe_m32.ok_or(BlockCreationError::IncorrectAttributes(" the (3,2) entry \n contains invalid symbols "))?;
+        let maybe_m33 = Globals::sanitize_expression(&desc.row_3[2]);
+        let sanitized_m33 = maybe_m33.ok_or(BlockCreationError::IncorrectAttributes(" the (3,3) entry \n contains invalid symbols "))?;
+        let maybe_m34 = Globals::sanitize_expression(&desc.row_3[3]);
+        let sanitized_m34 = maybe_m34.ok_or(BlockCreationError::IncorrectAttributes(" the (3,4) entry \n contains invalid symbols "))?;
+
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = {dimx}, local_size_y = 1) in;
@@ -128,10 +172,10 @@ layout(set = 0, binding = 1) buffer OutputBuffer {{
 void main() {{
     uint index = gl_GlobalInvocationID.x;
     float {par} = in_buff[index];
-    vec4 col_0 = vec4({_m00}, {_m10}, {_m20}, 0.0);
-    vec4 col_1 = vec4({_m01}, {_m11}, {_m21}, 0.0);
-    vec4 col_2 = vec4({_m02}, {_m12}, {_m22}, 0.0);
-    vec4 col_3 = vec4({_m03}, {_m13}, {_m23}, 1.0);
+    vec4 col_0 = vec4({_m11}, {_m21}, {_m31}, 0.0);
+    vec4 col_1 = vec4({_m12}, {_m22}, {_m32}, 0.0);
+    vec4 col_2 = vec4({_m13}, {_m23}, {_m33}, 0.0);
+    vec4 col_3 = vec4({_m14}, {_m24}, {_m34}, 1.0);
 
     out_buff[index][0] = col_0;
     out_buff[index][1] = col_1;
@@ -139,10 +183,9 @@ void main() {{
     out_buff[index][3] = col_3;
 }}
 "##, header=&globals.shader_header, par=&param_name, dimx=param.size,
-    _m00=desc.row_1[0], _m10=desc.row_2[0], _m20=desc.row_3[0],
-    _m01=desc.row_1[1], _m11=desc.row_2[1], _m21=desc.row_3[1],
-    _m02=desc.row_1[2], _m12=desc.row_2[2], _m22=desc.row_3[2],
-    _m03=desc.row_1[3], _m13=desc.row_2[3], _m23=desc.row_3[3],
+    _m11=sanitized_m11, _m12=sanitized_m12, _m13=sanitized_m13, _m14=sanitized_m14,
+    _m21=sanitized_m21, _m22=sanitized_m22, _m23=sanitized_m23, _m24=sanitized_m24,
+    _m31=sanitized_m31, _m32=sanitized_m32, _m33=sanitized_m33, _m34=sanitized_m34,
 );
 
         let out_dim = Dimensions::D1(param);
@@ -173,6 +216,35 @@ void main() {{
 
     fn new_without_interval(device: &wgpu::Device, globals: &Globals, desc: MatrixBlockDescriptor) -> Result<Self, BlockCreationError> {
 
+        // Sanitize all input expressions
+        // TODO: DRY, this is exactly the same code as the with_interval function
+        // BEWARE: named entries follow the "maths" convention: the upper left element is the
+        // element (1, 1), but `row_n` is an array and therefore starts from 0!
+        let maybe_m11 = Globals::sanitize_expression(&desc.row_1[0]);
+        let sanitized_m11 = maybe_m11.ok_or(BlockCreationError::IncorrectAttributes(" the (1,1) entry \n contains invalid symbols "))?;
+        let maybe_m12 = Globals::sanitize_expression(&desc.row_1[1]);
+        let sanitized_m12 = maybe_m12.ok_or(BlockCreationError::IncorrectAttributes(" the (1,2) entry \n contains invalid symbols "))?;
+        let maybe_m13 = Globals::sanitize_expression(&desc.row_1[2]);
+        let sanitized_m13 = maybe_m13.ok_or(BlockCreationError::IncorrectAttributes(" the (1,3) entry \n contains invalid symbols "))?;
+        let maybe_m14 = Globals::sanitize_expression(&desc.row_1[3]);
+        let sanitized_m14 = maybe_m14.ok_or(BlockCreationError::IncorrectAttributes(" the (1,4) entry \n contains invalid symbols "))?;
+        let maybe_m21 = Globals::sanitize_expression(&desc.row_2[0]);
+        let sanitized_m21 = maybe_m21.ok_or(BlockCreationError::IncorrectAttributes(" the (2,1) entry \n contains invalid symbols "))?;
+        let maybe_m22 = Globals::sanitize_expression(&desc.row_2[1]);
+        let sanitized_m22 = maybe_m22.ok_or(BlockCreationError::IncorrectAttributes(" the (2,2) entry \n contains invalid symbols "))?;
+        let maybe_m23 = Globals::sanitize_expression(&desc.row_2[2]);
+        let sanitized_m23 = maybe_m23.ok_or(BlockCreationError::IncorrectAttributes(" the (2,3) entry \n contains invalid symbols "))?;
+        let maybe_m24 = Globals::sanitize_expression(&desc.row_2[3]);
+        let sanitized_m24 = maybe_m24.ok_or(BlockCreationError::IncorrectAttributes(" the (2,4) entry \n contains invalid symbols "))?;
+        let maybe_m31 = Globals::sanitize_expression(&desc.row_3[0]);
+        let sanitized_m31 = maybe_m31.ok_or(BlockCreationError::IncorrectAttributes(" the (3,1) entry \n contains invalid symbols "))?;
+        let maybe_m32 = Globals::sanitize_expression(&desc.row_3[1]);
+        let sanitized_m32 = maybe_m32.ok_or(BlockCreationError::IncorrectAttributes(" the (3,2) entry \n contains invalid symbols "))?;
+        let maybe_m33 = Globals::sanitize_expression(&desc.row_3[2]);
+        let sanitized_m33 = maybe_m33.ok_or(BlockCreationError::IncorrectAttributes(" the (3,3) entry \n contains invalid symbols "))?;
+        let maybe_m34 = Globals::sanitize_expression(&desc.row_3[3]);
+        let sanitized_m34 = maybe_m34.ok_or(BlockCreationError::IncorrectAttributes(" the (3,4) entry \n contains invalid symbols "))?;
+
         let shader_source = format!(r##"
 #version 450
 layout(local_size_x = 1, local_size_y = 1) in;
@@ -185,10 +257,10 @@ layout(set = 0, binding = 0) buffer OutputBuffer {{
 
 void main() {{
     uint index = gl_GlobalInvocationID.x;
-    vec4 col_0 = vec4({_m00}, {_m10}, {_m20}, 0.0);
-    vec4 col_1 = vec4({_m01}, {_m11}, {_m21}, 0.0);
-    vec4 col_2 = vec4({_m02}, {_m12}, {_m22}, 0.0);
-    vec4 col_3 = vec4({_m03}, {_m13}, {_m23}, 1.0);
+    vec4 col_0 = vec4({_m11}, {_m21}, {_m31}, 0.0);
+    vec4 col_1 = vec4({_m12}, {_m22}, {_m32}, 0.0);
+    vec4 col_2 = vec4({_m13}, {_m23}, {_m33}, 0.0);
+    vec4 col_3 = vec4({_m14}, {_m24}, {_m34}, 1.0);
 
     out_buff[index][0] = col_0;
     out_buff[index][1] = col_1;
@@ -196,10 +268,9 @@ void main() {{
     out_buff[index][3] = col_3;
 }}
 "##, header=&globals.shader_header,
-    _m00=desc.row_1[0], _m10=desc.row_2[0], _m20=desc.row_3[0],
-    _m01=desc.row_1[1], _m11=desc.row_2[1], _m21=desc.row_3[1],
-    _m02=desc.row_1[2], _m12=desc.row_2[2], _m22=desc.row_3[2],
-    _m03=desc.row_1[3], _m13=desc.row_2[3], _m23=desc.row_3[3],
+    _m11=sanitized_m11, _m12=sanitized_m12, _m13=sanitized_m13, _m14=sanitized_m14,
+    _m21=sanitized_m21, _m22=sanitized_m22, _m23=sanitized_m23, _m24=sanitized_m24,
+    _m31=sanitized_m31, _m32=sanitized_m32, _m33=sanitized_m33, _m34=sanitized_m34,
 );
 
         let out_dim = Dimensions::D0;

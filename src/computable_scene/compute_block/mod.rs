@@ -296,7 +296,7 @@ impl ComputeBlock {
             } => {
                 let axis = graph.get_attribute_as_axis(axis).unwrap();
                 let angle = graph.get_attribute_as_string(angle).unwrap();
-                let matrix_descriptor = MatrixBlockDescriptor::new_from_rotation(axis, angle);
+                let matrix_descriptor = MatrixBlockDescriptor::new_from_rotation(axis, angle)?;
                 matrix_descriptor.make_block(device, globals, processed_blocks)
             },
             NodeContents::TranslationMatrix {
@@ -307,6 +307,9 @@ impl ComputeBlock {
                     Some(id) => id,
                     None => return Err(BlockCreationError::InputMissing(" this Translation Matrix node \n is missing the vector input ")),
                 };
+                // TODO: this method of getting the vector input is a temporary hacked in solution.
+                // If any vector processing capabilities gets added to the graph node, make sure to
+                // change this code.
                 let vector_node = graph.get_node(node_id).unwrap();
                 match vector_node.contents {
                     NodeContents::Vector { x, y, z, .. } => {
@@ -314,7 +317,7 @@ impl ComputeBlock {
                         let y = graph.get_attribute_as_string(y).unwrap();
                         let z = graph.get_attribute_as_string(z).unwrap();
 
-                        let matrix_descriptor = MatrixBlockDescriptor::new_from_translation(x, y, z);
+                        let matrix_descriptor = MatrixBlockDescriptor::new_from_translation(x, y, z)?;
                         matrix_descriptor.make_block(device, globals, processed_blocks)
                     },
                     _ => Err(BlockCreationError::InputInvalid(" the input is not a vector node "))

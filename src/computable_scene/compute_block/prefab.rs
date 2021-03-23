@@ -30,6 +30,10 @@ impl PrefabData {
             return Err(BlockCreationError::IncorrectAttributes(" please provide a value \n for the primitive size "));
         }
 
+        // Sanitize all input expressions
+        let maybe_size = Globals::sanitize_expression(&descriptor.size);
+        let sanitized_size = maybe_size.ok_or(BlockCreationError::IncorrectAttributes(" the size field \n contains invalid symbols "))?;
+
         let model = models.get(descriptor.prefab_id as usize).unwrap();
 
         let shader_source = format!(r##"
@@ -59,7 +63,7 @@ void main() {{
     out_buff[idx].uv_coords = in_buff[idx].uv_coords;
     out_buff[idx]._padding = in_buff[idx]._padding;
 }}
-"##, globals_header=&globals.shader_header, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, n_chunk_vertices = MODEL_CHUNK_VERTICES, scaling=&descriptor.size
+"##, globals_header=&globals.shader_header, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, n_chunk_vertices = MODEL_CHUNK_VERTICES, scaling=sanitized_size
 );
 
         let out_dim = Dimensions::D3(model.vertex_count, descriptor.prefab_id);
