@@ -434,7 +434,16 @@ fn main() {
                 // If we are dragging onto something that requires the mouse pointer to stay fixed,
                 // this is the moment in which we move it back to its old position.
                 if mouse_frozen {
-                    //window.set_cursor_position(cursor_position).unwrap();
+                    #[cfg(target_os = "windows")]
+                    {}
+
+                    #[cfg(target_os = "linux")]
+                    {
+                        window.set_cursor_position(cursor_position).unwrap();
+                    }
+
+                    #[cfg(target_os = "macos")]
+                    {}
                 }
                 camera_inputs.reset_deltas();
             }
@@ -485,12 +494,34 @@ fn main() {
                         state.app.update_projection_matrix(texture_size);
                     },
                     CustomEvent::MouseFreeze => {
+                        // set mouse as frozen
                         mouse_frozen = true;
-                        window.set_cursor_grab(true).unwrap();
+                        window.set_cursor_visible(false);
+                        #[cfg(target_os = "windows")]
+                        {}
+
+                        #[cfg(target_os = "linux")]
+                        {
+                        }
+
+                        #[cfg(target_os = "macos")]
+                        {
+                            window.set_cursor_grab(true).unwrap();
+                        }
                     },
                     CustomEvent::MouseThaw => {
                         mouse_frozen = false;
-                        window.set_cursor_grab(false).unwrap();
+                        window.set_cursor_visible(true);
+                        #[cfg(target_os = "windows")]
+                        {}
+
+                        #[cfg(target_os = "linux")]
+                        {}
+
+                        #[cfg(target_os = "macos")]
+                        {
+                            window.set_cursor_grab(false).unwrap();
+                        }
                     },
                 }
             }
@@ -527,7 +558,6 @@ fn main() {
                         state.app.manager.resize(physical_size);
                     }
                     Event::WindowEvent{ event: WindowEvent::CursorMoved { position, .. }, ..} => {
-                        // put a safety un-freeze feature, in case we mess something up wrt releasing the mouse
                         if !mouse_frozen {
                             cursor_position = position.cast();
                         }
