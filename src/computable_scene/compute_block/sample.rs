@@ -40,7 +40,8 @@ impl SampleData {
             ComputeBlock::Surface(data) => (data.out_dim.clone(), &data.out_buffer),
             ComputeBlock::Transform(data) => (data.out_dim.clone(), &data.out_buffer),
             ComputeBlock::Prefab(data) => (data.out_dim.clone(), &data.out_buffer),
-            _ => return Err(BlockCreationError::InputInvalid("the first input provided to the Transform is not a Geometry"))
+            ComputeBlock::Sample(data) => (data.out_dim.clone(), &data.out_buffer),
+            _ => return Err(BlockCreationError::InputInvalid("the first input provided to the Sample is not a Geometry"))
         };
 
         match geometry_dim {
@@ -57,7 +58,7 @@ impl SampleData {
 
     pub fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
         let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
-            label: Some("interval compute pass"),
+            label: Some("sampling compute pass"),
         });
         compute_pass.set_pipeline(&self.compute_pipeline);
         compute_pass.set_bind_group(0, &self.compute_bind_group, &[]);
@@ -108,6 +109,9 @@ void main() {{
     int inf_idx = int(floor(value));
     int sup_idx = int(ceil(value));
     float alpha = fract(value);
+    // clamp index acces, to make sure nothing bad happens, no matter what value was given
+    inf_idx = clamp(inf_idx, 0, {array_size} - 1);
+    sup_idx = clamp(sup_idx, 0, {array_size} - 1);
     out_buff = (1 - alpha) * in_buff[inf_idx] + alpha * in_buff[sup_idx];
     out_buff.w = 1.0;
 }}
@@ -134,7 +138,145 @@ void main() {{
     }
 
     fn sample_2d_1d(device: &wgpu::Device, globals: &Globals, geo_buff: &wgpu::Buffer, geo_param_1: Parameter, geo_param_2: Parameter, sampled_name: &str, sampled_value: &str) -> Result<Self, BlockCreationError> {
-        todo!()
+        // TODO: maybe a re-write could be useful. The logic might be very hard to follow here.
+        let used_param = match (geo_param_1.name.as_ref(), geo_param_2.name.as_ref()) {
+            (Some(name_1), Some(name_2)) => {
+                if name_1 == sampled_name {
+                    1
+                } else if name_2 == sampled_name {
+                    2
+                } else {
+                    return Err(BlockCreationError::IncorrectAttributes(" the parameter used \n is not known "));
+                }
+            },
+            (None, Some(name_2)) => {
+                if name_2 == sampled_name {
+                    2
+                } else {
+                    return Err(BlockCreationError::IncorrectAttributes(" the parameter used \n is not known "));
+                }
+            },
+            (Some(name_1), None) => {
+                if name_1 == sampled_name {
+                    1
+                } else {
+                    return Err(BlockCreationError::IncorrectAttributes(" the parameter used \n is not known "));
+                }
+            },
+            (None, None) => {
+                return Err(BlockCreationError::IncorrectAttributes(" the parameter used \n is not known "));
+            }
+        };
+
+        // we now know the parameter name, we know that we need to allocate space for one point.
+        let out_param = if used_param == 1 {
+            geo_param_2.clone()
+        } else {
+            geo_param_1.clone()
+        };
+        let out_dim = Dimensions::D1(out_param.clone());
+        let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), &device);
+
+        // this is the shader that samples the FIRST parameter, which means that the second
+        // parameter is the one that survives
+        let shader_source_1 = format!(r##"
+#version 450
+layout(local_size_x = {size_y}, local_size_y = 1) in;
+
+layout(set = 0, binding = 0) buffer InputPoint {{
+    vec4 in_buff[];
+}};
+
+layout(set = 0, binding = 1) buffer OutputBuffer {{
+    vec4 out_buff[];
+}};
+
+{header}
+
+void main() {{
+    // parameter space is linear, so we can figure out which index we should access
+    float size = {size_x};
+    float interval_begin = {begin};
+    float interval_end = {end};
+    float value = {value};
+    // transform the value so that the interval extends from 0 to size-1
+    value = (value - interval_begin) * (size - 1) / (interval_end - interval_begin);
+    int inf_idx = int(floor(value));
+    int sup_idx = int(ceil(value));
+    float alpha = fract(value);
+    // clamp index acces, to make sure nothing bad happens, no matter what value was given
+    inf_idx = clamp(inf_idx, 0, {size_x} - 1);
+    sup_idx = clamp(sup_idx, 0, {size_x} - 1);
+    uint inf_index = inf_idx + {size_x} * gl_GlobalInvocationID.x;
+    uint sup_index = sup_idx + {size_x} * gl_GlobalInvocationID.x;
+    out_buff[gl_GlobalInvocationID.x] = (1 - alpha) * in_buff[inf_index] + alpha * in_buff[sup_index];
+    out_buff[gl_GlobalInvocationID.x].w = 1.0;
+}}
+"##, header=&globals.shader_header, size_x=geo_param_1.size, size_y=geo_param_2.size,
+begin=&out_param.begin, end=&out_param.end, value=sampled_value);
+
+        // this is the shader that samples the SECOND parameter, which means that the first
+        // parameter is the one that survives
+        let shader_source_2 = format!(r##"
+#version 450
+layout(local_size_x = {size_x}, local_size_y = 1) in;
+
+layout(set = 0, binding = 0) buffer InputPoint {{
+    vec4 in_buff[];
+}};
+
+layout(set = 0, binding = 1) buffer OutputBuffer {{
+    vec4 out_buff[];
+}};
+
+{header}
+
+void main() {{
+    // parameter space is linear, so we can figure out which index we should access
+    float size = {size_y};
+    float interval_begin = {begin};
+    float interval_end = {end};
+    float value = {value};
+    // transform the value so that the interval extends from 0 to size-1
+    value = (value - interval_begin) * (size - 1) / (interval_end - interval_begin);
+    int inf_idx = int(floor(value));
+    int sup_idx = int(ceil(value));
+    float alpha = fract(value);
+    // clamp index acces, to make sure nothing bad happens, no matter what value was given
+    inf_idx = clamp(inf_idx, 0, {size_y} - 1);
+    sup_idx = clamp(sup_idx, 0, {size_y} - 1);
+    uint inf_index = gl_GlobalInvocationID.x + {size_x} * inf_idx;
+    uint sup_index = gl_GlobalInvocationID.x + {size_x} * sup_idx;
+    out_buff[gl_GlobalInvocationID.x] = (1 - alpha) * in_buff[inf_index] + alpha * in_buff[sup_index];
+    out_buff[gl_GlobalInvocationID.x].w = 1.0;
+}}
+"##, header=&globals.shader_header, size_x=geo_param_1.size, size_y=geo_param_2.size,
+begin=&out_param.begin, end=&out_param.end, value=sampled_value);
+
+        let shader_source = if used_param == 1 {
+            shader_source_1
+        } else {
+            shader_source_2
+        };
+
+        let mut bindings = Vec::<CustomBindDescriptor>::new();
+        // add descriptor for input buffer
+        bindings.push(CustomBindDescriptor {
+            position: 0,
+            buffer: geo_buff,
+        });
+        // add descriptor for matrix
+        bindings.push(CustomBindDescriptor {
+            position: 1,
+            buffer: &out_buffer,
+        });
+        let (compute_pipeline, compute_bind_group) = compile_compute_shader(device, shader_source.as_str(), &bindings, Some(&globals.bind_layout), Some("Sample 1D-0D"))?;
+        Ok(Self {
+            compute_pipeline,
+            compute_bind_group,
+            out_buffer,
+            out_dim,
+        })
     }
 }
 

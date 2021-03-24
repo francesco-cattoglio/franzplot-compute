@@ -9,72 +9,102 @@ V1(
     graph: (
       nodes: [
         Some((
-          title: "Curve",
-          position: (280,116),
+          title: "Interval",
+          position: (45,68),
           error: None,
-          contents: Curve(interval:0,fx:1,fy:2,fz:3,output:4),
+          contents: Interval(variable:0,begin:1,end:2,quality:3,output:4),
         )),// [0]
         Some((
           title: "Interval",
-          position: (54,117),
+          position: (42,213),
           error: None,
           contents: Interval(variable:5,begin:6,end:7,quality:8,output:9),
         )),// [1]
         Some((
-          title: "Rendering",
-          position: (578,110),
+          title: "Surface",
+          position: (284,79),
           error: None,
-          contents: Rendering(geometry:10,thickness:11,mask:12,material:13),
+          contents: Surface(interval_1:10,interval_2:11,fx:12,fy:13,fz:14,output:15),
         )),// [2]
         Some((
-          title: "Sample Parameter",
-          position: (393,286),
+          title: "Rendering",
+          position: (572,75),
           error: None,
-          contents: Sample(geometry:14,parameter:15,value:16,output:17),
+          contents: Rendering(geometry:16,thickness:17,mask:18,material:19),
         )),// [3]
         Some((
-          title: "Rendering",
-          position: (591,281),
+          title: "Sample Parameter",
+          position: (455,222),
           error: None,
-          contents: Rendering(geometry:18,thickness:19,mask:20,material:21),
+          contents: Sample(geometry:20,parameter:21,value:22,output:23),
+        )),// [4]
+        Some((
+          title: "Rendering",
+          position: (646,217),
+          error: None,
+          contents: Rendering(geometry:24,thickness:25,mask:26,material:27),
+        )),// [5]
+        Some((
+          title: "Sample Parameter",
+          position: (419,342),
+          error: None,
+          contents: Sample(geometry:28,parameter:29,value:30,output:31),
+        )),// [6]
+        Some((
+          title: "Rendering",
+          position: (649,350),
+          error: None,
+          contents: Rendering(geometry:32,thickness:33,mask:34,material:35),
+        )),// [7]
+        Some((
+          title: "Sample Parameter",
+          position: (498,476),
+          error: Some((node_id:8,severity:Warning,message:"the first input provided to the Transform is not a Geometry")),
+          contents: Sample(geometry:36,parameter:37,value:38,output:39),
+        )),// [8]
+        Some((
+          title: "Rendering",
+          position: (708,467),
+          error: Some((node_id:9,severity:Warning,message:" Node not computed \n due to previous errors ")),
+          contents: Rendering(geometry:40,thickness:41,mask:42,material:43),
         )),
       ],
       attributes: [
         Some((
           node_id: 0,
-          contents: InputPin(label:"interval",kind:Interval),
+          contents: Text(label:" name",string:"t"),
         )),// [0]
         Some((
           node_id: 0,
-          contents: Text(label:"fx",string:"-pow(t,2)+2"),
+          contents: Text(label:"begin",string:"-1"),
         )),// [1]
         Some((
           node_id: 0,
-          contents: Text(label:"fy",string:"t"),
+          contents: Text(label:"  end",string:"1"),
         )),// [2]
         Some((
           node_id: 0,
-          contents: Text(label:"fz",string:"0"),
+          contents: IntSlider(label:"quality",value:4,mode:IntRange(2,16)),
         )),// [3]
         Some((
           node_id: 0,
-          contents: OutputPin(label:"geometry",kind:Geometry),
+          contents: OutputPin(label:"interval",kind:Interval),
         )),// [4]
         Some((
           node_id: 1,
-          contents: Text(label:" name",string:"t"),
+          contents: Text(label:" name",string:"s"),
         )),// [5]
         Some((
           node_id: 1,
-          contents: Text(label:"begin",string:"-2"),
+          contents: Text(label:"begin",string:"-1"),
         )),// [6]
         Some((
           node_id: 1,
-          contents: Text(label:"  end",string:"2"),
+          contents: Text(label:"  end",string:"1"),
         )),// [7]
         Some((
           node_id: 1,
-          contents: IntSlider(label:"quality",value:4,mode:IntRange(2,16)),
+          contents: IntSlider(label:"quality",value:2,mode:IntRange(2,16)),
         )),// [8]
         Some((
           node_id: 1,
@@ -82,69 +112,168 @@ V1(
         )),// [9]
         Some((
           node_id: 2,
-          contents: InputPin(label:"geometry",kind:Geometry),
+          contents: InputPin(label:"interval 1",kind:Interval),
         )),// [10]
         Some((
           node_id: 2,
-          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+          contents: InputPin(label:"interval 2",kind:Interval),
         )),// [11]
         Some((
           node_id: 2,
-          contents: Mask(selected:2),
+          contents: Text(label:"fx",string:"t"),
         )),// [12]
         Some((
           node_id: 2,
-          contents: Material(selected:0),
+          contents: Text(label:"fy",string:"t*t"),
         )),// [13]
         Some((
-          node_id: 3,
-          contents: InputPin(label:"geometry",kind:Geometry),
+          node_id: 2,
+          contents: Text(label:"fz",string:"s"),
         )),// [14]
         Some((
-          node_id: 3,
-          contents: Text(label:"param:",string:"t"),
+          node_id: 2,
+          contents: OutputPin(label:"geometry",kind:Geometry),
         )),// [15]
         Some((
           node_id: 3,
-          contents: Text(label:"value:",string:"1.12"),
+          contents: InputPin(label:"geometry",kind:Geometry),
         )),// [16]
         Some((
           node_id: 3,
-          contents: OutputPin(label:"output",kind:Geometry),
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
         )),// [17]
         Some((
-          node_id: 4,
-          contents: InputPin(label:"geometry",kind:Geometry),
+          node_id: 3,
+          contents: Mask(selected:4),
         )),// [18]
         Some((
-          node_id: 4,
-          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+          node_id: 3,
+          contents: Material(selected:0),
         )),// [19]
         Some((
           node_id: 4,
-          contents: Mask(selected:0),
+          contents: InputPin(label:"geometry",kind:Geometry),
         )),// [20]
         Some((
           node_id: 4,
+          contents: Text(label:"param:",string:"s"),
+        )),// [21]
+        Some((
+          node_id: 4,
+          contents: Text(label:"value:",string:"j"),
+        )),// [22]
+        Some((
+          node_id: 4,
+          contents: OutputPin(label:"output",kind:Geometry),
+        )),// [23]
+        Some((
+          node_id: 5,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [24]
+        Some((
+          node_id: 5,
+          contents: IntSlider(label:"thickness:",value:1,mode:SizeLabels),
+        )),// [25]
+        Some((
+          node_id: 5,
+          contents: Mask(selected:0),
+        )),// [26]
+        Some((
+          node_id: 5,
+          contents: Material(selected:1),
+        )),// [27]
+        Some((
+          node_id: 6,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [28]
+        Some((
+          node_id: 6,
+          contents: Text(label:"param:",string:"t"),
+        )),// [29]
+        Some((
+          node_id: 6,
+          contents: Text(label:"value:",string:"k"),
+        )),// [30]
+        Some((
+          node_id: 6,
+          contents: OutputPin(label:"output",kind:Geometry),
+        )),// [31]
+        Some((
+          node_id: 7,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [32]
+        Some((
+          node_id: 7,
+          contents: IntSlider(label:"thickness:",value:1,mode:SizeLabels),
+        )),// [33]
+        Some((
+          node_id: 7,
+          contents: Mask(selected:0),
+        )),// [34]
+        Some((
+          node_id: 7,
+          contents: Material(selected:3),
+        )),// [35]
+        Some((
+          node_id: 8,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [36]
+        Some((
+          node_id: 8,
+          contents: Text(label:"param:",string:"s"),
+        )),// [37]
+        Some((
+          node_id: 8,
+          contents: Text(label:"value:",string:"j"),
+        )),// [38]
+        Some((
+          node_id: 8,
+          contents: OutputPin(label:"output",kind:Geometry),
+        )),// [39]
+        Some((
+          node_id: 9,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [40]
+        Some((
+          node_id: 9,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [41]
+        Some((
+          node_id: 9,
+          contents: Mask(selected:0),
+        )),// [42]
+        Some((
+          node_id: 9,
           contents: Material(selected:2),
         )),
       ],
       links: {
-        0: 9,
-        18: 17,
-        14: 4,
         10: 4,
+        11: 9,
+        20: 15,
+        16: 15,
+        24: 23,
+        32: 31,
+        40: 39,
+        28: 15,
+        36: 31,
       },
       free_nodes_list: [],
       free_attributes_list: [],
     ),
-    globals_names: [],
-    globals_init_values: [],
+    globals_names: [
+      "j",// [0]
+      "k",
+    ],
+    globals_init_values: [
+      0,// [0]
+      0,
+    ],
   ),
   (
-    fc: 1616585500,
-    fs: 1616595178,
-    vn: 1224992887,
+    fc: 1616600235,
+    fs: 1616601356,
+    vn: 416744878,
     hs: 0,
   ),
 )
