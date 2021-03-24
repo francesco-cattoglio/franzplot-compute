@@ -50,7 +50,7 @@ impl IntervalData {
         // fail nonetheless
         let maybe_begin = Globals::sanitize_expression(&descriptor.begin);
         let sanitized_begin = maybe_begin.ok_or(BlockCreationError::IncorrectAttributes(" this interval's begin \n contains invalid symbols "))?;
-        let maybe_end = Globals::sanitize_expression(&descriptor.begin);
+        let maybe_end = Globals::sanitize_expression(&descriptor.end);
         let sanitized_end = maybe_end.ok_or(BlockCreationError::IncorrectAttributes(" this interval's end \n contains invalid symbols "))?;
         let param = Parameter {
             name: Some(sanitized_name.to_string()),

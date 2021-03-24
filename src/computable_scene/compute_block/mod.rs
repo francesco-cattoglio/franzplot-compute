@@ -27,6 +27,9 @@ pub use vector_rendering::{VectorRenderingData, VectorRenderingBlockDescriptor};
 pub mod interval;
 pub use interval::{IntervalData, IntervalBlockDescriptor};
 
+pub mod sample;
+pub use sample::{SampleData, SampleBlockDescriptor};
+
 pub mod transform;
 pub use transform::{TransformData, TransformBlockDescriptor};
 
@@ -58,6 +61,7 @@ pub enum ComputeBlock {
     Vector(VectorData),
     Point(PointData),
     Interval(IntervalData),
+    Sample(SampleData),
     Bezier(BezierData),
     Curve(CurveData),
     Surface(SurfaceData),
@@ -65,7 +69,7 @@ pub enum ComputeBlock {
     Matrix(MatrixData),
     Rendering(RenderingData),
     VectorRendering(VectorRenderingData),
-    Prefab(PrefabData,)
+    Prefab(PrefabData),
 }
 
 /// a parameter can be anonymous, e.g. when created by a Bezier node
@@ -171,6 +175,7 @@ impl ComputeBlock {
             Self::Vector(data) => data.encode(globals_bind_group, encoder),
             Self::Point(data) => data.encode(globals_bind_group, encoder),
             Self::Interval(data) => data.encode(globals_bind_group, encoder),
+            Self::Sample(data) => data.encode(globals_bind_group, encoder),
             Self::Bezier(data) => data.encode(encoder),
             Self::Curve(data) => data.encode(globals_bind_group, encoder),
             Self::Surface(data) => data.encode(globals_bind_group, encoder),
@@ -194,6 +199,16 @@ impl ComputeBlock {
                     quality: graph.get_attribute_as_usize(quality).unwrap(),
                 };
                 interval_descriptor.make_block(device, globals)
+            },
+            NodeContents::Sample {
+                geometry, parameter, value, ..
+            } => {
+                let sample_descriptor = SampleBlockDescriptor {
+                    geometry: graph.get_attribute_as_linked_node(geometry),
+                    parameter: graph.get_attribute_as_string(parameter).unwrap(),
+                    value: graph.get_attribute_as_string(value).unwrap(),
+                };
+                sample_descriptor.make_block(device, globals, processed_blocks)
             },
             NodeContents::Vector {
                 x, y, z, ..

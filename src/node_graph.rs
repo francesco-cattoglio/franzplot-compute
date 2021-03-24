@@ -419,6 +419,12 @@ pub enum NodeContents {
         quality: AttributeID,
         output: AttributeID,
     },
+    Sample {
+        geometry: AttributeID,
+        parameter: AttributeID,
+        value: AttributeID,
+        output: AttributeID,
+    },
     Vector {
         x: AttributeID,
         y: AttributeID,
@@ -505,6 +511,7 @@ impl NodeContents {
     pub fn default_same_kind(&self) -> Self {
         match self {
             NodeContents::Interval {..} => Self::default_interval(),
+            NodeContents::Sample {..} => Self::default_sample(),
             NodeContents::Vector {..} => Self::default_vector(),
             NodeContents::Point {..} => Self::default_point(),
             NodeContents::Bezier {..} => Self::default_bezier(),
@@ -530,6 +537,11 @@ impl NodeContents {
                 variable, begin, end, quality, output,
             } => {
                 vec![variable, begin, end, quality, output]
+            },
+            NodeContents::Sample {
+                geometry, parameter, value, output,
+            } => {
+                vec![geometry, parameter, value, output]
             },
             NodeContents::Vector {
                 x, y, z, output
@@ -611,6 +623,11 @@ impl NodeContents {
             } => {
                 vec![variable, begin, end, quality, output]
             },
+            NodeContents::Sample {
+                geometry, parameter, value, output,
+            } => {
+                vec![geometry, parameter, value, output]
+            },
             NodeContents::Vector {
                 x, y, z, output
             } => {
@@ -691,6 +708,17 @@ impl NodeContents {
             end: 2,
             quality: 3,
             output: 4,
+        }
+    }
+
+    // NOTE: if you modify this function, also modify the order in which we return
+    // attributes in the get_attribute_list_mut() and get_attribute_list() functions!
+    pub fn default_sample() -> Self {
+        NodeContents::Sample {
+            geometry: 0,
+            parameter: 1,
+            value: 2,
+            output: 3,
         }
     }
 
@@ -1257,6 +1285,10 @@ impl NodeGraph {
                     self.add_interval_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
+                if MenuItem::new(im_str!("Sample parameter")).build(ui) {
+                    self.add_parameter_node(node_pos);
+                    request_savestate = Some(ui.time());
+                }
             }); // Geometries menu ends here
 
             ui.menu(im_str!("Transformations"), true, || {
@@ -1689,6 +1721,31 @@ impl NodeGraph {
         ];
         let node_contents = NodeContents::default_interval();
         self.insert_node("Interval".into(), position, node_contents, attributes_contents)
+    }
+
+    pub fn add_parameter_node(&mut self, position: [f32; 2]) -> NodeID {
+        // NOTE: the order here is important: the attributes here
+        // must appear in the same order as they do in the default_interval() function!
+        let attributes_contents = vec![
+            AttributeContents::InputPin {
+                label: String::from("geometry"),
+                kind: DataKind::Geometry,
+            },
+            AttributeContents::Text {
+                label: String::from("param:"),
+                string: String::from(""),
+            },
+            AttributeContents::Text {
+                label: String::from("value:"),
+                string: String::from(""),
+            },
+            AttributeContents::OutputPin {
+                label: String::from("output"),
+                kind: DataKind::Geometry,
+            }
+        ];
+        let node_contents = NodeContents::default_sample();
+        self.insert_node("Sample Parameter".into(), position, node_contents, attributes_contents)
     }
 
     pub fn add_vector_node(&mut self, position: [f32; 2]) -> NodeID {
