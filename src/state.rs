@@ -90,6 +90,7 @@ pub struct AppState {
     pub camera_enabled: bool,
     pub camera_lock_up: bool,
     pub camera_ortho: bool, // TODO: all these camera settings should NOT be here, move them somewhere else!
+    pub auto_scene_on_processing: bool,
     pub camera: camera::Camera,
     pub assets: Assets,
     pub manager: Manager,
@@ -174,6 +175,7 @@ impl State {
             computable_scene,
             assets,
             camera,
+            auto_scene_on_processing: true,
             camera_enabled: false,
             camera_lock_up: true,
             camera_ortho: false,
@@ -200,11 +202,11 @@ impl State {
         self.time_stamps.fs = chrono::offset::Utc::now().timestamp();
         let to_serialize = FileVersion::V1(self.user.clone(), self.time_stamps.clone());
         let serialized_data = ron::ser::to_string_pretty(&to_serialize, ser_config).unwrap();
-        let mut contents = r##"//// FRANZPLOT DATA FILE V1 \\\\
+        let mut contents = r##"//// FRANZPLOT DATA FILE V1.1 \\\\
 
 //   This file should not be edited by hand,
 //   as doing so might easily corrupt the data.
-//   To edit this file, open it in Franzplot, version 21.03 or higher
+//   To edit this file, open it in Franzplot, version 21.04 or higher
 
 "##.to_string();
 

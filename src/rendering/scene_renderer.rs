@@ -245,7 +245,7 @@ impl SceneRenderer {
         let mut vertices = Vec::new();
 
         let colo_h = 255u8;
-        let colo_l = 32u8;
+        let colo_l = 64u8;
         for i in 1..=length {
             vertices.append(&mut create_wireframe_cross( i as f32*glam::Vec3::unit_x(), cross_size, [colo_h, 0, 0, 255]));
             vertices.append(&mut create_wireframe_cross(-i as f32*glam::Vec3::unit_x(), cross_size, [colo_l, 0, 0, 255]));

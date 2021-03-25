@@ -249,7 +249,7 @@ impl Gui {
     fn render_editor_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
         if ui.button(im_str!("Generate Scene"), [0.0, 0.0]) {
             let processing_succesful = state.process_user_state();
-            if processing_succesful {
+            if processing_succesful && state.app.auto_scene_on_processing {
                 self.opened_tab[1] = true;
             }
         }
@@ -485,6 +485,10 @@ impl Gui {
                 state.app.clear_wireframe_axes();
                 state.app.clear_axes_labels();
             }
+        }
+        if cfg!(feature = "dev-tools") {
+            ui.text(im_str!("Dev options"));
+            ui.checkbox(im_str!("Automatically open scene tab if graph processing was succesful"), &mut state.app.auto_scene_on_processing);
         }
         width_token.pop(ui);
     }
