@@ -213,7 +213,7 @@ void main() {{
     out_buff[gl_GlobalInvocationID.x].w = 1.0;
 }}
 "##, header=&globals.shader_header, size_x=geo_param_1.size, size_y=geo_param_2.size,
-begin=&out_param.begin, end=&out_param.end, value=sampled_value);
+begin=&geo_param_1.begin, end=&geo_param_1.end, value=sampled_value);
 
         // this is the shader that samples the SECOND parameter, which means that the first
         // parameter is the one that survives
@@ -251,7 +251,7 @@ void main() {{
     out_buff[gl_GlobalInvocationID.x].w = 1.0;
 }}
 "##, header=&globals.shader_header, size_x=geo_param_1.size, size_y=geo_param_2.size,
-begin=&out_param.begin, end=&out_param.end, value=sampled_value);
+begin=&geo_param_2.begin, end=&geo_param_2.end, value=sampled_value);
 
         let shader_source = if used_param == 1 {
             shader_source_1
