@@ -21,7 +21,7 @@ pub fn compile_compute_shader(
     globals_bind_layout: Option<&wgpu::BindGroupLayout>,
     label: Option<&str>,
     ) -> CompilationResult {
-        let mut shader_compiler = shaderc::Compiler::new().ok_or(BlockCreationError::InternalError("unable to initialize shader compiler"))?;
+        let mut shader_compiler = shaderc::Compiler::new().ok_or(BlockCreationError::InternalError("unable to initialize shader compiler".into()))?;
         let comp_spirv = shader_compiler.compile_into_spirv(shader_src, shaderc::ShaderKind::Compute, "shader.comp", "main", None)
         .map_err(|error: shaderc::Error| {
             dbg!(error);

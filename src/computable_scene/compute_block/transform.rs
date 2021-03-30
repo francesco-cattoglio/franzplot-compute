@@ -30,11 +30,11 @@ pub struct TransformData {
 impl TransformData {
     pub fn new(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: TransformBlockDescriptor) -> Result<Self, BlockCreationError> {
         let geometry_id = descriptor.geometry.ok_or(BlockCreationError::InputMissing(" This Transform node \n is missing the Geometry input "))?;
-        let found_element = processed_blocks.get(&geometry_id).ok_or(BlockCreationError::InternalError("Transform Geometry input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&geometry_id).ok_or(BlockCreationError::InternalError("Transform Geometry input does not exist in the block map".into()))?;
         let geometry_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let matrix_id = descriptor.matrix.ok_or(BlockCreationError::InputMissing(" This Transform node \n is missing the Matrix input "))?;
-        let found_element = processed_blocks.get(&matrix_id).ok_or(BlockCreationError::InternalError("Transform Matrix input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&matrix_id).ok_or(BlockCreationError::InternalError("Transform Matrix input does not exist in the block map".into()))?;
         let matrix_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let (geometry_dim, geometry_buffer) = match geometry_block {
@@ -191,13 +191,13 @@ impl TransformData {
                 compute_bind_group = bind_group;
             },
             (Dimensions::D3(_, _), Dimensions::D1(_)) => {
-                return Err(BlockCreationError::InternalError(" applying a parametric transform \n to a primitive geometry \n is not allowed "));
+                return Err(BlockCreationError::InputInvalid(" applying a parametric transform \n to a primitive geometry \n is not allowed ".into()));
             },
             (_, Dimensions::D2(_, _)) => {
-                return Err(BlockCreationError::InternalError("the input Matrix has 2 parameters"));
+                return Err(BlockCreationError::InternalError("the input Matrix has 2 parameters".into()));
             },
             (_, Dimensions::D3(_, _)) => {
-                return Err(BlockCreationError::InternalError("the input Matrix has dimension equal to 3"));
+                return Err(BlockCreationError::InternalError("the input Matrix has dimension equal to 3".into()));
             },
         }
         Ok(Self {

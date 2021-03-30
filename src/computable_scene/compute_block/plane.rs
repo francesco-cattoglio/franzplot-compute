@@ -22,7 +22,7 @@ impl PlaneBlockDescriptor {
 
     fn create_surface_data(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: PlaneBlockDescriptor) -> Result<SurfaceData, BlockCreationError> {
         let center_id = descriptor.center.ok_or(BlockCreationError::InputMissing(" This Plane node \n is missing the point input "))?;
-        let found_element = processed_blocks.get(&center_id).ok_or(BlockCreationError::InternalError("Plane point input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&center_id).ok_or(BlockCreationError::InternalError("Plane point input does not exist in the block map".into()))?;
         let center_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let center_data = match center_block {
@@ -31,7 +31,7 @@ impl PlaneBlockDescriptor {
         };
 
         let normal_id = descriptor.normal.ok_or(BlockCreationError::InputMissing(" This Plane node \n is missing the normal input "))?;
-        let found_element = processed_blocks.get(&normal_id).ok_or(BlockCreationError::InternalError("Plane normal input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&normal_id).ok_or(BlockCreationError::InternalError("Plane normal input does not exist in the block map".into()))?;
         let normal_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let normal_data = match normal_block {

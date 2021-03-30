@@ -1,0 +1,43 @@
+WHITESPACE = _{ " " }
+
+sign = {"+" | "-"}
+only_fractional = @{"." ~ ASCII_DIGIT+}
+integer = @{ ASCII_DIGIT+ }
+full_float = @{ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*}
+fractional = @{ ("." ~ ASCII_DIGIT*) }
+exponent = @{^"e" ~ sign? ~ integer}
+
+non_signed_number = @{ (only_fractional | full_float | integer) ~ exponent? }
+number = @{ sign? ~ non_signed_number }
+keyword = {"sin" | "cos" | "tan" | "sqrt"}
+func = { keyword ~ "(" ~ expr ~ ")" }
+func_no_parenthesis = { keyword ~ !"(" ~ expr }
+ident = @{!(keyword) ~ (LETTER | "_") ~ (LETTER  | ASCII_DIGIT | "_")* }
+non_number_value = _{ func_no_parenthesis | func | ident | ("(" ~ expr ~ ")") }
+
+//factorial = { (number | non_number_value) ~ "!"? }
+implicit_product = {
+    (number ~ non_number_value)
+    |(non_number_value ~ number)
+    |(non_number_value ~ non_number_value)}
+multiple_expressions = { non_signed_number{2,} | (non_signed_number | non_number_value){3,} }
+multiple_signs = { sign+ ~ (number | non_number_value)* }
+maybe_value = _{ multiple_signs | multiple_expressions | implicit_product | number | non_number_value }
+power = { (maybe_value) ~ ("^" ~ maybe_value)* }
+unary_sign = { sign? ~ power }
+mul_div = { "*" | "/" }
+product = { unary_sign ~ (mul_div ~ unary_sign)*}
+plus_minus = { "+" | "-" }
+sum = { product ~ (plus_minus ~ product)* }
+repeating_ops = { sum ~ (mul_div | plus_minus){2,} ~ ANY* }
+expr = _{ repeating_ops | sum }
+valid_character = _{
+    ASCII_ALPHANUMERIC
+    | "+" | "-" | "*" | "/" | "^"
+    | WHITESPACE | "(" | ")" | "."
+}
+invalid_character = { !valid_character ~ ANY }
+eoi = _{ !ANY }
+invalid_line = _{SOI ~ valid_character* ~ invalid_character ~ ANY*}
+line = _{SOI ~ (invalid_line | expr) ~ eoi}
+

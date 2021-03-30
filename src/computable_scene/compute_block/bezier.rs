@@ -30,12 +30,12 @@ impl BezierData {
             2 => Self::new_degree_1(device, processed_blocks, descriptor),
             3 => Self::new_degree_2(device, processed_blocks, descriptor),
             4 => Self::new_degree_3(device, processed_blocks, descriptor),
-            _ => Err(BlockCreationError::InternalError("Currently we only support Bézier curves up to degree 3")),
+            _ => Err(BlockCreationError::InternalError("Currently we only support Bézier curves up to degree 3".into())),
         }
     }
 
     fn get_point_buffer(processed_blocks: &ProcessedMap, id: BlockId) -> Result<&wgpu::Buffer, BlockCreationError> {
-        let found_element = processed_blocks.get(&id).ok_or(BlockCreationError::InternalError("Point input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&id).ok_or(BlockCreationError::InternalError("Point input does not exist in the block map".into()))?;
         let block = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
         match block {
             ComputeBlock::Point(data) => Ok(&data.out_buffer),

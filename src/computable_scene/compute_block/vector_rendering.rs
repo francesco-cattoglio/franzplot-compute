@@ -31,7 +31,7 @@ impl VectorRenderingData {
     pub fn new(device: &wgpu::Device, processed_blocks: &ProcessedMap, descriptor: VectorRenderingBlockDescriptor) -> Result<Self, BlockCreationError> {
         // we fetch the application_points and vector inputs
         let appl_point_id = descriptor.application_point.ok_or(BlockCreationError::InputMissing(" This Vector Renderer node \n is missing an input "))?;
-        let found_element = processed_blocks.get(&appl_point_id).ok_or(BlockCreationError::InternalError("Vector renderer application point input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&appl_point_id).ok_or(BlockCreationError::InternalError("Vector renderer application point input does not exist in the block map".into()))?;
         let appl_point_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
         let appl_point_data = if let ComputeBlock::Point(data) = appl_point_block {
             data
@@ -40,7 +40,7 @@ impl VectorRenderingData {
         };
 
         let vector_id = descriptor.vector.ok_or(BlockCreationError::InputMissing(" This Vector Renderer node \n is missing an input "))?;
-        let found_element = processed_blocks.get(&vector_id).ok_or(BlockCreationError::InternalError("Vector renderer vector input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&vector_id).ok_or(BlockCreationError::InternalError("Vector renderer vector input does not exist in the block map".into()))?;
         let vector_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
         let vector_data = if let ComputeBlock::Vector(data) = vector_block {
             data

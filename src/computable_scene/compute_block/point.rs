@@ -27,12 +27,9 @@ impl PointData {
         let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
 
         // Sanitize all input expressions
-        let maybe_fx = Globals::sanitize_expression(&descriptor.fx);
-        let sanitized_fx = maybe_fx.ok_or(BlockCreationError::IncorrectAttributes(" the x field \n contains invalid symbols "))?;
-        let maybe_fy = Globals::sanitize_expression(&descriptor.fy);
-        let sanitized_fy = maybe_fy.ok_or(BlockCreationError::IncorrectAttributes(" the y field \n contains invalid symbols "))?;
-        let maybe_fz = Globals::sanitize_expression(&descriptor.fz);
-        let sanitized_fz = maybe_fz.ok_or(BlockCreationError::IncorrectAttributes(" the z field \n contains invalid symbols "))?;
+        let sanitized_fx = globals.sanitize_expression(&descriptor.fx)?;
+        let sanitized_fy = globals.sanitize_expression(&descriptor.fy)?;
+        let sanitized_fz = globals.sanitize_expression(&descriptor.fz)?;
 
         let shader_source = format!(r##"
 #version 450

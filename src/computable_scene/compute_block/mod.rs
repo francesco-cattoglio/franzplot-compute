@@ -54,7 +54,8 @@ pub enum BlockCreationError {
     InputMissing(&'static str),
     InputInvalid(&'static str),
     InputNotBuilt(&'static str),
-    InternalError(&'static str),
+    InternalError(String),
+    IncorrectExpression(String),
 }
 
 pub enum ComputeBlock {
@@ -121,32 +122,32 @@ impl Dimensions {
     pub fn as_0d(&self) -> Result<(), BlockCreationError> {
         match self {
             Self::D0 => Ok(()),
-            Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 1D object")),
-            Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 2D object")),
-            Self::D3(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 3D object")),
+            Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 1D object".into())),
+            Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 2D object".into())),
+            Self::D3(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_0d()` on a 3D object".into())),
         }
     }
     pub fn as_1d(&self) -> Result<Parameter, BlockCreationError> {
         match self {
-            Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 0D object")),
+            Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 0D object".into())),
             Self::D1(dim) => Ok(dim.clone()),
-            Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 2D object")),
-            Self::D3(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 3D object")),
+            Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 2D object".into())),
+            Self::D3(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_1d()` on a 3D object".into())),
         }
     }
     pub fn as_2d(&self) -> Result<(Parameter, Parameter), BlockCreationError> {
         match self {
-            Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 0D object")),
-            Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 1D object")),
+            Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 0D object".into())),
+            Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 1D object".into())),
             Self::D2(dim1, dim2) => Ok((dim1.clone(), dim2.clone())),
-            Self::D3(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 3D object")),
+            Self::D3(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_2d()` on a 3D object".into())),
         }
     }
     pub fn as_3d(&self) -> Result<(usize, PrefabId), BlockCreationError> {
         match self {
-            Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_3d()` on a 0D object")),
-            Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_3d()` on a 1D object")),
-            Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_3d()` on a 2D object")),
+            Self::D0 => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_3d()` on a 0D object".into())),
+            Self::D1(_) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_3d()` on a 1D object".into())),
+            Self::D2(_, _) => Err(BlockCreationError::InternalError("Dimensions mismatch: called `as_3d()` on a 2D object".into())),
             Self::D3(vertex_count, index_buffer) => Ok((*vertex_count, *index_buffer)),
         }
     }
@@ -311,7 +312,7 @@ impl ComputeBlock {
             } => {
                 let axis = graph.get_attribute_as_axis(axis).unwrap();
                 let angle = graph.get_attribute_as_string(angle).unwrap();
-                let matrix_descriptor = MatrixBlockDescriptor::new_from_rotation(axis, angle)?;
+                let matrix_descriptor = MatrixBlockDescriptor::new_from_rotation(globals, axis, angle)?;
                 matrix_descriptor.make_block(device, globals, processed_blocks)
             },
             NodeContents::TranslationMatrix {
@@ -332,7 +333,7 @@ impl ComputeBlock {
                         let y = graph.get_attribute_as_string(y).unwrap();
                         let z = graph.get_attribute_as_string(z).unwrap();
 
-                        let matrix_descriptor = MatrixBlockDescriptor::new_from_translation(x, y, z)?;
+                        let matrix_descriptor = MatrixBlockDescriptor::new_from_translation(globals, x, y, z)?;
                         matrix_descriptor.make_block(device, globals, processed_blocks)
                     },
                     _ => Err(BlockCreationError::InputInvalid(" the input is not a vector node "))

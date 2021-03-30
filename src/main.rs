@@ -1,3 +1,7 @@
+extern crate pest;
+#[macro_use]
+extern crate pest_derive;
+
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop},
@@ -15,6 +19,7 @@ mod node_graph;
 mod rust_gui;
 mod cpp_gui;
 mod file_io;
+mod parser;
 #[cfg(test)]
 mod tests;
 

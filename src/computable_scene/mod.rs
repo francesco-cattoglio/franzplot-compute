@@ -62,6 +62,14 @@ impl ComputableScene {
                     });
                     println!("invalid input error for {}: {}", id, &message);
                 },
+                BlockCreationError::IncorrectExpression(message) => {
+                    println!("invalid input error for {}: {}", id, &message);
+                    to_return.push(GraphError {
+                        severity: Severity::Warning,
+                        node_id: id,
+                        message,
+                    });
+                },
                 BlockCreationError::InternalError(message) => {
                     println!("internal error: {}", &message);
                     panic!();

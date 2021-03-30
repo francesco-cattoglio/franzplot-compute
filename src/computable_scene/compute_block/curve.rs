@@ -29,7 +29,7 @@ pub struct CurveData {
 impl CurveData {
     pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: CurveBlockDescriptor) -> Result<Self, BlockCreationError> {
         let input_id = descriptor.interval.ok_or(BlockCreationError::InputMissing(" This Curve node \n is missing its input "))?;
-        let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Curve input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&input_id).ok_or(BlockCreationError::InternalError("Curve input does not exist in the block map".into()))?;
         let input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let interval_data = match input_block {
@@ -43,12 +43,9 @@ impl CurveData {
         let param_name = param.name.clone().unwrap();
 
         // Sanitize all input expressions
-        let maybe_fx = Globals::sanitize_expression(&descriptor.fx);
-        let sanitized_fx = maybe_fx.ok_or(BlockCreationError::IncorrectAttributes(" the fx field \n contains invalid symbols "))?;
-        let maybe_fy = Globals::sanitize_expression(&descriptor.fy);
-        let sanitized_fy = maybe_fy.ok_or(BlockCreationError::IncorrectAttributes(" the fy field \n contains invalid symbols "))?;
-        let maybe_fz = Globals::sanitize_expression(&descriptor.fz);
-        let sanitized_fz = maybe_fz.ok_or(BlockCreationError::IncorrectAttributes(" the fz field \n contains invalid symbols "))?;
+        let sanitized_fx = globals.sanitize_expression(&descriptor.fx)?;
+        let sanitized_fy = globals.sanitize_expression(&descriptor.fy)?;
+        let sanitized_fz = globals.sanitize_expression(&descriptor.fz)?;
 
         // Optimization note: a curve, just line an interval, will always fit a single compute
         // invocation, since the limit on the size of the work group (maxComputeWorkGroupInvocations)

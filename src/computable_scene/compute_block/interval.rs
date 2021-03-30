@@ -48,14 +48,12 @@ impl IntervalData {
         // inputs the same thing in two different nodes but adds an extra whitespace.
         // TODO: if the user enters the same number but writes it differently, the comparison can
         // fail nonetheless
-        let maybe_begin = Globals::sanitize_expression(&descriptor.begin);
-        let sanitized_begin = maybe_begin.ok_or(BlockCreationError::IncorrectAttributes(" this interval's begin \n contains invalid symbols "))?;
-        let maybe_end = Globals::sanitize_expression(&descriptor.end);
-        let sanitized_end = maybe_end.ok_or(BlockCreationError::IncorrectAttributes(" this interval's end \n contains invalid symbols "))?;
+        let sanitized_begin = globals.sanitize_expression(&descriptor.begin)?;
+        let sanitized_end = globals.sanitize_expression(&descriptor.end)?;
         let param = Parameter {
             name: Some(sanitized_name.to_string()),
-            begin: sanitized_begin.to_string(),
-            end: sanitized_end.to_string(),
+            begin: sanitized_begin,
+            end: sanitized_end,
             size: n_evals,
             use_interval_as_uv: false,
         };
@@ -78,7 +76,7 @@ void main() {{
     float delta = ({interval_end} - {interval_begin}) / ({n_points} - 1.0);
     out_buff[index] = {interval_begin} + delta * index;
 }}
-"##, globals_header=&globals.shader_header, interval_begin=descriptor.begin, interval_end=descriptor.end, n_points=param.size
+"##, globals_header=&globals.shader_header, interval_begin=&param.begin, interval_end=&param.end, n_points=param.size
 );
 
         let out_dim = Dimensions::D1(param);

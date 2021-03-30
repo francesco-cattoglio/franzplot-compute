@@ -1,3 +1,4 @@
+use crate::computable_scene::BlockCreationError;
 
 #[derive(Debug)]
 pub struct Globals {
@@ -74,26 +75,46 @@ impl Globals {
         Some(name)
     }
 
-    pub fn sanitize_expression(expression: &str) -> Option<&str> {
-        // strip leading and trailing spaces.
-        let expression = expression.trim_start().trim_end();
+    pub fn sanitize_expression(&self, expression: &str) -> Result<String, BlockCreationError> {
+        use crate::parser::{parse_expression, AstError};
+        let parsing_result = parse_expression(expression);
+        match parsing_result {
+            Ok(ast_tree) => {
+                // the tree parsed correctly, but now we need to check if all the tokens exists.
+                let all_idents = ast_tree.find_all_idents();
+                'validate: for ident in all_idents.into_iter() {
+                    // if the ident is inside the variable names, we are good.
+                    if self.names.contains(&ident) {
+                        continue 'validate;
+                    }
+                    // if the ident is inside the global constants, we are good
+                    for constant in GLOBAL_CONSTANTS.iter() {
+                        if constant.0 == &ident {
+                            continue 'validate;
+                        }
+                    }
+                    // TODO: if the ident is one of the valid parameters taken as input, we are
+                    // also good.
 
-        // Check all the characters. Only ascii characters are allowed, and
-        // anything that contains a semicolon or an equal should be rejected.
-        // Otherwise the user could badly mess up the shader code.
-        // We also disable the '^' symbol because it was used on older versions of franzplot
-        // but it has a different meaning in GLSL
-        for character in expression.chars() {
-            if !character.is_ascii()
-                || character == '^'
-                || character == ';'
-                || character == '=' {
-                println!("Warning, invalid variable name used: {}", expression);
-                return None;
+                    // OTHERWISE, write down an error!
+                    let err = format!("Unknown variable or parameter used: '{}'", ident);
+                    return Err(BlockCreationError::IncorrectExpression(err));
+                }
+                Ok(ast_tree.to_string())
+            },
+            Err(ast_error) => match ast_error {
+                AstError::InvalidCharacter(e) => Err(BlockCreationError::InternalError(e)),
+                AstError::PowAmbiguity(e) => Err(BlockCreationError::InternalError(e)),
+                AstError::UnreachableMatch(e) => Err(BlockCreationError::InternalError(e)),
+                AstError::InternalError(e) => Err(BlockCreationError::InternalError(e)),
+                AstError::ImplicitProduct(e) => Err(BlockCreationError::IncorrectExpression(e)),
+                AstError::MultipleSigns(e) => Err(BlockCreationError::IncorrectExpression(e)),
+                AstError::MultipleOps(e) => Err(BlockCreationError::IncorrectExpression(e)),
+                AstError::MultipleExpressions(e) => Err(BlockCreationError::IncorrectExpression(e)),
+                AstError::FailedParse(e) => Err(BlockCreationError::IncorrectExpression(e)),
+                AstError::MissingParenthesis(e) => Err(BlockCreationError::IncorrectExpression(e)),
             }
         }
-
-        Some(expression)
     }
 
     pub fn get_variables_iter(&mut self) -> impl Iterator<Item = (&String, &mut f32)> {

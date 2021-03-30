@@ -27,12 +27,9 @@ impl VectorData {
         let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
 
         // Sanitize all input expressions
-        let maybe_vx = Globals::sanitize_expression(&descriptor.vx);
-        let sanitized_vx = maybe_vx.ok_or(BlockCreationError::IncorrectAttributes(" the x field \n contains invalid symbols "))?;
-        let maybe_vy = Globals::sanitize_expression(&descriptor.vy);
-        let sanitized_vy = maybe_vy.ok_or(BlockCreationError::IncorrectAttributes(" the y field \n contains invalid symbols "))?;
-        let maybe_vz = Globals::sanitize_expression(&descriptor.vz);
-        let sanitized_vz = maybe_vz.ok_or(BlockCreationError::IncorrectAttributes(" the z field \n contains invalid symbols "))?;
+        let sanitized_vx = globals.sanitize_expression(&descriptor.vx)?;
+        let sanitized_vy = globals.sanitize_expression(&descriptor.vy)?;
+        let sanitized_vz = globals.sanitize_expression(&descriptor.vz)?;
 
         let shader_source = format!(r##"
 #version 450

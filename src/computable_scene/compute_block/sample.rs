@@ -25,14 +25,13 @@ pub struct SampleData {
 impl SampleData {
     pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: SampleBlockDescriptor) -> Result<Self, BlockCreationError> {
         let geometry_id = descriptor.geometry.ok_or(BlockCreationError::InputMissing(" This Transform node \n is missing the Geometry input "))?;
-        let found_element = processed_blocks.get(&geometry_id).ok_or(BlockCreationError::InternalError("Transform Geometry input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&geometry_id).ok_or(BlockCreationError::InternalError("Transform Geometry input does not exist in the block map".into()))?;
         let geometry_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         // Make sure that inputs are ok
         let maybe_name = Globals::sanitize_variable_name(&descriptor.parameter);
         let sanitized_name = maybe_name.ok_or(BlockCreationError::IncorrectAttributes(" the parameter's name \n is not valid "))?;
-        let maybe_value = Globals::sanitize_expression(&descriptor.value);
-        let sanitized_value = maybe_value.ok_or(BlockCreationError::IncorrectAttributes(" the value used \n is not valid "))?;
+        let sanitized_value = globals.sanitize_expression(&descriptor.value)?;
 
         let (geometry_dim, geometry_buffer) = match geometry_block {
             ComputeBlock::Point(data) => (data.out_dim.clone(), &data.out_buffer),
@@ -47,10 +46,10 @@ impl SampleData {
         match geometry_dim {
             Dimensions::D0 => Err(BlockCreationError::InputInvalid(" Cannot sample a parameter \n from a point ")),
             Dimensions::D1(param) => {
-                Self::sample_1d_0d(device, globals, geometry_buffer, param, sanitized_name, sanitized_value)
+                Self::sample_1d_0d(device, globals, geometry_buffer, param, sanitized_name, &sanitized_value)
             },
             Dimensions::D2(param_1, param_2) => {
-                Self::sample_2d_1d(device, globals, geometry_buffer, param_1, param_2, sanitized_name, sanitized_value)
+                Self::sample_2d_1d(device, globals, geometry_buffer, param_1, param_2, sanitized_name, &sanitized_value)
             },
             Dimensions::D3(_, _) => Err(BlockCreationError::InputInvalid(" Cannot sample a parameter \n from a prefab mesh ")),
         }

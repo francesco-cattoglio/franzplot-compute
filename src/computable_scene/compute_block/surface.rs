@@ -32,7 +32,7 @@ pub struct SurfaceData {
 impl SurfaceData {
     pub fn new(device: &wgpu::Device, globals: &Globals, processed_blocks: &ProcessedMap, descriptor: SurfaceBlockDescriptor) -> Result<Self, BlockCreationError> {
         let first_input_id = descriptor.interval_first.ok_or(BlockCreationError::InputMissing(" This Surface node \n is missing the first input "))?;
-        let found_element = processed_blocks.get(&first_input_id).ok_or(BlockCreationError::InternalError("Surface first input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&first_input_id).ok_or(BlockCreationError::InternalError("Surface first input does not exist in the block map".into()))?;
         let first_input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let first_interval_data = match first_input_block {
@@ -41,7 +41,7 @@ impl SurfaceData {
         };
 
         let second_input_id = descriptor.interval_second.ok_or(BlockCreationError::InputMissing(" This surface node \n is missing the second input "))?;
-        let found_element = processed_blocks.get(&second_input_id).ok_or(BlockCreationError::InternalError("Surface second input does not exist in the block map"))?;
+        let found_element = processed_blocks.get(&second_input_id).ok_or(BlockCreationError::InternalError("Surface second input does not exist in the block map".into()))?;
         let second_input_block: &ComputeBlock = found_element.as_ref().or(Err(BlockCreationError::InputNotBuilt(" Node not computed \n due to previous errors ")))?;
 
         let second_interval_data = match second_input_block {
@@ -62,12 +62,9 @@ impl SurfaceData {
         let par_2_name = par_2.name.clone().unwrap();
 
         // Sanitize all input expressions
-        let maybe_fx = Globals::sanitize_expression(&descriptor.fx);
-        let sanitized_fx = maybe_fx.ok_or(BlockCreationError::IncorrectAttributes(" the fx field \n contains invalid symbols "))?;
-        let maybe_fy = Globals::sanitize_expression(&descriptor.fy);
-        let sanitized_fy = maybe_fy.ok_or(BlockCreationError::IncorrectAttributes(" the fy field \n contains invalid symbols "))?;
-        let maybe_fz = Globals::sanitize_expression(&descriptor.fz);
-        let sanitized_fz = maybe_fz.ok_or(BlockCreationError::IncorrectAttributes(" the fz field \n contains invalid symbols "))?;
+        let sanitized_fx = globals.sanitize_expression(&descriptor.fx)?;
+        let sanitized_fy = globals.sanitize_expression(&descriptor.fy)?;
+        let sanitized_fz = globals.sanitize_expression(&descriptor.fz)?;
 
         let shader_source = format!(r##"
 #version 450

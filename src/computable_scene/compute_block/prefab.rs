@@ -31,8 +31,7 @@ impl PrefabData {
         }
 
         // Sanitize all input expressions
-        let maybe_size = Globals::sanitize_expression(&descriptor.size);
-        let sanitized_size = maybe_size.ok_or(BlockCreationError::IncorrectAttributes(" the size field \n contains invalid symbols "))?;
+        let sanitized_size = globals.sanitize_expression(&descriptor.size)?;
 
         let model = models.get(descriptor.prefab_id as usize).unwrap();
 
