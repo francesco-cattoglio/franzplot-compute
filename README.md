@@ -20,7 +20,6 @@ Feature per la release per gli studenti:
 
 Known bugs & issues:
 - in Debug l'avvio è piuttosto lento; in Release l'avvio è molto più veloce (5 secondi vs 0.5).
-- sotto MacOS il drag&drop dei file non funziona correttamente e può crashare l'applicazione
 - la Translation Matrix è stata implementata con un metodo quick&dirt, qualora si decidesse di
   aggiungere la possibilità di operare sui vettori in qualsiasi maniera (ad es, applicargli trasformazioni
   o calcolarli come sottrazione di due punti), sarà necessario re-implementarla usando un nuovo tipo di
