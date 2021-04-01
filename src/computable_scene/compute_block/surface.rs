@@ -62,9 +62,10 @@ impl SurfaceData {
         let par_2_name = par_2.name.clone().unwrap();
 
         // Sanitize all input expressions
-        let sanitized_fx = globals.sanitize_expression(&descriptor.fx)?;
-        let sanitized_fy = globals.sanitize_expression(&descriptor.fy)?;
-        let sanitized_fz = globals.sanitize_expression(&descriptor.fz)?;
+        let local_params: Vec<&str> = vec![par_1_name.as_str(), par_2_name.as_str()];
+        let sanitized_fx = globals.sanitize_expression(&local_params, &descriptor.fx)?;
+        let sanitized_fy = globals.sanitize_expression(&local_params, &descriptor.fy)?;
+        let sanitized_fz = globals.sanitize_expression(&local_params, &descriptor.fz)?;
 
         let shader_source = format!(r##"
 #version 450

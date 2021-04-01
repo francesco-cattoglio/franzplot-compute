@@ -43,9 +43,10 @@ impl CurveData {
         let param_name = param.name.clone().unwrap();
 
         // Sanitize all input expressions
-        let sanitized_fx = globals.sanitize_expression(&descriptor.fx)?;
-        let sanitized_fy = globals.sanitize_expression(&descriptor.fy)?;
-        let sanitized_fz = globals.sanitize_expression(&descriptor.fz)?;
+        let local_params = vec![param_name.as_str()];
+        let sanitized_fx = globals.sanitize_expression(&local_params, &descriptor.fx)?;
+        let sanitized_fy = globals.sanitize_expression(&local_params, &descriptor.fy)?;
+        let sanitized_fz = globals.sanitize_expression(&local_params, &descriptor.fz)?;
 
         // Optimization note: a curve, just line an interval, will always fit a single compute
         // invocation, since the limit on the size of the work group (maxComputeWorkGroupInvocations)

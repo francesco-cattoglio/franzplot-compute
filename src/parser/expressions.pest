@@ -18,7 +18,7 @@ non_number_value = _{ func_no_parenthesis | func | ident | ("(" ~ expr ~ ")") }
 //factorial = { (number | non_number_value) ~ "!"? }
 implicit_product = {
     (number ~ non_number_value)
-    |(non_number_value ~ number)
+    |(non_number_value ~ non_signed_number)
     |(non_number_value ~ non_number_value)}
 multiple_expressions = { non_signed_number{2,} | (non_signed_number | non_number_value){3,} }
 multiple_signs = { sign+ ~ (number | non_number_value)* }
@@ -32,7 +32,7 @@ sum = { product ~ (plus_minus ~ product)* }
 repeating_ops = { sum ~ (mul_div | plus_minus){2,} ~ ANY* }
 expr = _{ repeating_ops | sum }
 valid_character = _{
-    ASCII_ALPHANUMERIC
+    ASCII_ALPHANUMERIC | "_"
     | "+" | "-" | "*" | "/" | "^"
     | WHITESPACE | "(" | ")" | "."
 }

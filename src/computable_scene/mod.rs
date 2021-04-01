@@ -48,7 +48,7 @@ impl ComputableScene {
                 },
                 BlockCreationError::InputMissing(message) => {
                     to_return.push(GraphError {
-                        severity: Severity::Warning,
+                        severity: Severity::Error,
                         node_id: id,
                         message: String::from(message),
                     });
@@ -56,7 +56,7 @@ impl ComputableScene {
                 },
                 BlockCreationError::InputInvalid(message) => {
                     to_return.push(GraphError {
-                        severity: Severity::Warning,
+                        severity: Severity::Error,
                         node_id: id,
                         message: String::from(message),
                     });
@@ -65,7 +65,7 @@ impl ComputableScene {
                 BlockCreationError::IncorrectExpression(message) => {
                     println!("invalid input error for {}: {}", id, &message);
                     to_return.push(GraphError {
-                        severity: Severity::Warning,
+                        severity: Severity::Error,
                         node_id: id,
                         message,
                     });

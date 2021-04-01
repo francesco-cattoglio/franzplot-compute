@@ -27,9 +27,10 @@ impl VectorData {
         let out_buffer = out_dim.create_storage_buffer(4 * std::mem::size_of::<f32>(), device);
 
         // Sanitize all input expressions
-        let sanitized_vx = globals.sanitize_expression(&descriptor.vx)?;
-        let sanitized_vy = globals.sanitize_expression(&descriptor.vy)?;
-        let sanitized_vz = globals.sanitize_expression(&descriptor.vz)?;
+        let local_params = vec![];
+        let sanitized_vx = globals.sanitize_expression(&local_params, &descriptor.vx)?;
+        let sanitized_vy = globals.sanitize_expression(&local_params, &descriptor.vy)?;
+        let sanitized_vz = globals.sanitize_expression(&local_params, &descriptor.vz)?;
 
         let shader_source = format!(r##"
 #version 450

@@ -48,8 +48,9 @@ impl IntervalData {
         // inputs the same thing in two different nodes but adds an extra whitespace.
         // TODO: if the user enters the same number but writes it differently, the comparison can
         // fail nonetheless
-        let sanitized_begin = globals.sanitize_expression(&descriptor.begin)?;
-        let sanitized_end = globals.sanitize_expression(&descriptor.end)?;
+        let local_params = vec![];
+        let sanitized_begin = globals.sanitize_expression(&local_params, &descriptor.begin)?;
+        let sanitized_end = globals.sanitize_expression(&local_params, &descriptor.end)?;
         let param = Parameter {
             name: Some(sanitized_name.to_string()),
             begin: sanitized_begin,

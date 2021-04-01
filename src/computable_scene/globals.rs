@@ -75,7 +75,7 @@ impl Globals {
         Some(name)
     }
 
-    pub fn sanitize_expression(&self, expression: &str) -> Result<String, BlockCreationError> {
+    pub fn sanitize_expression(&self, local_params: &Vec<&str>, expression: &str) -> Result<String, BlockCreationError> {
         use crate::parser::{parse_expression, AstError};
         let parsing_result = parse_expression(expression);
         match parsing_result {
@@ -95,6 +95,11 @@ impl Globals {
                     }
                     // TODO: if the ident is one of the valid parameters taken as input, we are
                     // also good.
+                    for param in local_params.iter() {
+                        if param == &ident {
+                            continue 'validate;
+                        }
+                    }
 
                     // OTHERWISE, write down an error!
                     let err = format!("Unknown variable or parameter used: '{}'", ident);

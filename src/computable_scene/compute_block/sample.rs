@@ -31,7 +31,6 @@ impl SampleData {
         // Make sure that inputs are ok
         let maybe_name = Globals::sanitize_variable_name(&descriptor.parameter);
         let sanitized_name = maybe_name.ok_or(BlockCreationError::IncorrectAttributes(" the parameter's name \n is not valid "))?;
-        let sanitized_value = globals.sanitize_expression(&descriptor.value)?;
 
         let (geometry_dim, geometry_buffer) = match geometry_block {
             ComputeBlock::Point(data) => (data.out_dim.clone(), &data.out_buffer),
@@ -40,15 +39,23 @@ impl SampleData {
             ComputeBlock::Transform(data) => (data.out_dim.clone(), &data.out_buffer),
             ComputeBlock::Prefab(data) => (data.out_dim.clone(), &data.out_buffer),
             ComputeBlock::Sample(data) => (data.out_dim.clone(), &data.out_buffer),
+            ComputeBlock::Bezier(_) =>  return Err(BlockCreationError::InputInvalid("cannot sample a Bezier curve")),
             _ => return Err(BlockCreationError::InputInvalid("the first input provided to the Sample is not a Geometry"))
         };
 
         match geometry_dim {
             Dimensions::D0 => Err(BlockCreationError::InputInvalid(" Cannot sample a parameter \n from a point ")),
             Dimensions::D1(param) => {
+                let par_name = param.name.clone().unwrap();
+                let local_params = vec![par_name.as_str()];
+                let sanitized_value = globals.sanitize_expression(&local_params, &descriptor.value)?;
                 Self::sample_1d_0d(device, globals, geometry_buffer, param, sanitized_name, &sanitized_value)
             },
             Dimensions::D2(param_1, param_2) => {
+                let par_1_name = param_1.name.clone().unwrap();
+                let par_2_name = param_2.name.clone().unwrap();
+                let local_params = vec![par_1_name.as_str(), par_2_name.as_str()];
+                let sanitized_value = globals.sanitize_expression(&local_params, &descriptor.value)?;
                 Self::sample_2d_1d(device, globals, geometry_buffer, param_1, param_2, sanitized_name, &sanitized_value)
             },
             Dimensions::D3(_, _) => Err(BlockCreationError::InputInvalid(" Cannot sample a parameter \n from a prefab mesh ")),

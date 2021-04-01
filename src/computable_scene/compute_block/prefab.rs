@@ -31,7 +31,8 @@ impl PrefabData {
         }
 
         // Sanitize all input expressions
-        let sanitized_size = globals.sanitize_expression(&descriptor.size)?;
+        let local_params = vec![];
+        let sanitized_size = globals.sanitize_expression(&local_params, &descriptor.size)?;
 
         let model = models.get(descriptor.prefab_id as usize).unwrap();
 

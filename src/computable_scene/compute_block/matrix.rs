@@ -25,7 +25,8 @@ impl MatrixBlockDescriptor {
         let (row_1, row_2, row_3);
 
         // Sanitize all input expressions
-        let san_a = globals.sanitize_expression(&angle)?;
+        let local_params = vec![];
+        let san_a = globals.sanitize_expression(&local_params, &angle)?;
         match axis {
             Axis::X => {
                 row_1 = ["1.0".into(),               "0.0".into(),                "0.0".into(), "0.0".into()];
@@ -56,9 +57,10 @@ impl MatrixBlockDescriptor {
     // translation matrix node
     pub fn new_from_translation(globals: &Globals, x: String, y: String, z: String) -> Result<Self, BlockCreationError> {
         // Sanitize all input expressions
-        let sanitized_x = globals.sanitize_expression(&x)?;
-        let sanitized_y = globals.sanitize_expression(&y)?;
-        let sanitized_z = globals.sanitize_expression(&z)?;
+        let local_params = vec![];
+        let sanitized_x = globals.sanitize_expression(&local_params, &x)?;
+        let sanitized_y = globals.sanitize_expression(&local_params, &y)?;
+        let sanitized_z = globals.sanitize_expression(&local_params, &z)?;
 
         let row_1 = ["1.0".into(), "0.0".into(), "0.0".into(), sanitized_x.into()];
         let row_2 = ["0.0".into(), "1.0".into(), "0.0".into(), sanitized_y.into()];
@@ -126,18 +128,19 @@ impl MatrixData {
         // TODO: maybe macros?
         // BEWARE: named entries follow the "maths" convention: the upper left element is the
         // element (1, 1), but `row_n` is an array and therefore starts from 0!
-        let sanitized_m11 = globals.sanitize_expression(&desc.row_1[0])?;
-        let sanitized_m12 = globals.sanitize_expression(&desc.row_1[1])?;
-        let sanitized_m13 = globals.sanitize_expression(&desc.row_1[2])?;
-        let sanitized_m14 = globals.sanitize_expression(&desc.row_1[3])?;
-        let sanitized_m21 = globals.sanitize_expression(&desc.row_2[0])?;
-        let sanitized_m22 = globals.sanitize_expression(&desc.row_2[1])?;
-        let sanitized_m23 = globals.sanitize_expression(&desc.row_2[2])?;
-        let sanitized_m24 = globals.sanitize_expression(&desc.row_2[3])?;
-        let sanitized_m31 = globals.sanitize_expression(&desc.row_3[0])?;
-        let sanitized_m32 = globals.sanitize_expression(&desc.row_3[1])?;
-        let sanitized_m33 = globals.sanitize_expression(&desc.row_3[2])?;
-        let sanitized_m34 = globals.sanitize_expression(&desc.row_3[3])?;
+        let local_params = vec![param_name.as_str()];
+        let sanitized_m11 = globals.sanitize_expression(&local_params, &desc.row_1[0])?;
+        let sanitized_m12 = globals.sanitize_expression(&local_params, &desc.row_1[1])?;
+        let sanitized_m13 = globals.sanitize_expression(&local_params, &desc.row_1[2])?;
+        let sanitized_m14 = globals.sanitize_expression(&local_params, &desc.row_1[3])?;
+        let sanitized_m21 = globals.sanitize_expression(&local_params, &desc.row_2[0])?;
+        let sanitized_m22 = globals.sanitize_expression(&local_params, &desc.row_2[1])?;
+        let sanitized_m23 = globals.sanitize_expression(&local_params, &desc.row_2[2])?;
+        let sanitized_m24 = globals.sanitize_expression(&local_params, &desc.row_2[3])?;
+        let sanitized_m31 = globals.sanitize_expression(&local_params, &desc.row_3[0])?;
+        let sanitized_m32 = globals.sanitize_expression(&local_params, &desc.row_3[1])?;
+        let sanitized_m33 = globals.sanitize_expression(&local_params, &desc.row_3[2])?;
+        let sanitized_m34 = globals.sanitize_expression(&local_params, &desc.row_3[3])?;
 
         let shader_source = format!(r##"
 #version 450
@@ -204,18 +207,19 @@ void main() {{
         // TODO: DRY, this is exactly the same code as the with_interval function
         // BEWARE: named entries follow the "maths" convention: the upper left element is the
         // element (1, 1), but `row_n` is an array and therefore starts from 0!
-        let sanitized_m11 = globals.sanitize_expression(&desc.row_1[0])?;
-        let sanitized_m12 = globals.sanitize_expression(&desc.row_1[1])?;
-        let sanitized_m13 = globals.sanitize_expression(&desc.row_1[2])?;
-        let sanitized_m14 = globals.sanitize_expression(&desc.row_1[3])?;
-        let sanitized_m21 = globals.sanitize_expression(&desc.row_2[0])?;
-        let sanitized_m22 = globals.sanitize_expression(&desc.row_2[1])?;
-        let sanitized_m23 = globals.sanitize_expression(&desc.row_2[2])?;
-        let sanitized_m24 = globals.sanitize_expression(&desc.row_2[3])?;
-        let sanitized_m31 = globals.sanitize_expression(&desc.row_3[0])?;
-        let sanitized_m32 = globals.sanitize_expression(&desc.row_3[1])?;
-        let sanitized_m33 = globals.sanitize_expression(&desc.row_3[2])?;
-        let sanitized_m34 = globals.sanitize_expression(&desc.row_3[3])?;
+        let local_params = vec![];
+        let sanitized_m11 = globals.sanitize_expression(&local_params, &desc.row_1[0])?;
+        let sanitized_m12 = globals.sanitize_expression(&local_params, &desc.row_1[1])?;
+        let sanitized_m13 = globals.sanitize_expression(&local_params, &desc.row_1[2])?;
+        let sanitized_m14 = globals.sanitize_expression(&local_params, &desc.row_1[3])?;
+        let sanitized_m21 = globals.sanitize_expression(&local_params, &desc.row_2[0])?;
+        let sanitized_m22 = globals.sanitize_expression(&local_params, &desc.row_2[1])?;
+        let sanitized_m23 = globals.sanitize_expression(&local_params, &desc.row_2[2])?;
+        let sanitized_m24 = globals.sanitize_expression(&local_params, &desc.row_2[3])?;
+        let sanitized_m31 = globals.sanitize_expression(&local_params, &desc.row_3[0])?;
+        let sanitized_m32 = globals.sanitize_expression(&local_params, &desc.row_3[1])?;
+        let sanitized_m33 = globals.sanitize_expression(&local_params, &desc.row_3[2])?;
+        let sanitized_m34 = globals.sanitize_expression(&local_params, &desc.row_3[3])?;
 
         let shader_source = format!(r##"
 #version 450
