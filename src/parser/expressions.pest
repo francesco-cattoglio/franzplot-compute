@@ -1,4 +1,4 @@
-WHITESPACE = _{ " " }
+WHITESPACE = _{ " " | "\t" }
 
 only_fractional = @{"." ~ ASCII_DIGIT+}
 integer = @{ ASCII_DIGIT+ }
@@ -45,7 +45,7 @@ valid_character = _{
 }
 invalid_character = { !valid_character ~ ANY }
 eoi = _{ !ANY }
-empty_line = {SOI ~ eoi}
-invalid_line = _{SOI ~ valid_character* ~ invalid_character ~ ANY*}
+empty_line = { eoi }
+invalid_line = _{valid_character* ~ invalid_character ~ ANY*}
 line = _{SOI ~ (empty_line | invalid_line | expr) ~ eoi}
 
