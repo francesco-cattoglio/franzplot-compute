@@ -9,6 +9,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 ## UNRELEASED:
 
 ### Added
+- this changelog
 - you can now drag & drop files on top of Franzplot to open them.
 - the input expressions are now analyzed, and more meaningful errors will be produced.
 - added the "Sample parameter" node.

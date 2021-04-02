@@ -1712,7 +1712,7 @@ impl NodeGraph {
             AttributeContents::IntSlider {
                 label: String::from("quality"),
                 value: 4,
-                mode: SliderMode::IntRange(2, 16),
+                mode: SliderMode::IntRange(1, 16),
             },
             AttributeContents::OutputPin {
                 label: String::from("interval"),
@@ -1821,7 +1821,7 @@ impl NodeGraph {
             AttributeContents::IntSlider {
                 label: String::from("quality"),
                 value: 4,
-                mode: SliderMode::IntRange(2, 16),
+                mode: SliderMode::IntRange(1, 16),
             },
             AttributeContents::OutputPin {
                 label: String::from("geometry"),
