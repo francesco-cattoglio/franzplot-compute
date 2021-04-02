@@ -118,6 +118,8 @@ impl Globals {
                 AstError::MultipleExpressions(e) => Err(BlockCreationError::IncorrectExpression(e)),
                 AstError::FailedParse(e) => Err(BlockCreationError::IncorrectExpression(e)),
                 AstError::MissingParenthesis(e) => Err(BlockCreationError::IncorrectExpression(e)),
+                AstError::EmptyExpression(e) => Err(BlockCreationError::IncorrectExpression(e)),
+                AstError::InvalidName(e) => Err(BlockCreationError::IncorrectExpression(e)),
             }
         }
     }

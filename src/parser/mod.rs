@@ -39,7 +39,7 @@ impl Operator {
 
 
 #[derive(Debug, Clone)]
-enum MathFunc {
+pub enum MathFunc {
     Sin,
     Cos,
     Tan,
