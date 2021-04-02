@@ -9,11 +9,15 @@ exponent = @{^"e" ~ sign? ~ integer}
 
 non_signed_number = @{ (only_fractional | full_float | integer) ~ exponent? }
 number = @{ sign? ~ non_signed_number }
-keyword = {"sin" | "cos" | "tan" | "sqrt"}
+keyword = {
+    "sin" | "cos" | "tan" | "asin" | "acos" | "atan"
+    | "sqrt" | "exp" | "log" | "abs"
+}
+abs_func = { "|" ~ expr ~ "|" }
 func = { keyword ~ "(" ~ expr ~ ")" }
 func_no_parenthesis = { keyword ~ !"(" ~ expr }
 ident = @{!(keyword) ~ (LETTER | "_") ~ (LETTER  | ASCII_DIGIT | "_")* }
-non_number_value = _{ func_no_parenthesis | func | ident | ("(" ~ expr ~ ")") }
+non_number_value = _{ func_no_parenthesis | abs_func | func | ident | ("(" ~ expr ~ ")") }
 
 //factorial = { (number | non_number_value) ~ "!"? }
 implicit_product = {
@@ -34,7 +38,7 @@ expr = _{ repeating_ops | sum }
 valid_character = _{
     ASCII_ALPHANUMERIC | "_"
     | "+" | "-" | "*" | "/" | "^"
-    | WHITESPACE | "(" | ")" | "."
+    | WHITESPACE | "(" | ")" | "." | "|"
 }
 invalid_character = { !valid_character ~ ANY }
 eoi = _{ !ANY }

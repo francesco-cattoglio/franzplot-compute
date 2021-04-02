@@ -39,11 +39,17 @@ impl Operator {
 
 
 #[derive(Debug, Clone)]
-pub enum MathFunc {
+enum MathFunc {
     Sin,
     Cos,
     Tan,
+    Asin,
+    Acos,
+    Atan,
     Sqrt,
+    Exp,
+    Log,
+    Abs,
 }
 
 impl MathFunc {
@@ -52,7 +58,13 @@ impl MathFunc {
             "sin" => MathFunc::Sin,
             "cos" => MathFunc::Cos,
             "tan" => MathFunc::Tan,
+            "asin" => MathFunc::Asin,
+            "acos" => MathFunc::Acos,
+            "atan" => MathFunc::Atan,
             "sqrt" => MathFunc::Sqrt,
+            "exp" => MathFunc::Exp,
+            "log" => MathFunc::Log,
+            "abs" => MathFunc::Abs,
             _ => unreachable!("matched an unknown function keyword"),
         }
     }
@@ -62,7 +74,13 @@ impl MathFunc {
             MathFunc::Sin  => "sin".into(),
             MathFunc::Cos  => "cos".into(),
             MathFunc::Tan  => "tan".into(),
+            MathFunc::Asin => "asin".into(),
+            MathFunc::Acos => "acos".into(),
+            MathFunc::Atan => "atan".into(),
             MathFunc::Sqrt => "sqrt".into(),
+            MathFunc::Exp  => "exp".into(),
+            MathFunc::Log  => "log".into(),
+            MathFunc::Abs  => "abs".into(),
         }
     }
 }
@@ -230,6 +248,17 @@ fn ast_node_from_pair(pair: pest::iterators::Pair<Rule>) -> Result<AstNode, AstE
             // all the remaining parts are processed in pairs
             Ok(AstNode::Func {
                 func,
+                arg: Box::new(arg_ast),
+            })
+        },
+        Rule::abs_func => {
+            let mut inner_matches: VecDeque<_> = pair.into_inner().collect();
+            // The abs_func rule matches when someone used vertical pipes: `y = |x|`
+            assert_eq!(inner_matches.len(), 1);
+            let arg_ast = ast_node_from_pair(inner_matches.pop_front().unwrap())?;
+            // all the remaining parts are processed in pairs
+            Ok(AstNode::Func {
+                func: MathFunc::Abs,
                 arg: Box::new(arg_ast),
             })
         },
