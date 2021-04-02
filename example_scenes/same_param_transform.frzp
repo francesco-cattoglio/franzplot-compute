@@ -1,0 +1,500 @@
+//// FRANZPLOT DATA FILE V1.1 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.04 or higher
+
+V1(
+  (
+    graph: (
+      nodes: [
+        Some((
+          title: "Interval",
+          position: (77,106),
+          error: None,
+          contents: Interval(variable:0,begin:1,end:2,quality:3,output:4),
+        )),// [0]
+        Some((
+          title: "Curve",
+          position: (302,105),
+          error: None,
+          contents: Curve(interval:5,fx:6,fy:7,fz:8,output:9),
+        )),// [1]
+        Some((
+          title: "Matrix",
+          position: (216.99998,273),
+          error: None,
+          contents: Matrix(interval:10,row_1:11,row_2:12,row_3:13,output:14),
+        )),// [2]
+        Some((
+          title: "Rendering",
+          position: (550,79),
+          error: None,
+          contents: Rendering(geometry:15,thickness:16,mask:17,material:18),
+        )),// [3]
+        Some((
+          title: "Transform",
+          position: (506.99997,255),
+          error: None,
+          contents: Transform(geometry:19,matrix:20,output:21),
+        )),// [4]
+        Some((
+          title: "Rendering",
+          position: (608,252),
+          error: None,
+          contents: Rendering(geometry:22,thickness:23,mask:24,material:25),
+        )),// [5]
+        Some((
+          title: "Interval",
+          position: (17,265),
+          error: None,
+          contents: Interval(variable:26,begin:27,end:28,quality:29,output:30),
+        )),// [6]
+        Some((
+          title: "Interval",
+          position: (124.625015,704.81244),
+          error: None,
+          contents: Interval(variable:31,begin:32,end:33,quality:34,output:35),
+        )),// [7]
+        Some((
+          title: "Surface",
+          position: (374.625,734.81244),
+          error: None,
+          contents: Surface(interval_1:40,interval_2:39,fx:38,fy:37,fz:36,output:46),
+        )),// [8]
+        Some((
+          title: "Interval",
+          position: (131.18753,833.87494),
+          error: None,
+          contents: Interval(variable:41,begin:42,end:43,quality:44,output:45),
+        )),// [9]
+        Some((
+          title: "Transform",
+          position: (544.5,676.25),
+          error: None,
+          contents: Transform(geometry:47,matrix:48,output:49),
+        )),// [10]
+        Some((
+          title: "Rendering",
+          position: (634.25,661.99994),
+          error: None,
+          contents: Rendering(geometry:50,thickness:51,mask:52,material:53),
+        )),// [11]
+        Some((
+          title: "Rendering",
+          position: (616.5625,803.6875),
+          error: None,
+          contents: Rendering(geometry:54,thickness:55,mask:56,material:57),
+        )),// [12]
+        Some((
+          title: "Interval",
+          position: (127.12503,427.3125),
+          error: None,
+          contents: Interval(variable:58,begin:59,end:60,quality:61,output:62),
+        )),// [13]
+        Some((
+          title: "Surface",
+          position: (377.125,457.3125),
+          error: None,
+          contents: Surface(interval_1:63,interval_2:64,fx:65,fy:66,fz:67,output:68),
+        )),// [14]
+        Some((
+          title: "Interval",
+          position: (126.18753,558.87506),
+          error: None,
+          contents: Interval(variable:69,begin:70,end:71,quality:72,output:73),
+        )),// [15]
+        Some((
+          title: "Transform",
+          position: (547,398.75),
+          error: None,
+          contents: Transform(geometry:74,matrix:75,output:76),
+        )),// [16]
+        Some((
+          title: "Rendering",
+          position: (636.75,384.5),
+          error: None,
+          contents: Rendering(geometry:77,thickness:78,mask:79,material:80),
+        )),// [17]
+        Some((
+          title: "Rendering",
+          position: (610.3125,523.6875),
+          error: None,
+          contents: Rendering(geometry:81,thickness:82,mask:83,material:84),
+        )),
+      ],
+      attributes: [
+        Some((
+          node_id: 0,
+          contents: Text(label:" name",string:"t "),
+        )),// [0]
+        Some((
+          node_id: 0,
+          contents: Text(label:"begin",string:"-(1.0)"),
+        )),// [1]
+        Some((
+          node_id: 0,
+          contents: Text(label:"  end",string:"1.0"),
+        )),// [2]
+        Some((
+          node_id: 0,
+          contents: IntSlider(label:"quality",value:4,mode:IntRange(2,16)),
+        )),// [3]
+        Some((
+          node_id: 0,
+          contents: OutputPin(label:"interval",kind:Interval),
+        )),// [4]
+        Some((
+          node_id: 1,
+          contents: InputPin(label:"interval",kind:Interval),
+        )),// [5]
+        Some((
+          node_id: 1,
+          contents: Text(label:"fx",string:"t"),
+        )),// [6]
+        Some((
+          node_id: 1,
+          contents: Text(label:"fy",string:"0"),
+        )),// [7]
+        Some((
+          node_id: 1,
+          contents: Text(label:"fz",string:"0"),
+        )),// [8]
+        Some((
+          node_id: 1,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [9]
+        Some((
+          node_id: 2,
+          contents: InputPin(label:"interval",kind:Interval),
+        )),// [10]
+        Some((
+          node_id: 2,
+          contents: MatrixRow(col_1:"1.0",col_2:"0.0",col_3:"0.0",col_4:"0.0"),
+        )),// [11]
+        Some((
+          node_id: 2,
+          contents: MatrixRow(col_1:"0.0",col_2:"1.0",col_3:"0.0",col_4:"0.0"),
+        )),// [12]
+        Some((
+          node_id: 2,
+          contents: MatrixRow(col_1:"0.0",col_2:"0.0",col_3:"1.0",col_4:"t"),
+        )),// [13]
+        Some((
+          node_id: 2,
+          contents: OutputPin(label:"output",kind:Matrix),
+        )),// [14]
+        Some((
+          node_id: 3,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [15]
+        Some((
+          node_id: 3,
+          contents: IntSlider(label:"thickness:",value:1,mode:SizeLabels),
+        )),// [16]
+        Some((
+          node_id: 3,
+          contents: Mask(selected:2),
+        )),// [17]
+        Some((
+          node_id: 3,
+          contents: Material(selected:6),
+        )),// [18]
+        Some((
+          node_id: 4,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [19]
+        Some((
+          node_id: 4,
+          contents: InputPin(label:"matrix",kind:Matrix),
+        )),// [20]
+        Some((
+          node_id: 4,
+          contents: OutputPin(label:"output",kind:Geometry),
+        )),// [21]
+        Some((
+          node_id: 5,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [22]
+        Some((
+          node_id: 5,
+          contents: IntSlider(label:"thickness:",value:1,mode:SizeLabels),
+        )),// [23]
+        Some((
+          node_id: 5,
+          contents: Mask(selected:2),
+        )),// [24]
+        Some((
+          node_id: 5,
+          contents: Material(selected:0),
+        )),// [25]
+        Some((
+          node_id: 6,
+          contents: Text(label:" name",string:" t"),
+        )),// [26]
+        Some((
+          node_id: 6,
+          contents: Text(label:"begin",string:"(-1)"),
+        )),// [27]
+        Some((
+          node_id: 6,
+          contents: Text(label:"  end",string:"1"),
+        )),// [28]
+        Some((
+          node_id: 6,
+          contents: IntSlider(label:"quality",value:4,mode:IntRange(2,16)),
+        )),// [29]
+        Some((
+          node_id: 6,
+          contents: OutputPin(label:"interval",kind:Interval),
+        )),// [30]
+        Some((
+          node_id: 7,
+          contents: Text(label:" name",string:" t "),
+        )),// [31]
+        Some((
+          node_id: 7,
+          contents: Text(label:"begin",string:"-1"),
+        )),// [32]
+        Some((
+          node_id: 7,
+          contents: Text(label:"  end",string:"((1))"),
+        )),// [33]
+        Some((
+          node_id: 7,
+          contents: IntSlider(label:"quality",value:4,mode:IntRange(2,16)),
+        )),// [34]
+        Some((
+          node_id: 7,
+          contents: OutputPin(label:"interval",kind:Interval),
+        )),// [35]
+        Some((
+          node_id: 8,
+          contents: Text(label:"fz",string:"0"),
+        )),// [36]
+        Some((
+          node_id: 8,
+          contents: Text(label:"fy",string:"s"),
+        )),// [37]
+        Some((
+          node_id: 8,
+          contents: Text(label:"fx",string:"t"),
+        )),// [38]
+        Some((
+          node_id: 8,
+          contents: InputPin(label:"interval 2",kind:Interval),
+        )),// [39]
+        Some((
+          node_id: 8,
+          contents: InputPin(label:"interval 1",kind:Interval),
+        )),// [40]
+        Some((
+          node_id: 9,
+          contents: Text(label:" name",string:"s"),
+        )),// [41]
+        Some((
+          node_id: 9,
+          contents: Text(label:"begin",string:"-1"),
+        )),// [42]
+        Some((
+          node_id: 9,
+          contents: Text(label:"  end",string:"0"),
+        )),// [43]
+        Some((
+          node_id: 9,
+          contents: IntSlider(label:"quality",value:4,mode:IntRange(2,16)),
+        )),// [44]
+        Some((
+          node_id: 9,
+          contents: OutputPin(label:"interval",kind:Interval),
+        )),// [45]
+        Some((
+          node_id: 8,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [46]
+        Some((
+          node_id: 10,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [47]
+        Some((
+          node_id: 10,
+          contents: InputPin(label:"matrix",kind:Matrix),
+        )),// [48]
+        Some((
+          node_id: 10,
+          contents: OutputPin(label:"output",kind:Geometry),
+        )),// [49]
+        Some((
+          node_id: 11,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [50]
+        Some((
+          node_id: 11,
+          contents: IntSlider(label:"thickness:",value:1,mode:SizeLabels),
+        )),// [51]
+        Some((
+          node_id: 11,
+          contents: Mask(selected:0),
+        )),// [52]
+        Some((
+          node_id: 11,
+          contents: Material(selected:0),
+        )),// [53]
+        Some((
+          node_id: 12,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [54]
+        Some((
+          node_id: 12,
+          contents: IntSlider(label:"thickness:",value:1,mode:SizeLabels),
+        )),// [55]
+        Some((
+          node_id: 12,
+          contents: Mask(selected:0),
+        )),// [56]
+        Some((
+          node_id: 12,
+          contents: Material(selected:6),
+        )),// [57]
+        Some((
+          node_id: 13,
+          contents: Text(label:" name",string:" t "),
+        )),// [58]
+        Some((
+          node_id: 13,
+          contents: Text(label:"begin",string:"-1"),
+        )),// [59]
+        Some((
+          node_id: 13,
+          contents: Text(label:"  end",string:"((1))"),
+        )),// [60]
+        Some((
+          node_id: 13,
+          contents: IntSlider(label:"quality",value:4,mode:IntRange(2,16)),
+        )),// [61]
+        Some((
+          node_id: 13,
+          contents: OutputPin(label:"interval",kind:Interval),
+        )),// [62]
+        Some((
+          node_id: 14,
+          contents: InputPin(label:"interval 1",kind:Interval),
+        )),// [63]
+        Some((
+          node_id: 14,
+          contents: InputPin(label:"interval 2",kind:Interval),
+        )),// [64]
+        Some((
+          node_id: 14,
+          contents: Text(label:"fx",string:"t"),
+        )),// [65]
+        Some((
+          node_id: 14,
+          contents: Text(label:"fy",string:"s"),
+        )),// [66]
+        Some((
+          node_id: 14,
+          contents: Text(label:"fz",string:"0"),
+        )),// [67]
+        Some((
+          node_id: 14,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [68]
+        Some((
+          node_id: 15,
+          contents: Text(label:" name",string:"s"),
+        )),// [69]
+        Some((
+          node_id: 15,
+          contents: Text(label:"begin",string:"0"),
+        )),// [70]
+        Some((
+          node_id: 15,
+          contents: Text(label:"  end",string:"1"),
+        )),// [71]
+        Some((
+          node_id: 15,
+          contents: IntSlider(label:"quality",value:4,mode:IntRange(2,16)),
+        )),// [72]
+        Some((
+          node_id: 15,
+          contents: OutputPin(label:"interval",kind:Interval),
+        )),// [73]
+        Some((
+          node_id: 16,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [74]
+        Some((
+          node_id: 16,
+          contents: InputPin(label:"matrix",kind:Matrix),
+        )),// [75]
+        Some((
+          node_id: 16,
+          contents: OutputPin(label:"output",kind:Geometry),
+        )),// [76]
+        Some((
+          node_id: 17,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [77]
+        Some((
+          node_id: 17,
+          contents: IntSlider(label:"thickness:",value:1,mode:SizeLabels),
+        )),// [78]
+        Some((
+          node_id: 17,
+          contents: Mask(selected:0),
+        )),// [79]
+        Some((
+          node_id: 17,
+          contents: Material(selected:0),
+        )),// [80]
+        Some((
+          node_id: 18,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [81]
+        Some((
+          node_id: 18,
+          contents: IntSlider(label:"thickness:",value:1,mode:SizeLabels),
+        )),// [82]
+        Some((
+          node_id: 18,
+          contents: Mask(selected:0),
+        )),// [83]
+        Some((
+          node_id: 18,
+          contents: Material(selected:6),
+        )),
+      ],
+      links: {
+        5: 4,
+        74: 68,
+        81: 68,
+        50: 49,
+        10: 30,
+        19: 9,
+        47: 46,
+        77: 76,
+        48: 14,
+        63: 62,
+        15: 9,
+        20: 14,
+        75: 14,
+        39: 35,
+        54: 46,
+        64: 73,
+        40: 45,
+        22: 21,
+      },
+      free_nodes_list: [],
+      free_attributes_list: [],
+    ),
+    globals_names: [],
+    globals_init_values: [],
+  ),
+  (
+    fc: 1617357723,
+    fs: 1617358190,
+    vn: 3260699238,
+    hs: 0,
+  ),
+)
