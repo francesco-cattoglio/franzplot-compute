@@ -110,14 +110,12 @@ pub enum AstNode {
 impl AstNode {
     pub fn to_string(&self) -> String {
         match self {
-            // we might want to add parenthesis because the number might be negative. We need to check if this
-            // is necessary to correctly translate stuff like "5 + -1" to the shading language
              // BEWARE: use the debug format, or it will forego the fractional part for integers
             AstNode::Number(val) => { format!("{:?}", val) },
             AstNode::Ident(ident) => ident.clone(),
             // we might want to add even more parenthesis because expression could be right after a binary operator
             // We need to check if this is necessary to correctly translate stuff like "3 * -sin(pi)" to the shading language
-            AstNode::UnaryOp{ operator, arg } => { format!("{}({})", operator.to_string(), arg.to_string()) },
+            AstNode::UnaryOp{ operator, arg } => { format!("({}{})", operator.to_string(), arg.to_string()) },
             AstNode::PowOp{ base, exp } => { format!("pow({},{})", base.to_string(), exp.to_string()) },
             AstNode::BinOp{ lhs, repeated_rhs } =>  {
                 let mut to_return = String::new();
@@ -174,6 +172,8 @@ pub enum AstError {
     PowAmbiguity(String),
     FailedParse(String),
     InvalidCharacter(String),
+    EmptyExpression(String),
+    InvalidName(String),
 }
 
 fn ast_node_from_pair(pair: pest::iterators::Pair<Rule>) -> Result<AstNode, AstError> {
@@ -262,7 +262,7 @@ fn ast_node_from_pair(pair: pest::iterators::Pair<Rule>) -> Result<AstNode, AstE
                 arg: Box::new(arg_ast),
             })
         },
-        Rule::number => {
+        Rule::non_signed_number => {
             // we found a number, just parse it and store as a f32!
             let parsed_number = pair.as_str().parse::<f32>();
             let number: f32 = parsed_number.or_else(|err| {
@@ -297,6 +297,14 @@ fn ast_node_from_pair(pair: pest::iterators::Pair<Rule>) -> Result<AstNode, AstE
             Ok(AstNode::Ident(pair.as_str().into()))
         },
         // USER ERROR HANDLING STARTS HERE //
+        Rule::empty_line => {
+            let err_str = "The expression is empty.".to_string();
+            Err(AstError::EmptyExpression(err_str))
+        },
+        Rule::keyword_only => {
+            let err_str = format!("Cannot use a reserved keyword as a variable name: `{}`", pair.as_str());
+            Err(AstError::InvalidName(err_str))
+        },
         Rule::func_no_parenthesis => {
             let err_str = format!("Please use parenthesis for mathematical functions: `{}`", pair.as_str());
             Err(AstError::MissingParenthesis(err_str))
@@ -323,7 +331,7 @@ fn ast_node_from_pair(pair: pest::iterators::Pair<Rule>) -> Result<AstNode, AstE
             let err_str = format!("The input contains an invalid symbol: `{}`", pair.as_str());
             Err(AstError::InvalidCharacter(err_str))
         },
-        Rule::non_signed_number | Rule::non_number_value | Rule::maybe_value | Rule::expr => {
+        Rule::non_number_value | Rule::maybe_value | Rule::expr => {
             Err(AstError::UnreachableMatch("matched a silent rule".into()))
         },
         Rule::sign | Rule::only_fractional | Rule::integer | Rule::full_float | Rule::fractional | Rule::exponent => {

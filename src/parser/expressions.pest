@@ -1,33 +1,36 @@
 WHITESPACE = _{ " " }
 
-sign = {"+" | "-"}
 only_fractional = @{"." ~ ASCII_DIGIT+}
 integer = @{ ASCII_DIGIT+ }
 full_float = @{ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT*}
 fractional = @{ ("." ~ ASCII_DIGIT*) }
 exponent = @{^"e" ~ sign? ~ integer}
 
+// Numbers are always parsed as if they have no sign. However, any value can be prefixed with
+// a sign simbol, so "-5" is still parsed as ok, just like "-x" is.
 non_signed_number = @{ (only_fractional | full_float | integer) ~ exponent? }
-number = @{ sign? ~ non_signed_number }
 keyword = {
     "sin" | "cos" | "tan" | "asin" | "acos" | "atan"
     | "sqrt" | "exp" | "log" | "abs"
 }
+keyword_only = { keyword }
 abs_func = { "|" ~ expr ~ "|" }
 func = { keyword ~ "(" ~ expr ~ ")" }
 func_no_parenthesis = { keyword ~ !"(" ~ expr }
 ident = @{!(keyword) ~ (LETTER | "_") ~ (LETTER  | ASCII_DIGIT | "_")* }
-non_number_value = _{ func_no_parenthesis | abs_func | func | ident | ("(" ~ expr ~ ")") }
+non_number_value = _{ func_no_parenthesis | abs_func | func | keyword_only | ident | ("(" ~ expr ~ ")") }
 
-//factorial = { (number | non_number_value) ~ "!"? }
 implicit_product = {
-    (number ~ non_number_value)
+    (non_signed_number ~ non_number_value)
     |(non_number_value ~ non_signed_number)
     |(non_number_value ~ non_number_value)}
 multiple_expressions = { non_signed_number{2,} | (non_signed_number | non_number_value){3,} }
-multiple_signs = { sign+ ~ (number | non_number_value)* }
-maybe_value = _{ multiple_signs | multiple_expressions | implicit_product | number | non_number_value }
+// this rule here works because we are already after the unary_sign rule.
+// if this matches, it means that the unary sign was already consumed, but another sign matched.
+multiple_signs = { sign+ ~ (non_signed_number | non_number_value)* }
+maybe_value = _{ multiple_signs | multiple_expressions | implicit_product | non_signed_number | non_number_value }
 power = { (maybe_value) ~ ("^" ~ maybe_value)* }
+sign = {"+" | "-"}
 unary_sign = { sign? ~ power }
 mul_div = { "*" | "/" }
 product = { unary_sign ~ (mul_div ~ unary_sign)*}
@@ -42,6 +45,7 @@ valid_character = _{
 }
 invalid_character = { !valid_character ~ ANY }
 eoi = _{ !ANY }
+empty_line = {SOI ~ eoi}
 invalid_line = _{SOI ~ valid_character* ~ invalid_character ~ ANY*}
-line = _{SOI ~ (invalid_line | expr) ~ eoi}
+line = _{SOI ~ (empty_line | invalid_line | expr) ~ eoi}
 
