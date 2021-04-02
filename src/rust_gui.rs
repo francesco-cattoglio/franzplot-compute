@@ -15,7 +15,8 @@ pub struct Availables {
 
 pub struct Gui {
     pub scene_texture_id: TextureId,
-    pub new_global_buffer: ImString,
+    pub new_variable_buffer: ImString,
+    pub new_variable_error: Option<String>,
     graph_fonts: Vec<imgui::FontId>,
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
     undo_stack: std::collections::VecDeque<(f64, String)>,
@@ -51,7 +52,8 @@ impl Gui {
             winit_proxy,
             undo_stack: vec![(0.0, serde_json::to_string(&empty_graph).unwrap())].into(),
             undo_cursor: 0,
-            new_global_buffer: ImString::with_capacity(8),
+            new_variable_buffer: ImString::with_capacity(8),
+            new_variable_error: None,
             graph_edited: false,
             selected_object: None,
             axes_length: 2,
@@ -72,7 +74,8 @@ impl Gui {
 
     pub fn reset_nongraph_data(&mut self) {
         self.selected_object = None;
-        self.new_global_buffer.clear();
+        self.new_variable_buffer.clear();
+        self.new_variable_error = None;
     }
 
     pub fn issue_undo(&mut self, state: &mut State, timestamp: f64) {
@@ -301,18 +304,27 @@ impl Gui {
         }
         ui.text(im_str!("add new variable:"));
         ui.set_next_item_width(75.0);
-        InputText::new(ui, im_str!("##new_var_input"), &mut self.new_global_buffer)
+        let variable_name_changed = InputText::new(ui, im_str!("##new_var_input"), &mut self.new_variable_buffer)
             .resize_buffer(false)
             .build();
+        if variable_name_changed {
+            self.new_variable_error = None;
+        }
         ui.same_line(0.0);
         if ui.button(im_str!("New"), [0.0, 0.0]) { // TODO: we need a check: the name must be valid!
-            let new_name = self.new_global_buffer.to_string();
+            let new_name = self.new_variable_buffer.to_string();
             use crate::computable_scene::globals::Globals;
-            if let Some(valid_name) = Globals::sanitize_variable_name(&new_name) {
-                globals_names.push(valid_name.to_string());
+            if let Ok(valid_name) = Globals::sanitize_variable_name(&new_name) {
+                globals_names.push(valid_name);
                 globals_init_values.push(0.0);
-                self.new_global_buffer.clear();
+                self.new_variable_buffer.clear();
+                self.new_variable_error = None;
+            } else {
+                self.new_variable_error = Some("Invalid name".into());
             }
+        }
+        if let Some(err) = self.new_variable_error.as_ref() {
+            ui.text_colored( [1.0, 0.8, 0.0, 1.0], err);
         }
 
         ui.next_column();

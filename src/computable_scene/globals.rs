@@ -1,4 +1,5 @@
 use crate::computable_scene::BlockCreationError;
+use crate::parser::{parse_expression, AstNode, AstError};
 
 #[derive(Debug)]
 pub struct Globals {
@@ -14,73 +15,38 @@ pub struct Globals {
 const GLOBAL_CONSTANTS: &[(&str, f32)] = &[
     ("pi", std::f32::consts::PI)
 ];
-const KEYWORDS: &[&str] = &[
-    "sin", "cos", "tan",
-    "asin", "acos", "atan",
-    "int", "float", "double",
-];
 const MAX_NUM_VARIABLES: usize = 31;
 
 impl Globals {
-    /// This function sanitizes a variable name. If the variable name could be sanitized,
-    /// e.g. by removing extra spaces, then it is returned as Some(name), otherwise if the
-    /// name was invalid (e.g: was a keyword) None is returned
-    // TODO: we might want to turn this into a result, so that we can display something
-    // back to the user instead of just println!() it
-    pub fn sanitize_variable_name(name: &str) -> Option<&str> {
-        // Make sure that the name does not contain any internal whitespace
-        if name.split_whitespace().count() == 0 {
-            println!("Variables name cannot be empty");
-            return None;
+    pub fn sanitize_variable_name(name: &str) -> Result<String, BlockCreationError> {
+        let parsing_result = parse_expression(name);
+        match parsing_result {
+            Ok(ast_tree) => {
+                // it is not enough to parse the expression correctly. We must be sure that
+                // the expression is JUST a single ident, and that ident is not the same as an
+                // existing constant.
+                match ast_tree {
+                    AstNode::Ident(ident) => {
+                        for constant in GLOBAL_CONSTANTS.iter() {
+                            if constant.0 == &ident {
+                                return Err(BlockCreationError::IncorrectExpression("cannot use a mathematical constant as a variable name".into()));
+                            }
+                        }
+                        Ok(ident)
+                    }
+                    _ => Err(BlockCreationError::IncorrectExpression("cannot use an expression as variable name".into())),
+                }
+            },
+            Err(_err) => Err(BlockCreationError::IncorrectExpression("invalid variable name".into())),
         }
-        if name.split_whitespace().count() > 1 {
-            println!("Variables cannot contain spaces; {} is not a valid name", name);
-            return None;
-        }
-        // and then strip leading and trailing spaces, leaving only the actual name
-        let name = name.trim_start().trim_end();
-
-        // Check if the first character exists, and return null if it is not alphabetic.
-        let mut chars_iter = name.chars();
-        if !chars_iter.next()?.is_ascii_alphabetic() {
-            println!("The first character in a variable must be a letter; {} is not a valid name", name);
-            return None;
-        }
-
-        // Also check all the other characters, there shall only be letters, numbers, underscores
-        while let Some(character) = chars_iter.next() {
-            if !character.is_ascii_alphanumeric() && character != '_' {
-                println!("Only letters, numbers and underscores are allowed in variables; {} is not a valid name", name);
-                return None;
-            }
-        }
-
-        // the name should now be compared to global constants and keywords, and be rejected if any
-        // one matches
-        for (constant_name, _value) in GLOBAL_CONSTANTS {
-            if name == *constant_name {
-                // TODO: this should be logged in as warning!
-                println!("Warning, invalid variable name used: {} is reserved", name);
-                return None;
-            }
-        }
-        for keyword in KEYWORDS {
-            if name == *keyword {
-                // TODO: this should be logged in as warning!
-                println!("Warning, invalid variable name used: {} is reserved", name);
-                return None;
-            }
-        }
-
-        Some(name)
     }
 
     pub fn sanitize_expression(&self, local_params: &Vec<&str>, expression: &str) -> Result<String, BlockCreationError> {
-        use crate::parser::{parse_expression, AstError};
         let parsing_result = parse_expression(expression);
         match parsing_result {
             Ok(ast_tree) => {
-                // the tree parsed correctly, but now we need to check if all the tokens exists.
+                // the expression parsed correctly, but now we need to check if all the identifiers it
+                // contains actually exist.
                 let all_idents = ast_tree.find_all_idents();
                 'validate: for ident in all_idents.into_iter() {
                     // if the ident is inside the variable names, we are good.
@@ -93,8 +59,7 @@ impl Globals {
                             continue 'validate;
                         }
                     }
-                    // TODO: if the ident is one of the valid parameters taken as input, we are
-                    // also good.
+                    // if the ident is one of the parameters taken as input by the node, we are also good.
                     for param in local_params.iter() {
                         if param == &ident {
                             continue 'validate;
@@ -107,20 +72,24 @@ impl Globals {
                 }
                 Ok(ast_tree.to_string())
             },
-            Err(ast_error) => match ast_error {
-                AstError::InvalidCharacter(e) => Err(BlockCreationError::InternalError(e)),
-                AstError::PowAmbiguity(e) => Err(BlockCreationError::InternalError(e)),
-                AstError::UnreachableMatch(e) => Err(BlockCreationError::InternalError(e)),
-                AstError::InternalError(e) => Err(BlockCreationError::InternalError(e)),
-                AstError::ImplicitProduct(e) => Err(BlockCreationError::IncorrectExpression(e)),
-                AstError::MultipleSigns(e) => Err(BlockCreationError::IncorrectExpression(e)),
-                AstError::MultipleOps(e) => Err(BlockCreationError::IncorrectExpression(e)),
-                AstError::MultipleExpressions(e) => Err(BlockCreationError::IncorrectExpression(e)),
-                AstError::FailedParse(e) => Err(BlockCreationError::IncorrectExpression(e)),
-                AstError::MissingParenthesis(e) => Err(BlockCreationError::IncorrectExpression(e)),
-                AstError::EmptyExpression(e) => Err(BlockCreationError::IncorrectExpression(e)),
-                AstError::InvalidName(e) => Err(BlockCreationError::IncorrectExpression(e)),
-            }
+            Err(ast_error) => Err(Self::ast_to_block_error(ast_error)),
+        }
+    }
+
+    fn ast_to_block_error(error: AstError) -> BlockCreationError {
+        match error {
+            AstError::UnreachableMatch(e) => BlockCreationError::InternalError(e),
+            AstError::InternalError(e) => BlockCreationError::InternalError(e),
+            AstError::InvalidCharacter(e) => BlockCreationError::IncorrectExpression(e),
+            AstError::PowAmbiguity(e) => BlockCreationError::IncorrectExpression(e),
+            AstError::ImplicitProduct(e) => BlockCreationError::IncorrectExpression(e),
+            AstError::MultipleSigns(e) => BlockCreationError::IncorrectExpression(e),
+            AstError::MultipleOps(e) => BlockCreationError::IncorrectExpression(e),
+            AstError::MultipleExpressions(e) => BlockCreationError::IncorrectExpression(e),
+            AstError::FailedParse(e) => BlockCreationError::IncorrectExpression(e),
+            AstError::MissingParenthesis(e) => BlockCreationError::IncorrectExpression(e),
+            AstError::EmptyExpression(e) => BlockCreationError::IncorrectExpression(e),
+            AstError::InvalidName(e) => BlockCreationError::IncorrectExpression(e),
         }
     }
 
@@ -194,9 +163,6 @@ impl Globals {
         // process all variables
         let zipped_iterator = variables_names.into_iter().zip(init_values.into_iter());
         for pair in zipped_iterator {
-            // assert that all variable names have been sanitizied already.
-            assert!(Self::sanitize_variable_name(&pair.0).is_some());
-
             // print the name to the shader header and
             // add the pair to both the 'names' and the 'values' vectors
             shader_header += &format!("\tfloat {};\n", &pair.0);

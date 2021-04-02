@@ -39,8 +39,7 @@ impl IntervalData {
         }
         let n_evals = 16 * descriptor.quality;
         // Make sure that the name does not contain any internal whitespace
-        let maybe_sanitized = Globals::sanitize_variable_name(&descriptor.name);
-        let sanitized_name = maybe_sanitized.ok_or(BlockCreationError::IncorrectAttributes(" this interval's name \n is not valid "))?;
+        let sanitized_name = Globals::sanitize_variable_name(&descriptor.name)?;
 
         // Note that sanitizing also removes leading and trailing whitespaces in the begin and end fields.
         // This is done here because Parameters can be compared, and if we strip all
@@ -52,7 +51,7 @@ impl IntervalData {
         let sanitized_begin = globals.sanitize_expression(&local_params, &descriptor.begin)?;
         let sanitized_end = globals.sanitize_expression(&local_params, &descriptor.end)?;
         let param = Parameter {
-            name: Some(sanitized_name.to_string()),
+            name: Some(sanitized_name),
             begin: sanitized_begin,
             end: sanitized_end,
             size: n_evals,
