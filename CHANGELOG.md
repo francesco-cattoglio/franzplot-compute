@@ -4,14 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
 ## FUTURE PLANS:
-- optimization: only recompute the scene if a variable actually changed in the last frame
 
 ## UNRELEASED:
 
 ### Added
 - this changelog
 - you can now drag & drop files on top of Franzplot to open them.
-- the input expressions are now analyzed, and more meaningful errors will be produced.
+- all input expressions are now analyzed, and more meaningful errors will be produced.
 - added the "Sample parameter" node.
 - added more default camera views for the scene tab. They are bound to the `5`, `6` and `7` keys.
 - scene camera view should feel much more smooth under Windows.
@@ -22,4 +21,4 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ### Fixed
 - trying to apply a parametric transform to a primitive will no longer crash the application.
-- expressions containing divisions between integers (i.e: 1/2 instead of 1.0/2.0) could produce wrong results.
+- expressions containing divisions between integers (i.e: 1/2 instead of 1.0/2.0) will now produce the correct result.

@@ -18,13 +18,17 @@ pub struct ComputableScene{
 }
 
 impl ComputableScene {
-    pub fn process_graph(&mut self, device: &wgpu::Device, assets: &Assets, graph: &mut NodeGraph, globals: Globals) -> Vec<GraphError> {
+    pub fn process_graph(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, assets: &Assets, graph: &mut NodeGraph, globals: Globals) -> Vec<GraphError> {
         self.globals = globals;
         // TODO: this part is super confusing, there are huge side effects that
         // can easily go unnoticed. maybe refactor it?
         let scene_result = self.chain.scene_from_graph(device, &assets.models, &self.globals, graph);
         self.renderer.update_renderables(device, &assets, &self.chain);
 
+        // run the chain once, at the best of our possibilities
+        self.chain.run_chain(device, queue, &self.globals);
+
+        // Report every error to the user
         // TODO: rewrite as a iter.map.collect?
         let mut to_return = Vec::<GraphError>::new();
         for (block_id, error) in scene_result.into_iter() {
@@ -72,7 +76,10 @@ impl ComputableScene {
                 },
                 BlockCreationError::InternalError(message) => {
                     println!("internal error: {}", &message);
-                    panic!();
+                    // A panic is a bit eccessive. Failing fast is good, but the user might be
+                    // unable to report the error to the developer.
+                    //
+                    // panic!();
                 },
             }
         }

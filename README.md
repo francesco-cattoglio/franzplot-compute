@@ -4,20 +4,6 @@
 
 Tutte le feature necessarie per un uso di base del software sono state implementate.
 
-Feature per la release per gli studenti:
-- [x] Cleanup dell'interfaccia
-- [x] Settings per la sensività dello zoom su grafo e scena
-- [x] Settings per la telecamera - orbit sempre verticale?
-- [x] Aggiunta delle primitive mancanti
-- [x] Rimozione dei materiali non strettamente necessari
-- [x] Aggiunta del timestamp ai file
-- [x] Update all'ultima versione di imnodes per i bugfix
-- [x] Etichettare gli assi
-- [x] Pan della telecamera & proiezione ortografica
-- [x] Dimensione del piano
-- [x] Nodi prefab per matrici di rotazione e traslazione
-- [x] export di png
-
 Known bugs & issues:
 - in Debug l'avvio è piuttosto lento; in Release l'avvio è molto più veloce (5 secondi vs 0.5).
 - la Translation Matrix è stata implementata con un metodo quick&dirt, qualora si decidesse di

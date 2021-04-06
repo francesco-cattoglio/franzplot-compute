@@ -131,9 +131,12 @@ impl AppState {
     }
 
     pub fn update_scene(&mut self, target_texture: &wgpu::TextureView) {
-        // TODO: make sure this is done only when it is really needed!
-        self.computable_scene.globals.update_buffer(&self.manager.queue);
-        self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
+        // TODO: right now the chain is not recomputed if globals were not updated. This is
+        // sub-optimal, and in the future we might want to be more fine-grained
+        let global_vars_changed = self.computable_scene.globals.update_buffer(&self.manager.queue);
+        if global_vars_changed {
+            self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
+        }
         if self.camera_ortho {
             // this is here instead of inside `update_projection_matrix` because
             // we are currently using the zoom level to build the orthographic matrix,
@@ -254,7 +257,7 @@ impl State {
         // ComputableScene::process_user_state would be easier to read and reason about
         // create a new Globals from the user defined names
         let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.assets, &mut self.user.graph, globals);
+        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.manager.queue, &self.app.assets, &mut self.user.graph, globals);
         let no_errors_detected = graph_errors.is_empty();
         for error in graph_errors.into_iter() {
             self.user.graph.mark_error(error);

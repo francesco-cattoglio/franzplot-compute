@@ -5,6 +5,7 @@ use crate::parser::{parse_expression, AstNode, AstError};
 pub struct Globals {
     names: Vec<String>,
     values: Vec<f32>,
+    old_values: Vec<f32>,
     buffer_size: wgpu::BufferAddress,
     buffer: wgpu::Buffer,
     pub bind_layout: wgpu::BindGroupLayout,
@@ -177,21 +178,34 @@ impl Globals {
             bind_group,
             names,
             values,
+            old_values: Vec::new(),
             buffer,
             buffer_size,
             shader_header,
         }
     }
 
-    pub fn update_buffer(&mut self, queue: &wgpu::Queue) {
+    /// Updates the buffer containing all global variables.
+    /// If none of the globals changed, then this function does nothing and returns false.
+    /// Otherwise, if at least one global var changed, then the wgpu buffers is updated
+    /// and the function returns true
+    pub fn update_buffer(&mut self, queue: &wgpu::Queue) -> bool {
         // quick check to make sure nobody changed the size of the values vector
         // which would spell disaster because then we would overwrite some random GPU memory
         assert!(self.names.len() == self.values.len());
 
-        // update the mapped values in our buffer. Do not forget that this buffer
-        // also contains all the global constants. Start copying from the computed offset!
-        let offset = (GLOBAL_CONSTANTS.len() * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
-        queue.write_buffer(&self.buffer, offset, bytemuck::cast_slice(&self.values));
+        if self.values == self.old_values {
+            // nothing actually changed, no need to update anything
+            false
+        } else {
+            // values did in fact change. Update the buffer and overwrite the "old_values"
+            // When updating the mapped values in our buffer, do not forget that this buffer
+            // also contains all the global constants. Start copying from the computed offset!
+            let offset = (GLOBAL_CONSTANTS.len() * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
+            queue.write_buffer(&self.buffer, offset, bytemuck::cast_slice(&self.values));
+            self.old_values = self.values.clone();
+            true
+        }
     }
 
 }
