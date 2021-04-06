@@ -203,11 +203,12 @@ impl SceneRenderer {
 
     pub fn set_axes_labels(&mut self, axis_length: i32, label_size: f32, device: &wgpu::Device) {
         self.clear_axes_labels();
-        let (x_vertices, x_indices, x_count) = create_char_x(device, [axis_length as f32, 0.0, label_size], label_size, [255, 0, 0, 255]);
+        let distance = axis_length as f32 + 0.75 * label_size;
+        let (x_vertices, x_indices, x_count) = create_char_x(device, [distance, 0.0, label_size], label_size, [255, 0, 0, 255]);
         self.add_billboard(device, &x_vertices, &x_indices, x_count);
-        let (y_vertices, y_indices, y_count) = create_char_y(device, [0.0, axis_length as f32, label_size], label_size, [0, 255, 0, 255]);
+        let (y_vertices, y_indices, y_count) = create_char_y(device, [0.0, distance, label_size], label_size, [0, 255, 0, 255]);
         self.add_billboard(device, &y_vertices, &y_indices, y_count);
-        let (z_vertices, z_indices, z_count) = create_char_z(device, [0.0, 0.0, axis_length as f32 + label_size], label_size, [0, 0, 255, 255]);
+        let (z_vertices, z_indices, z_count) = create_char_z(device, [0.0, 0.0, distance + label_size], label_size, [0, 0, 255, 255]);
         self.add_billboard(device, &z_vertices, &z_indices, z_count);
     }
 
