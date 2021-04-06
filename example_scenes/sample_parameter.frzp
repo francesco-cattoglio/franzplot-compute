@@ -96,7 +96,7 @@ V1(
         )),// [8]
         Some((
           node_id: 1,
-          contents: IntSlider(label:"quality",value:4,mode:IntRange(2,16)),
+          contents: IntSlider(label:"quality",value:4,mode:IntRange(1,16)),
         )),// [9]
         Some((
           node_id: 1,
@@ -116,7 +116,7 @@ V1(
         )),// [13]
         Some((
           node_id: 2,
-          contents: IntSlider(label:"quality",value:4,mode:IntRange(2,16)),
+          contents: IntSlider(label:"quality",value:4,mode:IntRange(1,16)),
         )),// [14]
         Some((
           node_id: 2,
