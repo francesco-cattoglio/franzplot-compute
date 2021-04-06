@@ -160,9 +160,20 @@ fn main() {
         winit::dpi::PhysicalSize::new(1280, 800)
     };
 
+    let icon_png = include_bytes!("../compile_resources/icon_128.png");
+    let icon_image = image::load_from_memory(icon_png).expect("Bad icon png file");
+    let (icon_rgba, icon_width, icon_height) = {
+        let image = icon_image.into_rgba8();
+        let (width, height) = image.dimensions();
+        let rgba = image.into_raw();
+        (rgba, width, height)
+    };
+    let icon = winit::window::Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Bad icon format");
+
     let mut builder = winit::window::WindowBuilder::new();
     builder = builder
         .with_title("test")
+        .with_window_icon(Some(icon))
         .with_inner_size(window_size);
     #[cfg(windows_OFF)] // TODO check for news regarding this
     {
