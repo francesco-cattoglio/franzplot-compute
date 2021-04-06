@@ -33,7 +33,7 @@ Sotto Linux:
 - le librerie di sviluppo per gtk3
 
 Sotto MacOS:
-- sono necessari i tool per compilare da riga di comando; se a build compare un errore, tramite google si trova facilmente una risposta a come installarli
+- sono necessari i tool per compilare da riga di comando; se a build compare l'errore `xcrun: error: invalid active developer path`, dare il comando `xcode-select --install`
 
 ### Toolchain Rust
 Il consiglio è quello di seguire le istruzioni che trovate sul sito ufficiale: https://www.rust-lang.org/tools/install
