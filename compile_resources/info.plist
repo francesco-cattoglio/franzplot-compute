@@ -8,6 +8,8 @@
 	<string>franzplot</string>
 	<key>CFBundleIdentifier</key>
 	<string>it.polimi.mate.franzplot</string>
+	<key>CFBundleIconFile</key>
+	<string>FranzplotIcon.icns</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
