@@ -1,5 +1,7 @@
 use image::GenericImageView;
 
+use std::num::NonZeroU32;
+
 #[derive(Debug)]
 pub struct Texture {
     pub texture: wgpu::Texture,
@@ -221,7 +223,7 @@ impl Texture {
 
                 queue.write_texture(
                     // Tells wgpu where to copy the pixel data
-                    wgpu::TextureCopyView {
+                    wgpu::ImageCopyTexture {
                         texture: &texture,
                         mip_level: 0,
                         origin: wgpu::Origin3d::ZERO,
@@ -229,10 +231,10 @@ impl Texture {
                     // The actual pixel data
                     bytemuck::cast_slice(&grayscale_img),
                     // The layout of the texture
-                    wgpu::TextureDataLayout {
+                    wgpu::ImageDataLayout {
                         offset: 0,
-                        bytes_per_row: std::mem::size_of::<u8>() as u32 * image_size.0,
-                        rows_per_image: image_size.1,
+                        bytes_per_row: Some(NonZeroU32::new(std::mem::size_of::<u8>() as u32 * image_size.0).unwrap()),
+                        rows_per_image: Some(NonZeroU32::new(image_size.1).unwrap()),
                     },
                     size,
                 );
@@ -253,7 +255,7 @@ impl Texture {
 
                 queue.write_texture(
                     // Tells wgpu where to copy the pixel data
-                    wgpu::TextureCopyView {
+                    wgpu::ImageCopyTexture {
                         texture: &texture,
                         mip_level: 0,
                         origin: wgpu::Origin3d::ZERO,
@@ -261,10 +263,10 @@ impl Texture {
                     // The actual pixel data
                     bytemuck::cast_slice(&color_img),
                     // The layout of the texture
-                    wgpu::TextureDataLayout {
+                    wgpu::ImageDataLayout {
                         offset: 0,
-                        bytes_per_row: std::mem::size_of::<u32>() as u32 * image_size.0,
-                        rows_per_image: image_size.1,
+                        bytes_per_row: Some(NonZeroU32::new(std::mem::size_of::<u32>() as u32 * image_size.0).unwrap()),
+                        rows_per_image: Some(NonZeroU32::new(image_size.1).unwrap()),
                     },
                     size,
                 );

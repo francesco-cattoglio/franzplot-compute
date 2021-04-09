@@ -16,7 +16,7 @@ all = ["show-timestamps", "dev-tools"]
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 bytemuck = "1.2"
-wgpu = { git = 'https://github.com/gfx-rs/wgpu-rs.git', rev = '5c249c4375ae779c494028398e5de7c798e41735' }
+wgpu = { git = 'https://github.com/gfx-rs/wgpu-rs.git', rev = 'ec2627a1392e1e8055657ffef0404555c5cab84b' }
 #wgpu = { version = "0.7", features = ["trace"] }
 shaderc = "0.6"
 num-iter = "0.1"
@@ -36,7 +36,7 @@ clap = "2.33"
 obj = "0.10"
 imgui = "0.7.0"
 imgui-winit-support = "0.7.0"
-imgui-wgpu = "*"
+imgui-wgpu = { git = 'https://github.com/francesco-cattoglio/imgui-wgpu-rs.git', rev = '496cacc0c1c64d08ce4b238d3cadf1e3416c532f' }
 wgpu-subscriber = "0.1"
 cxx = "1.0.32"
 pathfinding = "2.0"
@@ -60,8 +60,6 @@ debug = true
 opt-level = 2
 
 [patch.crates-io]
-
-imgui-wgpu = { git = 'https://github.com/francesco-cattoglio/imgui-wgpu-rs.git', rev = 'a346fbb0c7dee98da980b32baa780064af4cee61' }
 
 #[patch."https://github.com/gfx-rs/wgpu"]
 #wgpu-types = { path = "../wgpu/wgpu-types" }

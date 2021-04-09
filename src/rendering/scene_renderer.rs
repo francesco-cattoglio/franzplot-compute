@@ -385,8 +385,8 @@ impl SceneRenderer {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("scene render pass"),
                 color_attachments: &[
-                    wgpu::RenderPassColorAttachmentDescriptor {
-                        attachment: &self.output_texture.view,
+                    wgpu::RenderPassColorAttachment {
+                        view: &self.output_texture.view,
                         resolve_target: Some(target_view),
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(clear_color),
@@ -394,8 +394,8 @@ impl SceneRenderer {
                         },
                     }
                 ],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
-                    attachment: &self.depth_texture.view,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                    view: &self.depth_texture.view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: false,
@@ -517,6 +517,7 @@ fn create_billboard_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
             buffers: &[vertex_buffer_layout],
         },
         primitive: wgpu::PrimitiveState {
+            clamp_depth: false,
             conservative: false,
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
@@ -535,7 +536,6 @@ fn create_billboard_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
             depth_compare: wgpu::CompareFunction::Less,
             bias: wgpu::DepthBiasState::default(),
             stencil: wgpu::StencilState::default(),
-            clamp_depth: false,
         }),
         multisample: wgpu::MultisampleState {
             count: SAMPLE_COUNT,
@@ -594,6 +594,7 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
             buffers: &[vertex_buffer_layout],
         },
         primitive: wgpu::PrimitiveState {
+            clamp_depth: false,
             conservative: false,
             topology: wgpu::PrimitiveTopology::LineList,
             strip_index_format: None,
@@ -612,7 +613,6 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
             depth_compare: wgpu::CompareFunction::Less,
             bias: wgpu::DepthBiasState::default(),
             stencil: wgpu::StencilState::default(),
-            clamp_depth: false,
         }),
         multisample: wgpu::MultisampleState {
             count: SAMPLE_COUNT,
@@ -672,6 +672,7 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
             buffers: &[vertex_buffer_descriptor],
         },
         primitive: wgpu::PrimitiveState {
+            clamp_depth: false,
             conservative: false,
             topology: wgpu::PrimitiveTopology::TriangleList,
             strip_index_format: None,
@@ -690,7 +691,6 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
             depth_compare: wgpu::CompareFunction::Less,
             bias: wgpu::DepthBiasState::default(),
             stencil: wgpu::StencilState::default(),
-            clamp_depth: false,
         }),
         multisample: wgpu::MultisampleState {
             count: SAMPLE_COUNT,

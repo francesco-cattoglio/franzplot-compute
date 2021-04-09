@@ -201,21 +201,23 @@ pub fn create_png<P: AsRef<std::path::Path>>(state: &mut State, output_path: &P)
     });
 
     let command_buffer = {
+        use std::num::NonZeroU32;
+
         let mut encoder = state.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
         // Copy the data from the texture to the buffer
         encoder.copy_texture_to_buffer(
-            wgpu::TextureCopyView {
+            wgpu::ImageCopyTexture {
                 texture: &output_texture.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
-            wgpu::BufferCopyView {
+            wgpu::ImageCopyBuffer {
                 buffer: &png_buffer,
-                layout: wgpu::TextureDataLayout {
+                layout: wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: buffer_dimensions.padded_bytes_per_row as u32,
-                    rows_per_image: 0,
+                    bytes_per_row: Some(NonZeroU32::new(buffer_dimensions.padded_bytes_per_row as u32).unwrap()),
+                    rows_per_image: None,
                 },
             },
             texture_size,
