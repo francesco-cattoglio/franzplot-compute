@@ -16,7 +16,7 @@ all = ["show-timestamps", "dev-tools"]
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 bytemuck = "1.2"
-wgpu = { git = 'https://github.com/gfx-rs/wgpu-rs.git', rev = '53600ecd834893ef3e90458c48b84f2582d6c343' }
+wgpu = { git = 'https://github.com/gfx-rs/wgpu-rs.git', rev = '53600ecd834893ef3e90458c48b84f2582d6c343', features = ["cross"] }
 #wgpu = { version = "0.7", features = ["trace"] }
 shaderc = "0.6"
 num-iter = "0.1"
