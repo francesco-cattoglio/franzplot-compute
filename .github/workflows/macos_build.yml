@@ -20,6 +20,7 @@ jobs:
           args: --release --all-features
       - name: Release binary
         uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
         with:
           files: target/release/franzplot-compute
         env:
