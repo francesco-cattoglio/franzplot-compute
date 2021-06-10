@@ -17,11 +17,11 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --all-features
+          args: --release
       - name: Release binary
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: target/release/franzplot-compute
+          files: target/release/franzplot
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
