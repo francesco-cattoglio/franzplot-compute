@@ -42,6 +42,7 @@ impl TransformData {
             ComputeBlock::Curve(data) => (data.out_dim.clone(), &data.out_buffer),
             ComputeBlock::Surface(data) => (data.out_dim.clone(), &data.out_buffer),
             ComputeBlock::Transform(data) => (data.out_dim.clone(), &data.out_buffer),
+            ComputeBlock::Bezier(data) => (data.out_dim.clone(), &data.out_buffer),
             ComputeBlock::Prefab(data) => (data.out_dim.clone(), &data.out_buffer),
             _ => return Err(BlockCreationError::InputInvalid("the first input provided to the Transform is not a Geometry"))
         };

@@ -3,6 +3,15 @@ All notable changes to this project will be documented in this file.
 
 The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 
+## [21.5.0] - 2020-06-9:
+
+### Added
+
+### Changed
+
+### Fixed
+- It is now possible to apply a transform to a bezier curve node
+
 ## [21.4.0] - 2020-04-06:
 
 ### Added
