@@ -16,7 +16,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          tag_name: v21.05
+          tag_name: v21.05.1
           files: Release.txt
           fail_on_unmatched_files: true
         env:
