@@ -1,0 +1,22 @@
+name: CMake
+
+on: workflow_dispatch
+
+jobs:
+  build:
+    runs-on: macos-10.15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Build
+        run: echo "this is a test" > Release.txt
+      - name: Test
+        run: cat Release.txt
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(v21.05, 'refs/tags/')
+        with:
+          files: Release.txt
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
