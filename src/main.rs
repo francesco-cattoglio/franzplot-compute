@@ -119,10 +119,9 @@ fn main() {
     let tracing_path_option = maybe_tracing_path.map(|x| std::path::Path::new(x));
 
     let maybe_input_file = matches.value_of("INPUT");
-    dbg!(&maybe_input_file);
 
     let maybe_export_path = matches.value_of("export");
-    dbg!(&maybe_export_path);
+    let exporting_hang_workaround = maybe_export_path.is_some();
 
     let maybe_backend = matches.value_of("backend").map(|name| {
         match name.to_lowercase().as_str()  {
@@ -229,7 +228,6 @@ fn main() {
             panic!("Could not find the 'resources' folder");
         }
     };
-    dbg!(&resources_path);
     let mut masks_dir = resources_path.clone();
     masks_dir.push("masks");
     let mut materials_dir = resources_path.clone();
@@ -277,7 +275,6 @@ fn main() {
         .collect();
 
     material_files.sort();
-    dbg!(&material_files);
 
     let imgui_masks = util::load_imgui_masks(&device_manager, &mut renderer, &mask_files);
     let imgui_materials = util::load_imgui_materials(&device_manager, &mut renderer, &material_files);
@@ -333,7 +330,10 @@ fn main() {
 
     if let Some(file) = maybe_input_file {
         let file_path = std::path::PathBuf::from(file);
+        println!("FranzPlot starting. Opening file: {}", file);
         event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
+    } else {
+        println!("FranzPlot starting, no file selected.");
     }
 
     if let Some(path) = maybe_export_path {
@@ -341,6 +341,7 @@ fn main() {
         let scene_file_path = std::path::PathBuf::from(&scene_file_name);
         let graph_file_name = String::new() + path + ".graph.png";
         let graph_file_path = std::path::PathBuf::from(&graph_file_name);
+        state.app.camera.set_x1_y1_z1_wide();
         event_loop_proxy.send_event(CustomEvent::ExportGraphPng(graph_file_path)).unwrap();
         event_loop_proxy.send_event(CustomEvent::ExportScenePng(scene_file_path)).unwrap();
         event_loop_proxy.send_event(CustomEvent::RequestExit).unwrap();
@@ -478,6 +479,9 @@ fn main() {
                     },
                     CustomEvent::RequestExit => {
                         *control_flow = ControlFlow::Exit;
+                        if exporting_hang_workaround {
+                            std::process::exit(0);
+                        }
                     },
                     CustomEvent::SaveFile(path_buf) => {
                         state.write_to_frzp(&path_buf);
@@ -496,8 +500,7 @@ fn main() {
                         }
                     },
                     CustomEvent::ExportGraphPng(path_buf) => {
-                        println!("exporting graph");
-                        dbg!(&path_buf);
+                        println!("Exporting graph: {:?}", &path_buf);
                         // zoom out twice
                         state.user.graph.zoom_down_graph([0.0, 0.0]);
                         state.user.graph.zoom_down_graph([0.0, 0.0]);
@@ -506,6 +509,7 @@ fn main() {
                         util::create_graph_png(&mut state, &path_buf,&window,&mut platform,&mut renderer,&mut rust_gui,&mut imgui, window_size.to_logical(hidpi_factor));
                     },
                     CustomEvent::ExportScenePng(path_buf) => {
+                        println!("Exporting scene: {:?}", &path_buf);
                         util::create_scene_png(&mut state, &path_buf);
                         // TODO: this is hacked in and needs some refactoring:
                         // util::create_png modifies the state changing the depth buffer and the

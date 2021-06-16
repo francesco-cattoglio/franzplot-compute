@@ -117,6 +117,13 @@ impl Camera {
         self.eye = distance * Vec3::one().normalize();
         self.up = Vec3::unit_z();
     }
+
+    pub fn set_x1_y1_z1_wide(&mut self) {
+        let relative_pos = self.eye - self.target;
+        self.target = Vec3::zero();
+        self.eye = 14.0 * Vec3::one().normalize();
+        self.up = Vec3::unit_z();
+    }
 }
 
 #[derive(Debug)]
