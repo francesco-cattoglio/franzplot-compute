@@ -100,6 +100,81 @@ impl Texture {
         }
     }
 
+    pub fn create_screenshot_texture(device: &wgpu::Device, size: wgpu::Extent3d, sample_count: u32) -> Self {
+        let descriptor = wgpu::TextureDescriptor {
+            sample_count,
+            dimension: wgpu::TextureDimension::D2,
+            size,
+            format: super::SWAPCHAIN_FORMAT,
+            mip_level_count: 1,
+            label: Some("Scene output texture"),
+            usage: wgpu::TextureUsage::RENDER_ATTACHMENT
+                | wgpu::TextureUsage::SAMPLED
+                | wgpu::TextureUsage::COPY_SRC
+            };
+
+        let texture = device.create_texture(&descriptor);
+
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            address_mode_u: wgpu::AddressMode::ClampToEdge,
+            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_w: wgpu::AddressMode::ClampToEdge,
+            anisotropy_clamp: None,
+            label: None,
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            mipmap_filter: wgpu::FilterMode::Linear,
+            lod_min_clamp: -100.0,
+            lod_max_clamp: 100.0,
+            compare: None,
+            border_color: None,
+        });
+
+        let texture_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    count: None,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: sample_count > 1,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                    },
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    count: None,
+                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler { comparison: false, filtering: true },
+                },
+            ],
+            label: Some("texture bind group layout"),
+        });
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Depth texture bind group"),
+            layout: &texture_bind_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::Sampler(&sampler),
+                },
+            ],
+        });
+
+        Self {
+            texture,
+            view,
+            bind_group,
+            size,
+        }
+    }
+
     pub fn create_output_texture(device: &wgpu::Device, size: wgpu::Extent3d, sample_count: u32) -> Self {
         let descriptor = wgpu::TextureDescriptor {
             sample_count,

@@ -9,9 +9,9 @@ name = "franzplot"
 path = "src/main.rs"
 
 [features]
-show-timestamps = []
+teachers-edition = []
 dev-tools = []
-all = ["show-timestamps", "dev-tools"]
+all = ["teachers-edition", "dev-tools"]
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }

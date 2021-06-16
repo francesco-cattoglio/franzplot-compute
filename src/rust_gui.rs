@@ -133,7 +133,7 @@ impl Gui {
         }
     }
 
-    pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State, executor: &super::Executor) -> Option<SceneRectangle> {
+    pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State, executor: &crate::util::Executor) -> Option<SceneRectangle> {
         // create main window
         let window_begun = Window::new(im_str!("Rust window"))
             .no_decoration()
@@ -265,7 +265,7 @@ impl Gui {
             self.issue_redo(state);
         }
 
-        if cfg!(feature = "show-timestamps") {
+        if cfg!(feature = "teachers-edition") {
             use chrono::TimeZone;
             let file_info = im_str!("Created: {}; edited: {}; rn: {:X}",
                 chrono::Utc.timestamp(state.time_stamps.fc, 0).to_string(),

@@ -2,6 +2,32 @@ use crate::rust_gui;
 use crate::device_manager;
 use crate::rendering::texture;
 use crate::rendering::model;
+use crate::state::State;
+
+use std::future::Future;
+pub struct Executor {
+    #[cfg(not(target_arch = "wasm32"))]
+    pool: futures::executor::ThreadPool,
+}
+
+impl Executor {
+    pub fn new() -> Self {
+        Self {
+            #[cfg(not(target_arch = "wasm32"))]
+            pool: futures::executor::ThreadPool::new().unwrap(),
+        }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn execut<F: Future<Output = ()> + Send + 'static>(&self, f: F) {
+        self.pool.spawn_ok(f);
+    }
+    #[cfg(target_arch = "wasm32")]
+    pub fn execut<F: Future<Output = ()> + 'static>(&self, f: F) {
+        wasm_bindgen_futures::spawn_local(f);
+    }
+}
+
 
 pub fn load_imgui_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, renderer: &mut imgui_wgpu::Renderer, files: &[P]) -> rust_gui::MaskIds {
     use std::convert::TryInto;
@@ -177,8 +203,145 @@ impl BufferDimensions {
     }
 }
 
-use crate::state::State;
-pub fn create_png<P: AsRef<std::path::Path>>(state: &mut State, output_path: &P) {
+pub fn create_graph_png<P: AsRef<std::path::Path>>(state: &mut State, output_path: &P,
+                                                   window: &winit::window::Window, platform: &mut imgui_winit_support::WinitPlatform, renderer: &mut imgui_wgpu::Renderer,
+                                                   rust_gui: &mut rust_gui::Gui, imgui: &mut imgui::Context, logical_size: winit::dpi::LogicalSize::<f32>) {
+    let texture_size = wgpu::Extent3d {
+        height: state.app.manager.size.height,
+        width: state.app.manager.size.width,
+        depth_or_array_layers: 1,
+    };
+
+    let output_texture = super::rendering::texture::Texture::create_screenshot_texture(&state.app.manager.device, texture_size, 1);
+
+    // use the acquired frame for a rendering pass, which will clear the screen and render the gui
+    let mut encoder: wgpu::CommandEncoder =
+        state.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+    let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        label: None,
+        color_attachments: &[wgpu::RenderPassColorAttachment {
+            view: &output_texture.view,
+            resolve_target: None,
+            ops: wgpu::Operations {
+                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                store: true,
+            },
+        }],
+        depth_stencil_attachment: None,
+    });
+
+    // actual imgui rendering
+    // run it twice because we imgui needs to resize itself.
+    let executor = Executor::new();
+    {
+        let ui = imgui.frame();
+        let _requested_logical_rectangle = rust_gui.render(&ui, [logical_size.width, logical_size.height], state, &executor);
+    }
+    let ui = imgui.frame();
+    let _requested_logical_rectangle = rust_gui.render(&ui, [logical_size.width, logical_size.height], state, &executor);
+    // after calling the gui render function we know if we need to render the scene or not
+
+    platform.prepare_render(&ui, &window);
+    renderer
+        .render(ui.render(), &state.app.manager.queue, &state.app.manager.device, &mut rpass)
+        .expect("Imgui rendering failed");
+
+    drop(rpass); // dropping the render pass is required for the encoder.finish() command
+
+    // submit the framebuffer rendering pass
+    state.app.manager.queue.submit(Some(encoder.finish()));
+
+    let buffer_dimensions = BufferDimensions::new(texture_size.width as usize, texture_size.height as usize);
+    // The output buffer lets us retrieve the data as an array
+    let png_buffer = state.app.manager.device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        size: (buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height) as u64,
+        usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
+        mapped_at_creation: false,
+    });
+
+    let command_buffer = {
+        use std::num::NonZeroU32;
+
+        let mut encoder = state.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+        // Copy the data from the texture to the buffer
+        encoder.copy_texture_to_buffer(
+            wgpu::ImageCopyTexture {
+                texture: &output_texture.texture,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+            },
+            wgpu::ImageCopyBuffer {
+                buffer: &png_buffer,
+                layout: wgpu::ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(NonZeroU32::new(buffer_dimensions.padded_bytes_per_row as u32).unwrap()),
+                    rows_per_image: None,
+                },
+            },
+            texture_size,
+        );
+
+        encoder.finish()
+    };
+
+    state.app.manager.queue.submit(Some(command_buffer));
+
+    let buffer_slice = png_buffer.slice(..);
+    let buffer_future = buffer_slice.map_async(wgpu::MapMode::Read);
+
+    // Poll the device in a blocking manner so that our future resolves.
+    // In an actual application, `device.poll(...)` should
+    // be called in an event loop or on another thread.
+    state.app.manager.device.poll(wgpu::Maintain::Wait);
+    // If a file system is available, write the buffer as a PNG
+    let has_file_system_available = cfg!(not(target_arch = "wasm32"));
+    if !has_file_system_available {
+        return;
+    }
+
+    use futures::executor::block_on;
+    block_on(buffer_future).unwrap();
+    let padded_buffer = buffer_slice.get_mapped_range();
+    let mut padded_vector = Vec::<u8>::new();
+    for chunk in padded_buffer.chunks_exact(4).into_iter() {
+        padded_vector.push(chunk[2]);
+        padded_vector.push(chunk[1]);
+        padded_vector.push(chunk[0]);
+        padded_vector.push(chunk[3]);
+    }
+
+    let mut png_encoder = png::Encoder::new(
+        std::fs::File::create(output_path).unwrap(),
+        buffer_dimensions.width as u32,
+        buffer_dimensions.height as u32,
+    );
+    png_encoder.set_depth(png::BitDepth::Eight);
+    png_encoder.set_color(png::ColorType::RGBA);
+    let mut png_writer = png_encoder
+        .write_header()
+        .unwrap()
+        .into_stream_writer_with_size(buffer_dimensions.unpadded_bytes_per_row);
+
+    // from the padded_buffer we write just the unpadded bytes into the image
+    use std::io::Write;
+    for chunk in padded_vector.chunks(buffer_dimensions.padded_bytes_per_row) {
+        png_writer
+            .write(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
+            .unwrap();
+    }
+    png_writer.finish().unwrap();
+
+    // With the current interface, we have to make sure all mapped views are
+    // dropped before we unmap the buffer.
+    drop(padded_buffer);
+
+    png_buffer.unmap();
+}
+
+pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_path: &P) {
     let height = 1080;
     let width = 1920;
     let texture_size = wgpu::Extent3d {
@@ -189,6 +352,11 @@ pub fn create_png<P: AsRef<std::path::Path>>(state: &mut State, output_path: &P)
     state.app.update_depth_buffer(texture_size);
     state.app.update_projection_matrix(texture_size);
     let output_texture = super::rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
+    let processing_succesful = state.process_user_state();
+    if !processing_succesful {
+        println!("scene generation failed");
+        return;
+    }
     state.app.update_scene(&output_texture.view);
 
     let buffer_dimensions = BufferDimensions::new(width as usize, height as usize);

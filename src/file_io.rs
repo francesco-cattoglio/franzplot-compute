@@ -1,7 +1,7 @@
 use winit::event_loop::EventLoopProxy;
 
 use super::CustomEvent;
-use super::Executor;
+use crate::util::Executor;
 // TODO: Check if there is proper support for utf-8 under windows.
 // TODO: we probably would like to check if we have an open dialog/
 // a background thread already already, to prevent the user from
@@ -27,7 +27,7 @@ pub fn async_pick_png(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &
     executor.execut(async move {
         let file = dialog.await;
         if let Some(handle) = file {
-            event_loop_proxy.send_event(CustomEvent::ExportPng(handle.path().into())).unwrap();
+            event_loop_proxy.send_event(CustomEvent::ExportScenePng(handle.path().into())).unwrap();
         }
     });
 }

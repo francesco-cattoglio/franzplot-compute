@@ -1062,6 +1062,25 @@ impl NodeGraph {
         node_id
     }
 
+    pub fn push_all_to_corner(&mut self) {
+        let mut min_left = std::f32::MAX;
+        let mut min_up = std::f32::MAX;
+        for maybe_node in self.nodes.iter() {
+            if let Some(node) = maybe_node.as_ref() {
+                let [pos_x, pos_y] = node.position;
+                min_left = min_left.min(pos_x);
+                min_up = min_up.min(pos_y);
+            }
+        }
+
+        for maybe_node in self.nodes.iter_mut() {
+            if let Some(node) = maybe_node.as_mut() {
+                let [pos_x, pos_y] = node.position;
+                node.position = [pos_x - min_left, pos_y - min_up];
+            }
+        }
+    }
+
     pub fn push_positions_to_imnodes(&self) {
         for (idx, maybe_node) in self.nodes.iter().enumerate() {
             if let Some(node) = maybe_node.as_ref() {

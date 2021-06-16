@@ -32,35 +32,11 @@ pub enum CustomEvent {
     ShowOpenDialog,
     OpenFile(std::path::PathBuf),
     SaveFile(std::path::PathBuf),
-    ExportPng(std::path::PathBuf),
+    ExportGraphPng(std::path::PathBuf),
+    ExportScenePng(std::path::PathBuf),
     RequestExit,
     MouseFreeze,
     MouseThaw,
-}
-
-use std::future::Future;
-
-pub struct Executor {
-    #[cfg(not(target_arch = "wasm32"))]
-    pool: futures::executor::ThreadPool,
-}
-
-impl Executor {
-    fn new() -> Self {
-        Self {
-            #[cfg(not(target_arch = "wasm32"))]
-            pool: futures::executor::ThreadPool::new().unwrap(),
-        }
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn execut<F: Future<Output = ()> + Send + 'static>(&self, f: F) {
-        self.pool.spawn_ok(f);
-    }
-    #[cfg(target_arch = "wasm32")]
-    pub fn execut<F: Future<Output = ()> + 'static>(&self, f: F) {
-        wasm_bindgen_futures::spawn_local(f);
-    }
 }
 
 pub struct PhysicalRectangle {
@@ -108,6 +84,13 @@ fn main() {
             .help("Open an existing file instead of starting from a new one")
             .required(false)
             .index(1))
+        .arg(clap::Arg::with_name("export")
+             .help("Instead of running the program normally, FranzPlot will only export pictures of the graph and the scene.
+                   The name of the output files will be <export_value>.graph.png and <export_value.scene.png>")
+             .short("e")
+             .long("export")
+             .value_name("EXPORT")
+             .takes_value(true))
         .arg(clap::Arg::with_name("tracing")
             .short("t")
             .long("tracing")
@@ -136,6 +119,10 @@ fn main() {
     let tracing_path_option = maybe_tracing_path.map(|x| std::path::Path::new(x));
 
     let maybe_input_file = matches.value_of("INPUT");
+    dbg!(&maybe_input_file);
+
+    let maybe_export_path = matches.value_of("export");
+    dbg!(&maybe_export_path);
 
     let maybe_backend = matches.value_of("backend").map(|name| {
         match name.to_lowercase().as_str()  {
@@ -155,7 +142,11 @@ fn main() {
         // web winit always reports a size of zero
         #[cfg(not(target_arch = "wasm32"))]
         let screen_size = monitor.size();
-        winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
+        if maybe_export_path.is_some() {
+            winit::dpi::PhysicalSize::new(screen_size.width, screen_size.height)
+        } else {
+            winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
+        }
     } else {
         winit::dpi::PhysicalSize::new(1280, 800)
     };
@@ -335,7 +326,7 @@ fn main() {
         material_ids: imgui_materials,
         model_names,
     };
-    let executor = Executor::new();
+    let executor = util::Executor::new();
     let event_loop_proxy = event_loop.create_proxy();
     let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, availables, graph_fonts);
     let mut state = state::State::new(device_manager, assets);
@@ -345,9 +336,18 @@ fn main() {
         event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
     }
 
+    if let Some(path) = maybe_export_path {
+        let scene_file_name = String::new() + path + ".scene.png";
+        let scene_file_path = std::path::PathBuf::from(&scene_file_name);
+        let graph_file_name = String::new() + path + ".graph.png";
+        let graph_file_path = std::path::PathBuf::from(&graph_file_name);
+        event_loop_proxy.send_event(CustomEvent::ExportGraphPng(graph_file_path)).unwrap();
+        event_loop_proxy.send_event(CustomEvent::ExportScenePng(scene_file_path)).unwrap();
+        event_loop_proxy.send_event(CustomEvent::RequestExit).unwrap();
+    }
+
     let mut old_instant = std::time::Instant::now();
     let mut modifiers_state = winit::event::ModifiersState::default();
-
 
     event_loop.run(move |event, _, control_flow| {
         // BEWARE: keep in mind that if you go multi-window
@@ -495,8 +495,18 @@ fn main() {
                             }
                         }
                     },
-                    CustomEvent::ExportPng(path_buf) => {
-                        util::create_png(&mut state, &path_buf);
+                    CustomEvent::ExportGraphPng(path_buf) => {
+                        println!("exporting graph");
+                        dbg!(&path_buf);
+                        // zoom out twice
+                        state.user.graph.zoom_down_graph([0.0, 0.0]);
+                        state.user.graph.zoom_down_graph([0.0, 0.0]);
+                        state.user.graph.push_all_to_corner();
+                        state.user.graph.push_positions_to_imnodes();
+                        util::create_graph_png(&mut state, &path_buf,&window,&mut platform,&mut renderer,&mut rust_gui,&mut imgui, window_size.to_logical(hidpi_factor));
+                    },
+                    CustomEvent::ExportScenePng(path_buf) => {
+                        util::create_scene_png(&mut state, &path_buf);
                         // TODO: this is hacked in and needs some refactoring:
                         // util::create_png modifies the state changing the depth buffer and the
                         // projection because we run the rendering on the output png size.
