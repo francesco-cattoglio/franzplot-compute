@@ -354,8 +354,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     let output_texture = super::rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
     let processing_succesful = state.process_user_state();
     if !processing_succesful {
-        println!("scene generation failed");
-        return;
+        println!("Warning: errors detected in the scene");
     }
     state.app.update_scene(&output_texture.view);
 

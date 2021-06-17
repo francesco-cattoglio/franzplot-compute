@@ -165,6 +165,9 @@ fn main() {
         .with_title("test")
         .with_window_icon(Some(icon))
         .with_inner_size(window_size);
+    if maybe_export_path.is_some() {
+        builder = builder.with_visible(false);
+    }
     #[cfg(windows_OFF)] // TODO check for news regarding this
     {
         use winit::platform::windows::WindowBuilderExtWindows;
@@ -501,9 +504,9 @@ fn main() {
                     },
                     CustomEvent::ExportGraphPng(path_buf) => {
                         println!("Exporting graph: {:?}", &path_buf);
-                        // zoom out twice
+                        // zoom out once or twice
                         state.user.graph.zoom_down_graph([0.0, 0.0]);
-                        state.user.graph.zoom_down_graph([0.0, 0.0]);
+                        //state.user.graph.zoom_down_graph([0.0, 0.0]);
                         state.user.graph.push_all_to_corner();
                         state.user.graph.push_positions_to_imnodes();
                         util::create_graph_png(&mut state, &path_buf,&window,&mut platform,&mut renderer,&mut rust_gui,&mut imgui, window_size.to_logical(hidpi_factor));
