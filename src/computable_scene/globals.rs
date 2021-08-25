@@ -118,7 +118,7 @@ impl Globals {
         let buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor{
             label: Some("globals buffer"),
             contents: bytemuck::cast_slice(&init_vec),
-            usage: wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::UNIFORM
+            usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::UNIFORM
         });
         let bind_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {

@@ -33,9 +33,9 @@ impl Texture {
             format: super::DEPTH_FORMAT,
             mip_level_count: 1,
             label: Some("Depth texture"),
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT
-                | wgpu::TextureUsage::SAMPLED
-                | wgpu::TextureUsage::COPY_SRC
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::SAMPLED
+                | wgpu::TextureUsages::COPY_SRC
             };
 
         let texture = device.create_texture(&descriptor);
@@ -61,7 +61,7 @@ impl Texture {
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     count: None,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         multisampled: sample_count > 1,
                         sample_type: wgpu::TextureSampleType::Float { filterable: true },
@@ -71,7 +71,7 @@ impl Texture {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     count: None,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler { comparison: true, filtering: true },
                 },
             ],
@@ -108,9 +108,9 @@ impl Texture {
             format: super::SWAPCHAIN_FORMAT,
             mip_level_count: 1,
             label: Some("Scene output texture"),
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT
-                | wgpu::TextureUsage::SAMPLED
-                | wgpu::TextureUsage::COPY_SRC
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::SAMPLED
+                | wgpu::TextureUsages::COPY_SRC
             };
 
         let texture = device.create_texture(&descriptor);
@@ -136,7 +136,7 @@ impl Texture {
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     count: None,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         multisampled: sample_count > 1,
                         sample_type: wgpu::TextureSampleType::Float { filterable: true },
@@ -146,7 +146,7 @@ impl Texture {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     count: None,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler { comparison: false, filtering: true },
                 },
             ],
@@ -183,9 +183,9 @@ impl Texture {
             format: super::SCENE_FORMAT,
             mip_level_count: 1,
             label: Some("Scene output texture"),
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT
-                | wgpu::TextureUsage::SAMPLED
-                | wgpu::TextureUsage::COPY_SRC
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | wgpu::TextureUsages::SAMPLED
+                | wgpu::TextureUsages::COPY_SRC
             };
 
         let texture = device.create_texture(&descriptor);
@@ -211,7 +211,7 @@ impl Texture {
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     count: None,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         multisampled: sample_count > 1,
                         sample_type: wgpu::TextureSampleType::Float { filterable: true },
@@ -221,7 +221,7 @@ impl Texture {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     count: None,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler { comparison: false, filtering: true },
                 },
             ],
@@ -256,7 +256,7 @@ impl Texture {
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     count: None,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Texture {
                         multisampled: false,
                         sample_type: wgpu::TextureSampleType::Float { filterable: true },
@@ -266,7 +266,7 @@ impl Texture {
                 wgpu::BindGroupLayoutEntry {
                     binding: 1,
                     count: None,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler { comparison: false, filtering: true },
                 },
             ],
@@ -292,7 +292,7 @@ impl Texture {
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     format: wgpu::TextureFormat::R8Unorm,
-                    usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
+                    usage: wgpu::TextureUsages::SAMPLED | wgpu::TextureUsages::COPY_DST,
                     label: tex_label,
                 });
 
@@ -324,7 +324,7 @@ impl Texture {
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                    usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
+                    usage: wgpu::TextureUsages::SAMPLED | wgpu::TextureUsages::COPY_DST,
                     label: tex_label,
                 });
 

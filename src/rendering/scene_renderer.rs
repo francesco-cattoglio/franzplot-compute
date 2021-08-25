@@ -80,7 +80,7 @@ impl SceneRenderer {
         let uniforms_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&[uniforms]),
-            usage: wgpu::BufferUsage::UNIFORM | wgpu::BufferUsage::COPY_DST,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
         let uniforms_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
@@ -275,13 +275,13 @@ impl SceneRenderer {
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&vertices),
-            usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
         let index_buffer = device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: None,
                 contents: bytemuck::cast_slice(&indices),
-                usage: wgpu::BufferUsage::INDEX,
+                usage: wgpu::BufferUsages::INDEX,
         });
 
         render_bundle_encoder.set_pipeline(&self.wireframe_pipeline);
@@ -436,7 +436,7 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
             mapped_at_creation: false,
             label: None,
             size: (length * std::mem::size_of::<i32>()) as wgpu::BufferAddress,
-            usage: wgpu::BufferUsage::COPY_DST | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
         });
         let picking_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
@@ -506,7 +506,7 @@ fn create_billboard_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
             alpha: wgpu::BlendComponent::REPLACE,
             color: wgpu::BlendComponent::REPLACE,
         }),
-        write_mask: wgpu::ColorWrite::ALL,
+        write_mask: wgpu::ColorWrites::ALL,
     };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
         layout: Some(&render_pipeline_layout),
@@ -583,7 +583,7 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
             alpha: wgpu::BlendComponent::REPLACE,
             color: wgpu::BlendComponent::REPLACE,
         }),
-        write_mask: wgpu::ColorWrite::ALL,
+        write_mask: wgpu::ColorWrites::ALL,
     };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
         layout: Some(&render_pipeline_layout),
@@ -661,7 +661,7 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
             color: wgpu::BlendComponent::REPLACE,
             alpha: wgpu::BlendComponent::REPLACE,
         }),
-        write_mask: wgpu::ColorWrite::ALL,
+        write_mask: wgpu::ColorWrites::ALL,
     };
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
         layout: Some(&render_pipeline_layout),
@@ -733,7 +733,7 @@ fn create_char_x(device: &wgpu::Device, pos: [f32; 3], size: f32, color: [u8; 4]
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: None,
         contents: bytemuck::cast_slice(&vertices),
-        usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
     });
 
     let indices = vec![
@@ -743,7 +743,7 @@ fn create_char_x(device: &wgpu::Device, pos: [f32; 3], size: f32, color: [u8; 4]
     let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: None,
         contents: bytemuck::cast_slice(&indices),
-        usage: wgpu::BufferUsage::INDEX | wgpu::BufferUsage::COPY_DST,
+        usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
     });
 
     (vertex_buffer, index_buffer, indices.len() as u32)
@@ -771,7 +771,7 @@ fn create_char_y(device: &wgpu::Device, pos: [f32; 3], size: f32, color: [u8; 4]
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: None,
         contents: bytemuck::cast_slice(&vertices),
-        usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
     });
 
     let indices = vec![
@@ -782,7 +782,7 @@ fn create_char_y(device: &wgpu::Device, pos: [f32; 3], size: f32, color: [u8; 4]
     let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: None,
         contents: bytemuck::cast_slice(&indices),
-        usage: wgpu::BufferUsage::INDEX | wgpu::BufferUsage::COPY_DST,
+        usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
     });
 
     (vertex_buffer, index_buffer, indices.len() as u32)
@@ -814,7 +814,7 @@ fn create_char_z(device: &wgpu::Device, pos: [f32; 3], size: f32, color: [u8; 4]
     let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: None,
         contents: bytemuck::cast_slice(&vertices),
-        usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_DST,
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
     });
 
     let indices = vec![
@@ -825,7 +825,7 @@ fn create_char_z(device: &wgpu::Device, pos: [f32; 3], size: f32, color: [u8; 4]
     let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: None,
         contents: bytemuck::cast_slice(&indices),
-        usage: wgpu::BufferUsage::INDEX | wgpu::BufferUsage::COPY_DST,
+        usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::COPY_DST,
     });
 
     (vertex_buffer, index_buffer, indices.len() as u32)

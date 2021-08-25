@@ -125,12 +125,12 @@ fn main() {
 
     let maybe_backend = matches.value_of("backend").map(|name| {
         match name.to_lowercase().as_str()  {
-            "vulkan" => wgpu::BackendBit::VULKAN,
-            "metal" => wgpu::BackendBit::METAL,
-            "dx12" => wgpu::BackendBit::DX12,
-            "dx11" => wgpu::BackendBit::DX11,
-            "gl" => wgpu::BackendBit::GL,
-            "webgpu" => wgpu::BackendBit::BROWSER_WEBGPU,
+            "vulkan" => wgpu::Backend::Vulkan,
+            "metal" => wgpu::Backend::Metal,
+            "dx12" => wgpu::Backend::Dx12,
+            "dx11" => wgpu::Backend::Dx11,
+            "gl" => wgpu::Backend::Gl,
+            "webgpu" => wgpu::Backend::BrowserWebGpu,
             other => panic!("Unknown backend: {}", other),
         }
     });
