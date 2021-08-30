@@ -14,16 +14,16 @@ pub struct Manager {
 
 
 #[cfg(target_os = "windows")]
-const DEFAULT_BACKEND: wgpu::BackendBit = wgpu::BackendBit::DX12;
+const DEFAULT_BACKEND: wgpu::Backends = wgpu::Backends::DX12;
 
 #[cfg(target_os = "macos")]
-const DEFAULT_BACKEND: wgpu::BackendBit = wgpu::BackendBit::METAL;
+const DEFAULT_BACKEND: wgpu::Backends = wgpu::Backends::METAL;
 
 #[cfg(target_os = "linux")]
-const DEFAULT_BACKEND: wgpu::BackendBit = wgpu::BackendBit::VULKAN;
+const DEFAULT_BACKEND: wgpu::Backends = wgpu::Backends::VULKAN;
 
 impl Manager {
-    pub fn new(window: &Window, trace_path: Option<&std::path::Path>, backend_override: Option<wgpu::BackendBit>) -> Self {
+    pub fn new(window: &Window, trace_path: Option<&std::path::Path>, backend_override: Option<wgpu::Backend>) -> Self {
         use futures::executor::block_on;
         let instance = wgpu::Instance::new(backend_override.unwrap_or(DEFAULT_BACKEND));
 
@@ -55,7 +55,7 @@ impl Manager {
         let (device, queue) = block_on(device_future).expect("unable to get a device and a queue");
 
         let sc_desc = wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: SWAPCHAIN_FORMAT,
             width: size.width,
             height: size.height,
@@ -111,7 +111,7 @@ impl Manager {
     pub fn update_swapchain(&mut self, window: &Window) {
         let size = window.inner_size();
         let swapchain_descriptor = wgpu::SwapChainDescriptor {
-                usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
                 format: wgpu::TextureFormat::Bgra8UnormSrgb,
                 width: size.width,
                 height: size.height,

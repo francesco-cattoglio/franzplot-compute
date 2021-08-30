@@ -34,7 +34,7 @@ impl Texture {
             mip_level_count: 1,
             label: Some("Depth texture"),
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                | wgpu::TextureUsages::SAMPLED
+                | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_SRC
             };
 
@@ -109,7 +109,7 @@ impl Texture {
             mip_level_count: 1,
             label: Some("Scene output texture"),
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                | wgpu::TextureUsages::SAMPLED
+                | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_SRC
             };
 
@@ -184,7 +184,7 @@ impl Texture {
             mip_level_count: 1,
             label: Some("Scene output texture"),
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                | wgpu::TextureUsages::SAMPLED
+                | wgpu::TextureUsages::TEXTURE_BINDING
                 | wgpu::TextureUsages::COPY_SRC
             };
 
@@ -292,7 +292,7 @@ impl Texture {
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     format: wgpu::TextureFormat::R8Unorm,
-                    usage: wgpu::TextureUsages::SAMPLED | wgpu::TextureUsages::COPY_DST,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                     label: tex_label,
                 });
 
@@ -302,6 +302,7 @@ impl Texture {
                         texture: &texture,
                         mip_level: 0,
                         origin: wgpu::Origin3d::ZERO,
+                        aspect: wgpu::TextureAspect::All,
                     },
                     // The actual pixel data
                     bytemuck::cast_slice(&grayscale_img),
@@ -324,7 +325,7 @@ impl Texture {
                     sample_count: 1,
                     dimension: wgpu::TextureDimension::D2,
                     format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                    usage: wgpu::TextureUsages::SAMPLED | wgpu::TextureUsages::COPY_DST,
+                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                     label: tex_label,
                 });
 
@@ -334,6 +335,7 @@ impl Texture {
                         texture: &texture,
                         mip_level: 0,
                         origin: wgpu::Origin3d::ZERO,
+                        aspect: wgpu::TextureAspect::All,
                     },
                     // The actual pixel data
                     bytemuck::cast_slice(&color_img),

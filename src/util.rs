@@ -272,6 +272,7 @@ pub fn create_graph_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
                 texture: &output_texture.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
             },
             wgpu::ImageCopyBuffer {
                 buffer: &png_buffer,
@@ -378,6 +379,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
                 texture: &output_texture.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
             },
             wgpu::ImageCopyBuffer {
                 buffer: &png_buffer,

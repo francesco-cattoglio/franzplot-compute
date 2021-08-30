@@ -126,7 +126,7 @@ impl Globals {
                     wgpu::BindGroupLayoutEntry {
                         count: None,
                         binding: 0,
-                        visibility: wgpu::ShaderStage::COMPUTE,
+                        visibility: wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Uniform,
                             min_binding_size: None,

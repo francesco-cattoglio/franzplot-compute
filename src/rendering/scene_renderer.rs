@@ -87,7 +87,7 @@ impl SceneRenderer {
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     count: None,
-                    visibility: wgpu::ShaderStage::VERTEX | wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Uniform,
                         has_dynamic_offset: false,
@@ -217,7 +217,11 @@ impl SceneRenderer {
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for billboard"),
                 color_formats: &[SCENE_FORMAT],
-                depth_stencil_format: Some(DEPTH_FORMAT),
+                depth_stencil: Some(wgpu::RenderBundleDepthStencil{
+                    format: DEPTH_FORMAT,
+                    depth_read_only: false,
+                    stencil_read_only: false,
+                }),
                 sample_count: SAMPLE_COUNT,
             }
         );
@@ -236,7 +240,11 @@ impl SceneRenderer {
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for RenderingData"),
                 color_formats: &[SCENE_FORMAT],
-                depth_stencil_format: Some(DEPTH_FORMAT),
+                depth_stencil: Some(wgpu::RenderBundleDepthStencil{
+                    format: DEPTH_FORMAT,
+                    depth_read_only: false,
+                    stencil_read_only: false,
+                }),
                 sample_count: SAMPLE_COUNT,
             }
         );
@@ -300,7 +308,11 @@ impl SceneRenderer {
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for RenderingData"),
                 color_formats: &[SCENE_FORMAT],
-                depth_stencil_format: Some(DEPTH_FORMAT),
+                depth_stencil: Some(wgpu::RenderBundleDepthStencil{
+                    format: DEPTH_FORMAT,
+                    depth_read_only: false,
+                    stencil_read_only: false,
+                }),
                 sample_count: SAMPLE_COUNT,
             }
         );
@@ -333,7 +345,11 @@ impl SceneRenderer {
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for VectorRenderingData"),
                 color_formats: &[SCENE_FORMAT],
-                depth_stencil_format: Some(DEPTH_FORMAT),
+                depth_stencil: Some(wgpu::RenderBundleDepthStencil{
+                    format: DEPTH_FORMAT,
+                    depth_read_only: false,
+                    stencil_read_only: false,
+                }),
                 sample_count: SAMPLE_COUNT,
             }
         );
@@ -443,7 +459,7 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
                 wgpu::BindGroupLayoutEntry {
                     binding: 0,
                     count: None,
-                    visibility: wgpu::ShaderStage::FRAGMENT,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Buffer {
                         ty: wgpu::BufferBindingType::Storage { read_only: false },
                         has_dynamic_offset: false,
@@ -480,12 +496,10 @@ fn create_billboard_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
     let vert_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
         label: Some("billboard vert shader module"),
         source: vert_data,
-        flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
     });
     let frag_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
         label: Some("billboard fragment shader module"),
         source: frag_data,
-        flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
     });
 
     let render_pipeline_layout =
@@ -497,7 +511,7 @@ fn create_billboard_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
 
     let vertex_buffer_layout = wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<BillboardVertexData>() as wgpu::BufferAddress,
-        step_mode: wgpu::InputStepMode::Vertex,
+        step_mode: wgpu::VertexStepMode::Vertex,
         attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x3, 2 => Unorm8x4],
     };
     let color_target_state = wgpu::ColorTargetState {
@@ -557,12 +571,10 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
     let vert_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
         label: Some("wireframe vertex shader module"),
         source: vert_data,
-        flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
     });
     let frag_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
         label: Some("wireframe fragment shader module"),
         source: frag_data,
-        flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
     });
 
     let render_pipeline_layout =
@@ -574,7 +586,7 @@ fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu:
 
     let vertex_buffer_layout = wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<WireframeVertexData>() as wgpu::BufferAddress,
-        step_mode: wgpu::InputStepMode::Vertex,
+        step_mode: wgpu::VertexStepMode::Vertex,
         attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Unorm8x4],
     };
     let color_target_state = wgpu::ColorTargetState {
@@ -634,12 +646,10 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
     let vert_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
         label: Some("solid pipeline vertex shader module"),
         source: vert_data,
-        flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
     });
     let frag_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
         label: Some("solid pipeline fragment shader module"),
         source: frag_data,
-        flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
     });
 
     let texture_bind_layout = Texture::default_bind_layout(device);
@@ -652,7 +662,7 @@ fn create_solid_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::Bin
 
     let vertex_buffer_descriptor = wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<StandardVertexData>() as wgpu::BufferAddress,
-        step_mode: wgpu::InputStepMode::Vertex,
+        step_mode: wgpu::VertexStepMode::Vertex,
         attributes: &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2],
     };
     let color_target_state = wgpu::ColorTargetState {
