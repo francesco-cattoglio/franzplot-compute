@@ -171,7 +171,7 @@ impl State {
             mouse_pos: [0.0, 0.0],
         };
 
-        let camera = camera::Camera::from_height_width(manager.sc_desc.height as f32, manager.sc_desc.width as f32);
+        let camera = camera::Camera::from_height_width(manager.config.height as f32, manager.config.width as f32);
         let camera_controller = Box::new(camera::VTKController::new());
 
         let app = AppState {

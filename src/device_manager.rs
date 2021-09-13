@@ -8,8 +8,7 @@ pub struct Manager {
     pub queue: wgpu::Queue,
     pub size: winit::dpi::PhysicalSize<u32>,
     pub surface: wgpu::Surface,
-    pub sc_desc: wgpu::SwapChainDescriptor,
-    pub swap_chain: wgpu::SwapChain,
+    pub config: wgpu::SurfaceConfiguration,
 }
 
 
@@ -23,7 +22,7 @@ const DEFAULT_BACKEND: wgpu::Backends = wgpu::Backends::METAL;
 const DEFAULT_BACKEND: wgpu::Backends = wgpu::Backends::VULKAN;
 
 impl Manager {
-    pub fn new(window: &Window, trace_path: Option<&std::path::Path>, backend_override: Option<wgpu::Backend>) -> Self {
+    pub fn new(window: &Window, trace_path: Option<&std::path::Path>, backend_override: Option<wgpu::Backends>) -> Self {
         use futures::executor::block_on;
         let instance = wgpu::Instance::new(backend_override.unwrap_or(DEFAULT_BACKEND));
 
@@ -54,14 +53,14 @@ impl Manager {
         );
         let (device, queue) = block_on(device_future).expect("unable to get a device and a queue");
 
-        let sc_desc = wgpu::SwapChainDescriptor {
+        let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: SWAPCHAIN_FORMAT,
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::Fifo,
         };
-        let swap_chain = Self::create_swapchain(&device, &surface, &sc_desc);
+        surface.configure(&device, &config);
 
         Self {
             device,
@@ -69,20 +68,19 @@ impl Manager {
             queue,
             size,
             surface,
-            swap_chain,
-            sc_desc,
+            config,
         }
     }
 
-    pub fn get_frame(&mut self) -> Option<wgpu::SwapChainFrame> {
+    pub fn get_frame(&mut self) -> Option<wgpu::SurfaceFrame> {
         // get the framebuffer frame. We might need to re-create the swapchain if for some
         // reason our current one is outdated
-        let maybe_frame = self.swap_chain.get_current_frame();
+        let maybe_frame = self.surface.get_current_frame();
         match maybe_frame {
-                Ok(swapchain_frame) => {
-                    Some(swapchain_frame)
+                Ok(surface_frame) => {
+                    Some(surface_frame)
                 }
-                Err(wgpu::SwapChainError::Outdated) => {
+                Err(wgpu::SurfaceError::Outdated) => {
                     // This interesting thing happens when we just resized the window but due to a
                     // race condition the winit ResizeEvent has not fired just yet. We might resize
                     // the swapchain here, but doing so would leave the app in a borked state:
@@ -93,44 +91,27 @@ impl Manager {
                     // fires.
                     None
                 }
-                Err(wgpu::SwapChainError::OutOfMemory) => {
+                Err(wgpu::SurfaceError::OutOfMemory) => {
                     panic!("Out Of Memory error in frame rendering");
                 }
-                Err(wgpu::SwapChainError::Timeout) => {
+                Err(wgpu::SurfaceError::Timeout) => {
                     println!("Warning: timeout error in frame rendering!");
                     None
                 }
-                Err(wgpu::SwapChainError::Lost) => {
+                Err(wgpu::SurfaceError::Lost) => {
                     println!("Warning: frame Lost error in frame rendering");
                     None
                 }
         }
     }
 
-    #[allow(unused)]
-    pub fn update_swapchain(&mut self, window: &Window) {
-        let size = window.inner_size();
-        let swapchain_descriptor = wgpu::SwapChainDescriptor {
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                format: wgpu::TextureFormat::Bgra8UnormSrgb,
-                width: size.width,
-                height: size.height,
-                present_mode: wgpu::PresentMode::Fifo,
-            };
-        self.swap_chain = Self::create_swapchain(&self.device, &self.surface, &swapchain_descriptor);
-    }
-
-    fn create_swapchain(device: &wgpu::Device, surface: &wgpu::Surface, swapchain_descriptor: &wgpu::SwapChainDescriptor) -> wgpu::SwapChain {
-        device.create_swap_chain(surface, swapchain_descriptor)
-    }
-
     pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
         let height = size.height as u32;
         let width = size.width as u32;
         if height >= 8 && width >= 8 {
-            self.sc_desc.width = width;
-            self.sc_desc.height = height;
-            self.swap_chain = self.device.create_swap_chain(&self.surface, &self.sc_desc);
+            self.config.width = width;
+            self.config.height = height;
+            self.surface.configure(&self.device, &self.config);
         }
     }
 

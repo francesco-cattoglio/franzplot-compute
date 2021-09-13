@@ -125,12 +125,12 @@ fn main() {
 
     let maybe_backend = matches.value_of("backend").map(|name| {
         match name.to_lowercase().as_str()  {
-            "vulkan" => wgpu::Backend::Vulkan,
-            "metal" => wgpu::Backend::Metal,
-            "dx12" => wgpu::Backend::Dx12,
-            "dx11" => wgpu::Backend::Dx11,
-            "gl" => wgpu::Backend::Gl,
-            "webgpu" => wgpu::Backend::BrowserWebGpu,
+            "vulkan" => wgpu::Backends::VULKAN,
+            "metal" => wgpu::Backends::METAL,
+            "dx12" => wgpu::Backends::DX12,
+            "dx11" => wgpu::Backends::DX11,
+            "gl" => wgpu::Backends::GL,
+            "webgpu" => wgpu::Backends::BROWSER_WEBGPU,
             other => panic!("Unknown backend: {}", other),
         }
     });
@@ -394,7 +394,7 @@ fn main() {
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: None,
                     color_attachments: &[wgpu::RenderPassColorAttachment {
-                        view: &frame.output.view,
+                        view: &frame.output.texture.create_view(&wgpu::TextureViewDescriptor::default()),
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
