@@ -21,6 +21,12 @@ pub struct StandardVertexData {
     pub _padding: [f32; 2],
 }
 
+impl StandardVertexData {
+    fn vertex_attribute_array() -> [wgpu::VertexAttribute; 4] {
+        wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x2, 3 => Sint32x2]
+    }
+}
+
 pub const GLSL_STANDARD_VERTEX_STRUCT: & str = r##"
 struct Vertex {
     vec4 position;
@@ -36,7 +42,7 @@ unsafe impl bytemuck::Zeroable for StandardVertexData {}
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct WireframeVertexData {
-    position: [f32; 3],
+    position: [f32; 4],
     color: [u8; 4],
 }
 

@@ -17,10 +17,11 @@ all = ["teachers-edition", "dev-tools"]
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 bytemuck = "1.2"
-wgpu = { version = "0.10" }
+wgpu = { version = "0.10", features = ["trace"] }
 num-iter = "0.1"
 anyhow = "1.0"
 futures = { version = "0.3.10", features = ["thread-pool"] }
+env_logger = "0.9"
 glam = "0.11"
 maplit = "1.0"
 winit = "0.24"
@@ -45,6 +46,7 @@ hexasphere = "3.1"
 rfd = "0.2.2"
 pest = "2.1"
 pest_derive = "2.1"
+shaderc = "0.7"
 
 [build-dependencies]
 cxx-build = "1.0"
