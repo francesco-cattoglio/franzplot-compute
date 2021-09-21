@@ -108,7 +108,7 @@ impl AppState {
     }
 
     pub fn set_axes_labels(&mut self, axis_length: i32, label_size: f32) {
-        self.computable_scene.renderer.set_axes_labels(axis_length, label_size, &self.manager.device);
+        self.computable_scene.renderer.set_axes_labels(axis_length as f32, label_size, &self.manager.device);
     }
 
     pub fn clear_axes_labels(&mut self) {
