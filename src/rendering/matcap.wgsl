@@ -96,7 +96,14 @@ fn billboard_vs_main(
 ) -> ColorOnlyOutput {
     var out: ColorOnlyOutput;
     out.color = color;
-    out.position = uniforms.proj * (vec4<f32>(position_2d, 0.0, 1.0) + uniforms.view[3]) + uniforms.proj * uniforms.view * vec4<f32>(billboard_placement, 0.0);
+    // please remember that matrices are column-major
+    let modified_view = mat4x4<f32>(
+        vec4<f32>(1.0, 0.0, 0.0, 0.0),
+        vec4<f32>(0.0, 1.0, 0.0, 0.0),
+        vec4<f32>(0.0, 0.0, 1.0, 0.0),
+        uniforms.view[3]
+    );
+    out.position = uniforms.proj * modified_view * vec4<f32>(position_2d, 0.0, 1.0) + uniforms.proj * uniforms.view * vec4<f32>(billboard_placement, 0.0);
     return out;
 }
 
