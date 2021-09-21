@@ -178,12 +178,14 @@ impl SceneRenderer {
     pub fn set_axes_labels(&mut self, axis_length: i32, label_size: f32, device: &wgpu::Device) {
         self.clear_axes_labels();
         let distance = axis_length as f32 + 0.75 * label_size;
-        let (x_vertices, x_indices, x_count) = create_char_x(device, [distance, 0.0, label_size], label_size, [255, 0, 0, 255]);
-        self.add_billboard(device, &x_vertices, &x_indices, x_count);
-        let (y_vertices, y_indices, y_count) = create_char_y(device, [0.0, distance, label_size], label_size, [0, 255, 0, 255]);
-        self.add_billboard(device, &y_vertices, &y_indices, y_count);
-        let (z_vertices, z_indices, z_count) = create_char_z(device, [0.0, 0.0, distance + label_size], label_size, [0, 0, 255, 255]);
-        self.add_billboard(device, &z_vertices, &z_indices, z_count);
+        let (vertices, indices, count) = create_xyz_characters(device, distance, label_size);
+        self.add_billboard(device, &vertices, &indices, count);
+        //let (x_vertices, x_indices, x_count) = create_char_x(device, [distance, 0.0, label_size], label_size, [255, 0, 0, 255]);
+        //self.add_billboard(device, &x_vertices, &x_indices, x_count);
+        //let (y_vertices, y_indices, y_count) = create_char_y(device, [0.0, distance, label_size], label_size, [0, 255, 0, 255]);
+        //self.add_billboard(device, &y_vertices, &y_indices, y_count);
+        //let (z_vertices, z_indices, z_count) = create_char_z(device, [0.0, 0.0, distance + label_size], label_size, [0, 0, 255, 255]);
+        //self.add_billboard(device, &z_vertices, &z_indices, z_count);
     }
 
     fn add_billboard(&mut self, device: &wgpu::Device, vertex_buffer: &wgpu::Buffer, index_buffer: &wgpu::Buffer, index_count: u32) {
@@ -665,7 +667,85 @@ fn create_char_x(device: &wgpu::Device, pos: [f32; 3], size: f32, color: [u8; 4]
     (vertex_buffer, index_buffer, indices.len() as u32)
 }
 
-// TODO: DRY, maybe also move somewhere else
+// TODO: DRY, maybe move the list of vertices somewhere else?
+fn create_xyz_characters(device: &wgpu::Device, distance_from_origin: f32, size: f32) -> (wgpu::Buffer, wgpu::Buffer, u32) {
+    // we create the letters using triangles with repeated vertices. They are composed just by a
+    // bunch of triangles anyway.
+    let pos_2d_x = vec![
+        // first segment of the X
+        [-0.43*size, -0.50*size], [-0.19*size, -0.50*size], [ 0.43*size,  0.50*size],
+        [ 0.43*size,  0.50*size], [ 0.19*size,  0.50*size], [-0.43*size, -0.50*size],
+        // second segment of the X
+        [-0.43*size,  0.50*size], [ 0.19*size, -0.50*size], [ 0.43*size, -0.50*size],
+        [ 0.43*size, -0.50*size], [-0.19*size,  0.50*size], [-0.43*size,  0.50*size],
+    ];
+
+    let pos_2d_y = vec![
+        // quad for the leg
+        [-0.12*size, -0.50*size], [ 0.12*size, -0.50*size], [ 0.12*size, -0.16*size],
+        [ 0.12*size, -0.16*size], [-0.12*size, -0.16*size], [-0.12*size, -0.50*size],
+        // quad for the left arm
+        [-0.12*size, -0.16*size], [ 0.12*size, -0.16*size], [-0.19*size,  0.50*size],
+        [-0.19*size,  0.50*size], [-0.43*size,  0.50*size], [-0.12*size, -0.16*size],
+        // quad for the right arm
+        [-0.12*size, -0.16*size], [ 0.12*size, -0.16*size], [ 0.43*size,  0.50*size],
+        [ 0.43*size,  0.50*size], [ 0.19*size,  0.50*size], [-0.12*size, -0.16*size],
+    ];
+    let pos_2d_z = vec![
+        // bottom line quad
+        [-0.38*size, -0.50*size], [ 0.38*size, -0.50*size], [ 0.38*size, -0.30*size],
+        [ 0.38*size, -0.30*size], [-0.38*size, -0.30*size], [-0.38*size, -0.50*size],
+        // top line quad
+        [-0.38*size,  0.30*size], [ 0.38*size,  0.30*size], [ 0.38*size,  0.50*size],
+        [ 0.38*size,  0.50*size], [-0.38*size,  0.50*size], [-0.38*size,  0.30*size],
+         // oblique line
+        [-0.38*size, -0.30*size], [-0.08*size, -0.30*size], [ 0.38*size,  0.30*size],
+        [ 0.38*size,  0.30*size], [ 0.08*size,  0.30*size], [-0.38*size, -0.30*size],
+    ];
+
+    let z_offset = 0.75 * size;
+    let color_x: [u8; 4] = [255, 0, 0, 255];
+    let color_y: [u8; 4] = [0, 255, 0, 255];
+    let color_z: [u8; 4] = [0, 0, 255, 255];
+
+    let vertices: Vec::<BillboardVertexData> =    pos_2d_x.into_iter()
+        .map(|p_2d| BillboardVertexData{
+            position: p_2d,
+            offset: [distance_from_origin, 0.0, z_offset],
+            color: color_x,
+        })
+        .chain(
+            pos_2d_y.into_iter()
+            .map(|p_2d| BillboardVertexData{
+                position: p_2d,
+                offset: [0.0, distance_from_origin, z_offset],
+                color: color_y,
+            })
+        )
+        .chain(
+            pos_2d_z.into_iter()
+            .map(|p_2d| BillboardVertexData{
+                position: p_2d,
+                offset: [0.0, 0.0, distance_from_origin + z_offset],
+                color: color_z,
+            })
+        )
+        .collect();
+    let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: None,
+        contents: bytemuck::cast_slice(&vertices),
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+    });
+
+    let indices: Vec<u32> = num_iter::range(0, vertices.len() as u32).collect();
+    let index_buffer = device.create_buffer_init(
+        &wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsages::INDEX,
+    });
+    (vertex_buffer, index_buffer, indices.len() as u32)
+}
 fn create_char_y(device: &wgpu::Device, pos: [f32; 3], size: f32, color: [u8; 4]) -> (wgpu::Buffer, wgpu::Buffer, u32) {
     let pos_2d = vec![
             [-0.12*size, -0.50*size],
