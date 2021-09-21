@@ -43,9 +43,7 @@ impl Uniforms {
 /// that imgui picks up and shows to the user.
 ///
 pub struct SceneRenderer {
-    matcap_pipeline: wgpu::RenderPipeline,
-    billboard_pipeline: wgpu::RenderPipeline,
-    wireframe_pipeline: wgpu::RenderPipeline,
+    pipelines: Pipelines,
     picking_buffer_length: usize,
     picking_buffer: wgpu::Buffer,
     picking_bind_group: wgpu::BindGroup,
@@ -55,9 +53,14 @@ pub struct SceneRenderer {
     renderable_ids: Vec<BlockId>,
     uniforms: Uniforms,
     uniforms_buffer: wgpu::Buffer,
-    uniforms_bind_group: wgpu::BindGroup,
     depth_texture: Texture,
     output_texture: Texture,
+}
+
+struct Pipelines {
+    matcap: wgpu::RenderPipeline,
+    billboard: wgpu::RenderPipeline,
+    wireframe: wgpu::RenderPipeline,
 }
 
 impl SceneRenderer {
@@ -75,46 +78,17 @@ impl SceneRenderer {
         let picking_buffer_length = 16;
         let (picking_buffer, picking_bind_layout, picking_bind_group) = create_picking_buffer(device, picking_buffer_length);
 
-        // set up uniforms
+        // pipelines from the wgsl shader, layouts are auto-deduced
+        let pipelines = create_pipelines(device);
+
+        // create the buffer that will be needed for the uniforms
         let uniforms = Uniforms::new();
         let uniforms_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&[uniforms]),
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
-        // create the pipeline for the "solid" 1D and 2D objects
-        let matcap_pipeline = create_matcap_pipeline(&device);
-        let uniforms_bind_layout = matcap_pipeline.get_bind_group_layout(0);
 
-        let uniforms_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
-            layout: &uniforms_bind_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniforms_buffer.as_entire_binding(),
-                },
-            ],
-            label: Some("Uniforms bind group"),
-        });
-
-        let uniforms_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    count: None,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                },
-            ],
-            label: Some("uniforms bind group layout"),
-        });
-        // set up pipeline and render targets
-        let wireframe_pipeline = create_wireframe_pipeline(&device, &uniforms_bind_layout);
-        let billboard_pipeline = create_billboard_pipeline(&device, &uniforms_bind_layout);
         let depth_texture = Texture::create_depth_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
         let output_texture = Texture::create_output_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
 
@@ -130,10 +104,7 @@ impl SceneRenderer {
             output_texture,
             uniforms,
             uniforms_buffer,
-            uniforms_bind_group,
-            matcap_pipeline,
-            wireframe_pipeline,
-            billboard_pipeline,
+            pipelines,
         }
     }
 
@@ -228,16 +199,28 @@ impl SceneRenderer {
                 sample_count: SAMPLE_COUNT,
             }
         );
-        render_bundle_encoder.set_pipeline(&self.billboard_pipeline);
+        // In order to create a correct uniforms bind group, we need to recover the layour from the correct pipeline
+        let uniforms_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
+            layout: &self.pipelines.billboard.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.uniforms_buffer.as_entire_binding(),
+                },
+            ],
+            label: Some("Uniforms bind group"),
+        });
+        render_bundle_encoder.set_pipeline(&self.pipelines.billboard);
         render_bundle_encoder.set_vertex_buffer(0, vertex_buffer.slice(..));
         render_bundle_encoder.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(0, &uniforms_bind_group, &[]);
         render_bundle_encoder.draw_indexed(0..index_count, 0, 0..1);
         let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
             label: Some("Render bundle for a single billboard"),
         });
         self.billboards.push(render_bundle);
     }
+
     pub fn set_wireframe_axes(&mut self, length: i32, cross_size: f32, device: &wgpu::Device) {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
@@ -260,27 +243,27 @@ impl SceneRenderer {
         let colo_l = 64u8;
         for i in 1..=length {
             let i = i as f32;
-            vertices.append(&mut create_wireframe_cross(glam::Vec4::new(  i, 0.0, 0.0, 1.0), cross_size, [colo_h, 0, 0, 255]));
-            vertices.append(&mut create_wireframe_cross(glam::Vec4::new( -i, 0.0, 0.0, 1.0), cross_size, [colo_l, 0, 0, 255]));
-            vertices.append(&mut create_wireframe_cross(glam::Vec4::new(0.0,   i, 0.0, 1.0), cross_size, [0, colo_h, 0, 255]));
-            vertices.append(&mut create_wireframe_cross(glam::Vec4::new(0.0,  -i, 0.0, 1.0), cross_size, [0, colo_l, 0, 255]));
-            vertices.append(&mut create_wireframe_cross(glam::Vec4::new(0.0, 0.0,   i, 1.0), cross_size, [0, 0, colo_h, 255]));
-            vertices.append(&mut create_wireframe_cross(glam::Vec4::new(0.0, 0.0,  -i, 1.0), cross_size, [0, 0, colo_l, 255]));
+            vertices.append(&mut create_wireframe_cross(glam::Vec3::new(  i, 0.0, 0.0), cross_size, [colo_h, 0, 0, 255]));
+            vertices.append(&mut create_wireframe_cross(glam::Vec3::new( -i, 0.0, 0.0), cross_size, [colo_l, 0, 0, 255]));
+            vertices.append(&mut create_wireframe_cross(glam::Vec3::new(0.0,   i, 0.0), cross_size, [0, colo_h, 0, 255]));
+            vertices.append(&mut create_wireframe_cross(glam::Vec3::new(0.0,  -i, 0.0), cross_size, [0, colo_l, 0, 255]));
+            vertices.append(&mut create_wireframe_cross(glam::Vec3::new(0.0, 0.0,   i), cross_size, [0, 0, colo_h, 255]));
+            vertices.append(&mut create_wireframe_cross(glam::Vec3::new(0.0, 0.0,  -i), cross_size, [0, 0, colo_l, 255]));
         }
         // add the actual lines
         vertices.append(&mut vec![
-            WireframeVertexData { position: [ length as f32, 0.0, 0.0, 1.0], color: [colo_h, 0, 0, 255] },
-            WireframeVertexData { position: [           0.0, 0.0, 0.0, 1.0], color: [colo_h, 0, 0, 255] },
-            WireframeVertexData { position: [-length as f32, 0.0, 0.0, 1.0], color: [colo_l, 0, 0, 255] },
-            WireframeVertexData { position: [           0.0, 0.0, 0.0, 1.0], color: [colo_l, 0, 0, 255] },
-            WireframeVertexData { position: [0.0,  length as f32, 0.0, 1.0], color: [0, colo_h, 0, 255] },
-            WireframeVertexData { position: [0.0,            0.0, 0.0, 1.0], color: [0, colo_h, 0, 255] },
-            WireframeVertexData { position: [0.0, -length as f32, 0.0, 1.0], color: [0, colo_l, 0, 255] },
-            WireframeVertexData { position: [0.0,            0.0, 0.0, 1.0], color: [0, colo_l, 0, 255] },
-            WireframeVertexData { position: [0.0, 0.0,  length as f32, 1.0], color: [0, 0, colo_h, 255] },
-            WireframeVertexData { position: [0.0, 0.0,            0.0, 1.0], color: [0, 0, colo_h, 255] },
-            WireframeVertexData { position: [0.0, 0.0, -length as f32, 1.0], color: [0, 0, colo_l, 255] },
-            WireframeVertexData { position: [0.0, 0.0,            0.0, 1.0], color: [0, 0, colo_l, 255] },
+            WireframeVertexData { position: [ length as f32, 0.0, 0.0], color: [colo_h, 0, 0, 255] },
+            WireframeVertexData { position: [           0.0, 0.0, 0.0], color: [colo_h, 0, 0, 255] },
+            WireframeVertexData { position: [-length as f32, 0.0, 0.0], color: [colo_l, 0, 0, 255] },
+            WireframeVertexData { position: [           0.0, 0.0, 0.0], color: [colo_l, 0, 0, 255] },
+            WireframeVertexData { position: [0.0,  length as f32, 0.0], color: [0, colo_h, 0, 255] },
+            WireframeVertexData { position: [0.0,            0.0, 0.0], color: [0, colo_h, 0, 255] },
+            WireframeVertexData { position: [0.0, -length as f32, 0.0], color: [0, colo_l, 0, 255] },
+            WireframeVertexData { position: [0.0,            0.0, 0.0], color: [0, colo_l, 0, 255] },
+            WireframeVertexData { position: [0.0, 0.0,  length as f32], color: [0, 0, colo_h, 255] },
+            WireframeVertexData { position: [0.0, 0.0,            0.0], color: [0, 0, colo_h, 255] },
+            WireframeVertexData { position: [0.0, 0.0, -length as f32], color: [0, 0, colo_l, 255] },
+            WireframeVertexData { position: [0.0, 0.0,            0.0], color: [0, 0, colo_l, 255] },
         ]);
         let indices: Vec<u32> = num_iter::range(0, vertices.len() as u32).collect();
 
@@ -296,10 +279,21 @@ impl SceneRenderer {
                 usage: wgpu::BufferUsages::INDEX,
         });
 
-        render_bundle_encoder.set_pipeline(&self.wireframe_pipeline);
+        // In order to create a correct uniforms bind group, we need to recover the layour from the correct pipeline
+        let uniforms_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
+            layout: &self.pipelines.wireframe.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.uniforms_buffer.as_entire_binding(),
+                },
+            ],
+            label: Some("Uniforms bind group"),
+        });
+        render_bundle_encoder.set_pipeline(&self.pipelines.wireframe);
         render_bundle_encoder.set_vertex_buffer(0, vertex_buffer.slice(..));
         render_bundle_encoder.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(0, &uniforms_bind_group, &[]);
         render_bundle_encoder.draw_indexed(0..indices.len() as u32, 0, 0..1);
         let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
             label: Some("Render bundle for wireframe"),
@@ -326,10 +320,21 @@ impl SceneRenderer {
             Dimensions::D2(_, _) => rendering_data.index_buffer.as_ref().unwrap(),
             Dimensions::D3(_, prefab_id) => &assets.models[prefab_id as usize].index_buffer,
         };
-        render_bundle_encoder.set_pipeline(&self.matcap_pipeline);
+        // In order to create a correct uniforms bind group, we need to recover the layour from the correct pipeline
+        let uniforms_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
+            layout: &self.pipelines.matcap.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.uniforms_buffer.as_entire_binding(),
+                },
+            ],
+            label: Some("Uniforms bind group"),
+        });
+        render_bundle_encoder.set_pipeline(&self.pipelines.matcap);
         render_bundle_encoder.set_vertex_buffer(0, rendering_data.vertex_buffer.slice(..));
         render_bundle_encoder.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(0, &uniforms_bind_group, &[]);
         render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
         render_bundle_encoder.set_bind_group(2, &assets.masks[rendering_data.mask_id].bind_group, &[]);
         render_bundle_encoder.set_bind_group(3, &assets.materials[rendering_data.material_id].bind_group, &[]);
@@ -344,6 +349,7 @@ impl SceneRenderer {
         self.renderables.push(render_bundle);
     }
 
+    // TODO: DRY! This should be merged with add_renderable() function!
     fn add_renderable_vector(&mut self, device: &wgpu::Device, assets: &Assets, rendering_data: &VectorRenderingData) {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
@@ -357,10 +363,21 @@ impl SceneRenderer {
                 sample_count: SAMPLE_COUNT,
             }
         );
-        render_bundle_encoder.set_pipeline(&self.matcap_pipeline);
+        // In order to create a correct uniforms bind group, we need to recover the layour from the correct pipeline
+        let uniforms_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
+            layout: &self.pipelines.matcap.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.uniforms_buffer.as_entire_binding(),
+                },
+            ],
+            label: Some("Uniforms bind group"),
+        });
+        render_bundle_encoder.set_pipeline(&self.pipelines.matcap);
         render_bundle_encoder.set_vertex_buffer(0, rendering_data.out_buffer.slice(..));
         render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        render_bundle_encoder.set_bind_group(0, &self.uniforms_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(0, &uniforms_bind_group, &[]);
         render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
         render_bundle_encoder.set_bind_group(2, &assets.masks[0].bind_group, &[]);
         render_bundle_encoder.set_bind_group(3, &assets.materials[rendering_data.material_id].bind_group, &[]);
@@ -488,169 +505,15 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
         (picking_buffer, picking_bind_layout, picking_bind_group)
 }
 
-fn create_billboard_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
-    // shader compiling
-    let mut shader_compiler = shaderc::Compiler::new().unwrap();
-    let vert_src = include_str!("billboard.vert");
-    let frag_src = include_str!("billboard.frag");
-    let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "billboard.vert", "main", None).unwrap();
-    let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "billboard.frag", "main", None).unwrap();
-    let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
-    let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
-    let vert_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
-        label: Some("billboard vert shader module"),
-        source: vert_data,
-    });
-    let frag_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
-        label: Some("billboard fragment shader module"),
-        source: frag_data,
-    });
-
-    let render_pipeline_layout =
-        device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            push_constant_ranges: &[],
-            bind_group_layouts: &[uniforms_bind_layout]
-        });
-
-    let vertex_buffer_layout = wgpu::VertexBufferLayout {
-        array_stride: std::mem::size_of::<BillboardVertexData>() as wgpu::BufferAddress,
-        step_mode: wgpu::VertexStepMode::Vertex,
-        attributes: &wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x3, 2 => Unorm8x4],
-    };
-    let color_target_state = wgpu::ColorTargetState {
-        format: super::SCENE_FORMAT,
-        blend: Some(wgpu::BlendState{
-            alpha: wgpu::BlendComponent::REPLACE,
-            color: wgpu::BlendComponent::REPLACE,
-        }),
-        write_mask: wgpu::ColorWrites::ALL,
-    };
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
-        layout: Some(&render_pipeline_layout),
-        label: None,
-        vertex: wgpu::VertexState {
-            module: &vert_module,
-            entry_point: "main",
-            buffers: &[vertex_buffer_layout],
-        },
-        primitive: wgpu::PrimitiveState {
-            clamp_depth: false,
-            conservative: false,
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
-            polygon_mode: wgpu::PolygonMode::Fill,
-        },
-        fragment: Some(wgpu::FragmentState {
-            module: &frag_module,
-            entry_point: "main",
-            targets: &[color_target_state],
-        }),
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: super::DEPTH_FORMAT,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::Less,
-            bias: wgpu::DepthBiasState::default(),
-            stencil: wgpu::StencilState::default(),
-        }),
-        multisample: wgpu::MultisampleState {
-            count: SAMPLE_COUNT,
-            mask: !0,
-            alpha_to_coverage_enabled: false,
-        },
-    })
-}
-
-fn create_wireframe_pipeline(device: &wgpu::Device, uniforms_bind_layout: &wgpu::BindGroupLayout) -> wgpu::RenderPipeline {
-    // shader compiling
-    let mut shader_compiler = shaderc::Compiler::new().unwrap();
-    let vert_src = include_str!("wireframe.vert");
-    let frag_src = include_str!("wireframe.frag");
-    let vert_spirv = shader_compiler.compile_into_spirv(vert_src, shaderc::ShaderKind::Vertex, "wireframe.vert", "main", None).unwrap();
-    let frag_spirv = shader_compiler.compile_into_spirv(frag_src, shaderc::ShaderKind::Fragment, "wireframe.frag", "main", None).unwrap();
-    let vert_data = wgpu::util::make_spirv(vert_spirv.as_binary_u8());
-    let frag_data = wgpu::util::make_spirv(frag_spirv.as_binary_u8());
-    let vert_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
-        label: Some("wireframe vertex shader module"),
-        source: vert_data,
-    });
-    let frag_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
-        label: Some("wireframe fragment shader module"),
-        source: frag_data,
-    });
-
-    let render_pipeline_layout =
-        device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: None,
-            push_constant_ranges: &[],
-            bind_group_layouts: &[uniforms_bind_layout]
-        });
-
-    let vertex_buffer_layout = wgpu::VertexBufferLayout {
-        array_stride: std::mem::size_of::<WireframeVertexData>() as wgpu::BufferAddress,
-        step_mode: wgpu::VertexStepMode::Vertex,
-        attributes: &wgpu::vertex_attr_array![0 => Float32x3, 1 => Unorm8x4],
-    };
-    let color_target_state = wgpu::ColorTargetState {
-        format: super::SCENE_FORMAT,
-        blend: Some(wgpu::BlendState{
-            alpha: wgpu::BlendComponent::REPLACE,
-            color: wgpu::BlendComponent::REPLACE,
-        }),
-        write_mask: wgpu::ColorWrites::ALL,
-    };
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
-        layout: Some(&render_pipeline_layout),
-        label: None,
-        vertex: wgpu::VertexState {
-            module: &vert_module,
-            entry_point: "main",
-            buffers: &[vertex_buffer_layout],
-        },
-        primitive: wgpu::PrimitiveState {
-            clamp_depth: false,
-            conservative: false,
-            topology: wgpu::PrimitiveTopology::LineList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
-            polygon_mode: wgpu::PolygonMode::Fill,
-        },
-        fragment: Some(wgpu::FragmentState {
-            module: &frag_module,
-            entry_point: "main",
-            targets: &[color_target_state],
-        }),
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: super::DEPTH_FORMAT,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::Less,
-            bias: wgpu::DepthBiasState::default(),
-            stencil: wgpu::StencilState::default(),
-        }),
-        multisample: wgpu::MultisampleState {
-            count: SAMPLE_COUNT,
-            mask: !0,
-            alpha_to_coverage_enabled: false,
-        },
-    })
-}
-
-fn create_matcap_pipeline(device: &wgpu::Device) -> wgpu::RenderPipeline {
+fn create_pipelines(device: &wgpu::Device) -> Pipelines {
+    // read/import the shader source code and create a module from it
     let wgsl_source = include_str!("matcap.wgsl");
     let wgsl_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
         label: Some("matcap shader module"),
         source: wgpu::ShaderSource::Wgsl(wgsl_source.into()),
     });
 
-    let vertex_buffer_descriptor = wgpu::VertexBufferLayout {
-        array_stride: std::mem::size_of::<StandardVertexData>() as wgpu::BufferAddress,
-        step_mode: wgpu::VertexStepMode::Vertex,
-        attributes: &StandardVertexData::vertex_attribute_array(),
-    };
-
+    // define some state variables that will be used many times when creating the actual pipelines
     let color_target_state = wgpu::ColorTargetState {
         format: super::SCENE_FORMAT,
         blend: Some(wgpu::BlendState {
@@ -659,52 +522,108 @@ fn create_matcap_pipeline(device: &wgpu::Device) -> wgpu::RenderPipeline {
         }),
         write_mask: wgpu::ColorWrites::ALL,
     };
-    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor{
-        layout: None,
-        label: None,
+    let depth_stencil_state = Some(wgpu::DepthStencilState {
+        format: super::DEPTH_FORMAT,
+        depth_write_enabled: true,
+        depth_compare: wgpu::CompareFunction::Less,
+        bias: wgpu::DepthBiasState::default(),
+        stencil: wgpu::StencilState::default(),
+    });
+    let multisample_state = wgpu::MultisampleState {
+        count: SAMPLE_COUNT,
+        mask: !0,
+        alpha_to_coverage_enabled: false,
+    };
+
+    // in particular, there are two primitive kinds: the triangles for the billboard and matcap
+    // objects or the lines only for the wireframe effect
+    let primitive_triangles = wgpu::PrimitiveState {
+        clamp_depth: false,
+        conservative: false,
+        topology: wgpu::PrimitiveTopology::TriangleList,
+        strip_index_format: None,
+        front_face: wgpu::FrontFace::Ccw,
+        cull_mode: None,
+        polygon_mode: wgpu::PolygonMode::Fill,
+    };
+    let primitive_lines = wgpu::PrimitiveState {
+        clamp_depth: false,
+        conservative: false,
+        topology: wgpu::PrimitiveTopology::LineList,
+        strip_index_format: None,
+        front_face: wgpu::FrontFace::Ccw,
+        cull_mode: None,
+        polygon_mode: wgpu::PolygonMode::Fill,
+    };
+
+    let matcap = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         vertex: wgpu::VertexState {
             module: &wgsl_module,
-            entry_point: "vs_main",
-            buffers: &[vertex_buffer_descriptor],
-        },
-        primitive: wgpu::PrimitiveState {
-            clamp_depth: false,
-            conservative: false,
-            topology: wgpu::PrimitiveTopology::TriangleList,
-            strip_index_format: None,
-            front_face: wgpu::FrontFace::Ccw,
-            cull_mode: None,
-            polygon_mode: wgpu::PolygonMode::Fill,
+            entry_point: "matcap_vs_main",
+            buffers: &[StandardVertexData::vertex_buffer_layout()],
         },
         fragment: Some(wgpu::FragmentState {
             module: &wgsl_module,
-            entry_point: "fs_main",
-            targets: &[color_target_state],
+            entry_point: "matcap_fs_main",
+            targets: &[color_target_state.clone()],
         }),
-        depth_stencil: Some(wgpu::DepthStencilState {
-            format: super::DEPTH_FORMAT,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::Less,
-            bias: wgpu::DepthBiasState::default(),
-            stencil: wgpu::StencilState::default(),
-        }),
-        multisample: wgpu::MultisampleState {
-            count: SAMPLE_COUNT,
-            mask: !0,
-            alpha_to_coverage_enabled: false,
+        layout: None,
+        label: None,
+        primitive: primitive_triangles.clone(),
+        depth_stencil: depth_stencil_state.clone(),
+        multisample: multisample_state.clone(),
+    });
+
+    let billboard = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        vertex: wgpu::VertexState {
+            module: &wgsl_module,
+            entry_point: "billboard_vs_main",
+            buffers: &[BillboardVertexData::vertex_buffer_layout()],
         },
-    })
+        fragment: Some(wgpu::FragmentState {
+            module: &wgsl_module,
+            entry_point: "color_fs_main",
+            targets: &[color_target_state.clone()],
+        }),
+        layout: None,
+        label: None,
+        primitive: primitive_triangles.clone(),
+        depth_stencil: depth_stencil_state.clone(),
+        multisample: multisample_state.clone(),
+    });
+
+    let wireframe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        vertex: wgpu::VertexState {
+            module: &wgsl_module,
+            entry_point: "wireframe_vs_main",
+            buffers: &[WireframeVertexData::vertex_buffer_layout()],
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: &wgsl_module,
+            entry_point: "color_fs_main",
+            targets: &[color_target_state.clone()],
+        }),
+        layout: None,
+        label: None,
+        primitive: primitive_lines.clone(),
+        depth_stencil: depth_stencil_state.clone(),
+        multisample: multisample_state.clone(),
+    });
+    Pipelines {
+        matcap,
+        billboard,
+        wireframe,
+    }
 }
 
-fn create_wireframe_cross(pos: glam::Vec4, size: f32, color: [u8; 4]) -> Vec<WireframeVertexData> {
-
+fn create_wireframe_cross(pos: glam::Vec3, size: f32, color: [u8; 4]) -> Vec<WireframeVertexData> {
     vec![
-        WireframeVertexData { position: (pos - size*glam::Vec4::unit_x()).into(), color },
-        WireframeVertexData { position: (pos + size*glam::Vec4::unit_x()).into(), color },
-        WireframeVertexData { position: (pos - size*glam::Vec4::unit_y()).into(), color },
-        WireframeVertexData { position: (pos + size*glam::Vec4::unit_y()).into(), color },
-        WireframeVertexData { position: (pos - size*glam::Vec4::unit_z()).into(), color },
-        WireframeVertexData { position: (pos + size*glam::Vec4::unit_z()).into(), color },
+        WireframeVertexData { position: (pos - size*glam::Vec3::unit_x()).into(), color },
+        WireframeVertexData { position: (pos + size*glam::Vec3::unit_x()).into(), color },
+        WireframeVertexData { position: (pos - size*glam::Vec3::unit_y()).into(), color },
+        WireframeVertexData { position: (pos + size*glam::Vec3::unit_y()).into(), color },
+        WireframeVertexData { position: (pos - size*glam::Vec3::unit_z()).into(), color },
+        WireframeVertexData { position: (pos + size*glam::Vec3::unit_z()).into(), color },
     ]
 }
 
@@ -720,9 +639,9 @@ fn create_char_x(device: &wgpu::Device, pos: [f32; 3], size: f32, color: [u8; 4]
             [ 0.43*size, -0.50*size],
             [-0.19*size,  0.50*size],
     ];
-    let vertices: Vec::<BillboardVertexData> = pos_2d.iter()
+    let vertices: Vec::<BillboardVertexData> = pos_2d.into_iter()
         .map(|p_2d| BillboardVertexData{
-            position: *p_2d,
+            position: p_2d,
             offset: pos,
             color,
         })

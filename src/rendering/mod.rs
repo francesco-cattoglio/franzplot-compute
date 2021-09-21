@@ -7,8 +7,6 @@ pub mod scene_renderer;
 // in that module and pub use the useful ones
 pub use scene_renderer::SceneRenderer;
 
-// BEWARE: whenever you do any change at the following structure, also remember to modify
-// the corresponding VertexStateDescriptor that is used at pipeline creation stage
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Default)]
 pub struct StandardVertexData {
@@ -22,8 +20,13 @@ pub struct StandardVertexData {
 }
 
 impl StandardVertexData {
-    fn vertex_attribute_array() -> [wgpu::VertexAttribute; 4] {
-        wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x2, 3 => Sint32x2]
+    const VERTEX_ATTR_ARRAY: [wgpu::VertexAttribute; 4] = wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4, 2 => Float32x2, 3 => Float32x2];
+    fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &Self::VERTEX_ATTR_ARRAY,
+        }
     }
 }
 
@@ -42,17 +45,20 @@ unsafe impl bytemuck::Zeroable for StandardVertexData {}
 #[repr(C)]
 #[derive(Copy, Clone, Debug)]
 pub struct WireframeVertexData {
-    position: [f32; 4],
+    position: [f32; 3],
     color: [u8; 4],
 }
 
-#[allow(unused)]
-pub const GLSL_WIREFRAME_VERTEX_STRUCT: & str = r##"
-struct Vertex {
-    vec3 position;
-    vec4 color;
-};
-"##;
+impl WireframeVertexData {
+    const VERTEX_ATTR_ARRAY: [wgpu::VertexAttribute; 2] = wgpu::vertex_attr_array![0 => Float32x3, 1 => Unorm8x4];
+    fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &Self::VERTEX_ATTR_ARRAY,
+        }
+    }
+}
 
 unsafe impl bytemuck::Pod for WireframeVertexData {}
 unsafe impl bytemuck::Zeroable for WireframeVertexData {}
@@ -65,18 +71,19 @@ pub struct BillboardVertexData {
     color: [u8; 4],
 }
 
-#[allow(unused)]
-pub const GLSL_BILLBOARD_VERTEX_STRUCT: & str = r##"
-struct Vertex {
-    vec2 position;
-    vec3 offset;
-    vec4 color;
-};
-"##;
+impl BillboardVertexData {
+    const VERTEX_ATTR_ARRAY: [wgpu::VertexAttribute; 3] = wgpu::vertex_attr_array![0 => Float32x2, 1 => Float32x3, 2 => Unorm8x4];
+    pub fn vertex_buffer_layout() -> wgpu::VertexBufferLayout<'static> {
+        wgpu::VertexBufferLayout {
+            array_stride: std::mem::size_of::<Self>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &Self::VERTEX_ATTR_ARRAY,
+        }
+    }
+}
 
 unsafe impl bytemuck::Pod for BillboardVertexData {}
 unsafe impl bytemuck::Zeroable for BillboardVertexData {}
-
 
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 pub const SCENE_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;

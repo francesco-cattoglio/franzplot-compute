@@ -41,7 +41,7 @@ fn matcap_vs_main(
     [[location(0)]] position: vec4<f32>,
     [[location(1)]] normal: vec4<f32>,
     [[location(2)]] uv_coords: vec2<f32>,
-    [[location(3)]] _padding: vec2<i32>
+    [[location(3)]] _padding: vec2<f32>
 ) -> MatcapVertexOutput {
     var out: MatcapVertexOutput;
     out.uv_coords = uv_coords;
@@ -54,6 +54,8 @@ fn matcap_vs_main(
 // Matcap fragment shader
 [[stage(fragment)]]
 fn matcap_fs_main(in: MatcapVertexOutput) -> [[location(0)]] vec4<f32> {
+    // need to implement the code for the picking buffer
+    let todo = picking.distances[0];
     // read mask texture
     let mask_color = textureSample(mask_texture, mask_sampler, in.uv_coords);
     let darken_coeff: f32 = 0.5 * mask_color.r + 0.5;
@@ -77,11 +79,11 @@ struct ColorOnlyOutput {
 
 [[stage(vertex)]]
 fn wireframe_vs_main(
-    [[location(0)]] position: vec4<f32>,
+    [[location(0)]] position: vec3<f32>,
     [[location(1)]] color: vec4<f32>,
 ) -> ColorOnlyOutput {
     var out: ColorOnlyOutput;
-    out.position = uniforms.proj * uniforms.view * position;
+    out.position = uniforms.proj * uniforms.view * vec4<f32>(position, 1.0);
     out.color = color;
     return out;
 }
@@ -93,7 +95,8 @@ fn billboard_vs_main(
     [[location(2)]] color: vec4<f32>,
 ) -> ColorOnlyOutput {
     var out: ColorOnlyOutput;
-    out.position = uniforms.proj * vec4<f32>(position_2d, 0.0, 1.0) + uniforms.proj * uniforms.view * vec4<f32>(billboard_placement, 0.0);
+    out.color = color;
+    out.position = uniforms.proj * (vec4<f32>(position_2d, 0.0, 1.0) + uniforms.view[3]) + uniforms.proj * uniforms.view * vec4<f32>(billboard_placement, 0.0);
     return out;
 }
 
