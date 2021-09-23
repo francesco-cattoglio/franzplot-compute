@@ -31,7 +31,6 @@ pub fn compile_compute_shader(
         let shader_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor{
             label: None,
             source: comp_data,
-            flags: wgpu::ShaderFlags::empty(), // TODO: maybe use VALIDATION flags
         });
         let mut layout_entries = Vec::<wgpu::BindGroupLayoutEntry>::new();
         let mut descriptor_entries = Vec::<wgpu::BindGroupEntry>::new();
@@ -41,7 +40,7 @@ pub fn compile_compute_shader(
                     wgpu::BindGroupLayoutEntry {
                         binding: position,
                         count: None,
-                        visibility: wgpu::ShaderStage::COMPUTE,
+                        visibility: wgpu::ShaderStages::COMPUTE,
                         ty: wgpu::BindingType::Buffer {
                             ty: wgpu::BufferBindingType::Storage { read_only: false },
                             min_binding_size: None,

@@ -165,7 +165,7 @@ impl Dimensions {
             mapped_at_creation: false,
             size: buff_size as wgpu::BufferAddress,
             // Beware:copy and map are only needed when debugging/inspecting
-            usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
         })
     }
 }

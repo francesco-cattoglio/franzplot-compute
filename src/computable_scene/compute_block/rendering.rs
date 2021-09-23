@@ -525,7 +525,7 @@ fn create_point_data(device: &wgpu::Device, refine: usize) -> (String, usize, wg
         &wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&indices),
-            usage: wgpu::BufferUsage::INDEX,
+            usage: wgpu::BufferUsages::INDEX,
     });
     (shader_consts, point_count, index_buffer, indices.len() as u32)
 }
@@ -547,7 +547,7 @@ fn create_curve_buffer_index(device: &wgpu::Device, x_size: usize, circle_points
         &wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&index_vector),
-            usage: wgpu::BufferUsage::INDEX,
+            usage: wgpu::BufferUsages::INDEX,
     });
     (index_buffer, index_vector.len() as u32)
 }
@@ -627,7 +627,7 @@ fn create_grid_buffer_index(device: &wgpu::Device, x_size: usize, y_size: usize,
         &wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&index_vector),
-            usage: wgpu::BufferUsage::INDEX,
+            usage: wgpu::BufferUsages::INDEX,
     });
     (index_buffer, index_vector.len() as u32)
 }

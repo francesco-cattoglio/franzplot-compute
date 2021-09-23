@@ -115,6 +115,7 @@ fn main() {
     let seconds_to_wait = 5 * matches.occurrences_of("p");
     thread::sleep(time::Duration::from_secs(seconds_to_wait));
 
+    env_logger::init();
     let maybe_tracing_path = matches.value_of("tracing");
     let tracing_path_option = maybe_tracing_path.map(|x| std::path::Path::new(x));
 
@@ -125,12 +126,12 @@ fn main() {
 
     let maybe_backend = matches.value_of("backend").map(|name| {
         match name.to_lowercase().as_str()  {
-            "vulkan" => wgpu::BackendBit::VULKAN,
-            "metal" => wgpu::BackendBit::METAL,
-            "dx12" => wgpu::BackendBit::DX12,
-            "dx11" => wgpu::BackendBit::DX11,
-            "gl" => wgpu::BackendBit::GL,
-            "webgpu" => wgpu::BackendBit::BROWSER_WEBGPU,
+            "vulkan" => wgpu::Backends::VULKAN,
+            "metal" => wgpu::Backends::METAL,
+            "dx12" => wgpu::Backends::DX12,
+            "dx11" => wgpu::Backends::DX11,
+            "gl" => wgpu::Backends::GL,
+            "webgpu" => wgpu::Backends::BROWSER_WEBGPU,
             other => panic!("Unknown backend: {}", other),
         }
     });
@@ -391,10 +392,11 @@ fn main() {
                 let mut encoder: wgpu::CommandEncoder =
                     state.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
+                let frame_view = frame.output.texture.create_view(&wgpu::TextureViewDescriptor::default());
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: None,
                     color_attachments: &[wgpu::RenderPassColorAttachment {
-                        view: &frame.output.view,
+                        view: &frame_view,
                         resolve_target: None,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),

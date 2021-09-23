@@ -257,7 +257,7 @@ pub fn create_graph_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     let png_buffer = state.app.manager.device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
         size: (buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height) as u64,
-        usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
+        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
 
@@ -272,6 +272,7 @@ pub fn create_graph_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
                 texture: &output_texture.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
             },
             wgpu::ImageCopyBuffer {
                 buffer: &png_buffer,
@@ -363,7 +364,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     let png_buffer = state.app.manager.device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
         size: (buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height) as u64,
-        usage: wgpu::BufferUsage::MAP_READ | wgpu::BufferUsage::COPY_DST,
+        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
         mapped_at_creation: false,
     });
 
@@ -378,6 +379,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
                 texture: &output_texture.texture,
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
             },
             wgpu::ImageCopyBuffer {
                 buffer: &png_buffer,

@@ -108,7 +108,7 @@ impl AppState {
     }
 
     pub fn set_axes_labels(&mut self, axis_length: i32, label_size: f32) {
-        self.computable_scene.renderer.set_axes_labels(axis_length, label_size, &self.manager.device);
+        self.computable_scene.renderer.set_axes_labels(axis_length as f32, label_size, &self.manager.device);
     }
 
     pub fn clear_axes_labels(&mut self) {
@@ -171,7 +171,7 @@ impl State {
             mouse_pos: [0.0, 0.0],
         };
 
-        let camera = camera::Camera::from_height_width(manager.sc_desc.height as f32, manager.sc_desc.width as f32);
+        let camera = camera::Camera::from_height_width(manager.config.height as f32, manager.config.width as f32);
         let camera_controller = Box::new(camera::VTKController::new());
 
         let app = AppState {

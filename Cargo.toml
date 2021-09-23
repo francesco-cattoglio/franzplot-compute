@@ -3,6 +3,7 @@ name = "franzplot-compute"
 version = "21.4.0"
 authors = ["francesco.cattoglio <francesco.cattoglio@gmail.com>"]
 edition = "2018"
+resolver = "2"
 
 [[bin]]
 name = "franzplot"
@@ -16,12 +17,11 @@ all = ["teachers-edition", "dev-tools"]
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 bytemuck = "1.2"
-wgpu = { git = 'https://github.com/gfx-rs/wgpu-rs.git', rev = '53600ecd834893ef3e90458c48b84f2582d6c343', features = ["cross"] }
-#wgpu = { version = "0.7", features = ["trace"] }
-shaderc = "0.6"
+wgpu = { version = "0.10", features = ["trace"] }
 num-iter = "0.1"
 anyhow = "1.0"
-futures = {version="0.3.10",features=["thread-pool"]}
+futures = { version = "0.3.10", features = ["thread-pool"] }
+env_logger = "0.9"
 glam = "0.11"
 maplit = "1.0"
 winit = "0.24"
@@ -36,7 +36,7 @@ clap = "2.33"
 obj = "0.10"
 imgui = "0.7.0"
 imgui-winit-support = "0.7.0"
-imgui-wgpu = { git = 'https://github.com/francesco-cattoglio/imgui-wgpu-rs.git', rev = '63d1b0d57fd2910be78ff72645973071ef25b91a' }
+imgui-wgpu = { git = 'https://github.com/kylc/imgui-wgpu-rs.git', rev = 'fbbc0cfc7de25a4821980cb2170195c7b3b0fcf4' }
 wgpu-subscriber = "0.1"
 cxx = "1.0.32"
 pathfinding = "2.0"
@@ -46,6 +46,7 @@ hexasphere = "3.1"
 rfd = "0.2.2"
 pest = "2.1"
 pest_derive = "2.1"
+shaderc = "0.7"
 
 [build-dependencies]
 cxx-build = "1.0"

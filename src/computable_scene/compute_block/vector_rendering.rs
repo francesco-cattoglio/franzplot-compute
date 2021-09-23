@@ -121,7 +121,7 @@ void main() {{
             mapped_at_creation: false,
             size: (vertex_count * std::mem::size_of::<StandardVertexData>()) as wgpu::BufferAddress,
             // Beware:copy and map are only needed when debugging/inspecting
-            usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
         });
 
         let bindings = [
@@ -338,13 +338,13 @@ fn create_arrow_buffers(device: &wgpu::Device, radius: f32, circle_points: usize
         &wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&index_vector),
-            usage: wgpu::BufferUsage::INDEX,
+            usage: wgpu::BufferUsages::INDEX,
     });
     let vertex_buffer = device.create_buffer_init(
         &wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&vertex_vector),
-            usage: wgpu::BufferUsage::VERTEX | wgpu::BufferUsage::COPY_SRC | wgpu::BufferUsage::STORAGE | wgpu::BufferUsage::MAP_READ,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
     });
     dbg!(vertex_vector.len());
     (index_buffer, index_vector.len() as u32, vertex_buffer, vertex_vector.len())
