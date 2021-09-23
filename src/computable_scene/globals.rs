@@ -1,4 +1,5 @@
 use crate::computable_scene::BlockCreationError;
+use crate::compute_graph::ProcessingError;
 use crate::parser::{parse_expression, AstNode, AstError};
 
 #[derive(Debug)]
@@ -74,6 +75,59 @@ impl Globals {
                 Ok(ast_tree.to_string())
             },
             Err(ast_error) => Err(Self::ast_to_block_error(ast_error)),
+        }
+    }
+
+    // TODO: rename this and remove the other one once the conversion to the new compute_graph is done
+    pub fn sanitize_expression_2(&self, local_params: &Vec<&str>, expression: &str) -> Result<String, ProcessingError> {
+        let parsing_result = parse_expression(expression);
+        match parsing_result {
+            Ok(ast_tree) => {
+                // the expression parsed correctly, but now we need to check if all the identifiers it
+                // contains actually exist.
+                let all_idents = ast_tree.find_all_idents();
+                'validate: for ident in all_idents.into_iter() {
+                    // if the ident is inside the variable names, we are good.
+                    if self.names.contains(&ident) {
+                        continue 'validate;
+                    }
+                    // if the ident is inside the global constants, we are good
+                    for constant in GLOBAL_CONSTANTS.iter() {
+                        if constant.0 == &ident {
+                            continue 'validate;
+                        }
+                    }
+                    // if the ident is one of the parameters taken as input by the node, we are also good.
+                    for param in local_params.iter() {
+                        if param == &ident {
+                            continue 'validate;
+                        }
+                    }
+
+                    // OTHERWISE, write down an error!
+                    let err = format!("Unknown variable or parameter used: '{}'", ident);
+                    return Err(ProcessingError::IncorrectExpression(err));
+                }
+                Ok(ast_tree.to_string())
+            },
+            Err(ast_error) => Err(Self::ast_to_block_error_2(ast_error)),
+        }
+    }
+
+    fn ast_to_block_error_2(error: AstError) -> ProcessingError {
+        match error {
+            AstError::UnreachableMatch(e) => ProcessingError::InternalError(e),
+            AstError::InternalError(e) => ProcessingError::InternalError(e),
+            AstError::InvalidCharacter(e) => ProcessingError::IncorrectExpression(e),
+            AstError::PowAmbiguity(e) => ProcessingError::IncorrectExpression(e),
+            AstError::ImplicitProduct(e) => ProcessingError::IncorrectExpression(e),
+            AstError::MultipleSigns(e) => ProcessingError::IncorrectExpression(e),
+            AstError::MultipleOps(e) => ProcessingError::IncorrectExpression(e),
+            AstError::MultipleExpressions(e) => ProcessingError::IncorrectExpression(e),
+            AstError::FailedParse(e) => ProcessingError::IncorrectExpression(e),
+            AstError::MissingParenthesis(e) => ProcessingError::IncorrectExpression(e),
+            AstError::EmptyExpression(e) => ProcessingError::IncorrectExpression(e),
+            AstError::InvalidName(e) => ProcessingError::IncorrectExpression(e),
         }
     }
 

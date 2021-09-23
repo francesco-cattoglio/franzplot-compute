@@ -257,6 +257,13 @@ impl Gui {
             }
         }
         ui.same_line(0.0);
+        if ui.button(im_str!("Test New Compute"), [0.0, 0.0]) {
+            let processing_succesful = state.process_user_state_2();
+            if processing_succesful && state.app.auto_scene_on_processing {
+                self.opened_tab[1] = true;
+            }
+        }
+        ui.same_line(0.0);
         if ui.button(im_str!("Undo"), [0.0, 0.0]) {
             self.issue_undo(state, ui.time());
         }

@@ -20,6 +20,7 @@ mod rust_gui;
 mod cpp_gui;
 mod file_io;
 mod parser;
+mod compute_graph;
 #[cfg(test)]
 mod tests;
 

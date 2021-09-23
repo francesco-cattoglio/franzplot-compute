@@ -28,6 +28,15 @@ impl Executor {
     }
 }
 
+pub fn create_storage_buffer(device: &wgpu::Device, buffer_size: usize) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        mapped_at_creation: false,
+        size: buffer_size as wgpu::BufferAddress,
+        // Beware:copy and map are only needed when debugging/inspecting
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
+    })
+}
 
 pub fn load_imgui_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, renderer: &mut imgui_wgpu::Renderer, files: &[P]) -> rust_gui::MaskIds {
     use std::convert::TryInto;

@@ -264,4 +264,15 @@ impl State {
         }
         return no_errors_detected;
     }
+    // TODO: rename when switching to wgsl for compute is done
+    // process the user graph, and return true if no errors were detected
+    pub fn process_user_state_2(&mut self) -> bool {
+        use crate::compute_graph::ComputeGraph;
+
+        println!("testing new graph processing");
+        let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
+        let compute_graph = ComputeGraph::new();
+        let result = compute_graph.process_graph_node(&self.app.manager.device, &globals, 0, &self.user.graph);
+        return false;
+    }
 }
