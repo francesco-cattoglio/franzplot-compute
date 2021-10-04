@@ -54,14 +54,6 @@ impl Parameter {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Dimensions {
-    D0,
-    D1(Parameter),
-    D2(Parameter, Parameter),
-    D3(usize, PrefabId),
-}
-
 // a data node only contains GPU buffers that are manipulated by OperationNodes
 pub enum Data {
     Interval{
@@ -70,7 +62,7 @@ pub enum Data {
     },
     Geom1D {
         buffer: wgpu::Buffer,
-        //param: Parameter,
+        param: Parameter,
     },
     Geom2D {
     },
@@ -117,8 +109,20 @@ impl ComputeGraph {
                     graph.get_attribute_as_string(fz).unwrap(),
                     output,
                 )
-            }
-            ,
+            },
+            NodeContents::Interval {
+                variable, begin, end, quality, output,
+            } => {
+                Operation::new_interval(
+                    device,
+                    globals,
+                    graph.get_attribute_as_string(variable).unwrap(),
+                    graph.get_attribute_as_string(begin).unwrap(),
+                    graph.get_attribute_as_string(end).unwrap(),
+                    graph.get_attribute_as_usize(quality).unwrap(),
+                    output
+                    )
+            },
             _ => todo!("handle all graph node kinds!")
         }
 

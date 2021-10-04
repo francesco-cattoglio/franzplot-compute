@@ -1,5 +1,6 @@
 use crate::computable_scene::BlockCreationError;
 use crate::compute_graph::ProcessingError;
+use crate::shader_processing::BindInfo;
 use crate::parser::{parse_expression, AstNode, AstError};
 
 #[derive(Debug)]
@@ -12,10 +13,12 @@ pub struct Globals {
     pub bind_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
     pub shader_header: String,
+    wgsl_header: String,
 }
 
 const GLOBAL_CONSTANTS: &[(&str, f32)] = &[
-    ("pi", std::f32::consts::PI)
+    ("pi", std::f32::consts::PI),
+    ("zero", 0.0),
 ];
 const MAX_NUM_VARIABLES: usize = 31;
 
@@ -33,6 +36,9 @@ impl Globals {
                             if constant.0 == &ident {
                                 return Err(BlockCreationError::IncorrectExpression("cannot use a mathematical constant as a variable name".into()));
                             }
+                            if constant.0.starts_with('_') {
+                                return Err(BlockCreationError::IncorrectExpression("variable names cannot start with an underscore".into()));
+                            }
                         }
                         Ok(ident)
                     }
@@ -40,6 +46,40 @@ impl Globals {
                 }
             },
             Err(_err) => Err(BlockCreationError::IncorrectExpression("invalid variable name".into())),
+        }
+    }
+
+    pub fn get_wgsl_header(&self) -> &str {
+        self.wgsl_header.as_str()
+    }
+
+    pub fn get_buffer(&self) -> &wgpu::Buffer {
+        &self.buffer
+    }
+
+    pub fn sanitize_variable_name_2(name: &str) -> Result<String, ProcessingError> {
+        let parsing_result = parse_expression(name);
+        match parsing_result {
+            Ok(ast_tree) => {
+                // it is not enough to parse the expression correctly. We must be sure that
+                // the expression is JUST a single ident, and that ident is not the same as an
+                // existing constant.
+                match ast_tree {
+                    AstNode::Ident(ident) => {
+                        for constant in GLOBAL_CONSTANTS.iter() {
+                            if constant.0 == &ident {
+                                return Err(ProcessingError::IncorrectExpression("cannot use a mathematical constant as a variable name".into()));
+                            }
+                            if constant.0.starts_with('_') {
+                                return Err(ProcessingError::IncorrectExpression("variable names cannot start with an underscore".into()));
+                            }
+                        }
+                        Ok(ident)
+                    }
+                    _ => Err(ProcessingError::IncorrectExpression("cannot use an expression as variable name".into())),
+                }
+            },
+            Err(_err) => Err(ProcessingError::IncorrectExpression("invalid variable name".into())),
         }
     }
 
@@ -206,13 +246,21 @@ impl Globals {
         // Please note: we do this operation after the buffer init because this operation
         // consumes the input vectors.
         let mut shader_header = String::new();
+        let mut wgsl_header = String::new();
         let mut names = Vec::<String>::new();
         let mut values = Vec::<f32>::new();
 
+        //// in wgsl, the constants go outside of all functions
+        //for (constant_name, constant_value) in GLOBAL_CONSTANTS {
+        //    wgsl_header += &format!("let {}: f32 = {:?};\n", constant_name, constant_value);
+        //}
+        wgsl_header += "[[block]] struct Globals {\n";
+
+        // is glsl, we put those constants inside the global variables
         shader_header += "layout(set = 1, binding = 0) uniform Uniforms {\n";
-        // process all constants
         for (constant_name, _constant_value) in GLOBAL_CONSTANTS {
             shader_header += &format!("\tfloat {};\n", constant_name);
+            wgsl_header += &format!("\t{}: f32;\n", constant_name);
         }
 
         // process all variables
@@ -221,10 +269,15 @@ impl Globals {
             // print the name to the shader header and
             // add the pair to both the 'names' and the 'values' vectors
             shader_header += &format!("\tfloat {};\n", &pair.0);
+            wgsl_header += &format!("\t{}: f32;\n", &pair.0);
             names.push(pair.0);
             values.push(pair.1);
         }
         shader_header += "};\n";
+        // when we close the wgsl struct, we also need to write the binding to the group 1
+        wgsl_header += "};\n";
+        wgsl_header += "[[group(1), binding(0)]] var<uniform> _globals: Globals;\n";
+
 
         //println!("debug info for shader header: {}", &shader_header);
         Self {
@@ -236,6 +289,7 @@ impl Globals {
             buffer,
             buffer_size,
             shader_header,
+            wgsl_header,
         }
     }
 
@@ -262,5 +316,11 @@ impl Globals {
         }
     }
 
+    pub fn get_bind_info(&self) -> crate::shader_processing::BindInfo {
+        BindInfo {
+            buffer: &self.buffer,
+            ty: wgpu::BufferBindingType::Uniform,
+        }
+    }
 }
 

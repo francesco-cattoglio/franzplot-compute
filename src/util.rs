@@ -38,6 +38,7 @@ pub fn create_storage_buffer(device: &wgpu::Device, buffer_size: usize) -> wgpu:
     })
 }
 
+
 pub fn load_imgui_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, renderer: &mut imgui_wgpu::Renderer, files: &[P]) -> rust_gui::MaskIds {
     use std::convert::TryInto;
     files.iter()
