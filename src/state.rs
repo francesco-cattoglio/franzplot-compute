@@ -271,8 +271,19 @@ impl State {
 
         println!("testing new graph processing");
         let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        let compute_graph = ComputeGraph::new();
-        let result = compute_graph.process_graph_node(&self.app.manager.device, &globals, 0, &self.user.graph);
+        let mut compute_graph = ComputeGraph::new();
+        let result = compute_graph.process_single_node(&self.app.manager.device, &globals, 0, &self.user.graph);
+        if let Err(error) = result {
+            dbg!(error);
+        }
+        let result = compute_graph.process_single_node(&self.app.manager.device, &globals, 1, &self.user.graph);
+        if let Err(error) = result {
+            dbg!(error);
+        }
+        let result = compute_graph.process_single_node(&self.app.manager.device, &globals, 2, &self.user.graph);
+        if let Err(error) = result {
+            dbg!(error);
+        }
         return false;
     }
 }

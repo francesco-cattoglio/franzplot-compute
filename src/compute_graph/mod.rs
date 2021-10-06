@@ -2,12 +2,20 @@ use std::collections::BTreeMap;
 use crate::node_graph::{NodeGraph, NodeID, NodeContents};
 use crate::computable_scene::globals::Globals;
 
-mod operation;
-use operation::Operation;
+mod interval;
+mod curve;
+mod geometry_render;
 
 pub type DataID = i32;
 pub type PrefabId = i32;
 
+pub struct Operation {
+    bind_group: wgpu::BindGroup,
+    pipeline: wgpu::ComputePipeline,
+    dim: [u32; 3],
+}
+
+#[derive(Debug, Clone)]
 pub enum ProcessingError {
     InputMissing(&'static str),
     InternalError(String),
@@ -71,6 +79,8 @@ pub enum Data {
     Matrix1D {
     },
     Prefab {
+        vertex_buffer: wgpu::Buffer,
+        index_buffer: wgpu::Buffer,
     },
     NotComputed,
 }
@@ -93,17 +103,24 @@ impl ComputeGraph {
         }
     }
     // process a single graph node, creating some data and one operation
+    pub fn process_single_node(&mut self, device: &wgpu::Device, globals: &Globals, graph_node_id: NodeID, graph: &NodeGraph) -> Result<(), ProcessingError>  {
+        let (mut new_data, operation) = self.process_graph_node(device, globals, graph_node_id, graph)?;
+        self.data.append(&mut new_data);
+        self.operations.push(operation);
+        Ok(())
+    }
+    // process a single graph node, creating some data and one operation
     pub fn process_graph_node(&self, device: &wgpu::Device, globals: &Globals, graph_node_id: NodeID, graph: &NodeGraph) -> ProcessingResult {
         let to_process = graph.get_node(graph_node_id).unwrap();
         match *to_process.contents() {
             NodeContents::Curve {
                 interval, fx, fy, fz, output
             } => {
-                Operation::new_curve(
+                curve::create(
                     device,
                     globals,
                     &self.data,
-                    graph.get_attribute_as_linked_node(interval),
+                    graph.get_attribute_as_linked_output(interval),
                     graph.get_attribute_as_string(fx).unwrap(),
                     graph.get_attribute_as_string(fy).unwrap(),
                     graph.get_attribute_as_string(fz).unwrap(),
@@ -113,7 +130,7 @@ impl ComputeGraph {
             NodeContents::Interval {
                 variable, begin, end, quality, output,
             } => {
-                Operation::new_interval(
+                interval::create(
                     device,
                     globals,
                     graph.get_attribute_as_string(variable).unwrap(),
@@ -121,6 +138,17 @@ impl ComputeGraph {
                     graph.get_attribute_as_string(end).unwrap(),
                     graph.get_attribute_as_usize(quality).unwrap(),
                     output
+                    )
+            },
+            NodeContents::Rendering {
+                geometry, thickness, mask, material,
+            } => {
+                geometry_render::create(
+                    device,
+                    &self.data,
+                    graph.get_attribute_as_linked_output(geometry),
+                    graph.get_attribute_as_usize(thickness).unwrap(),
+                    42
                     )
             },
             _ => todo!("handle all graph node kinds!")
