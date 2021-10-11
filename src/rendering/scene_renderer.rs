@@ -2,6 +2,7 @@ use crate::state::Assets;
 use crate::rendering::texture::{Texture};
 use crate::rendering::*;
 use crate::device_manager;
+use crate::compute_graph::{ComputeGraph, MatcapData};
 use crate::computable_scene::compute_chain::ComputeChain;
 use crate::computable_scene::compute_block::{BlockId, ComputeBlock, Dimensions, RenderingData, VectorRenderingData};
 use wgpu::util::DeviceExt;
@@ -356,6 +357,69 @@ impl SceneRenderer {
         self.wireframe_axes = Some(render_bundle);
     }
 
+    pub fn update_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, graph: &ComputeGraph) {
+        self.renderables.clear();
+        self.renderable_ids.clear();
+        // go through all blocks,
+        // chose the "Rendering" ones,
+        // turn their data into a renderable
+
+        let all_matcaps = graph.matcaps();
+        // if the buffer used for object picking is not big enough, resize it (i.e create a new one)
+        if all_matcaps.len() > self.picking_buffer_length {
+            let (picking_buffer, _picking_bind_layout, picking_bind_group) = create_picking_buffer(device, all_matcaps.len());
+            self.picking_buffer_length = all_matcaps.len();
+            self.picking_buffer = picking_buffer;
+            self.picking_bind_group = picking_bind_group;
+        }
+
+        for (idx, matcap_data) in all_matcaps.enumerate() {
+            self.renderable_ids.push(matcap_data.graph_node_id);
+            self.add_matcap(device, assets, matcap_data, idx as u32);
+        }
+    }
+
+    fn add_matcap(&mut self, device: &wgpu::Device, assets: &Assets, matcap_data: &MatcapData, object_id: u32) {
+        let mut render_bundle_encoder = device.create_render_bundle_encoder(
+            &wgpu::RenderBundleEncoderDescriptor{
+                label: Some("Render bundle encoder for MatcapData"),
+                color_formats: &[SCENE_FORMAT],
+                depth_stencil: Some(wgpu::RenderBundleDepthStencil{
+                    format: DEPTH_FORMAT,
+                    depth_read_only: false,
+                    stencil_read_only: false,
+                }),
+                sample_count: SAMPLE_COUNT,
+            }
+        );
+        // In order to create a correct uniforms bind group, we need to recover the layour from the correct pipeline
+        let uniforms_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
+            layout: &self.pipelines.matcap.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: self.uniforms_buffer.as_entire_binding(),
+                },
+            ],
+            label: Some("Uniforms bind group"),
+        });
+        render_bundle_encoder.set_pipeline(&self.pipelines.matcap);
+        render_bundle_encoder.set_vertex_buffer(0, matcap_data.vertex_buffer.slice(..));
+        render_bundle_encoder.set_index_buffer(matcap_data.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        render_bundle_encoder.set_bind_group(0, &uniforms_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
+        render_bundle_encoder.set_bind_group(2, &assets.masks[matcap_data.mask_id].bind_group, &[]);
+        render_bundle_encoder.set_bind_group(3, &assets.materials[matcap_data.material_id].bind_group, &[]);
+        // encode the object_id in the instance used for indexed rendering, so that the shader
+        // will be able to recover the id by reading the gl_InstanceIndex variable
+        let instance_id = object_id;
+        //render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, instance_id..instance_id+1);
+        render_bundle_encoder.draw_indexed(0..matcap_data.index_count, 0, 0..1);
+        let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
+            label: Some("Render bundle for a single scene object"),
+        });
+        //self.renderables.push(render_bundle);
+    }
 
     fn add_renderable(&mut self, device: &wgpu::Device, assets: &Assets, rendering_data: &RenderingData, object_id: u32) {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(

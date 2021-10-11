@@ -1,4 +1,5 @@
 use crate::computable_scene::*;
+use crate::compute_graph::ComputeGraph;
 use crate::device_manager::Manager;
 use crate::rendering::camera;
 use crate::rendering::SceneRenderer;
@@ -136,6 +137,7 @@ impl AppState {
         let global_vars_changed = self.computable_scene.globals.update_buffer(&self.manager.queue);
         if global_vars_changed {
             self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
+            self.computable_scene.graph.run_compute(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
         }
         if self.camera_ortho {
             // this is here instead of inside `update_projection_matrix` because
@@ -167,6 +169,7 @@ impl State {
         let computable_scene = ComputableScene {
             globals: globals::Globals::new(&manager.device, vec![], vec![]),
             chain: compute_chain::ComputeChain::new(),
+            graph: ComputeGraph::new(),
             renderer: SceneRenderer::new_with_axes(&manager.device),
             mouse_pos: [0.0, 0.0],
         };
@@ -267,23 +270,13 @@ impl State {
     // TODO: rename when switching to wgsl for compute is done
     // process the user graph, and return true if no errors were detected
     pub fn process_user_state_2(&mut self) -> bool {
-        use crate::compute_graph::ComputeGraph;
-
         println!("testing new graph processing");
         let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        let mut compute_graph = ComputeGraph::new();
-        let result = compute_graph.process_single_node(&self.app.manager.device, &globals, 0, &self.user.graph);
-        if let Err(error) = result {
-            dbg!(error);
+        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.manager.queue, &self.app.assets, &mut self.user.graph, globals);
+        let no_errors_detected = graph_errors.is_empty();
+        for error in graph_errors.into_iter() {
+            self.user.graph.mark_error(error);
         }
-        let result = compute_graph.process_single_node(&self.app.manager.device, &globals, 1, &self.user.graph);
-        if let Err(error) = result {
-            dbg!(error);
-        }
-        let result = compute_graph.process_single_node(&self.app.manager.device, &globals, 2, &self.user.graph);
-        if let Err(error) = result {
-            dbg!(error);
-        }
-        return false;
+        return no_errors_detected;
     }
 }

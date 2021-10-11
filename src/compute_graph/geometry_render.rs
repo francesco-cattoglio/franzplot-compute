@@ -2,12 +2,14 @@ use std::collections::BTreeMap;
 use super::Operation;
 use crate::computable_scene::globals::Globals;
 use crate::rendering::{StandardVertexData};
-use super::{ProcessingResult, ProcessingError};
+use super::{MatcapData, ProcessingError};
 use super::Parameter;
-use super::{DataID, Data};
+use super::{DataID, Data, NodeID};
 use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
 use crate::node_graph::AVAILABLE_SIZES;
+
+pub type GeometryResult = Result<(MatcapData, Operation), ProcessingError>;
 
 pub fn create(
     device: &wgpu::Device,
@@ -15,7 +17,7 @@ pub fn create(
     geometry_id: Option<DataID>,
     thickness: usize,
     output_id: DataID,
-) -> ProcessingResult {
+) -> GeometryResult {
     println!("new geometry rendering processing");
     let data_id = geometry_id.ok_or(ProcessingError::InputMissing(" This Curve node \n is missing its input "))?;
     let found_data = data_map.get(&data_id).ok_or(ProcessingError::InternalError("Geometry used as input does not exist in the block map".into()))?;
@@ -34,7 +36,7 @@ pub fn create(
     }
 }
 
-fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, size: usize, thickness: usize, output_id: DataID) -> ProcessingResult {
+fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, size: usize, thickness: usize, graph_node_id: NodeID) -> GeometryResult {
 
     let section_diameter = AVAILABLE_SIZES[thickness];
     let n_section_points = (thickness + 3)*2;
@@ -127,7 +129,6 @@ fn main([[builtin(global_invocation_id)]] _global_id: vec3<u32>) {{
     );
     // workaround WGSL limitations: assign section_points to a temporary var
     // so that we can index it with dinamic indices
-    var sp: array<vec2<f32>, 12> = section_points;
     for (var i: i32 = 0; i < {n_points}; i = i + 1) {{
         // the curve section is written as list of vec2 constant points, turn them into actual positions
         // or directions and multiply them by the transform matrix. Note that the new_basis
@@ -158,21 +159,21 @@ fn main([[builtin(global_invocation_id)]] _global_id: vec3<u32>) {{
     ];
     let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
 
-    let mut new_data = BTreeMap::<DataID, Data>::new();
-    new_data.insert(
-        output_id,
-        Data::Prefab {
-            vertex_buffer,
-            index_buffer,
-        },
-    );
+    let renderable = MatcapData {
+        vertex_buffer,
+        index_buffer,
+        index_count,
+        mask_id: 0,
+        material_id: 0,
+        graph_node_id,
+    };
     let operation = Operation {
         bind_group,
         pipeline,
         dim: [1, 1, 1],
     };
 
-    Ok((new_data, operation))
+    Ok((renderable, operation))
 }
 
 // UTILITY FUNCTIONS
@@ -258,6 +259,7 @@ fn create_curve_shader_constants(radius: f32, n_section_points: usize) -> String
         shader_consts += &format!("\tvec2<f32>({:#?}, {:#?}),\n", radius*theta.cos(), radius*theta.sin() );
     }
     shader_consts += &format!(");\n");
+    shader_consts += &format!("var sp: array<vec2<f32>, {n}> = section_points;\n", n=n_section_points);
 
     shader_consts
 }

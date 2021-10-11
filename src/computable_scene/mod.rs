@@ -4,6 +4,7 @@ pub mod globals;
 
 use globals::Globals;
 use compute_chain::ComputeChain;
+use crate::compute_graph::{ProcessingError, ComputeGraph};
 use crate::state::Assets;
 use crate::rendering::SceneRenderer;
 use compute_block::BlockCreationError;
@@ -13,6 +14,7 @@ use crate::node_graph::{ GraphError, Severity };
 pub struct ComputableScene{
     pub globals: Globals,
     pub chain: ComputeChain,
+    pub graph: ComputeGraph,
     pub renderer: SceneRenderer,
     pub mouse_pos: [f32; 2],
 }
@@ -22,11 +24,11 @@ impl ComputableScene {
         self.globals = globals;
         // TODO: this part is super confusing, there are huge side effects that
         // can easily go unnoticed. maybe refactor it?
-        let scene_result = self.chain.scene_from_graph(device, &assets.models, &self.globals, graph);
-        self.renderer.update_renderables(device, &assets, &self.chain);
+        let scene_result = self.graph.process_graph(device, &assets.models, &self.globals, graph).unwrap();
+        self.renderer.update_matcaps(device, &assets, &self.graph);
 
         // run the chain once, at the best of our possibilities
-        self.chain.run_chain(device, queue, &self.globals);
+        self.graph.run_compute(device, queue, &self.globals);
 
         // Report every error to the user
         // TODO: rewrite as a iter.map.collect?
@@ -34,7 +36,7 @@ impl ComputableScene {
         for (block_id, error) in scene_result.into_iter() {
             let id = block_id;
             match error {
-                BlockCreationError::IncorrectAttributes(message) => {
+                ProcessingError::IncorrectAttributes(message) => {
                     to_return.push(GraphError {
                         severity: Severity::Error,
                         node_id: id,
@@ -42,15 +44,15 @@ impl ComputableScene {
                     });
                     println!("incorrect attributes error for {}: {}", id, &message);
                 },
-                BlockCreationError::InputNotBuilt(message) => {
-                    to_return.push(GraphError {
-                        severity: Severity::Warning,
-                        node_id: id,
-                        message: String::from(message),
-                    });
-                    println!("input not build warning for {}: {}", id, &message);
-                },
-                BlockCreationError::InputMissing(message) => {
+                //ProcessingError::InputNotBuilt(message) => {
+                //    to_return.push(GraphError {
+                //        severity: Severity::Warning,
+                //        node_id: id,
+                //        message: String::from(message),
+                //    });
+                //    println!("input not build warning for {}: {}", id, &message);
+                //},
+                ProcessingError::InputMissing(message) => {
                     to_return.push(GraphError {
                         severity: Severity::Error,
                         node_id: id,
@@ -58,15 +60,15 @@ impl ComputableScene {
                     });
                     println!("missing input error for {}: {}", id, &message);
                 },
-                BlockCreationError::InputInvalid(message) => {
-                    to_return.push(GraphError {
-                        severity: Severity::Error,
-                        node_id: id,
-                        message: String::from(message),
-                    });
-                    println!("invalid input error for {}: {}", id, &message);
-                },
-                BlockCreationError::IncorrectExpression(message) => {
+                //ProcessingError::InputInvalid(message) => {
+                //    to_return.push(GraphError {
+                //        severity: Severity::Error,
+                //        node_id: id,
+                //        message: String::from(message),
+                //    });
+                //    println!("invalid input error for {}: {}", id, &message);
+                //},
+                ProcessingError::IncorrectExpression(message) => {
                     println!("invalid input error for {}: {}", id, &message);
                     to_return.push(GraphError {
                         severity: Severity::Error,
@@ -74,7 +76,7 @@ impl ComputableScene {
                         message,
                     });
                 },
-                BlockCreationError::InternalError(message) => {
+                ProcessingError::InternalError(message) => {
                     println!("internal error: {}", &message);
                     // A panic is a bit eccessive. Failing fast is good, but the user might be
                     // unable to report the error to the developer.

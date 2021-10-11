@@ -34,7 +34,7 @@ V1(
         )),// [0]
         Some((
           node_id: 0,
-          contents: Text(label:"begin",string:"-3.1415"),
+          contents: Text(label:"begin",string:"0"),
         )),// [1]
         Some((
           node_id: 0,
@@ -42,7 +42,7 @@ V1(
         )),// [2]
         Some((
           node_id: 0,
-          contents: IntSlider(label:"quality",value:4,mode:IntRange(4,16)),
+          contents: IntSlider(label:"quality",value:1,mode:IntRange(1,16)),
         )),// [3]
         Some((
           node_id: 0,
