@@ -69,7 +69,7 @@ var<workgroup> ref_buff: array<vec3<f32>, {dimx}>;
 
 {curve_constants}
 
-[[stage(compute), workgroup_size({n_points})]]
+[[stage(compute), workgroup_size({dimx})]]
 fn main([[builtin(global_invocation_id)]] _global_id: vec3<u32>) {{
     // this shader prepares the data for curve rendering.
 
@@ -129,19 +129,19 @@ fn main([[builtin(global_invocation_id)]] _global_id: vec3<u32>) {{
     );
     // workaround WGSL limitations: assign section_points to a temporary var
     // so that we can index it with dinamic indices
-    for (var i: i32 = 0; i < {n_points}; i = i + 1) {{
+    for (var i: i32 = 0; i < {points_per_section}; i = i + 1) {{
         // the curve section is written as list of vec2 constant points, turn them into actual positions
         // or directions and multiply them by the transform matrix. Note that the new_basis
         // is orthonormal, so there is no need to compute the inverse transpose
-        let out_idx = idx * {n_points} + i;
+        let out_idx = idx * {points_per_section} + i;
         let section_point = vec3<f32>(0.0, sp[i].x, sp[i].y);
         _out.vertices[out_idx].position = new_basis * vec4<f32>(section_point, 1.0);
         _out.vertices[out_idx].normal = new_basis * vec4<f32>(normalize(section_point), 0.0);
-        _out.vertices[out_idx].uv_coords = vec2<f32>(f32(idx)/(f32(x_size) - 1.0), f32(i)/(f32({n_points}) - 1.0));
+        _out.vertices[out_idx].uv_coords = vec2<f32>(f32(idx)/(f32(x_size) - 1.0), f32(i)/(f32({points_per_section}) - 1.0));
         _out.vertices[out_idx]._padding = vec2<f32>(0.123, 0.456);
     }}
 }}
-"##, curve_constants=curve_consts, n_points=n_section_points, dimx=size);
+"##, curve_constants=curve_consts, points_per_section=n_section_points, dimx=size);
 
     println!("shader source:\n {}", &wgsl_source);
     // We are creating a curve from an interval, output vertex count is the same as interval
@@ -224,7 +224,8 @@ fn create_curve_buffer_index(device: &wgpu::Device, x_size: usize, circle_points
         &wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&index_vector),
-            usage: wgpu::BufferUsages::INDEX,
+            // TODO: remove map_read from usage flags
+            usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::MAP_READ,
     });
     (index_buffer, index_vector.len() as u32)
 }

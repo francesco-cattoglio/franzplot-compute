@@ -237,8 +237,9 @@ impl ComputeGraph {
         queue.submit(std::iter::once(compute_queue));
 
         if let Some(renderable) = self.renderables.first() {
-            let contents = crate::util::copy_buffer_as::<f32>(&renderable.vertex_buffer, device);
- //           dbg!(&contents);
+            //let contents = crate::util::copy_buffer_as::<f32>(&renderable.vertex_buffer, device);
+            let contents = crate::util::copy_buffer_as::<i32>(&renderable.index_buffer, device);
+            dbg!(&contents);
         }
 
     }

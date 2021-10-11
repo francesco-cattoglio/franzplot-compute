@@ -125,6 +125,7 @@ impl SceneRenderer {
     }
 
     pub fn update_renderables(&mut self, device: &wgpu::Device, assets: &Assets, chain: &ComputeChain) {
+        panic!();
         self.renderables.clear();
         self.renderable_ids.clear();
         // go through all blocks,
@@ -418,7 +419,7 @@ impl SceneRenderer {
         let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
             label: Some("Render bundle for a single scene object"),
         });
-        //self.renderables.push(render_bundle);
+        self.renderables.push(render_bundle);
     }
 
     fn add_renderable(&mut self, device: &wgpu::Device, assets: &Assets, rendering_data: &RenderingData, object_id: u32) {

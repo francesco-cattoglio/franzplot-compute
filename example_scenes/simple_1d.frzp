@@ -90,7 +90,7 @@ V1(
         None,// [26]
         Some((
           node_id: 6,
-          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+          contents: IntSlider(label:"thickness:",value:0,mode:SizeLabels),
         )),// [27]
         Some((
           node_id: 6,
