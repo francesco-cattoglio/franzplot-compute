@@ -237,11 +237,26 @@ impl ComputeGraph {
         queue.submit(std::iter::once(compute_queue));
 
         if let Some(renderable) = self.renderables.first() {
-            //let contents = crate::util::copy_buffer_as::<f32>(&renderable.vertex_buffer, device);
-            let contents = crate::util::copy_buffer_as::<i32>(&renderable.index_buffer, device);
-            dbg!(&contents);
-        }
+            let vert_contents = crate::util::copy_buffer_as::<f32>(&renderable.vertex_buffer, device);
 
+            let mut path = std::path::PathBuf::new();
+            path.push("./garbage/vertex");
+            let mut file = std::fs::File::create(path).unwrap();
+            // update the time_stamp to remember the last time the file was saved
+            let serialized_data = serde_json::ser::to_string_pretty(&vert_contents).unwrap();
+
+            use std::io::Write;
+            file.write_all(serialized_data.as_bytes()).unwrap();
+
+            let index_contents = crate::util::copy_buffer_as::<i32>(&renderable.index_buffer, device);
+            let mut path = std::path::PathBuf::new();
+            path.push("./garbage/index");
+            let mut file = std::fs::File::create(path).unwrap();
+            // update the time_stamp to remember the last time the file was saved
+            let serialized_data = serde_json::ser::to_string_pretty(&index_contents).unwrap();
+
+            file.write_all(serialized_data.as_bytes()).unwrap();
+        }
     }
 
 
