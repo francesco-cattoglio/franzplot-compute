@@ -118,7 +118,7 @@ impl Attribute {
         // just like we push the imnodes style vars
         let font_size = ui.current_font_size();
         let style_token = ui.push_style_var(StyleVar::ItemSpacing([0.24 * font_size, 0.26 * font_size]));
-        let [char_w, _char_h] = ui.calc_text_size(im_str!("A"), false, 0.0);
+        let [char_w, _char_h] = ui.calc_text_size("A", false, 0.0);
         let value_changed = match &mut self.contents {
             AttributeContents::InputPin {
                 label, kind,
@@ -143,10 +143,10 @@ impl Attribute {
 
                 imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
-                ui.same_line(0.0);
+                ui.same_line();
                 ui.set_next_item_width(widget_width);
                 let mut imstring = ImString::new(string.clone());
-                let value_changed = InputText::new(ui, im_str!(""), &mut imstring)
+                let value_changed = InputText::new(ui, "", &mut imstring)
                     .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
@@ -161,16 +161,16 @@ impl Attribute {
 
                 imnodes::BeginStaticAttribute(id);
 
-                ui.text(im_str!(" axis"));
-                ui.same_line(0.0);
+                ui.text(" axis");
+                ui.same_line();
                 ui.set_next_item_width(widget_width);
-                let choices = vec!(im_str!("X"), im_str!("Y"), im_str!("Z"));
+                let choices = vec!("X", "Y", "Z");
                 let mut selected = match axis {
                     Axis::X => 0,
                     Axis::Y => 1,
                     Axis::Z => 2,
                 };
-                let value_changed = ComboBox::new(im_str!("##axis"))
+                let value_changed = ComboBox::new("##axis")
                     .build_simple_string(ui, &mut selected, &choices);
                 *axis = match selected {
                     0 => Axis::X,
@@ -188,12 +188,11 @@ impl Attribute {
 
                 imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
-                ui.same_line(0.0);
+                ui.same_line();
                 ui.set_next_item_width(widget_width);
                 let value_changed = match mode {
                     SliderMode::IntRange(min, max) => {
-                        Slider::new(im_str!(""))
-                            .range(*min ..= *max)
+                        Slider::new("", *min, *max)
                             .flags(SliderFlags::NO_INPUT)
                             .build(ui, value)
                     },
@@ -201,8 +200,7 @@ impl Attribute {
                         let max_id = AVAILABLE_SIZES.len() - 1;
                         let string_id = max_id.min(*value as usize);
                         let display_string: ImString = format!("{}", AVAILABLE_SIZES[string_id]).into();
-                        Slider::new(im_str!(""))
-                            .range(0 ..= max_id as i32)
+                        Slider::new("", 0, max_id as i32)
                             .display_format(&display_string)
                             .flags(SliderFlags::NO_INPUT)
                             .build(ui, value)
@@ -223,37 +221,37 @@ impl Attribute {
                 // TODO: this is kinda ugly
                 imstring = ImString::new(col_1.clone());
                 ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, im_str!("##1"), &mut imstring)
+                value_changed |= InputText::new(ui, "##1", &mut imstring)
                     .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
                 *col_1 = imstring.to_string();
 
-                ui.same_line(0.0);
+                ui.same_line();
 
                 imstring = ImString::new(col_2.clone());
                 ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, im_str!("##2"), &mut imstring)
+                value_changed |= InputText::new(ui, "##2", &mut imstring)
                     .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
                 *col_2 = imstring.to_string();
 
-                ui.same_line(0.0);
+                ui.same_line();
 
                 imstring = ImString::new(col_3.clone());
                 ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, im_str!("##3"), &mut imstring)
+                value_changed |= InputText::new(ui, "##3", &mut imstring)
                     .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
                 *col_3 = imstring.to_string();
 
-                ui.same_line(0.0);
+                ui.same_line();
 
                 imstring = ImString::new(col_4.clone());
                 ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, im_str!("##4"), &mut imstring)
+                value_changed |= InputText::new(ui, "##4", &mut imstring)
                     .no_undo_redo(true)
                     .resize_buffer(true)
                     .build();
@@ -269,8 +267,8 @@ impl Attribute {
 
                 imnodes::BeginStaticAttribute(id);
                 ui.text(&label);
-                ui.same_line(0.0);
-                let color_picker = ColorEdit::new(im_str!(""), EditableColor::Float3(color))
+                ui.same_line();
+                let color_picker = ColorEdit::new("", EditableColor::Float3(color))
                     .inputs(false)
                     .options(true);
 
@@ -285,8 +283,8 @@ impl Attribute {
                 let widget_width = 2.35 * char_w;
 
                 imnodes::BeginStaticAttribute(id);
-                ui.text(im_str!("Mask:"));
-                ui.same_line(0.0);
+                ui.text("Mask:");
+                ui.same_line();
                 let mut value_changed = false;
                 // clamp the value of "selected" to the masks vector length
                 if *selected >= availables.mask_ids.len() {
@@ -297,15 +295,15 @@ impl Attribute {
                     .uv1([0.5, 0.5]) // the pattern will be zoomed in by showing only a small part
                     .frame_padding(0);
                 if button.build(ui) {
-                    ui.open_popup(im_str!("mask selection"));
+                    ui.open_popup("mask selection");
                 }
 
                 let mut new_selection: Option<usize> = None;
                 let token = ui.push_style_var(StyleVar::WindowPadding([4.0, 4.0]));
-                ui.popup(im_str!("mask selection"), || {
+                ui.popup("mask selection", || {
                     for (i, texture) in availables.mask_ids.iter().enumerate() {
                         if i%4 != 0 {
-                            ui.same_line(0.0);
+                            ui.same_line();
                         }
                         let button = ImageButton::new(*texture, [32.0, 32.0])
                             .frame_padding(0);
@@ -316,7 +314,7 @@ impl Attribute {
                         }
                     }
                 });
-                token.pop(ui);
+                token.pop();
                 if let Some(user_selection) = new_selection {
                     if *selected != user_selection {
                         *selected = user_selection;
@@ -332,8 +330,8 @@ impl Attribute {
                 let widget_width = 2.35 * char_w;
 
                 imnodes::BeginStaticAttribute(id);
-                ui.text(im_str!("Material:"));
-                ui.same_line(0.0);
+                ui.text("Material:");
+                ui.same_line();
                 let mut value_changed = false;
                 // clamp the value of "selected" to the materials length
                 if *selected >= availables.material_ids.len() {
@@ -343,15 +341,15 @@ impl Attribute {
                 let button = ImageButton::new(availables.material_ids[*selected], [widget_width, widget_width])
                     .frame_padding(0);
                 if button.build(ui) {
-                    ui.open_popup(im_str!("material selection"));
+                    ui.open_popup("material selection");
                 }
 
                 let mut new_selection: Option<usize> = None;
                 let token = ui.push_style_var(StyleVar::WindowPadding([4.0, 4.0]));
-                ui.popup(im_str!("material selection"), || {
+                ui.popup("material selection", || {
                     for (i, texture) in availables.material_ids.iter().enumerate() {
                         if i%4 != 0 {
-                            ui.same_line(0.0);
+                            ui.same_line();
                         }
                         let button = ImageButton::new(*texture, [32.0, 32.0])
                             .frame_padding(0);
@@ -362,7 +360,7 @@ impl Attribute {
                         }
                     }
                 });
-                token.pop(ui);
+                token.pop();
                 if let Some(user_selection) = new_selection {
                     if *selected != user_selection {
                         *selected = user_selection;
@@ -378,12 +376,12 @@ impl Attribute {
                 let widget_width = 12.0 * char_w;
 
                 imnodes::BeginStaticAttribute(id);
-                ui.text(im_str!("Kind:"));
-                ui.same_line(0.0);
+                ui.text("Kind:");
+                ui.same_line();
                 ui.set_next_item_width(widget_width);
                 let mut value_changed = false;
                 let list: Vec<&ImString> = availables.model_names.iter().collect();
-                if ComboBox::new(im_str!("##primitive")).build_simple_string(ui, selected, &list) {
+                if ComboBox::new("##primitive").build_simple_string(ui, selected, &list) {
                     value_changed = true;
                 }
                 imnodes::EndStaticAttribute();
@@ -395,7 +393,7 @@ impl Attribute {
                 unimplemented!()
             }
         };
-        style_token.pop(ui);
+        style_token.pop();
         value_changed
     }
 
@@ -886,7 +884,7 @@ impl Node {
             ui.text(&self.title);
             // handle error reporting
             if let Some(error) = &self.error {
-                ui.same_line(0.0);
+                ui.same_line();
                 match error.severity {
                     Severity::Warning => {
                         ui.text_colored( [1.0, 0.8, 0.0, 1.0], "⚠");
@@ -1165,7 +1163,7 @@ impl NodeGraph {
         // (e.g: right clicks, node creation)
         imnodes::EndNodeEditor();
         self.read_positions_from_imnodes();
-        font_token.pop(ui);
+        font_token.pop();
 
         // Process right click
         let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Right, 4.0);
@@ -1188,22 +1186,22 @@ impl NodeGraph {
                 }
 
                 self.right_clicked_node = Some(hovered_id);
-                ui.open_popup(im_str!("Node menu"));
+                ui.open_popup("Node menu");
             } else if imnodes::IsLinkHovered(&mut hovered_id) {
                 self.right_clicked_link = Some(hovered_id);
-                ui.open_popup(im_str!("Link menu"));
+                ui.open_popup("Link menu");
             } else {
-                ui.open_popup(im_str!("Add menu"));
+                ui.open_popup("Add menu");
             }
         }
 
         let mut workaround_open_rename = false;
-        ui.popup(im_str!("Node menu"), || {
+        ui.popup("Node menu", || {
             let clicked_node = self.right_clicked_node.unwrap();
             // The right-click menu changes contents depending on how many nodes are selected
             if selected_nodes_ids.len() <= 1 {
                 // single node selection, using the self.right_clicked_node id
-                if MenuItem::new(im_str!("delete node")).build(ui) {
+                if MenuItem::new("delete node").build(ui) {
                     println!("need to remove {}", clicked_node);
                     self.remove_node(clicked_node);
                     imnodes::ClearNodeSelection();
@@ -1211,17 +1209,17 @@ impl NodeGraph {
                     request_savestate = Some(ui.time());
                 }
                 // TODO: decide if single node clone should still clone the links
-                if MenuItem::new(im_str!("duplicate node")).build(ui) {
+                if MenuItem::new("duplicate node").build(ui) {
                     self.duplicate_node_no_links(clicked_node);
                     self.right_clicked_node = None;
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("rename node")).build(ui) {
+                if MenuItem::new("rename node").build(ui) {
                     workaround_open_rename = true;
                 }
             } else {
                 // multiple node selection, operates on all selected nodes
-                if MenuItem::new(im_str!("delete selected nodes")).build(ui) {
+                if MenuItem::new("delete selected nodes").build(ui) {
                     for node_id in selected_nodes_ids.iter() {
                         println!("need to remove[] {}", *node_id);
                         self.remove_node(*node_id);
@@ -1230,7 +1228,7 @@ impl NodeGraph {
                     self.right_clicked_node = None;
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("duplicate nodes and links")).build(ui) {
+                if MenuItem::new("duplicate nodes and links").build(ui) {
                     self.duplicate_nodes(&selected_nodes_ids);
                     self.right_clicked_node = None;
                     request_savestate = Some(ui.time());
@@ -1239,11 +1237,11 @@ impl NodeGraph {
         });
 
         if workaround_open_rename {
-            ui.open_popup(im_str!("Edit node name"));
+            ui.open_popup("Edit node name");
         }
-        ui.popup(im_str!("Edit node name"), || {
+        ui.popup("Edit node name", || {
             let mut imstring = ImString::new("");
-            let value_changed = InputText::new(ui, im_str!(""), &mut imstring)
+            let value_changed = InputText::new(ui, "", &mut imstring)
                 .no_undo_redo(true)
                 .resize_buffer(true)
                 .enter_returns_true(true)
@@ -1256,9 +1254,9 @@ impl NodeGraph {
             }
         });
 
-        ui.popup(im_str!("Link menu"), || {
+        ui.popup("Link menu", || {
             let clicked_link = self.right_clicked_link.unwrap();
-            if MenuItem::new(im_str!("delete link")).build(ui) {
+            if MenuItem::new("delete link").build(ui) {
                 println!("need to remove {}", clicked_link);
                 self.links.remove(&clicked_link);
                 imnodes::ClearLinkSelection();
@@ -1268,7 +1266,7 @@ impl NodeGraph {
         });
 
         let style_token = ui.push_style_var(StyleVar::WindowPadding([8.0, 8.0]));
-        ui.popup(im_str!("Add menu"), || {
+        ui.popup("Add menu", || {
             let [click_pos_x, click_pos_y] = ui.mouse_pos_on_opening_current_popup();
             let [pan_x, pan_y] = imnodes::GetEditorPanning();
             let editor_pos_x = click_pos_x - editor_ne_point[0] - pan_x;
@@ -1276,77 +1274,77 @@ impl NodeGraph {
             let zoom = ZOOM_LEVELS[self.zoom_level];
             let node_pos = [editor_pos_x/zoom, editor_pos_y/zoom];
 
-            ui.menu(im_str!("Geometries"), true, || {
-                if MenuItem::new(im_str!("Curve")).build(ui) {
+            ui.menu("Geometries", true, || {
+                if MenuItem::new("Curve").build(ui) {
                     self.add_curve_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("Bezier Curve")).build(ui) {
+                if MenuItem::new("Bezier Curve").build(ui) {
                     self.add_bezier_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("Surface")).build(ui) {
+                if MenuItem::new("Surface").build(ui) {
                     self.add_surface_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("Plane")).build(ui) {
+                if MenuItem::new("Plane").build(ui) {
                     self.add_plane_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("Primitive")).build(ui) {
+                if MenuItem::new("Primitive").build(ui) {
                     self.add_primitive_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
             }); // Geometries menu ends here
 
-            ui.menu(im_str!("Parameters"), true, || {
-                if MenuItem::new(im_str!("Interval")).build(ui) {
+            ui.menu("Parameters", true, || {
+                if MenuItem::new("Interval").build(ui) {
                     self.add_interval_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("Sample parameter")).build(ui) {
+                if MenuItem::new("Sample parameter").build(ui) {
                     self.add_parameter_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
             }); // Geometries menu ends here
 
-            ui.menu(im_str!("Transformations"), true, || {
-                if MenuItem::new(im_str!("Generic Matrix")).build(ui) {
+            ui.menu("Transformations", true, || {
+                if MenuItem::new("Generic Matrix").build(ui) {
                     self.add_matrix_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("Rotation Matrix")).build(ui) {
+                if MenuItem::new("Rotation Matrix").build(ui) {
                     self.add_rotation_matrix_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("Translation Matrix")).build(ui) {
+                if MenuItem::new("Translation Matrix").build(ui) {
                     self.add_translation_matrix_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
-                if MenuItem::new(im_str!("Transform")).build(ui) {
+                if MenuItem::new("Transform").build(ui) {
                     self.add_transform_node(node_pos);
                     request_savestate = Some(ui.time());
                 }
             }); // Transformations menu ends here
 
-            if MenuItem::new(im_str!("Point")).build(ui) {
+            if MenuItem::new("Point").build(ui) {
                 self.add_point_node(node_pos);
                 request_savestate = Some(ui.time());
             }
-            if MenuItem::new(im_str!("Vector")).build(ui) {
+            if MenuItem::new("Vector").build(ui) {
                 self.add_vector_node(node_pos);
                 request_savestate = Some(ui.time());
             }
-            if MenuItem::new(im_str!("Geometry Rendering")).build(ui) {
+            if MenuItem::new("Geometry Rendering").build(ui) {
                 self.add_rendering_node(node_pos);
                 request_savestate = Some(ui.time());
             }
-            if MenuItem::new(im_str!("Vector Rendering")).build(ui) {
+            if MenuItem::new("Vector Rendering").build(ui) {
                 self.add_vector_rendering_node(node_pos);
                 request_savestate = Some(ui.time());
             }
         }); // "Add" closure ends here
-        style_token.pop(ui);
+        style_token.pop();
 
         // check if a link was created
         let mut start_attribute_id: AttributeID = -1;
