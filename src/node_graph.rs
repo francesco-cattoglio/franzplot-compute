@@ -118,7 +118,7 @@ impl Attribute {
         // just like we push the imnodes style vars
         let font_size = ui.current_font_size();
         let style_token = ui.push_style_var(StyleVar::ItemSpacing([0.24 * font_size, 0.26 * font_size]));
-        let [char_w, _char_h] = ui.calc_text_size("A", false, 0.0);
+        let [char_w, _char_h] = ui.calc_text_size("A");
         let value_changed = match &mut self.contents {
             AttributeContents::InputPin {
                 label, kind,
@@ -145,12 +145,9 @@ impl Attribute {
                 ui.text(&label);
                 ui.same_line();
                 ui.set_next_item_width(widget_width);
-                let mut imstring = ImString::new(string.clone());
-                let value_changed = InputText::new(ui, "", &mut imstring)
+                let value_changed = InputText::new(ui, "", &mut string)
                     .no_undo_redo(true)
-                    .resize_buffer(true)
                     .build();
-                *string = imstring.to_string();
                 imnodes::EndStaticAttribute();
                 value_changed
             },
@@ -170,14 +167,15 @@ impl Attribute {
                     Axis::Y => 1,
                     Axis::Z => 2,
                 };
-                let value_changed = ComboBox::new("##axis")
-                    .build_simple_string(ui, &mut selected, &choices);
-                *axis = match selected {
-                    0 => Axis::X,
-                    1 => Axis::Y,
-                    2 => Axis::Z,
-                    _ => panic!()
-                };
+                ui.text("TODO: combo box");
+                //let value_changed = ComboBox::new("##axis")
+                //    .build_simple_string(ui, &mut selected, &choices);
+                //*axis = match selected {
+                //    0 => Axis::X,
+                //    1 => Axis::Y,
+                //    2 => Axis::Z,
+                //    _ => panic!()
+                //};
                 imnodes::EndStaticAttribute();
                 value_changed
             },
@@ -199,7 +197,7 @@ impl Attribute {
                     SliderMode::SizeLabels => {
                         let max_id = AVAILABLE_SIZES.len() - 1;
                         let string_id = max_id.min(*value as usize);
-                        let display_string: ImString = format!("{}", AVAILABLE_SIZES[string_id]).into();
+                        let display_string: String = format!("{}", AVAILABLE_SIZES[string_id]).into();
                         Slider::new("", 0, max_id as i32)
                             .display_format(&display_string)
                             .flags(SliderFlags::NO_INPUT)
@@ -216,46 +214,32 @@ impl Attribute {
                 imnodes::BeginStaticAttribute(id);
 
                 let widget_width = 8.5 * char_w;
-                let mut imstring: ImString;
 
-                // TODO: this is kinda ugly
-                imstring = ImString::new(col_1.clone());
                 ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, "##1", &mut imstring)
+                value_changed |= InputText::new(ui, "##1", &mut col_1)
                     .no_undo_redo(true)
-                    .resize_buffer(true)
                     .build();
-                *col_1 = imstring.to_string();
+                ui.same_line();
+
+                ui.set_next_item_width(widget_width);
+
+                value_changed |= InputText::new(ui, "##2", &mut col_2)
+                    .no_undo_redo(true)
+                    .build();
 
                 ui.same_line();
 
-                imstring = ImString::new(col_2.clone());
                 ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, "##2", &mut imstring)
+                value_changed |= InputText::new(ui, "##3", &mut col_3)
                     .no_undo_redo(true)
-                    .resize_buffer(true)
                     .build();
-                *col_2 = imstring.to_string();
 
                 ui.same_line();
 
-                imstring = ImString::new(col_3.clone());
                 ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, "##3", &mut imstring)
+                value_changed |= InputText::new(ui, "##4", &mut col_4)
                     .no_undo_redo(true)
-                    .resize_buffer(true)
                     .build();
-                *col_3 = imstring.to_string();
-
-                ui.same_line();
-
-                imstring = ImString::new(col_4.clone());
-                ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, "##4", &mut imstring)
-                    .no_undo_redo(true)
-                    .resize_buffer(true)
-                    .build();
-                *col_4 = imstring.to_string();
 
                 imnodes::EndStaticAttribute();
                 value_changed
@@ -381,9 +365,10 @@ impl Attribute {
                 ui.set_next_item_width(widget_width);
                 let mut value_changed = false;
                 let list: Vec<&ImString> = availables.model_names.iter().collect();
-                if ComboBox::new("##primitive").build_simple_string(ui, selected, &list) {
-                    value_changed = true;
-                }
+                ui.text("TODO: combo box");
+                //if ComboBox::new("##primitive").build_simple_string(ui, selected, &list) {
+                //    value_changed = true;
+                //}
                 imnodes::EndStaticAttribute();
                 value_changed
             },
@@ -1240,16 +1225,15 @@ impl NodeGraph {
             ui.open_popup("Edit node name");
         }
         ui.popup("Edit node name", || {
-            let mut imstring = ImString::new("");
-            let value_changed = InputText::new(ui, "", &mut imstring)
+            let mut string = String::new();
+            let value_changed = InputText::new(ui, "", &mut string)
                 .no_undo_redo(true)
-                .resize_buffer(true)
                 .enter_returns_true(true)
                 .build();
             if value_changed {
                 let node_id = self.right_clicked_node.unwrap();
                 self.right_clicked_node = None;
-                self.get_node_mut(node_id).unwrap().title = imstring.to_string();
+                self.get_node_mut(node_id).unwrap().title = string.to_string();
                 ui.close_current_popup();
             }
         });
@@ -1274,7 +1258,7 @@ impl NodeGraph {
             let zoom = ZOOM_LEVELS[self.zoom_level];
             let node_pos = [editor_pos_x/zoom, editor_pos_y/zoom];
 
-            ui.menu("Geometries", true, || {
+            ui.menu("Geometries", || {
                 if MenuItem::new("Curve").build(ui) {
                     self.add_curve_node(node_pos);
                     request_savestate = Some(ui.time());
@@ -1297,7 +1281,7 @@ impl NodeGraph {
                 }
             }); // Geometries menu ends here
 
-            ui.menu("Parameters", true, || {
+            ui.menu("Parameters", || {
                 if MenuItem::new("Interval").build(ui) {
                     self.add_interval_node(node_pos);
                     request_savestate = Some(ui.time());
@@ -1308,7 +1292,7 @@ impl NodeGraph {
                 }
             }); // Geometries menu ends here
 
-            ui.menu("Transformations", true, || {
+            ui.menu("Transformations", || {
                 if MenuItem::new("Generic Matrix").build(ui) {
                     self.add_matrix_node(node_pos);
                     request_savestate = Some(ui.time());

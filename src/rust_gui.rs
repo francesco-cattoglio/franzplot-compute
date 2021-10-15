@@ -15,7 +15,7 @@ pub struct Availables {
 
 pub struct Gui {
     pub scene_texture_id: TextureId,
-    pub new_variable_buffer: ImString,
+    pub new_variable_buffer: String,
     pub new_variable_error: Option<String>,
     graph_fonts: Vec<imgui::FontId>,
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
@@ -52,7 +52,7 @@ impl Gui {
             winit_proxy,
             undo_stack: vec![(0.0, serde_json::to_string(&empty_graph).unwrap())].into(),
             undo_cursor: 0,
-            new_variable_buffer: ImString::with_capacity(8),
+            new_variable_buffer: String::with_capacity(8),
             new_variable_error: None,
             graph_edited: false,
             selected_object: None,
@@ -148,7 +148,7 @@ impl Gui {
         if let Some(window_token) = window_begun {
             // menu bar
             if let Some(menu_bar_token) = ui.begin_menu_bar() {
-                ui.menu("File", true, || {
+                ui.menu("File", || {
                     if MenuItem::new("New").build(ui) {
                         if self.graph_edited {
                             file_io::async_confirm_new(self.winit_proxy.clone(), executor);
@@ -312,7 +312,6 @@ impl Gui {
         ui.text("add new variable:");
         ui.set_next_item_width(75.0);
         let variable_name_changed = InputText::new(ui, "##new_var_input", &mut self.new_variable_buffer)
-            .resize_buffer(false)
             .build();
         if variable_name_changed {
             self.new_variable_error = None;
@@ -416,7 +415,7 @@ impl Gui {
             };
         ui.text(ImString::from(node_name));
         ui.set_mouse_cursor(Some(requested_cursor));
-        width_token.pop();
+        width_token.pop(ui);
         ui.next_column();
         // the scene shall use the whole remaining content space available
         let scene_pos = ui.cursor_pos();
@@ -502,6 +501,6 @@ impl Gui {
             ui.text("Dev options");
             ui.checkbox("Automatically open scene tab if graph processing was succesful", &mut state.app.auto_scene_on_processing);
         }
-        width_token.pop();
+        width_token.pop(ui);
     }
 }
