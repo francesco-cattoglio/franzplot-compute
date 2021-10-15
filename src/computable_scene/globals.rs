@@ -276,7 +276,7 @@ impl Globals {
         shader_header += "};\n";
         // when we close the wgsl struct, we also need to write the binding to the group 1
         wgsl_header += "};\n";
-        wgsl_header += "[[group(1), binding(0)]] var<uniform> _globals: Globals;\n";
+        wgsl_header += "[[group(1), binding(0)]] var<uniform> globals: Globals;\n";
 
 
         //println!("debug info for shader header: {}", &shader_header);

@@ -57,18 +57,18 @@ pub fn create(
 values: array<f32>;
 }};
 
-[[group(0), binding(1)]] var<storage, read_write> _output: OutputBuffer;
+[[group(0), binding(1)]] var<storage, read_write> output: OutputBuffer;
 
 [[stage(compute), workgroup_size({n_points})]]
-fn main([[builtin(global_invocation_id)]] _global_id: vec3<u32>) {{
-let _index = _global_id.x;
-let _delta: f32 = ({interval_end} - {interval_begin}) / (f32({n_points}) - 1.0);
-_output.values[_index] = {interval_begin} + _delta * f32(_index);
+fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+let index = global_id.x;
+let delta: f32 = ({interval_end} - {interval_begin}) / (f32({n_points}) - 1.0);
+output.values[index] = {interval_begin} + delta * f32(index);
 }}
 "##, wgsl_globals=globals.get_wgsl_header(), interval_begin=&param.begin, interval_end=&param.end, n_points=param.size
 );
 
-    println!("shader source:\n {}", &wgsl_source);
+    //println!("shader source:\n {}", &wgsl_source);
 
     let out_buffer = util::create_storage_buffer(device, std::mem::size_of::<f32>() * param.size);
 

@@ -50,7 +50,7 @@ struct MatcapVertex {{
     position: vec4<f32>;
     normal: vec4<f32>;
     uv_coords: vec2<f32>;
-    _padding: vec2<f32>;
+    padding: vec2<f32>;
 }};
 
 [[block]] struct InputBuffer {{
@@ -61,8 +61,8 @@ positions: array<vec4<f32>>;
 vertices: array<MatcapVertex>;
 }};
 
-[[group(0), binding(0)]] var<storage, read> _in: InputBuffer;
-[[group(0), binding(1)]] var<storage, read_write> _out: OutputBuffer;
+[[group(0), binding(0)]] var<storage, read> in: InputBuffer;
+[[group(0), binding(1)]] var<storage, read_write> out: OutputBuffer;
 
 var<workgroup> tangent_buff: array<vec3<f32>, {dimx}>;
 var<workgroup> ref_buff: array<vec3<f32>, {dimx}>;
@@ -70,20 +70,20 @@ var<workgroup> ref_buff: array<vec3<f32>, {dimx}>;
 {curve_constants}
 
 [[stage(compute), workgroup_size({dimx})]]
-fn main([[builtin(global_invocation_id)]] _global_id: vec3<u32>) {{
+fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     // this shader prepares the data for curve rendering.
 
     let x_size: i32 = {dimx};
 
-    let idx: i32 = i32(_global_id.x);
+    let idx: i32 = i32(global_id.x);
 
     var tangent: vec3<f32>;
     if (idx == 0) {{
-        tangent = (-1.5*_in.positions[idx] + 2.0*_in.positions[idx + 1] - 0.5*_in.positions[idx + 2]).xyz;
+        tangent = (-1.5*in.positions[idx] + 2.0*in.positions[idx + 1] - 0.5*in.positions[idx + 2]).xyz;
     }} elseif (idx == x_size - 1) {{
-        tangent = ( 1.5*_in.positions[idx] - 2.0*_in.positions[idx - 1] + 0.5*_in.positions[idx - 2]).xyz;
+        tangent = ( 1.5*in.positions[idx] - 2.0*in.positions[idx - 1] + 0.5*in.positions[idx - 2]).xyz;
     }} else {{
-        tangent = (-0.5*_in.positions[idx - 1] + 0.5*_in.positions[idx+1]).xyz;
+        tangent = (-0.5*in.positions[idx - 1] + 0.5*in.positions[idx+1]).xyz;
     }}
 
     tangent = normalize(tangent);
@@ -110,7 +110,7 @@ fn main([[builtin(global_invocation_id)]] _global_id: vec3<u32>) {{
 
     // now all the compute threads can access the ref_buff, which contains a reference
     // vector for every frame. Each thread computes the transformed section.
-    let section_position: vec4<f32> = _in.positions[idx];
+    let section_position: vec4<f32> = in.positions[idx];
     // compute the three directions for the frame: forward direction
     let frame_forward = vec4<f32>(tangent, 0.0);
     // up direction
@@ -134,16 +134,17 @@ fn main([[builtin(global_invocation_id)]] _global_id: vec3<u32>) {{
         // or directions and multiply them by the transform matrix. Note that the new_basis
         // is orthonormal, so there is no need to compute the inverse transpose
         let out_idx = idx * {points_per_section} + i;
-        let section_point = vec3<f32>(0.0, sp[i].x, sp[i].y);
-        _out.vertices[out_idx].position = new_basis * vec4<f32>(section_point, 1.0);
-        _out.vertices[out_idx].normal = new_basis * vec4<f32>(normalize(section_point), 0.0);
-        _out.vertices[out_idx].uv_coords = vec2<f32>(f32(idx)/(f32(x_size) - 1.0), f32(i)/(f32({points_per_section}) - 1.0));
-        _out.vertices[out_idx]._padding = vec2<f32>(0.123, 0.456);
+        //let section_point = vec3<f32>(0.0, sp[i].x, sp[i].y);
+        let section_point = vec3<f32>(0.0, 0.0, 0.0);
+        out.vertices[out_idx].position = new_basis * vec4<f32>(section_point, 1.0);
+        out.vertices[out_idx].normal = new_basis * vec4<f32>(normalize(section_point), 0.0);
+        out.vertices[out_idx].uv_coords = vec2<f32>(f32(idx)/(f32(x_size) - 1.0), f32(i)/(f32({points_per_section}) - 1.0));
+        out.vertices[out_idx].padding = vec2<f32>(0.123, 0.456);
     }}
 }}
 "##, curve_constants=curve_consts, points_per_section=n_section_points, dimx=size);
 
-    println!("shader source:\n {}", &wgsl_source);
+    //println!("shader source:\n {}", &wgsl_source);
     // We are creating a curve from an interval, output vertex count is the same as interval
     // one, but buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
 
@@ -260,7 +261,7 @@ fn create_curve_shader_constants(radius: f32, n_section_points: usize) -> String
         shader_consts += &format!("\tvec2<f32>({:#?}, {:#?}),\n", radius*theta.cos(), radius*theta.sin() );
     }
     shader_consts += &format!(");\n");
-    shader_consts += &format!("var sp: array<vec2<f32>, {n}> = section_points;\n", n=n_section_points);
+   // shader_consts += &format!("var sp: array<vec2<f32>, {n}> = section_points;\n", n=n_section_points);
 
     shader_consts
 }
