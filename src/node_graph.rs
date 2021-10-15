@@ -145,7 +145,7 @@ impl Attribute {
                 ui.text(&label);
                 ui.same_line();
                 ui.set_next_item_width(widget_width);
-                let value_changed = InputText::new(ui, "", &mut string)
+                let value_changed = InputText::new(ui, "", &mut *string)
                     .no_undo_redo(true)
                     .build();
                 imnodes::EndStaticAttribute();
@@ -168,6 +168,7 @@ impl Attribute {
                     Axis::Z => 2,
                 };
                 ui.text("TODO: combo box");
+                let value_changed = false;
                 //let value_changed = ComboBox::new("##axis")
                 //    .build_simple_string(ui, &mut selected, &choices);
                 //*axis = match selected {
@@ -188,7 +189,7 @@ impl Attribute {
                 ui.text(&label);
                 ui.same_line();
                 ui.set_next_item_width(widget_width);
-                let value_changed = match mode {
+                let mut value_changed = match mode {
                     SliderMode::IntRange(min, max) => {
                         Slider::new("", *min, *max)
                             .flags(SliderFlags::NO_INPUT)
@@ -216,28 +217,28 @@ impl Attribute {
                 let widget_width = 8.5 * char_w;
 
                 ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, "##1", &mut col_1)
+                value_changed |= InputText::new(ui, "##1", &mut *col_1)
                     .no_undo_redo(true)
                     .build();
                 ui.same_line();
 
                 ui.set_next_item_width(widget_width);
 
-                value_changed |= InputText::new(ui, "##2", &mut col_2)
+                value_changed |= InputText::new(ui, "##2", &mut *col_2)
                     .no_undo_redo(true)
                     .build();
 
                 ui.same_line();
 
                 ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, "##3", &mut col_3)
+                value_changed |= InputText::new(ui, "##3", &mut *col_3)
                     .no_undo_redo(true)
                     .build();
 
                 ui.same_line();
 
                 ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, "##4", &mut col_4)
+                value_changed |= InputText::new(ui, "##4", &mut *col_4)
                     .no_undo_redo(true)
                     .build();
 

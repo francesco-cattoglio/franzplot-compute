@@ -394,7 +394,7 @@ fn main() {
                 let mut encoder: wgpu::CommandEncoder =
                     state.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-                let frame_view = frame.output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+                let frame_view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: None,
                     color_attachments: &[wgpu::RenderPassColorAttachment {
