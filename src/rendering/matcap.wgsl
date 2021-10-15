@@ -4,7 +4,7 @@ struct Uniforms {
     proj: mat4x4<f32>;
     mouse_pos: vec2<f32>;
     highlight_id: u32;
-    _padding: i32;
+    a_padding: i32;
 };
 
 [[block]]
@@ -41,7 +41,7 @@ fn matcap_vs_main(
     [[location(0)]] position: vec4<f32>,
     [[location(1)]] normal: vec4<f32>,
     [[location(2)]] uv_coords: vec2<f32>,
-    [[location(3)]] _padding: vec2<f32>
+    [[location(3)]] a_padding: vec2<f32>
 ) -> MatcapVertexOutput {
     var out: MatcapVertexOutput;
     out.uv_coords = uv_coords;

@@ -39,7 +39,7 @@ imgui-winit-support = "0.8.0"
 imgui-wgpu = "0.18"
 #imgui-wgpu = { git = 'https://github.com/kylc/imgui-wgpu-rs.git', rev = 'fbbc0cfc7de25a4821980cb2170195c7b3b0fcf4' }
 wgpu-subscriber = "0.1"
-cxx = "1.0.32"
+cxx = "1.0.56"
 pathfinding = "2.0"
 indexmap = "1.6"
 rand = "0.8"

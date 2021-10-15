@@ -3,8 +3,12 @@
 #include "rust/cxx.h"
 #include "imgui.h"
 
-namespace imnodes {
+namespace ImNodes {
     struct StyleShim;
+
+    // forward declarations of init/shutdown, which was changed recently in imnodes
+    void Initialize();
+    void Shutdown();
 
     // forward declarations of the actual imnodes functions
     bool IsLinkCreated(int* started_at_attribute_id, int* ended_at_attribute_id, bool* created_from_snap);

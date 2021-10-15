@@ -9,12 +9,12 @@ pub enum PinShape
     Quad,
     QuadFilled
 }
-unsafe impl cxx::ExternType for PinShape {
-    type Id = cxx::type_id!("imnodes::PinShape");
-    type Kind = cxx::kind::Trivial;
-}
-
-#[cxx::bridge(namespace = "imnodes")]
+//unsafe impl cxx::ExternType for ImNodesPinShape {
+//    type Id = cxx::type_id!("ImNodesPinShape");
+//    type Kind = cxx::kind::Trivial;
+//}
+//
+#[cxx::bridge(namespace = "ImNodes")]
 pub mod imnodes {
     struct StyleShim {
         pub grid_spacing: f32,
@@ -30,9 +30,9 @@ pub mod imnodes {
     }
 
     unsafe extern "C++" {
-        include!("franzplot-compute/src/cpp_gui/imnodes-ee6d407/imnodes.h");
+        include!("franzplot-compute/src/cpp_gui/imnodes-e563371/imnodes_internal.h");
+        include!("franzplot-compute/src/cpp_gui/imnodes-e563371/imnodes.h");
         include!("franzplot-compute/src/cpp_gui/imnodes_shims.h");
-        type PinShape = super::PinShape;
         fn Initialize();
         fn Shutdown();
         fn BeginNodeEditor();
@@ -45,11 +45,11 @@ pub mod imnodes {
         fn IsAnyAttributeActive(attribute_id: &mut i32) -> bool;
         fn BeginNodeTitleBar();
         fn EndNodeTitleBar();
-        fn BeginInputAttribute(id: i32, shape: PinShape);
+        fn BeginInputAttribute(id: i32, shape: i32);
         fn EndInputAttribute();
         fn BeginStaticAttribute(id: i32);
         fn EndStaticAttribute();
-        fn BeginOutputAttribute(id: i32, shape: PinShape);
+        fn BeginOutputAttribute(id: i32, shape: i32);
         fn EndOutputAttribute();
         fn Link(link_id: i32, first_id: i32, second_id: i32);
         fn IsLinkCreated(first_id: &mut i32, second_id: &mut i32) -> bool;

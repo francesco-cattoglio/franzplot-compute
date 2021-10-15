@@ -34,13 +34,14 @@ fn create_style_shim(scale: f32) -> imnodes::StyleShim {
 
 impl DataKind {
     // we might even return a color as well!
-    fn to_pin_shape(&self) -> PinShape {
-        match self {
+    fn to_pin_shape(&self) -> i32 {
+        let pin_shape = match self {
             DataKind::Interval => PinShape::QuadFilled,
             DataKind::Geometry => PinShape::CircleFilled,
             DataKind::Vector => PinShape::TriangleFilled,
             DataKind::Matrix => PinShape::Quad,
-        }
+        };
+        pin_shape as i32
     }
 }
 
