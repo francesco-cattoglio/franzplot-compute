@@ -367,7 +367,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     if !processing_succesful {
         println!("Warning: errors detected in the scene");
     }
-    state.app.update_scene(&output_texture.view);
+    state.app.load_scene(&output_texture.view);
 
     let buffer_dimensions = BufferDimensions::new(width as usize, height as usize);
     // The output buffer lets us retrieve the data as an array

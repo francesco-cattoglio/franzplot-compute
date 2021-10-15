@@ -131,12 +131,33 @@ impl AppState {
         }
     }
 
+    pub fn load_scene(&mut self, target_texture: &wgpu::TextureView) {
+        // TODO: right now the chain is not recomputed if globals were not updated. This is
+        // sub-optimal, and in the future we might want to be more fine-grained
+        let global_vars_changed = self.computable_scene.globals.update_buffer(&self.manager.queue);
+        if global_vars_changed {
+            //self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
+            //self.computable_scene.graph.run_compute(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
+            self.computable_scene.graph.load_data(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
+        }
+        if self.camera_ortho {
+            // this is here instead of inside `update_projection_matrix` because
+            // we are currently using the zoom level to build the orthographic matrix,
+            // while `update_projection_matrix` gets called only on framebuffer resize
+            self.computable_scene.renderer.update_proj(self.camera.build_ortho_matrix());
+        } else {
+            self.computable_scene.renderer.update_proj(self.camera.build_projection_matrix());
+        }
+        self.computable_scene.renderer.update_view(self.camera.build_view_matrix());
+        // after updating everything, redraw the scene to the texture
+        self.computable_scene.renderer.render(&self.manager, target_texture);
+    }
     pub fn update_scene(&mut self, target_texture: &wgpu::TextureView) {
         // TODO: right now the chain is not recomputed if globals were not updated. This is
         // sub-optimal, and in the future we might want to be more fine-grained
         let global_vars_changed = self.computable_scene.globals.update_buffer(&self.manager.queue);
         if global_vars_changed {
-            self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
+            //self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
             self.computable_scene.graph.run_compute(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
         }
         if self.camera_ortho {

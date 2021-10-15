@@ -126,6 +126,38 @@ impl ComputeGraph {
         }
     }
 
+    pub fn load_data(&mut self, device: &wgpu::Device, _queue: &wgpu::Queue, _globals: &Globals) {
+        let vert_json = include_str!("../../garbage/vertex.buffer");
+        // update the time_stamp to remember the last time the file was saved
+        let vert_contents: Vec<f32> = serde_json::from_str(&vert_json).unwrap();
+
+        let index_json = include_str!("../../garbage/index.buffer");
+        let index_contents: Vec<i32> = serde_json::from_str(&index_json).unwrap();
+
+        use wgpu::util::DeviceExt;
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor{
+            label: Some("model vertex buffer"),
+            contents: bytemuck::cast_slice(&vert_contents),
+            usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
+        });
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor{
+            label: Some("model index buffer"),
+            contents: bytemuck::cast_slice(&index_contents),
+            usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::MAP_READ,
+        });
+
+
+        self.renderables.clear();
+        self.renderables.push(MatcapData{
+            vertex_buffer,
+            index_buffer,
+            index_count: index_contents.len() as u32,
+            material_id: 0,
+            mask_id: 0,
+            graph_node_id: 3,
+        });
+        println!("using existing buffers instead of computing it");
+    }
     // This function fails if many BlockDescriptors share the same BlockId or if
     // there is a circular dependency between all the blocks.
     pub fn process_graph(&mut self, device: &wgpu::Device, models: &[Model], globals: &Globals, graph: &NodeGraph) -> Result<Vec<(NodeID, ProcessingError)>, UnrecoverableError> {
