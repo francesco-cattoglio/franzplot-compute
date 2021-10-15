@@ -144,7 +144,7 @@ fn main() {
         #[cfg(not(target_arch = "wasm32"))]
         let screen_size = monitor.size();
         if maybe_export_path.is_some() {
-            winit::dpi::PhysicalSize::new(screen_size.width, screen_size.height)
+            winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
         } else {
             winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
         }
@@ -168,7 +168,8 @@ fn main() {
         .with_window_icon(Some(icon))
         .with_inner_size(window_size);
     if maybe_export_path.is_some() {
-        builder = builder.with_visible(false);
+        //builder = builder.with_visible(false);
+        builder = builder.with_visible(true); //TODO: reset to false
     }
     #[cfg(windows_OFF)] // TODO check for news regarding this
     {
