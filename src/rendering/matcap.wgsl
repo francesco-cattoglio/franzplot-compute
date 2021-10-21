@@ -16,7 +16,7 @@ struct PickingBuffer {
 var<uniform> uniforms: Uniforms;
 
 [[group(1), binding(0)]]
-var<storage, read_write> picking: PickingBuffer;
+var<storage, read> picking: PickingBuffer;
 
 [[group(2), binding(0)]]
 var mask_texture: texture_2d<f32>;
