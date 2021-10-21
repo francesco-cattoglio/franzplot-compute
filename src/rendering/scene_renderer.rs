@@ -125,7 +125,6 @@ impl SceneRenderer {
     }
 
     pub fn update_renderables(&mut self, device: &wgpu::Device, assets: &Assets, chain: &ComputeChain) {
-        panic!();
         self.renderables.clear();
         self.renderable_ids.clear();
         // go through all blocks,

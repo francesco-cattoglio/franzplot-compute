@@ -24,12 +24,11 @@ impl ComputableScene {
         self.globals = globals;
         // TODO: this part is super confusing, there are huge side effects that
         // can easily go unnoticed. maybe refactor it?
-        let scene_result = self.graph.process_graph(device, &assets.models, &self.globals, graph).unwrap();
-        self.renderer.update_matcaps(device, &assets, &self.graph);
+        let scene_result = self.chain.scene_from_graph(device, &assets.models, &self.globals, graph);
+        self.renderer.update_renderables(device, &assets, &self.chain);
 
         // run the chain once, at the best of our possibilities
-        println!("comment following line if you do NOT want to run the compute part");
-        //self.graph.run_compute(device, queue, &self.globals);
+        self.chain.run_chain(device, queue, &self.globals);
 
         // Report every error to the user
         // TODO: rewrite as a iter.map.collect?
@@ -37,7 +36,7 @@ impl ComputableScene {
         for (block_id, error) in scene_result.into_iter() {
             let id = block_id;
             match error {
-                ProcessingError::IncorrectAttributes(message) => {
+                BlockCreationError::IncorrectAttributes(message) => {
                     to_return.push(GraphError {
                         severity: Severity::Error,
                         node_id: id,
@@ -45,15 +44,15 @@ impl ComputableScene {
                     });
                     println!("incorrect attributes error for {}: {}", id, &message);
                 },
-                //ProcessingError::InputNotBuilt(message) => {
-                //    to_return.push(GraphError {
-                //        severity: Severity::Warning,
-                //        node_id: id,
-                //        message: String::from(message),
-                //    });
-                //    println!("input not build warning for {}: {}", id, &message);
-                //},
-                ProcessingError::InputMissing(message) => {
+                BlockCreationError::InputNotBuilt(message) => {
+                    to_return.push(GraphError {
+                        severity: Severity::Warning,
+                        node_id: id,
+                        message: String::from(message),
+                    });
+                    println!("input not build warning for {}: {}", id, &message);
+                },
+                BlockCreationError::InputMissing(message) => {
                     to_return.push(GraphError {
                         severity: Severity::Error,
                         node_id: id,
@@ -61,15 +60,15 @@ impl ComputableScene {
                     });
                     println!("missing input error for {}: {}", id, &message);
                 },
-                //ProcessingError::InputInvalid(message) => {
-                //    to_return.push(GraphError {
-                //        severity: Severity::Error,
-                //        node_id: id,
-                //        message: String::from(message),
-                //    });
-                //    println!("invalid input error for {}: {}", id, &message);
-                //},
-                ProcessingError::IncorrectExpression(message) => {
+                BlockCreationError::InputInvalid(message) => {
+                    to_return.push(GraphError {
+                        severity: Severity::Error,
+                        node_id: id,
+                        message: String::from(message),
+                    });
+                    println!("invalid input error for {}: {}", id, &message);
+                },
+                BlockCreationError::IncorrectExpression(message) => {
                     println!("invalid input error for {}: {}", id, &message);
                     to_return.push(GraphError {
                         severity: Severity::Error,
@@ -77,7 +76,7 @@ impl ComputableScene {
                         message,
                     });
                 },
-                ProcessingError::InternalError(message) => {
+                BlockCreationError::InternalError(message) => {
                     println!("internal error: {}", &message);
                     // A panic is a bit eccessive. Failing fast is good, but the user might be
                     // unable to report the error to the developer.
