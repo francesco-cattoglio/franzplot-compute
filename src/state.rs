@@ -149,6 +149,8 @@ impl AppState {
             self.computable_scene.renderer.update_proj(self.camera.build_projection_matrix());
         }
         self.computable_scene.renderer.update_view(self.camera.build_view_matrix());
+        //self.computable_scene.renderer.update_matcaps(&self.manager.device, &self.assets, &self.computable_scene.graph);
+
         // after updating everything, redraw the scene to the texture
         self.computable_scene.renderer.render(&self.manager, target_texture);
     }
@@ -281,23 +283,26 @@ impl State {
         // ComputableScene::process_user_state would be easier to read and reason about
         // create a new Globals from the user defined names
         let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.manager.queue, &self.app.assets, &mut self.user.graph, globals);
-        let no_errors_detected = graph_errors.is_empty();
-        for error in graph_errors.into_iter() {
-            self.user.graph.mark_error(error);
-        }
-        return no_errors_detected;
+        println!("skipping the graph processing");
+        return true;
+        //let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.manager.queue, &self.app.assets, &mut self.user.graph, globals);
+        //let no_errors_detected = graph_errors.is_empty();
+        //for error in graph_errors.into_iter() {
+        //    self.user.graph.mark_error(error);
+        //}
+        //return no_errors_detected;
     }
     // TODO: rename when switching to wgsl for compute is done
     // process the user graph, and return true if no errors were detected
     pub fn process_user_state_2(&mut self) -> bool {
-        println!("testing new graph processing");
         let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.manager.queue, &self.app.assets, &mut self.user.graph, globals);
-        let no_errors_detected = graph_errors.is_empty();
-        for error in graph_errors.into_iter() {
-            self.user.graph.mark_error(error);
-        }
-        return no_errors_detected;
+        println!("skipping the graph processing");
+        return true;
+        //let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.manager.queue, &self.app.assets, &mut self.user.graph, globals);
+        //let no_errors_detected = graph_errors.is_empty();
+        //for error in graph_errors.into_iter() {
+        //    self.user.graph.mark_error(error);
+        //}
+        //return no_errors_detected;
     }
 }

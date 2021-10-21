@@ -28,7 +28,8 @@ impl ComputableScene {
         self.renderer.update_matcaps(device, &assets, &self.graph);
 
         // run the chain once, at the best of our possibilities
-        self.graph.run_compute(device, queue, &self.globals);
+        println!("comment following line if you do NOT want to run the compute part");
+        //self.graph.run_compute(device, queue, &self.globals);
 
         // Report every error to the user
         // TODO: rewrite as a iter.map.collect?

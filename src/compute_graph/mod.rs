@@ -161,6 +161,7 @@ impl ComputeGraph {
     // This function fails if many BlockDescriptors share the same BlockId or if
     // there is a circular dependency between all the blocks.
     pub fn process_graph(&mut self, device: &wgpu::Device, models: &[Model], globals: &Globals, graph: &NodeGraph) -> Result<Vec<(NodeID, ProcessingError)>, UnrecoverableError> {
+        println!("new compute graph processing called");
         // TODO: maybe rewrite this part, it looks like it is overcomplicated.
         // compute a map from BlockId to descriptor data and
         // a map from BlockId to all the inputs that a block has
@@ -258,6 +259,7 @@ impl ComputeGraph {
     }
 
     pub fn run_compute(&self, device: &wgpu::Device, queue: &wgpu::Queue, globals: &Globals) {
+        println!("run compute called");
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Compute Encoder this time"),

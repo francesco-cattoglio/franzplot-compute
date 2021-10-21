@@ -168,13 +168,7 @@ fn main() {
         .with_window_icon(Some(icon))
         .with_inner_size(window_size);
     if maybe_export_path.is_some() {
-        //builder = builder.with_visible(false);
-        builder = builder.with_visible(true); //TODO: reset to false
-    }
-    #[cfg(windows_OFF)] // TODO check for news regarding this
-    {
-        use winit::platform::windows::WindowBuilderExtWindows;
-        builder = builder.with_no_redirection_bitmap(true);
+        builder = builder.with_visible(false);
     }
     let window = builder.build(&event_loop).unwrap();
 
@@ -451,6 +445,7 @@ fn main() {
 
                 // submit the framebuffer rendering pass
                 state.app.manager.queue.submit(Some(encoder.finish()));
+                frame.present();
             }
             // Emitted after all RedrawRequested events have been processed and control flow is about to be taken away from the program.
             // If there are no RedrawRequested events, it is emitted immediately after MainEventsCleared.

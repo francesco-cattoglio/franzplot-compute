@@ -18,7 +18,6 @@ pub fn create(
     thickness: usize,
     output_id: DataID,
 ) -> GeometryResult {
-    println!("new geometry rendering processing");
     let data_id = geometry_id.ok_or(ProcessingError::InputMissing(" This Curve node \n is missing its input "))?;
     let found_data = data_map.get(&data_id).ok_or(ProcessingError::InternalError("Geometry used as input does not exist in the block map".into()))?;
 

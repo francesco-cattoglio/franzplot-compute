@@ -359,6 +359,7 @@ impl SceneRenderer {
     }
 
     pub fn update_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, graph: &ComputeGraph) {
+        println!("update matcaps called");
         self.renderables.clear();
         self.renderable_ids.clear();
         // go through all blocks,

@@ -181,9 +181,9 @@ impl Gui {
                         }
                     }
                 });
-                if MenuItem::new("About").build(ui) {
-                    println!("\"About\" entry clicked");
-                }
+                //if MenuItem::new("About").build(ui) {
+                //    println!("\"About\" entry clicked");
+                //}
                 menu_bar_token.end();
             }
 
