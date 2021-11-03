@@ -66,11 +66,11 @@ vertices: array<MatcapVertex>;
 var<workgroup> tangent_buff: array<vec3<f32>, {dimx}>;
 var<workgroup> ref_buff: array<vec3<f32>, {dimx}>;
 
-{curve_constants}
-
 [[stage(compute), workgroup_size({dimx})]]
 fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     // this shader prepares the data for curve rendering.
+    {curve_constants}
+
 
     let x_size: i32 = {dimx};
 
@@ -133,8 +133,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
         // or directions and multiply them by the transform matrix. Note that the new_basis
         // is orthonormal, so there is no need to compute the inverse transpose
         let out_idx = idx * {points_per_section} + i;
-        //let section_point = vec3<f32>(0.0, sp[i].x, sp[i].y);
-        let section_point = vec3<f32>(0.0, 0.0, 0.0);
+        let section_point = vec3<f32>(0.0, section_points[i].x, section_points[i].y);
         out.vertices[out_idx].position = new_basis * vec4<f32>(section_point, 1.0);
         out.vertices[out_idx].normal = new_basis * vec4<f32>(normalize(section_point), 0.0);
         out.vertices[out_idx].uv_coords = vec2<f32>(f32(idx)/(f32(x_size) - 1.0), f32(i)/(f32({points_per_section}) - 1.0));
@@ -143,7 +142,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 }}
 "##, curve_constants=curve_consts, points_per_section=n_section_points, dimx=size);
 
-    //println!("shader source:\n {}", &wgsl_source);
+    println!("shader source:\n {}", &wgsl_source);
     // We are creating a curve from an interval, output vertex count is the same as interval
     // one, but buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
 
@@ -254,13 +253,12 @@ fn create_curve_segment(segment: (usize, usize), circle_points: usize) -> Vec::<
 
 fn create_curve_shader_constants(radius: f32, n_section_points: usize) -> String {
     let mut shader_consts = String::new();
-    shader_consts += &format!("let section_points = array<vec2<f32>, {n}> (\n", n=n_section_points);
+    shader_consts += &format!("var section_points = array<vec2<f32>, {n}> (\n", n=n_section_points);
     for i in 0 .. n_section_points {
         let theta = 2.0 * std::f32::consts::PI * i as f32 / (n_section_points - 1) as f32;
-        shader_consts += &format!("\tvec2<f32>({:#?}, {:#?}),\n", radius*theta.cos(), radius*theta.sin() );
+        shader_consts += &format!("\t\tvec2<f32>({:#?}, {:#?}),\n", radius*theta.cos(), radius*theta.sin() );
     }
-    shader_consts += &format!(");\n");
-   // shader_consts += &format!("var sp: array<vec2<f32>, {n}> = section_points;\n", n=n_section_points);
+    shader_consts += &format!("\t);\n");
 
     shader_consts
 }

@@ -259,7 +259,6 @@ impl ComputeGraph {
     }
 
     pub fn run_compute(&self, device: &wgpu::Device, queue: &wgpu::Queue, globals: &Globals) {
-        panic!();
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Compute Encoder this time"),

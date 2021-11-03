@@ -294,13 +294,11 @@ impl State {
     // process the user graph, and return true if no errors were detected
     pub fn process_user_state_2(&mut self) -> bool {
         let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        println!("skipping the graph processing");
-        return true;
-        //let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.manager.queue, &self.app.assets, &mut self.user.graph, globals);
-        //let no_errors_detected = graph_errors.is_empty();
-        //for error in graph_errors.into_iter() {
-        //    self.user.graph.mark_error(error);
-        //}
-        //return no_errors_detected;
+        let graph_errors = self.app.computable_scene.process_graph_2(&self.app.manager.device, &self.app.manager.queue, &self.app.assets, &mut self.user.graph, globals);
+        let no_errors_detected = graph_errors.is_empty();
+        for error in graph_errors.into_iter() {
+            self.user.graph.mark_error(error);
+        }
+        return no_errors_detected;
     }
 }

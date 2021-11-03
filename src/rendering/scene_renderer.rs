@@ -125,6 +125,7 @@ impl SceneRenderer {
     }
 
     pub fn update_renderables(&mut self, device: &wgpu::Device, assets: &Assets, chain: &ComputeChain) {
+        panic!();
         self.renderables.clear();
         self.renderable_ids.clear();
         // go through all blocks,
@@ -358,7 +359,6 @@ impl SceneRenderer {
     }
 
     pub fn update_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, graph: &ComputeGraph) {
-        println!("update matcaps called");
         self.renderables.clear();
         self.renderable_ids.clear();
         // go through all blocks,
@@ -378,6 +378,7 @@ impl SceneRenderer {
             self.renderable_ids.push(matcap_data.graph_node_id);
             self.add_matcap(device, assets, matcap_data, idx as u32);
         }
+        dbg!(&self.renderables);
     }
 
     fn add_matcap(&mut self, device: &wgpu::Device, assets: &Assets, matcap_data: &MatcapData, object_id: u32) {
