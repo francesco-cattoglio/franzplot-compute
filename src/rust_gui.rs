@@ -258,10 +258,9 @@ impl Gui {
         }
         ui.same_line();
         if ui.button("Test New Compute") {
-            let processing_succesful = state.process_user_state_2();
-            if processing_succesful && state.app.auto_scene_on_processing {
-                self.opened_tab[1] = true;
-            }
+            use crate::state::action::Action;
+            let action = Action::ProcessGraph(state.user.clone());
+            state.process(action);
         }
         ui.same_line();
         if ui.button("Undo") {

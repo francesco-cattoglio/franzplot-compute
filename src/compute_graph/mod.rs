@@ -4,6 +4,7 @@ use indexmap::IndexMap;
 use crate::rendering::model::Model;
 pub use crate::node_graph::{NodeGraph, NodeID, NodeContents};
 use crate::computable_scene::globals::Globals;
+use crate::state::UserState;
 
 mod interval;
 mod curve;
@@ -130,10 +131,12 @@ pub struct ComputeGraph {
     operations: IndexMap<NodeID, Operation>,
 }
 
-pub fn create_compute_graph(device: &wgpu::Device, globals: &Globals, graph: &NodeGraph) -> Result<(ComputeGraph, Vec<RecoverableError>), UnrecoverableError> {
+pub fn create_compute_graph(device: &wgpu::Device, user_state: UserState) -> Result<(ComputeGraph, Vec<RecoverableError>), UnrecoverableError> {
         // compute a map from BlockId to descriptor data and
         // a map from BlockId to all the inputs that a block has
         let mut node_inputs = BTreeMap::<NodeID, Vec<NodeID>>::new();
+        let graph = &user_state.graph;
+        let globals = Globals::new(device, user_state.globals_names, user_state.globals_init_values);
         for (node_id, node) in graph.get_nodes() {
             let existing_inputs: Vec<NodeID> = node.get_input_nodes(graph);
             node_inputs.insert(node_id, existing_inputs);
@@ -165,7 +168,7 @@ pub fn create_compute_graph(device: &wgpu::Device, globals: &Globals, graph: &No
         let mut recoverable_errors = Vec::<RecoverableError>::new();
         let mut compute_graph = ComputeGraph::new();
         for id in sorted_ids.into_iter().rev() {
-            let node_result = compute_graph.process_single_node(device, globals, id, graph);
+            let node_result = compute_graph.process_single_node(device, &globals, id, graph);
             if let Err(error) = node_result {
                 recoverable_errors.push(RecoverableError{
                     node_id: id,
@@ -230,7 +233,10 @@ impl ComputeGraph {
         Ok(recoverable_errors)
     }
 
-    // process a single graph node, creating some data and one operation
+    // process a single graph node.
+    // If the operation is successful, then the internal state of the ComputeGraph is modified by storing
+    // the newly created data and operation. If it fails, then a ProcessingError is returned and
+    // the internal state is left untouched.
     fn process_single_node(&mut self, device: &wgpu::Device, globals: &Globals, graph_node_id: NodeID, graph: &NodeGraph) ->  Result<(), ProcessingError> {
         // TODO: turn this into an if let - else construct
         let to_process = match graph.get_node(graph_node_id) {

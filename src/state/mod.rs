@@ -8,6 +8,9 @@ use crate::rendering::model::Model;
 use crate::node_graph;
 use serde::{Serialize, Deserialize};
 
+pub mod action;
+use action::Action;
+
 // The State struct encapsulates the whole application state,
 // the GUI takes a mutable reference to the state and modifies it
 // according to user input. The state contains both the data
@@ -210,7 +213,9 @@ impl State {
             camera_lock_up: true,
             camera_ortho: false,
             camera_controller,
+            renderer: SceneRenderer::new_with_axes(&manager.device),
             manager,
+            graph: ComputeGraph::new(),
             sensitivity: Sensitivity::default(),
         };
 
@@ -218,6 +223,26 @@ impl State {
             app,
             time_stamps: TSs::new_now(),
             user,
+        }
+    }
+
+    pub fn process(&mut self, action: Action) {
+        match action {
+            Action::ProcessGraph(user_state) => {
+                // - try to create a new graph
+                // - if successful, update the scene rendering and report recoverable errors
+                // - if unsuccessful, report the unrecoverable error to the user
+                let process_result = crate::compute_graph::create_compute_graph(&self.app.manager.device, user_state);
+                match process_result {
+                    Ok((compute_graph, _recoverable_errors)) => {
+                        self.app.renderer.update_matcaps(&self.app.manager.device, &self.app.assets, &compute_graph);
+                        self.app.graph = compute_graph;
+                    },
+                    Err(_unrecoverable_error) => {
+
+                    }
+                }
+            }
         }
     }
 
