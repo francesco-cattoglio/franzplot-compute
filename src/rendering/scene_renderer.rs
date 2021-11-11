@@ -358,25 +358,22 @@ impl SceneRenderer {
         self.wireframe_axes = Some(render_bundle);
     }
 
-    pub fn update_matcaps_test(&mut self, device: &wgpu::Device, assets: &Assets, matcaps: &[MatcapData]) {
-    }
-    pub fn update_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, graph: &ComputeGraph) {
+    pub fn update_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, matcaps: &[MatcapData]) {
         self.renderables.clear();
         self.renderable_ids.clear();
         // go through all blocks,
         // chose the "Rendering" ones,
         // turn their data into a renderable
 
-        let all_matcaps = graph.matcaps();
         // if the buffer used for object picking is not big enough, resize it (i.e create a new one)
-        if all_matcaps.len() > self.picking_buffer_length {
-            let (picking_buffer, _picking_bind_layout, picking_bind_group) = create_picking_buffer(device, all_matcaps.len());
-            self.picking_buffer_length = all_matcaps.len();
+        if matcaps.len() > self.picking_buffer_length {
+            let (picking_buffer, _picking_bind_layout, picking_bind_group) = create_picking_buffer(device, matcaps.len());
+            self.picking_buffer_length = matcaps.len();
             self.picking_buffer = picking_buffer;
             self.picking_bind_group = picking_bind_group;
         }
 
-        for (idx, matcap_data) in all_matcaps.iter().enumerate() {
+        for (idx, matcap_data) in matcaps.iter().enumerate() {
             self.renderable_ids.push(matcap_data.graph_node_id);
             self.add_matcap(device, assets, matcap_data, idx as u32);
         }

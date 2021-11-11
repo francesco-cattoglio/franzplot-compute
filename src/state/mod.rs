@@ -98,7 +98,7 @@ pub struct AppState {
     pub camera: camera::Camera,
     pub assets: Assets,
     pub manager: Manager,
-    pub graph: ComputeGraph,
+    pub graph: Option<ComputeGraph>,
     pub renderer: SceneRenderer,
     pub computable_scene: ComputableScene,
     pub sensitivity: Sensitivity,
@@ -196,7 +196,6 @@ impl State {
         let computable_scene = ComputableScene {
             globals: globals::Globals::new(&manager.device, vec![], vec![]),
             chain: compute_chain::ComputeChain::new(),
-            graph: ComputeGraph::new(),
             renderer: SceneRenderer::new_with_axes(&manager.device),
             mouse_pos: [0.0, 0.0],
         };
@@ -215,7 +214,7 @@ impl State {
             camera_controller,
             renderer: SceneRenderer::new_with_axes(&manager.device),
             manager,
-            graph: ComputeGraph::new(),
+            graph: None,
             sensitivity: Sensitivity::default(),
         };
 
@@ -235,8 +234,9 @@ impl State {
                 let process_result = crate::compute_graph::create_compute_graph(&self.app.manager.device, user_state);
                 match process_result {
                     Ok((compute_graph, _recoverable_errors)) => {
-                        self.app.renderer.update_matcaps(&self.app.manager.device, &self.app.assets, &compute_graph);
-                        self.app.graph = compute_graph;
+                        self.app.renderer.update_matcaps(&self.app.manager.device, &self.app.assets, compute_graph.matcaps());
+                        compute_graph.run_compute(&self.app.manager.device, &self.app.manager.queue);
+                        self.app.graph = Some(compute_graph);
                     },
                     Err(_unrecoverable_error) => {
 

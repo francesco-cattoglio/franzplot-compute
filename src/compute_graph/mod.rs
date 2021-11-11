@@ -126,6 +126,7 @@ pub struct MatcapData {
 // shaders that are to be run)
 // - a list of all the renderables that were created as outputs.
 pub struct ComputeGraph {
+    globals: Globals,
     renderables: Vec<MatcapData>,
     data: BTreeMap<DataID, Data>,
     operations: IndexMap<NodeID, Operation>,
@@ -166,9 +167,14 @@ pub fn create_compute_graph(device: &wgpu::Device, user_state: UserState) -> Res
         // with the rendering commands first and the intervals last.
         // Therefore we process the descriptors in the reversed order
         let mut recoverable_errors = Vec::<RecoverableError>::new();
-        let mut compute_graph = ComputeGraph::new();
+        let mut compute_graph = ComputeGraph {
+            data: BTreeMap::new(),
+            operations: IndexMap::new(),
+            renderables: Vec::new(),
+            globals,
+        };
         for id in sorted_ids.into_iter().rev() {
-            let node_result = compute_graph.process_single_node(device, &globals, id, graph);
+            let node_result = compute_graph.process_single_node(device, id, graph);
             if let Err(error) = node_result {
                 recoverable_errors.push(RecoverableError{
                     node_id: id,
@@ -180,64 +186,11 @@ pub fn create_compute_graph(device: &wgpu::Device, user_state: UserState) -> Res
 }
 
 impl ComputeGraph {
-    pub fn new() -> Self {
-        Self {
-            data: BTreeMap::new(),
-            operations: IndexMap::new(),
-            renderables: Vec::new(),
-        }
-    }
-
-    // This function fails if many BlockDescriptors share the same BlockId or if
-    // there is a circular dependency between all the blocks.
-    pub fn process_graph(&mut self, device: &wgpu::Device, models: &[Model], globals: &Globals, graph: &NodeGraph) -> Result<Vec<(NodeID, ProcessingError)>, UnrecoverableError> {
-        println!("new compute graph processing called");
-        // TODO: maybe rewrite this part, it looks like it is overcomplicated.
-        // compute a map from BlockId to descriptor data and
-        // a map from BlockId to all the inputs that a block has
-        let mut node_inputs = BTreeMap::<NodeID, Vec<NodeID>>::new();
-        for (node_id, node) in graph.get_nodes() {
-            let existing_inputs: Vec<NodeID> = node.get_input_nodes(graph);
-            node_inputs.insert(node_id, existing_inputs);
-            // TODO: we should also error out here if we find out that two block descriptors have
-            // the same BlockId
-        }
-
-        // copy a list of block ids and use the following lambda to run the topological sort
-        let node_ids: Vec<NodeID> = node_inputs.keys().cloned().collect();
-        let successor_function = | id: &NodeID | -> Vec<NodeID> {
-            node_inputs.remove(id).unwrap_or_default()
-        };
-        let sorting_result = pathfinding::directed::topological_sort::topological_sort(&node_ids, successor_function);
-
-        // This function fails if a cycle in the graph is detected.
-        // If it happens, return a UnrecoverableError.
-        let sorted_ids = sorting_result.map_err(
-            |node_id: NodeID| {
-                UnrecoverableError {
-                    node_id,
-                    error: " cycle detected \n at this node "
-                }
-            })?;
-
-        // Since we declared that the input of a node is the successor of the node, the ids are sorted
-        // with the rendering commands first and the intervals last.
-        // Therefore we process the descriptors in the reversed order
-        let mut recoverable_errors = Vec::<(NodeID, ProcessingError)>::new();
-        for id in sorted_ids.into_iter().rev() {
-            let node_result = self.process_single_node(device, globals, id, graph);
-            if let Err(error) = node_result {
-                recoverable_errors.push((id, error));
-            };
-        }
-        Ok(recoverable_errors)
-    }
-
     // process a single graph node.
     // If the operation is successful, then the internal state of the ComputeGraph is modified by storing
     // the newly created data and operation. If it fails, then a ProcessingError is returned and
     // the internal state is left untouched.
-    fn process_single_node(&mut self, device: &wgpu::Device, globals: &Globals, graph_node_id: NodeID, graph: &NodeGraph) ->  Result<(), ProcessingError> {
+    fn process_single_node(&mut self, device: &wgpu::Device, graph_node_id: NodeID, graph: &NodeGraph) ->  Result<(), ProcessingError> {
         // TODO: turn this into an if let - else construct
         let to_process = match graph.get_node(graph_node_id) {
             Some(node) => node,
@@ -249,7 +202,7 @@ impl ComputeGraph {
             } => {
                 let (mut new_data, operation) = curve::create(
                     device,
-                    globals,
+                    &self.globals,
                     &self.data,
                     graph.get_attribute_as_linked_output(interval),
                     graph.get_attribute_as_string(fx).unwrap(),
@@ -265,7 +218,7 @@ impl ComputeGraph {
             } => {
                 let (mut new_data, operation) = interval::create(
                     device,
-                    globals,
+                    &self.globals,
                     graph.get_attribute_as_string(variable).unwrap(),
                     graph.get_attribute_as_string(begin).unwrap(),
                     graph.get_attribute_as_string(end).unwrap(),
@@ -297,13 +250,13 @@ impl ComputeGraph {
         &self.renderables
     }
 
-    pub fn run_compute(&self, device: &wgpu::Device, queue: &wgpu::Queue, globals: &Globals) {
+    pub fn run_compute(&self, device: &wgpu::Device, queue: &wgpu::Queue) { //, globals: &Globals) {
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Compute Encoder this time"),
         });
         for op in self.operations.values() {
-            op.encode(&globals.bind_group, &mut encoder);
+            op.encode(&self.globals.bind_group, &mut encoder);
         }
         let compute_queue = encoder.finish();
         queue.submit(std::iter::once(compute_queue));
