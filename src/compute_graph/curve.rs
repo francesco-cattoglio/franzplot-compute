@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::rc::Rc;
 use super::Operation;
 use crate::computable_scene::globals::Globals;
 use super::{ProcessingResult, ProcessingError};
@@ -91,7 +92,7 @@ output.positions[index] = vec4<f32>(fx, fy, fz, 1.0);
     );
     let operation = Operation {
         bind_group,
-        pipeline,
+        pipeline: Rc::new(pipeline),
         dim: [1, 1, 1],
     };
 

@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::rc::Rc;
 use super::Operation;
 use crate::computable_scene::globals::Globals;
 use super::{ProcessingResult, ProcessingError};
@@ -91,7 +92,7 @@ output.values[index] = {interval_begin} + delta * f32(index);
     );
     let operation = Operation {
         bind_group,
-        pipeline,
+        pipeline: Rc::new(pipeline),
         dim: [1, 1, 1],
     };
 

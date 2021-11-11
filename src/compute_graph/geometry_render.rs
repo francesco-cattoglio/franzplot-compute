@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::rc::Rc;
 use super::Operation;
 use crate::computable_scene::globals::Globals;
 use crate::rendering::{StandardVertexData};
@@ -168,7 +169,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     };
     let operation = Operation {
         bind_group,
-        pipeline,
+        pipeline: Rc::new(pipeline),
         dim: [1, 1, 1],
     };
 

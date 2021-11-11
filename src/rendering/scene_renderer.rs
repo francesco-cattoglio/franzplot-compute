@@ -358,6 +358,8 @@ impl SceneRenderer {
         self.wireframe_axes = Some(render_bundle);
     }
 
+    pub fn update_matcaps_test(&mut self, device: &wgpu::Device, assets: &Assets, matcaps: &[MatcapData]) {
+    }
     pub fn update_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, graph: &ComputeGraph) {
         self.renderables.clear();
         self.renderable_ids.clear();
@@ -374,7 +376,7 @@ impl SceneRenderer {
             self.picking_bind_group = picking_bind_group;
         }
 
-        for (idx, matcap_data) in all_matcaps.enumerate() {
+        for (idx, matcap_data) in all_matcaps.iter().enumerate() {
             self.renderable_ids.push(matcap_data.graph_node_id);
             self.add_matcap(device, assets, matcap_data, idx as u32);
         }

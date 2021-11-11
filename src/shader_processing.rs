@@ -75,7 +75,6 @@ pub fn naga_compute_pipeline(device: &wgpu::Device, wgsl_source: &str, bindings:
     (compute_pipeline, compute_bind_group)
 }
 
-
 pub fn create_bind_groups(
     device: &wgpu::Device,
     pipeline: &wgpu::ComputePipeline,

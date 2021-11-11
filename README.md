@@ -21,7 +21,7 @@ Features a data da destinarsi:
 
 ## Come compilare il progetto
 Sono indispensabili su tutte le piattaforme:
-- la toolchain per il linguaggio Rust, *versione minima 1.48*
+- la toolchain per il linguaggio Rust, *versione minima 1.56*
 - un compilatore C++11 e CMake (necessari per le dipendenze). Per CMake sotto MacOS va bene la versione installabile via homebrew.
 
 Sotto windows, è necessario avere:

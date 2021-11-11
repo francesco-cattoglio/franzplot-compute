@@ -2,8 +2,7 @@
 name = "franzplot-compute"
 version = "21.4.0"
 authors = ["francesco.cattoglio <francesco.cattoglio@gmail.com>"]
-edition = "2018"
-resolver = "2"
+edition = "2021"
 
 [[bin]]
 name = "franzplot"

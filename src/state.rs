@@ -95,6 +95,8 @@ pub struct AppState {
     pub camera: camera::Camera,
     pub assets: Assets,
     pub manager: Manager,
+    pub graph: ComputeGraph,
+    pub renderer: SceneRenderer,
     pub computable_scene: ComputableScene,
     pub sensitivity: Sensitivity,
 }
@@ -138,7 +140,6 @@ impl AppState {
         if global_vars_changed {
             //self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
             //self.computable_scene.graph.run_compute(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
-            self.computable_scene.graph.load_data(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
         }
         if self.camera_ortho {
             // this is here instead of inside `update_projection_matrix` because

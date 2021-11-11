@@ -1,4 +1,6 @@
 use std::collections::BTreeMap;
+use std::rc::Rc;
+use indexmap::IndexMap;
 use crate::rendering::model::Model;
 pub use crate::node_graph::{NodeGraph, NodeID, NodeContents};
 use crate::computable_scene::globals::Globals;
@@ -10,11 +12,19 @@ mod geometry_render;
 pub type DataID = i32;
 pub type PrefabId = i32;
 #[derive(Clone, Debug)]
-pub struct UnrecoverableError(NodeID, &'static str);
+pub struct UnrecoverableError {
+    node_id: NodeID,
+    error: &'static str,
+}
+#[derive(Clone, Debug)]
+pub struct RecoverableError {
+    node_id: NodeID,
+    error: ProcessingError,
+}
 
 pub struct Operation {
     bind_group: wgpu::BindGroup,
-    pipeline: wgpu::ComputePipeline,
+    pipeline: Rc<wgpu::ComputePipeline>,
     dim: [u32; 3],
 }
 
@@ -86,6 +96,9 @@ pub enum Data {
         param: Parameter,
     },
     Geom2D {
+        buffer: wgpu::Buffer,
+        param1: Parameter,
+        param2: Parameter,
     },
     Matrix0D {
     },
@@ -114,50 +127,64 @@ pub struct MatcapData {
 pub struct ComputeGraph {
     renderables: Vec<MatcapData>,
     data: BTreeMap<DataID, Data>,
-    operations: Vec<Operation>,
+    operations: IndexMap<NodeID, Operation>,
+}
+
+pub fn create_compute_graph(device: &wgpu::Device, globals: &Globals, graph: &NodeGraph) -> Result<(ComputeGraph, Vec<RecoverableError>), UnrecoverableError> {
+        // compute a map from BlockId to descriptor data and
+        // a map from BlockId to all the inputs that a block has
+        let mut node_inputs = BTreeMap::<NodeID, Vec<NodeID>>::new();
+        for (node_id, node) in graph.get_nodes() {
+            let existing_inputs: Vec<NodeID> = node.get_input_nodes(graph);
+            node_inputs.insert(node_id, existing_inputs);
+            // TODO: we should also error out here if we find out that two block descriptors have
+            // the same BlockId
+        }
+
+        // copy a list of block ids and use the following lambda to run the topological sort
+        let node_ids: Vec<NodeID> = node_inputs.keys().cloned().collect();
+        let successor_function = | id: &NodeID | -> Vec<NodeID> {
+            node_inputs.remove(id).unwrap_or_default()
+        };
+        let sorting_result = pathfinding::directed::topological_sort::topological_sort(&node_ids, successor_function);
+
+        // This function fails if a cycle in the graph is detected.
+        // If it happens, return a UnrecoverableError.
+        let sorted_ids = sorting_result.map_err(
+            |node_id: NodeID| {
+                UnrecoverableError {
+                    node_id,
+                    error: " cycle detected \n at this node "
+                }
+            }
+        )?;
+
+        // Since we declared that the input of a node is the successor of the node, the ids are sorted
+        // with the rendering commands first and the intervals last.
+        // Therefore we process the descriptors in the reversed order
+        let mut recoverable_errors = Vec::<RecoverableError>::new();
+        let mut compute_graph = ComputeGraph::new();
+        for id in sorted_ids.into_iter().rev() {
+            let node_result = compute_graph.process_single_node(device, globals, id, graph);
+            if let Err(error) = node_result {
+                recoverable_errors.push(RecoverableError{
+                    node_id: id,
+                    error,
+                });
+            };
+        }
+        Ok((compute_graph, recoverable_errors))
 }
 
 impl ComputeGraph {
     pub fn new() -> Self {
         Self {
             data: BTreeMap::new(),
-            operations: Vec::new(),
+            operations: IndexMap::new(),
             renderables: Vec::new(),
         }
     }
 
-    pub fn load_data(&mut self, device: &wgpu::Device, _queue: &wgpu::Queue, _globals: &Globals) {
-        let vert_json = include_str!("../../garbage/vertex.buffer");
-        // update the time_stamp to remember the last time the file was saved
-        let vert_contents: Vec<f32> = serde_json::from_str(&vert_json).unwrap();
-
-        let index_json = include_str!("../../garbage/index.buffer");
-        let index_contents: Vec<i32> = serde_json::from_str(&index_json).unwrap();
-
-        use wgpu::util::DeviceExt;
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor{
-            label: Some("model vertex buffer"),
-            contents: bytemuck::cast_slice(&vert_contents),
-            usage: wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
-        });
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor{
-            label: Some("model index buffer"),
-            contents: bytemuck::cast_slice(&index_contents),
-            usage: wgpu::BufferUsages::INDEX | wgpu::BufferUsages::MAP_READ,
-        });
-
-
-        self.renderables.clear();
-        self.renderables.push(MatcapData{
-            vertex_buffer,
-            index_buffer,
-            index_count: index_contents.len() as u32,
-            material_id: 0,
-            mask_id: 0,
-            graph_node_id: 3,
-        });
-        println!("using existing buffers instead of computing it");
-    }
     // This function fails if many BlockDescriptors share the same BlockId or if
     // there is a circular dependency between all the blocks.
     pub fn process_graph(&mut self, device: &wgpu::Device, models: &[Model], globals: &Globals, graph: &NodeGraph) -> Result<Vec<(NodeID, ProcessingError)>, UnrecoverableError> {
@@ -182,7 +209,13 @@ impl ComputeGraph {
 
         // This function fails if a cycle in the graph is detected.
         // If it happens, return a UnrecoverableError.
-        let sorted_ids = sorting_result.map_err(|node_id: NodeID| { UnrecoverableError(node_id, " cycle detected \n at this node ") })?;
+        let sorted_ids = sorting_result.map_err(
+            |node_id: NodeID| {
+                UnrecoverableError {
+                    node_id,
+                    error: " cycle detected \n at this node "
+                }
+            })?;
 
         // Since we declared that the input of a node is the successor of the node, the ids are sorted
         // with the rendering commands first and the intervals last.
@@ -198,7 +231,7 @@ impl ComputeGraph {
     }
 
     // process a single graph node, creating some data and one operation
-    pub fn process_single_node(&mut self, device: &wgpu::Device, globals: &Globals, graph_node_id: NodeID, graph: &NodeGraph) ->  Result<(), ProcessingError> {
+    fn process_single_node(&mut self, device: &wgpu::Device, globals: &Globals, graph_node_id: NodeID, graph: &NodeGraph) ->  Result<(), ProcessingError> {
         // TODO: turn this into an if let - else construct
         let to_process = match graph.get_node(graph_node_id) {
             Some(node) => node,
@@ -219,7 +252,7 @@ impl ComputeGraph {
                     output,
                 )?;
                 self.data.append(&mut new_data);
-                self.operations.push(operation);
+                self.operations.insert(graph_node_id, operation);
             },
             NodeContents::Interval {
                 variable, begin, end, quality, output,
@@ -234,7 +267,7 @@ impl ComputeGraph {
                     output
                 )?;
                 self.data.append(&mut new_data);
-                self.operations.push(operation);
+                self.operations.insert(graph_node_id, operation);
             },
             NodeContents::Rendering {
                 geometry, thickness, mask, material,
@@ -247,15 +280,15 @@ impl ComputeGraph {
                     graph_node_id,
                 )?;
                 self.renderables.push(renderable);
-                self.operations.push(operation);
+                self.operations.insert(graph_node_id, operation);
             },
             _ => todo!("handle all graph node kinds!")
         }
         Ok(())
     }
 
-    pub fn matcaps<'a>(&'a self) -> impl ExactSizeIterator<Item = &'a MatcapData> {
-        self.renderables.iter()
+    pub fn matcaps(&self) -> &[MatcapData] {
+        &self.renderables
     }
 
     pub fn run_compute(&self, device: &wgpu::Device, queue: &wgpu::Queue, globals: &Globals) {
@@ -263,7 +296,7 @@ impl ComputeGraph {
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Compute Encoder this time"),
         });
-        for op in self.operations.iter() {
+        for op in self.operations.values() {
             op.encode(&globals.bind_group, &mut encoder);
         }
         let compute_queue = encoder.finish();
