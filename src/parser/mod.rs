@@ -108,29 +108,40 @@ pub enum AstNode {
 }
 
 impl AstNode {
-    pub fn to_string(&self) -> String {
+    pub fn to_string(&self, global_idents: &[String]) -> String {
+        use crate::computable_scene::globals::GLOBAL_CONSTANTS;
         match self {
              // BEWARE: use the debug format, or it will forego the fractional part for integers
             AstNode::Number(val) => { format!("{:?}", val) },
-            AstNode::Ident(ident) => ident.clone(),
+            AstNode::Ident(ident) => {
+                // we need to check if the identifier is the name of a global variable or not.
+                // if it does, we need to prepend it with "globals."
+                if global_idents.contains(ident) {
+                    "globals.".to_string() + ident
+                } else if GLOBAL_CONSTANTS.iter().any(|e| e.0 == ident) {
+                    "globals.".to_string() + ident
+                } else {
+                    ident.clone()
+                }
+            },
             // we might want to add even more parenthesis because expression could be right after a binary operator
             // We need to check if this is necessary to correctly translate stuff like "3 * -sin(pi)" to the shading language
-            AstNode::UnaryOp{ operator, arg } => { format!("({}{})", operator.to_string(), arg.to_string()) },
-            AstNode::PowOp{ base, exp } => { format!("pow({},{})", base.to_string(), exp.to_string()) },
+            AstNode::UnaryOp{ operator, arg } => { format!("({}{})", operator.to_string(), arg.to_string(global_idents)) },
+            AstNode::PowOp{ base, exp } => { format!("pow({},{})", base.to_string(global_idents), exp.to_string(global_idents)) },
             AstNode::BinOp{ lhs, repeated_rhs } =>  {
                 let mut to_return = String::new();
                 to_return.push('(');
-                to_return.push_str(&lhs.to_string());
+                to_return.push_str(&lhs.to_string(global_idents));
                 for rhs in repeated_rhs.iter() {
                     to_return.push(' ');
                     to_return.push_str(&rhs.0.to_string());
                     to_return.push(' ');
-                    to_return.push_str(&rhs.1.to_string());
+                    to_return.push_str(&rhs.1.to_string(global_idents));
                 }
                 to_return.push(')');
                 to_return
             },
-            AstNode::Func{ func, arg } => { format!("{}({})", func.to_string(), arg.to_string()) },
+            AstNode::Func{ func, arg } => { format!("{}({})", func.to_string(), arg.to_string(global_idents)) },
         }
     }
 

@@ -16,7 +16,7 @@ pub struct Globals {
     wgsl_header: String,
 }
 
-const GLOBAL_CONSTANTS: &[(&str, f32)] = &[
+pub const GLOBAL_CONSTANTS: &[(&str, f32)] = &[
     ("pi", std::f32::consts::PI),
     ("zero", 0.0),
 ];
@@ -33,7 +33,7 @@ impl Globals {
                 match ast_tree {
                     AstNode::Ident(ident) => {
                         for constant in GLOBAL_CONSTANTS.iter() {
-                            if constant.0 == &ident {
+                            if constant.0 == ident {
                                 return Err(BlockCreationError::IncorrectExpression("cannot use a mathematical constant as a variable name".into()));
                             }
                             if constant.0.starts_with('_') {
@@ -67,7 +67,7 @@ impl Globals {
                 match ast_tree {
                     AstNode::Ident(ident) => {
                         for constant in GLOBAL_CONSTANTS.iter() {
-                            if constant.0 == &ident {
+                            if constant.0 == ident {
                                 return Err(ProcessingError::IncorrectExpression("cannot use a mathematical constant as a variable name".into()));
                             }
                             if constant.0.starts_with('_') {
@@ -97,7 +97,7 @@ impl Globals {
                     }
                     // if the ident is inside the global constants, we are good
                     for constant in GLOBAL_CONSTANTS.iter() {
-                        if constant.0 == &ident {
+                        if constant.0 == ident {
                             continue 'validate;
                         }
                     }
@@ -112,7 +112,7 @@ impl Globals {
                     let err = format!("Unknown variable or parameter used: '{}'", ident);
                     return Err(BlockCreationError::IncorrectExpression(err));
                 }
-                Ok(ast_tree.to_string())
+                Ok(ast_tree.to_string(&self.names))
             },
             Err(ast_error) => Err(Self::ast_to_block_error(ast_error)),
         }
@@ -133,7 +133,7 @@ impl Globals {
                     }
                     // if the ident is inside the global constants, we are good
                     for constant in GLOBAL_CONSTANTS.iter() {
-                        if constant.0 == &ident {
+                        if constant.0 == ident {
                             continue 'validate;
                         }
                     }
@@ -148,7 +148,7 @@ impl Globals {
                     let err = format!("Unknown variable or parameter used: '{}'", ident);
                     return Err(ProcessingError::IncorrectExpression(err));
                 }
-                Ok(ast_tree.to_string())
+                Ok(ast_tree.to_string(&self.names))
             },
             Err(ast_error) => Err(Self::ast_to_block_error_2(ast_error)),
         }
@@ -276,7 +276,7 @@ impl Globals {
         shader_header += "};\n";
         // when we close the wgsl struct, we also need to write the binding to the group 1
         wgsl_header += "};\n";
-        wgsl_header += "[[group(1), binding(0)]] var<uniform> globals: Globals;\n";
+        wgsl_header += "[[group(0), binding(0)]] var<uniform> globals: Globals;\n";
 
 
         //println!("debug info for shader header: {}", &shader_header);
