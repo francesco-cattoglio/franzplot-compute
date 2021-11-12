@@ -30,7 +30,7 @@ pub struct Operation {
 }
 
 impl Operation {
-    pub fn encode(&self, variables_bind_group: &wgpu::BindGroup, encoder: &mut wgpu::CommandEncoder) {
+    pub fn encode(&self, encoder: &mut wgpu::CommandEncoder) {
         let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor{
             label: Some("rendering compute pass")
         });
@@ -250,13 +250,13 @@ impl ComputeGraph {
         &self.renderables
     }
 
-    pub fn run_compute(&self, device: &wgpu::Device, queue: &wgpu::Queue) { //, globals: &Globals) {
+    pub fn run_compute(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("Compute Encoder this time"),
         });
         for op in self.operations.values() {
-            op.encode(&self.globals.bind_group, &mut encoder);
+            op.encode(&mut encoder);
         }
         let compute_queue = encoder.finish();
         queue.submit(std::iter::once(compute_queue));

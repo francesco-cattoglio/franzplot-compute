@@ -106,23 +106,23 @@ pub struct AppState {
 
 impl AppState {
     pub fn set_wireframe_axes(&mut self, length: i32, cross_size: f32) {
-        self.computable_scene.renderer.set_wireframe_axes(length, cross_size, &self.manager.device);
+        self.renderer.set_wireframe_axes(length, cross_size, &self.manager.device);
     }
 
     pub fn clear_wireframe_axes(&mut self) {
-        self.computable_scene.renderer.clear_wireframe_axes();
+        self.renderer.clear_wireframe_axes();
     }
 
     pub fn set_axes_labels(&mut self, axis_length: i32, label_size: f32) {
-        self.computable_scene.renderer.set_axes_labels(axis_length as f32, label_size, &self.manager.device);
+        self.renderer.set_axes_labels(axis_length as f32, label_size, &self.manager.device);
     }
 
     pub fn clear_axes_labels(&mut self) {
-        self.computable_scene.renderer.clear_axes_labels();
+        self.renderer.clear_axes_labels();
     }
 
     pub fn update_depth_buffer(&mut self, size: wgpu::Extent3d) {
-        self.computable_scene.renderer.update_depth_buffer_size(&self.manager.device, size);
+        self.renderer.update_depth_buffer_size(&self.manager.device, size);
     }
 
     pub fn update_projection_matrix(&mut self, size: wgpu::Extent3d) {
@@ -148,7 +148,7 @@ impl AppState {
             // this is here instead of inside `update_projection_matrix` because
             // we are currently using the zoom level to build the orthographic matrix,
             // while `update_projection_matrix` gets called only on framebuffer resize
-            self.computable_scene.renderer.update_proj(self.camera.build_ortho_matrix());
+            self.renderer.update_proj(self.camera.build_ortho_matrix());
         } else {
             self.computable_scene.renderer.update_proj(self.camera.build_projection_matrix());
         }
@@ -170,13 +170,13 @@ impl AppState {
             // this is here instead of inside `update_projection_matrix` because
             // we are currently using the zoom level to build the orthographic matrix,
             // while `update_projection_matrix` gets called only on framebuffer resize
-            self.computable_scene.renderer.update_proj(self.camera.build_ortho_matrix());
+            self.renderer.update_proj(self.camera.build_ortho_matrix());
         } else {
-            self.computable_scene.renderer.update_proj(self.camera.build_projection_matrix());
+            self.renderer.update_proj(self.camera.build_projection_matrix());
         }
-        self.computable_scene.renderer.update_view(self.camera.build_view_matrix());
+        self.renderer.update_view(self.camera.build_view_matrix());
         // after updating everything, redraw the scene to the texture
-        self.computable_scene.renderer.render(&self.manager, target_texture);
+        self.renderer.render(&self.manager, target_texture);
     }
 }
 

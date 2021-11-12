@@ -432,7 +432,7 @@ fn main() {
                         cursor_position.x - physical_rectangle.position.x,
                         cursor_position.y - physical_rectangle.position.y,
                     ];
-                    state.app.computable_scene.renderer.update_mouse_pos(&relative_pos);
+                    state.app.renderer.update_mouse_pos(&relative_pos);
                     state.app.update_camera(&camera_inputs);
                     state.app.update_scene(scene_texture_view);
                 }
