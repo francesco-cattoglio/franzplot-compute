@@ -126,7 +126,7 @@ pub struct MatcapData {
 // shaders that are to be run)
 // - a list of all the renderables that were created as outputs.
 pub struct ComputeGraph {
-    globals: Globals,
+    pub globals: Globals,
     renderables: Vec<MatcapData>,
     data: BTreeMap<DataID, Data>,
     operations: IndexMap<NodeID, Operation>,

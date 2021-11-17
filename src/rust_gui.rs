@@ -381,19 +381,21 @@ impl Gui {
         ui.text("Global variables");
 
         // and add the UI for updating them
-        let width_token = ui.push_item_width(80.0);
-        let zip_iter = state.app.computable_scene.globals.get_variables_iter();
         let mut requested_cursor = MouseCursor::Arrow;
-        for (name, value) in zip_iter {
-            // to make each slider unique, we are gonna push an invisible unique imgui label
-            let imgui_name = ImString::new("##".to_string() + name);
-            ui.text(name);
-            Drag::new(&imgui_name)
-                .speed(0.02)
-                .build(ui, value);
+        let width_token = ui.push_item_width(80.0);
+        if let Some(compute_graph) = &mut state.app.graph {
+            let zip_iter = compute_graph.globals.get_variables_iter();
+            for (name, value) in zip_iter {
+                // to make each slider unique, we are gonna push an invisible unique imgui label
+                let imgui_name = ImString::new("##".to_string() + name);
+                ui.text(name);
+                Drag::new(&imgui_name)
+                    .speed(0.02)
+                    .build(ui, value);
 
-            if ui.is_item_hovered() {
-                requested_cursor = MouseCursor::ResizeEW;
+                if ui.is_item_hovered() {
+                    requested_cursor = MouseCursor::ResizeEW;
+                }
             }
         }
         let available_region = ui.content_region_avail();
