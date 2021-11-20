@@ -26,7 +26,7 @@ pub fn create(
     match found_data {
         Data::Geom1D {
             buffer, param
-        } => handle_1d(device, buffer, param.size, thickness),
+        } => handle_1d(device, buffer, param.size, thickness, mask, material),
         Data::Geom2D {
             ..
         } => todo!(),
@@ -37,7 +37,7 @@ pub fn create(
     }
 }
 
-fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, size: usize, thickness: usize) -> GeometryResult {
+fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, size: usize, thickness: usize, mask_id: usize, material_id: usize) -> GeometryResult {
 
     let section_diameter = AVAILABLE_SIZES[thickness];
     let n_section_points = (thickness + 3)*2;
@@ -164,8 +164,8 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
         vertex_buffer,
         index_buffer,
         index_count,
-        mask_id: 0,
-        material_id: 0,
+        mask_id,
+        material_id,
     };
     let operation = Operation {
         bind_group,

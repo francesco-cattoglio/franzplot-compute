@@ -4,7 +4,7 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 use crate::rendering::model::Model;
 pub use crate::node_graph::{NodeGraph, NodeID, NodeContents};
-use crate::computable_scene::globals::Globals;
+use crate::computable_scene::globals::{Globals, NameValuePair};
 use crate::state::UserState;
 
 mod interval;
@@ -49,7 +49,7 @@ pub enum ProcessingError {
     IncorrectExpression(String),
 }
 pub type SingleDataResult = Result<(Data, Operation), ProcessingError>;
-pub type MatcapIter<'a> = Iter<'a, DataID, MatcapData>;
+pub type MatcapIter<'a> = Iter<'a, NodeID, MatcapData>;
 
 // a parameter can be anonymous, e.g. when created by a Bezier node
 #[derive(Debug, Clone)]
@@ -128,8 +128,8 @@ pub struct MatcapData {
 // - a list of all the renderables that were created as outputs.
 pub struct ComputeGraph {
     pub globals: Globals,
-    renderables: BTreeMap<DataID, MatcapData>,
     data: BTreeMap<DataID, Data>,
+    renderables: BTreeMap<NodeID, MatcapData>,
     operations: IndexMap<NodeID, Operation>,
 }
 
@@ -187,6 +187,29 @@ pub fn create_compute_graph(device: &wgpu::Device, user_state: UserState) -> Res
 }
 
 impl ComputeGraph {
+    pub fn matcaps(&self) -> MatcapIter {
+        self.renderables.iter()
+    }
+
+    pub fn run_compute(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
+        let mut encoder =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("Compute Encoder this time"),
+        });
+        for op in self.operations.values() {
+            op.encode(&mut encoder);
+        }
+        let compute_queue = encoder.finish();
+        queue.submit(std::iter::once(compute_queue));
+    }
+
+    pub fn update_globals(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, pairs: Vec<NameValuePair>) {
+        let values_changed = self.globals.update_buffer(queue, pairs);
+        if values_changed {
+            self.run_compute(device, queue);
+        }
+    }
+
     // process a single graph node.
     // If the operation is successful, then the internal state of the ComputeGraph is modified by storing
     // the newly created data and operation. If it fails, then a ProcessingError is returned and
@@ -244,22 +267,6 @@ impl ComputeGraph {
             _ => todo!("handle all graph node kinds!")
         }
         Ok(())
-    }
-
-    pub fn matcaps<'a>(&'a self) -> MatcapIter<'a> {
-        self.renderables.iter()
-    }
-
-    pub fn run_compute(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
-        let mut encoder =
-            device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
-            label: Some("Compute Encoder this time"),
-        });
-        for op in self.operations.values() {
-            op.encode(&mut encoder);
-        }
-        let compute_queue = encoder.finish();
-        queue.submit(std::iter::once(compute_queue));
     }
 
 }

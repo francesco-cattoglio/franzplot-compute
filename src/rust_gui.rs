@@ -384,19 +384,22 @@ impl Gui {
         let mut requested_cursor = MouseCursor::Arrow;
         let width_token = ui.push_item_width(80.0);
         if let Some(compute_graph) = &mut state.app.graph {
-            let zip_iter = compute_graph.globals.get_variables_iter();
-            for (name, value) in zip_iter {
+            let mut cloned_pairs = compute_graph.globals.clone_names_values();
+            for pair in cloned_pairs.iter_mut() {
                 // to make each slider unique, we are gonna push an invisible unique imgui label
-                let imgui_name = ImString::new("##".to_string() + name);
-                ui.text(name);
+                let imgui_name = ImString::new("##".to_string() + &pair.name);
+                ui.text(&pair.name);
                 Drag::new(&imgui_name)
                     .speed(0.02)
-                    .build(ui, value);
+                    .build(ui, &mut pair.value);
 
                 if ui.is_item_hovered() {
                     requested_cursor = MouseCursor::ResizeEW;
                 }
             }
+            // TODO: only call the relevant function if we actually change the values here already
+            let action = crate::state::Action::UpdateGlobals(cloned_pairs);
+            state.process(action);
         }
         let available_region = ui.content_region_avail();
         if available_region[1] > 250.0 {

@@ -7,13 +7,17 @@ use crate::parser::{parse_expression, AstNode, AstError};
 pub struct Globals {
     names: Vec<String>,
     values: Vec<f32>,
-    old_values: Vec<f32>,
     buffer_size: wgpu::BufferAddress,
     buffer: wgpu::Buffer,
     pub bind_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
     pub shader_header: String,
     wgsl_header: String,
+}
+
+pub struct NameValuePair {
+    pub name: String,
+    pub value: f32,
 }
 
 pub const GLOBAL_CONSTANTS: &[(&str, f32)] = &[
@@ -23,6 +27,16 @@ pub const GLOBAL_CONSTANTS: &[(&str, f32)] = &[
 const MAX_NUM_VARIABLES: usize = 31;
 
 impl Globals {
+    pub fn clone_names_values(&self) -> Vec<NameValuePair> {
+        self.names.iter()
+            .zip(self.values.iter())
+            .map(|(name, value)| NameValuePair {
+                name: name.clone(),
+                value: *value,
+            })
+            .collect()
+    }
+
     pub fn sanitize_variable_name(name: &str) -> Result<String, BlockCreationError> {
         let parsing_result = parse_expression(name);
         match parsing_result {
@@ -188,10 +202,6 @@ impl Globals {
         }
     }
 
-    pub fn get_variables_iter(&mut self) -> impl Iterator<Item = (&String, &mut f32)> {
-        self.names.iter().zip(self.values.iter_mut())
-    }
-
     pub fn new(device: &wgpu::Device, variables_names: Vec<String>, init_values: Vec<f32>) -> Self {
         // assert there are as many variables as init values
         assert!(variables_names.len() == init_values.len());
@@ -285,7 +295,6 @@ impl Globals {
             bind_group,
             names,
             values,
-            old_values: Vec::new(),
             buffer,
             buffer_size,
             shader_header,
@@ -297,23 +306,32 @@ impl Globals {
     /// If none of the globals changed, then this function does nothing and returns false.
     /// Otherwise, if at least one global var changed, then the wgpu buffers is updated
     /// and the function returns true
-    pub fn update_buffer(&mut self, queue: &wgpu::Queue) -> bool {
+    pub fn update_buffer(&mut self, queue: &wgpu::Queue, pairs: Vec<NameValuePair>) -> bool {
         // quick check to make sure nobody changed the size of the values vector
         // which would spell disaster because then we would overwrite some random GPU memory
         assert!(self.names.len() == self.values.len());
 
-        if self.values == self.old_values {
-            // nothing actually changed, no need to update anything
-            false
-        } else {
+        let mut values_changed = false;
+        let zipped = self.names.iter().zip(self.values.iter_mut());
+        for (name, old_value) in zipped {
+            // search for the pair that has the same name of the value that we want to update
+            if let Some(pair) = pairs.iter().find(|e| &e.name == name) {
+                if *old_value != pair.value {
+                    *old_value = pair.value;
+                    values_changed = true;
+                }
+            }
+        }
+
+        if values_changed {
             // values did in fact change. Update the buffer and overwrite the "old_values"
             // When updating the mapped values in our buffer, do not forget that this buffer
             // also contains all the global constants. Start copying from the computed offset!
             let offset = (GLOBAL_CONSTANTS.len() * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
             queue.write_buffer(&self.buffer, offset, bytemuck::cast_slice(&self.values));
-            self.old_values = self.values.clone();
-            true
         }
+
+        values_changed
     }
 
     pub fn get_bind_info(&self) -> crate::shader_processing::BindInfo {

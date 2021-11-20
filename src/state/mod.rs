@@ -9,7 +9,7 @@ use crate::node_graph;
 use serde::{Serialize, Deserialize};
 
 pub mod action;
-use action::Action;
+pub use action::Action;
 
 // The State struct encapsulates the whole application state,
 // the GUI takes a mutable reference to the state and modifies it
@@ -139,11 +139,11 @@ impl AppState {
     pub fn load_scene(&mut self, target_texture: &wgpu::TextureView) {
         // TODO: right now the chain is not recomputed if globals were not updated. This is
         // sub-optimal, and in the future we might want to be more fine-grained
-        let global_vars_changed = self.computable_scene.globals.update_buffer(&self.manager.queue);
-        if global_vars_changed {
+        // let global_vars_changed = self.computable_scene.globals.update_buffer(&self.manager.queue);
+        //if global_vars_changed {
             //self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
             //self.computable_scene.graph.run_compute(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
-        }
+        //}
         if self.camera_ortho {
             // this is here instead of inside `update_projection_matrix` because
             // we are currently using the zoom level to build the orthographic matrix,
@@ -161,11 +161,11 @@ impl AppState {
     pub fn update_scene(&mut self, target_texture: &wgpu::TextureView) {
         // TODO: right now the chain is not recomputed if globals were not updated. This is
         // sub-optimal, and in the future we might want to be more fine-grained
-        let global_vars_changed = self.computable_scene.globals.update_buffer(&self.manager.queue);
-        if global_vars_changed {
-            self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
+        // let global_vars_changed = self.computable_scene.globals.update_buffer(&self.manager.queue);
+        //if global_vars_changed {
+            //self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
             //self.computable_scene.graph.run_compute(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
-        }
+        //}
         if self.camera_ortho {
             // this is here instead of inside `update_projection_matrix` because
             // we are currently using the zoom level to build the orthographic matrix,
@@ -241,6 +241,12 @@ impl State {
                     Err(_unrecoverable_error) => {
 
                     }
+                }
+            }
+            Action::UpdateGlobals(pairs) => {
+                // if the compute graph exists, tell it to update the globals
+                if let Some(graph) = &mut self.app.graph {
+                    graph.update_globals(&self.app.manager.device, &self.app.manager.queue, pairs);
                 }
             }
         }
