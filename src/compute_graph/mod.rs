@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::collections::btree_map::Iter;
 use std::rc::Rc;
 use indexmap::IndexMap;
 use crate::rendering::model::Model;
@@ -47,7 +48,8 @@ pub enum ProcessingError {
     IncorrectAttributes(&'static str),
     IncorrectExpression(String),
 }
-pub type ProcessingResult = Result<(BTreeMap<DataID, Data>, Operation), ProcessingError>;
+pub type SingleDataResult = Result<(Data, Operation), ProcessingError>;
+pub type MatcapIter<'a> = Iter<'a, DataID, MatcapData>;
 
 // a parameter can be anonymous, e.g. when created by a Bezier node
 #[derive(Debug, Clone)]
@@ -118,7 +120,6 @@ pub struct MatcapData {
     pub index_count: u32,
     pub mask_id: usize,
     pub material_id: usize,
-    pub graph_node_id: NodeID,
 }
 // The compute graph contains:
 // - a map of all the Data in the graph
@@ -127,7 +128,7 @@ pub struct MatcapData {
 // - a list of all the renderables that were created as outputs.
 pub struct ComputeGraph {
     pub globals: Globals,
-    renderables: Vec<MatcapData>,
+    renderables: BTreeMap<DataID, MatcapData>,
     data: BTreeMap<DataID, Data>,
     operations: IndexMap<NodeID, Operation>,
 }
@@ -170,7 +171,7 @@ pub fn create_compute_graph(device: &wgpu::Device, user_state: UserState) -> Res
         let mut compute_graph = ComputeGraph {
             data: BTreeMap::new(),
             operations: IndexMap::new(),
-            renderables: Vec::new(),
+            renderables: BTreeMap::new(),
             globals,
         };
         for id in sorted_ids.into_iter().rev() {
@@ -200,7 +201,7 @@ impl ComputeGraph {
             NodeContents::Curve {
                 interval, fx, fy, fz, output
             } => {
-                let (mut new_data, operation) = curve::create(
+                let (new_data, operation) = curve::create(
                     device,
                     &self.globals,
                     &self.data,
@@ -208,24 +209,22 @@ impl ComputeGraph {
                     graph.get_attribute_as_string(fx).unwrap(),
                     graph.get_attribute_as_string(fy).unwrap(),
                     graph.get_attribute_as_string(fz).unwrap(),
-                    output,
                 )?;
-                self.data.append(&mut new_data);
+                self.data.insert(output, new_data);
                 self.operations.insert(graph_node_id, operation);
             },
             NodeContents::Interval {
                 variable, begin, end, quality, output,
             } => {
-                let (mut new_data, operation) = interval::create(
+                let (new_data, operation) = interval::create(
                     device,
                     &self.globals,
                     graph.get_attribute_as_string(variable).unwrap(),
                     graph.get_attribute_as_string(begin).unwrap(),
                     graph.get_attribute_as_string(end).unwrap(),
                     graph.get_attribute_as_usize(quality).unwrap(),
-                    output
                 )?;
-                self.data.append(&mut new_data);
+                self.data.insert(output, new_data);
                 self.operations.insert(graph_node_id, operation);
             },
             NodeContents::Rendering {
@@ -236,9 +235,10 @@ impl ComputeGraph {
                     &self.data,
                     graph.get_attribute_as_linked_output(geometry),
                     graph.get_attribute_as_usize(thickness).unwrap(),
-                    graph_node_id,
+                    graph.get_attribute_as_usize(mask).unwrap(),
+                    graph.get_attribute_as_usize(material).unwrap(),
                 )?;
-                self.renderables.push(renderable);
+                self.renderables.insert(graph_node_id, renderable);
                 self.operations.insert(graph_node_id, operation);
             },
             _ => todo!("handle all graph node kinds!")
@@ -246,8 +246,8 @@ impl ComputeGraph {
         Ok(())
     }
 
-    pub fn matcaps(&self) -> &[MatcapData] {
-        &self.renderables
+    pub fn matcaps<'a>(&'a self) -> MatcapIter<'a> {
+        self.renderables.iter()
     }
 
     pub fn run_compute(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
@@ -260,29 +260,6 @@ impl ComputeGraph {
         }
         let compute_queue = encoder.finish();
         queue.submit(std::iter::once(compute_queue));
-
-        if let Some(renderable) = self.renderables.first() {
-            let vert_contents = crate::util::copy_buffer_as::<f32>(&renderable.vertex_buffer, device);
-
-            let mut path = std::path::PathBuf::new();
-            path.push("./garbage/vertex");
-            let mut file = std::fs::File::create(path).unwrap();
-            // update the time_stamp to remember the last time the file was saved
-            let serialized_data = serde_json::ser::to_string_pretty(&vert_contents).unwrap();
-
-            use std::io::Write;
-            file.write_all(serialized_data.as_bytes()).unwrap();
-
-            let index_contents = crate::util::copy_buffer_as::<i32>(&renderable.index_buffer, device);
-            let mut path = std::path::PathBuf::new();
-            path.push("./garbage/index");
-            let mut file = std::fs::File::create(path).unwrap();
-            // update the time_stamp to remember the last time the file was saved
-            let serialized_data = serde_json::ser::to_string_pretty(&index_contents).unwrap();
-
-            file.write_all(serialized_data.as_bytes()).unwrap();
-        }
     }
-
 
 }

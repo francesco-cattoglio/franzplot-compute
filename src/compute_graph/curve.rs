@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 use super::Operation;
 use crate::computable_scene::globals::Globals;
-use super::{ProcessingResult, ProcessingError};
+use super::{SingleDataResult, ProcessingError};
 use super::Parameter;
 use super::{DataID, Data};
 use crate::util;
@@ -16,8 +16,7 @@ pub fn create(
     fx: String,
     fy: String,
     fz: String,
-    output_id: DataID,
-) -> ProcessingResult {
+) -> SingleDataResult {
     //println!("new curve processing");
     let data_id = interval_id.ok_or(ProcessingError::InputMissing(" This Curve node \n is missing its input "))?;
     let found_data = data_map.get(&data_id).ok_or(ProcessingError::InternalError("Interval used as input does not exist in the block map".into()))?;
@@ -82,14 +81,10 @@ output.positions[index] = vec4<f32>(fx, fy, fz, 1.0);
     ];
     let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
 
-    let mut new_data = BTreeMap::<DataID, Data>::new();
-    new_data.insert(
-        output_id,
-        Data::Geom1D {
-            buffer: output_buffer,
-            param: param.clone(),
-        },
-    );
+    let new_data = Data::Geom1D {
+        buffer: output_buffer,
+        param: param.clone(),
+    };
     let operation = Operation {
         bind_group,
         pipeline: Rc::new(pipeline),

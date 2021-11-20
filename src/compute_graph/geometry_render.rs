@@ -17,7 +17,8 @@ pub fn create(
     data_map: &BTreeMap<DataID, Data>,
     geometry_id: Option<DataID>,
     thickness: usize,
-    output_id: DataID,
+    mask: usize,
+    material: usize,
 ) -> GeometryResult {
     let data_id = geometry_id.ok_or(ProcessingError::InputMissing(" This Curve node \n is missing its input "))?;
     let found_data = data_map.get(&data_id).ok_or(ProcessingError::InternalError("Geometry used as input does not exist in the block map".into()))?;
@@ -25,7 +26,7 @@ pub fn create(
     match found_data {
         Data::Geom1D {
             buffer, param
-        } => handle_1d(device, buffer, param.size, thickness, output_id),
+        } => handle_1d(device, buffer, param.size, thickness),
         Data::Geom2D {
             ..
         } => todo!(),
@@ -36,7 +37,7 @@ pub fn create(
     }
 }
 
-fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, size: usize, thickness: usize, graph_node_id: NodeID) -> GeometryResult {
+fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, size: usize, thickness: usize) -> GeometryResult {
 
     let section_diameter = AVAILABLE_SIZES[thickness];
     let n_section_points = (thickness + 3)*2;
@@ -165,7 +166,6 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
         index_count,
         mask_id: 0,
         material_id: 0,
-        graph_node_id,
     };
     let operation = Operation {
         bind_group,

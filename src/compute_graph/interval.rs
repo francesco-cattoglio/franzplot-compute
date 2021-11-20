@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 use super::Operation;
 use crate::computable_scene::globals::Globals;
-use super::{ProcessingResult, ProcessingError};
+use super::{SingleDataResult, ProcessingError};
 use super::Parameter;
 use super::{DataID, Data};
 use crate::util;
@@ -15,8 +15,7 @@ pub fn create(
     begin: String,
     end: String,
     quality: usize,
-    output_id: DataID,
-) -> ProcessingResult {
+) -> SingleDataResult {
     if quality < 1 || quality > 16 {
         return Err(ProcessingError::IncorrectAttributes("Interval quality attribute must be an integer in the [1, 16] range"))
     }
@@ -82,14 +81,10 @@ output.values[index] = {interval_begin} + delta * f32(index);
     ];
     let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
 
-    let mut new_data = BTreeMap::<DataID, Data>::new();
-    new_data.insert(
-        output_id,
-        Data::Interval {
-            buffer: out_buffer,
-            param,
-        },
-    );
+    let new_data = Data::Interval {
+        buffer: out_buffer,
+        param,
+    };
     let operation = Operation {
         bind_group,
         pipeline: Rc::new(pipeline),

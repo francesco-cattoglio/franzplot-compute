@@ -2,7 +2,7 @@ use crate::state::Assets;
 use crate::rendering::texture::{Texture};
 use crate::rendering::*;
 use crate::device_manager;
-use crate::compute_graph::{ComputeGraph, MatcapData};
+use crate::compute_graph::{ComputeGraph, MatcapData, MatcapIter};
 use crate::computable_scene::compute_chain::ComputeChain;
 use crate::computable_scene::compute_block::{BlockId, ComputeBlock, Dimensions, RenderingData, VectorRenderingData};
 use wgpu::util::DeviceExt;
@@ -358,7 +358,7 @@ impl SceneRenderer {
         self.wireframe_axes = Some(render_bundle);
     }
 
-    pub fn update_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, matcaps: &[MatcapData]) {
+    pub fn update_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, matcaps: MatcapIter<'_>) {
         self.renderables.clear();
         self.renderable_ids.clear();
         // go through all blocks,
@@ -373,9 +373,9 @@ impl SceneRenderer {
             self.picking_bind_group = picking_bind_group;
         }
 
-        for (idx, matcap_data) in matcaps.iter().enumerate() {
-            self.renderable_ids.push(matcap_data.graph_node_id);
-            self.add_matcap(device, assets, matcap_data, idx as u32);
+        for (idx, (data_id, matcap)) in matcaps.enumerate() {
+            self.renderable_ids.push(*data_id);
+            self.add_matcap(device, assets, matcap, idx as u32);
         }
         dbg!(&self.renderables);
     }
