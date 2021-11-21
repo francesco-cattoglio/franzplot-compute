@@ -10,6 +10,7 @@ use crate::state::UserState;
 mod interval;
 mod curve;
 mod geometry_render;
+mod surface;
 
 pub type DataID = i32;
 pub type PrefabId = i32;
@@ -44,6 +45,7 @@ impl Operation {
 #[derive(Debug, Clone)]
 pub enum ProcessingError {
     InputMissing(&'static str),
+    NoInputData,
     InternalError(String),
     IncorrectAttributes(&'static str),
     IncorrectExpression(String),
@@ -111,7 +113,6 @@ pub enum Data {
         vertex_buffer: wgpu::Buffer,
         index_buffer: wgpu::Buffer,
     },
-    NotComputed,
 }
 
 pub struct MatcapData {
@@ -236,6 +237,22 @@ impl ComputeGraph {
                 self.data.insert(output, new_data);
                 self.operations.insert(graph_node_id, operation);
             },
+            NodeContents::Surface {
+                interval_1, interval_2, fx, fy, fz, output,
+            } => {
+                let (new_data, operation) = surface::create(
+                    device,
+                    &self.globals,
+                    &self.data,
+                    graph.get_attribute_as_linked_output(interval_1),
+                    graph.get_attribute_as_linked_output(interval_2),
+                    graph.get_attribute_as_string(fx).unwrap(),
+                    graph.get_attribute_as_string(fy).unwrap(),
+                    graph.get_attribute_as_string(fz).unwrap(),
+                )?;
+                self.data.insert(output, new_data);
+                self.operations.insert(graph_node_id, operation);
+            }
             NodeContents::Interval {
                 variable, begin, end, quality, output,
             } => {

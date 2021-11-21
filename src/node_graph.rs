@@ -928,6 +928,9 @@ pub struct NodeGraph {
     nodes: Vec<Option<Node>>,
     attributes: Vec<Option<Attribute>>,
     links: HashMap::<AttributeID, AttributeID>,
+    // TODO: maybe we should not store the the free nodes list and the free_attributes_list,
+    // because I have found at least 1 file with a corrupted free list (probably after a misguided
+    // attempt at modifying the file by hand)
     free_nodes_list: Vec<NodeID>,
     free_attributes_list: Vec<AttributeID>,
     #[serde(skip)]
