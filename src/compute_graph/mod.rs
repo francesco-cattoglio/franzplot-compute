@@ -64,6 +64,7 @@ pub struct Parameter {
 }
 
 impl Parameter {
+
     pub fn is_equal(&self, other: &Parameter) -> Result <bool, ProcessingError> {
         match (&self.name, &other.name) {
             (None, None) => Ok(false),

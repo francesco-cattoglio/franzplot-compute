@@ -48,7 +48,7 @@ V1(
         )),// [2]
         Some((
           node_id: 0,
-          contents: IntSlider(label:"quality",value:1,mode:IntRange(1,16)),
+          contents: IntSlider(label:"quality",value:2,mode:IntRange(1,16)),
         )),// [3]
         Some((
           node_id: 0,
@@ -56,7 +56,7 @@ V1(
         )),// [4]
         Some((
           node_id: 1,
-          contents: Text(label:"fz",string:"0"),
+          contents: Text(label:"fz",string:"0.25*sin(3*s)"),
         )),// [5]
         Some((
           node_id: 1,
@@ -118,18 +118,18 @@ V1(
         )),// [27]
         Some((
           node_id: 6,
-          contents: Mask(selected:0),
+          contents: Mask(selected:1),
         )),// [28]
         Some((
           node_id: 6,
-          contents: Material(selected:4),
+          contents: Material(selected:6),
         )),// [29]
         None,
       ],
       links: {
+        8: 21,
         10: 26,
         9: 4,
-        8: 21,
       },
       free_nodes_list: [],
       free_attributes_list: [
@@ -155,7 +155,7 @@ V1(
   ),
   (
     fc: 0,
-    fs: 1637511956,
+    fs: 1637518278,
     vn: 4099954857,
     hs: 0,
   ),

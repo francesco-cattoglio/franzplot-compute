@@ -10,6 +10,9 @@ use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
 use crate::node_graph::AVAILABLE_SIZES;
 
+const LOCAL_SIZE_X: usize = 16;
+const LOCAL_SIZE_Y: usize = 16;
+
 pub type GeometryResult = Result<(MatcapData, Operation), ProcessingError>;
 
 pub fn create(
@@ -25,11 +28,11 @@ pub fn create(
 
     match found_data {
         Data::Geom1D {
-            buffer, param
+            buffer, param,
         } => handle_1d(device, buffer, param.size, thickness, mask, material),
         Data::Geom2D {
-            ..
-        } => todo!(),
+            buffer, param1, param2,
+        } => handle_2d(device, buffer, param1.size, param2.size, mask, material),
         Data::Prefab {
             ..
         } => todo!(),
@@ -42,7 +45,7 @@ fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, size: usize, th
     let section_diameter = AVAILABLE_SIZES[thickness];
     let n_section_points = (thickness + 3)*2;
 
-    let (index_buffer, index_count) = create_curve_buffer_index(device, size, n_section_points);
+    let (index_buffer, index_count) = create_curve_index_buffer(device, size, n_section_points);
     let vertex_buffer = util::create_storage_buffer(device, size * n_section_points * std::mem::size_of::<StandardVertexData>());
 
     let curve_consts = create_curve_shader_constants(section_diameter/2.0, n_section_points);
@@ -55,11 +58,11 @@ struct MatcapVertex {{
 }};
 
 [[block]] struct InputBuffer {{
-positions: array<vec4<f32>>;
+    positions: array<vec4<f32>>;
 }};
 
 [[block]] struct OutputBuffer {{
-vertices: array<MatcapVertex>;
+    vertices: array<MatcapVertex>;
 }};
 
 [[group(0), binding(0)]] var<storage, read> in: InputBuffer;
@@ -139,12 +142,156 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
         out.vertices[out_idx].position = new_basis * vec4<f32>(section_point, 1.0);
         out.vertices[out_idx].normal = new_basis * vec4<f32>(normalize(section_point), 0.0);
         out.vertices[out_idx].uv_coords = vec2<f32>(f32(idx)/(f32(x_size) - 1.0), f32(i)/(f32({points_per_section}) - 1.0));
-        out.vertices[out_idx].padding = vec2<f32>(0.123, 0.456);
+        out.vertices[out_idx].padding = vec2<f32>(1.123, 1.456);
     }}
 }}
 "##, curve_constants=curve_consts, points_per_section=n_section_points, dimx=size);
 
     println!("shader source:\n {}", &wgsl_source);
+    // We are creating a curve from an interval, output vertex count is the same as interval
+    // one, but buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
+
+    let bind_info = vec![
+        BindInfo {
+            buffer: &input_buffer,
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+        },
+        BindInfo {
+            buffer: &vertex_buffer,
+            ty: wgpu::BufferBindingType::Storage { read_only: false },
+        },
+    ];
+    let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
+
+    let renderable = MatcapData {
+        vertex_buffer,
+        index_buffer,
+        index_count,
+        mask_id,
+        material_id,
+    };
+    let operation = Operation {
+        bind_group,
+        pipeline: Rc::new(pipeline),
+        dim: [1, 1, 1],
+    };
+
+    Ok((renderable, operation))
+}
+
+fn handle_2d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, param1_size: usize, param2_size: usize, mask_id: usize, material_id: usize) -> GeometryResult {
+    let flag_pattern = true;
+    let (index_buffer, index_count) = create_grid_index_buffer(device, param1_size, param2_size, flag_pattern);
+    let vertex_buffer = util::create_storage_buffer(device, param1_size * param2_size * std::mem::size_of::<StandardVertexData>());
+    let wgsl_source = format!(r##"
+struct MatcapVertex {{
+    position: vec4<f32>;
+    normal: vec4<f32>;
+    uv_coords: vec2<f32>;
+    padding: vec2<f32>;
+}};
+
+[[block]] struct InputBuffer {{
+    pos: array<vec4<f32>>;
+}};
+
+[[block]] struct OutputBuffer {{
+    vertices: array<MatcapVertex>;
+}};
+
+[[group(0), binding(0)]] var<storage, read> in: InputBuffer;
+[[group(0), binding(1)]] var<storage, read_write> out: OutputBuffer;
+
+var<workgroup> tangent_buff: array<vec3<f32>, {dimx}>;
+var<workgroup> ref_buff: array<vec3<f32>, {dimx}>;
+
+[[stage(compute), workgroup_size({dimx}, {dimy})]]
+fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+    // this shader prepares the data for surface rendering.
+    // normal computation is done computing the tangent and cotangent of the surface via finite differences
+    // and then crossing the two vectors.
+    let x_size = {size_x}u;
+    let y_size = {size_y}u;
+
+    let i = global_id.x;
+    let j = global_id.y;
+    let idx = i + j * x_size;
+    var x_tangent: vec3<f32>;
+    if (i == 0u) {{
+        x_tangent = (-1.5 * in.pos[idx] + 2.0 * in.pos[idx + 1u] - 0.5 * in.pos[idx + 2u]).xyz;
+    }} else {{ if (i == x_size - 1u) {{
+        x_tangent = ( 1.5 * in.pos[idx] - 2.0 * in.pos[idx - 1u] + 0.5 * in.pos[idx - 2u]).xyz;
+    }} else {{
+        x_tangent = (-0.5 * in.pos[idx - 1u] + 0.5 * in.pos[idx + 1u]).xyz;
+    }}
+    }} // TODO: move to an `else if` statement when naga supports it
+    var y_tangent: vec3<f32>;
+    if (j == 0u) {{
+        y_tangent = (-1.5 * in.pos[idx] + 2.0 * in.pos[idx + x_size] - 0.5 * in.pos[idx + 2u * x_size]).xyz;
+    }} else {{ if (j == y_size - 1u) {{
+        y_tangent = ( 1.5 * in.pos[idx] - 2.0 * in.pos[idx - x_size] + 0.5 * in.pos[idx - 2u * x_size]).xyz;
+    }} else {{
+        y_tangent = (-0.5 * in.pos[idx - x_size] + 0.5 * in.pos[idx + x_size]).xyz;
+    }}
+    }} // TODO: move to an `else if` statement when naga supports it
+
+    //// TODO: investigate the best criterion for deciding when to zero out the normal vector.
+    ///  If we get it wrong, we might produce artifacts (black spots) even in very simple cases,
+    ///  e.g: sin(x) or a planar surface which has been subdivided a lot
+    ///  First criterion: normalize the two tangents (or zero them out if they are very short)
+    ///  we zero them out in two slightly different ways but according to RenderDoc
+    ///  the disassembly is almost identical.
+    /// /
+
+    // float x_len = length(x_tangent);
+    // x_tangent *= (x_len > 1e-6) ? 1.0/x_len : 0.0;
+    // float y_len = length(y_tangent);
+    // y_tangent = (y_len > 1e-6) ? 1.0/y_len*y_tangent : vec3(0.0, 0.0, 0.0);
+    // vec3 crossed = cross(y_tangent, x_tangent);
+    // float len = length(crossed);
+    // vec3 normal = (len > 1e-3) ? 1.0/len*crossed : vec3(0.0, 0.0, 0.0);
+
+    //// Second criterion measure the length of the two tangents, cross them, check if the
+    ///  length of the cross is far smaller then the product of the two lengths.
+    /// /
+
+    var normal = cross(x_tangent, y_tangent);
+    let len_x = length(x_tangent);
+    let len_y = length(y_tangent);
+    let len_n = length(normal);
+    if (len_n > 1e-3 * len_x * len_y) {{
+        normal = 1.0 / len_n * normal;
+    }} else {{
+        normal = vec3<f32>(0.0, 0.0, 0.0);
+    }}
+
+    let u_coord = f32(i) / f32(x_size - 1u);
+    let v_coord = f32(j) / f32(y_size - 1u);
+    //float u_coord, v_coord;
+    //if ({i_interval_uv}) {{
+    //    float u_delta = ({i_interval_end} - {i_interval_begin}) / (x_size - 1.0);
+    //    u_coord = {i_interval_begin} + u_delta * i;
+    //}} else {{
+    //    u_coord = i/(x_size-1.0);
+    //}}
+    //if ({j_interval_uv}) {{
+    //    float v_delta = ({j_interval_end} - {j_interval_begin}) / (y_size - 1.0);
+    //    v_coord = {j_interval_begin} + v_delta * j;
+    //}} else {{
+    //    v_coord = j/(y_size-1.0);
+    //}}
+
+    out.vertices[idx].position = in.pos[idx];
+    out.vertices[idx].normal = vec4<f32>(normal, 0.0);
+    out.vertices[idx].uv_coords = vec2<f32>(u_coord, v_coord);
+    out.vertices[idx].padding = vec2<f32>(2.123, 2.456);
+}}
+"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y,
+i_interval_begin="", i_interval_end="", i_interval_uv="",
+j_interval_begin="", j_interval_end="", j_interval_uv="",
+size_x=param1_size, size_y=param2_size);
+
+    println!("2d shader source:\n {}", &wgsl_source);
     // We are creating a curve from an interval, output vertex count is the same as interval
     // one, but buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
 
@@ -207,7 +354,7 @@ fn create_point_data(device: &wgpu::Device, refine: usize) -> (String, usize, wg
     (shader_consts, point_count, index_buffer, indices.len() as u32)
 }
 
-fn create_curve_buffer_index(device: &wgpu::Device, x_size: usize, circle_points: usize) -> (wgpu::Buffer, u32) {
+fn create_curve_index_buffer(device: &wgpu::Device, x_size: usize, circle_points: usize) -> (wgpu::Buffer, u32) {
     assert!(circle_points > 3);
     let mut index_vector = Vec::<u32>::new();
 
@@ -264,7 +411,7 @@ fn create_curve_shader_constants(radius: f32, n_section_points: usize) -> String
     shader_consts
 }
 
-fn create_grid_buffer_index(device: &wgpu::Device, x_size: usize, y_size: usize, flag_pattern: bool) -> (wgpu::Buffer, u32) {
+fn create_grid_index_buffer(device: &wgpu::Device, x_size: usize, y_size: usize, flag_pattern: bool) -> (wgpu::Buffer, u32) {
     // the grid has indices growing first along x, then along y
     let mut index_vector = Vec::<u32>::new();
     let num_triangles_x = x_size - 1;
