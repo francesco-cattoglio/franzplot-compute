@@ -10,9 +10,6 @@ use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
 use crate::node_graph::AVAILABLE_SIZES;
 
-const LOCAL_SIZE_X: usize = 16;
-const LOCAL_SIZE_Y: usize = 16;
-
 pub type GeometryResult = Result<(MatcapData, Operation), ProcessingError>;
 
 pub fn create(
@@ -29,10 +26,10 @@ pub fn create(
     match found_data {
         Data::Geom1D {
             buffer, param,
-        } => handle_1d(device, buffer, param.size, thickness, mask, material),
+        } => handle_1d(device, buffer, param.n_points(), thickness, mask, material),
         Data::Geom2D {
             buffer, param1, param2,
-        } => handle_2d(device, buffer, param1.size, param2.size, mask, material),
+        } => handle_2d(device, buffer, param1, param2, mask, material),
         Data::Prefab {
             ..
         } => todo!(),
@@ -40,13 +37,13 @@ pub fn create(
     }
 }
 
-fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, size: usize, thickness: usize, mask_id: usize, material_id: usize) -> GeometryResult {
+fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, n_points: usize, thickness: usize, mask_id: usize, material_id: usize) -> GeometryResult {
 
     let section_diameter = AVAILABLE_SIZES[thickness];
     let n_section_points = (thickness + 3)*2;
 
-    let (index_buffer, index_count) = create_curve_index_buffer(device, size, n_section_points);
-    let vertex_buffer = util::create_storage_buffer(device, size * n_section_points * std::mem::size_of::<StandardVertexData>());
+    let (index_buffer, index_count) = create_curve_index_buffer(device, n_points, n_section_points);
+    let vertex_buffer = util::create_storage_buffer(device, n_points * n_section_points * std::mem::size_of::<StandardVertexData>());
 
     let curve_consts = create_curve_shader_constants(section_diameter/2.0, n_section_points);
     let wgsl_source = format!(r##"
@@ -145,7 +142,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
         out.vertices[out_idx].padding = vec2<f32>(1.123, 1.456);
     }}
 }}
-"##, curve_constants=curve_consts, points_per_section=n_section_points, dimx=size);
+"##, curve_constants=curve_consts, points_per_section=n_section_points, dimx=n_points);
 
     println!("shader source:\n {}", &wgsl_source);
     // We are creating a curve from an interval, output vertex count is the same as interval
@@ -179,10 +176,10 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     Ok((renderable, operation))
 }
 
-fn handle_2d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, param1_size: usize, param2_size: usize, mask_id: usize, material_id: usize) -> GeometryResult {
+fn handle_2d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, param1: &Parameter, param2: &Parameter, mask_id: usize, material_id: usize) -> GeometryResult {
     let flag_pattern = true;
-    let (index_buffer, index_count) = create_grid_index_buffer(device, param1_size, param2_size, flag_pattern);
-    let vertex_buffer = util::create_storage_buffer(device, param1_size * param2_size * std::mem::size_of::<StandardVertexData>());
+    let (index_buffer, index_count) = create_grid_index_buffer(device, param1.n_points(), param2.n_points(), flag_pattern);
+    let vertex_buffer = util::create_storage_buffer(device, param1.n_points() * param2.n_points() * std::mem::size_of::<StandardVertexData>());
     let wgsl_source = format!(r##"
 struct MatcapVertex {{
     position: vec4<f32>;
@@ -202,10 +199,7 @@ struct MatcapVertex {{
 [[group(0), binding(0)]] var<storage, read> in: InputBuffer;
 [[group(0), binding(1)]] var<storage, read_write> out: OutputBuffer;
 
-var<workgroup> tangent_buff: array<vec3<f32>, {dimx}>;
-var<workgroup> ref_buff: array<vec3<f32>, {dimx}>;
-
-[[stage(compute), workgroup_size({dimx}, {dimy})]]
+[[stage(compute), workgroup_size({pps}, {pps})]]
 fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     // this shader prepares the data for surface rendering.
     // normal computation is done computing the tangent and cotangent of the surface via finite differences
@@ -286,10 +280,10 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     out.vertices[idx].uv_coords = vec2<f32>(u_coord, v_coord);
     out.vertices[idx].padding = vec2<f32>(2.123, 2.456);
 }}
-"##, dimx=LOCAL_SIZE_X, dimy=LOCAL_SIZE_Y,
+"##, pps=Parameter::POINTS_PER_SEGMENT,
 i_interval_begin="", i_interval_end="", i_interval_uv="",
 j_interval_begin="", j_interval_end="", j_interval_uv="",
-size_x=param1_size, size_y=param2_size);
+size_x=param1.n_points(), size_y=param2.n_points());
 
     println!("2d shader source:\n {}", &wgsl_source);
     // We are creating a curve from an interval, output vertex count is the same as interval
@@ -307,17 +301,17 @@ size_x=param1_size, size_y=param2_size);
     ];
     let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
 
+    let operation = Operation {
+        bind_group,
+        pipeline: Rc::new(pipeline),
+        dim: [param1.segments, param2.segments, 1],
+    };
     let renderable = MatcapData {
         vertex_buffer,
         index_buffer,
         index_count,
         mask_id,
         material_id,
-    };
-    let operation = Operation {
-        bind_group,
-        pipeline: Rc::new(pipeline),
-        dim: [1, 1, 1],
     };
 
     Ok((renderable, operation))

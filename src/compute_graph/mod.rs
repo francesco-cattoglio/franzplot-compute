@@ -57,13 +57,18 @@ pub type MatcapIter<'a> = Iter<'a, NodeID, MatcapData>;
 #[derive(Debug, Clone)]
 pub struct Parameter {
     pub name: Option<String>,
-    pub size: usize,
+    pub segments: u32, // this is u32 because it is moslty used by the compute dispatch ops
     pub begin: String,
     pub end: String,
     pub use_interval_as_uv: bool,
 }
 
 impl Parameter {
+    pub const POINTS_PER_SEGMENT: usize = 16;
+
+    pub fn n_points(&self) -> usize {
+        self.segments as usize * Self::POINTS_PER_SEGMENT
+    }
 
     pub fn is_equal(&self, other: &Parameter) -> Result <bool, ProcessingError> {
         match (&self.name, &other.name) {
@@ -73,7 +78,7 @@ impl Parameter {
             (Some(self_name), Some(other_name)) => {
                 if self_name == other_name {
                     // having the same name but a different quality, begin or end attribute is an error.
-                    if self.size != other.size {
+                    if self.segments != other.segments {
                         Err(ProcessingError::IncorrectAttributes("The input intervals \n have the same name \n but different 'quality' "))
                     } else if self.begin != other.begin {
                         Err(ProcessingError::IncorrectAttributes("The input intervals \n have the same name \n but different 'begin' "))

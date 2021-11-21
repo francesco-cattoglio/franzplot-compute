@@ -3,7 +3,6 @@ use std::rc::Rc;
 use super::Operation;
 use crate::computable_scene::globals::Globals;
 use super::{SingleDataResult, ProcessingError};
-use super::Parameter;
 use super::{DataID, Data};
 use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
@@ -59,14 +58,14 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let fz = {fz};
     output.positions[index] = vec4<f32>(fx, fy, fz, 1.0);
 }}
-"##, wgsl_header=globals.get_wgsl_header(), par=param_name, fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz, n_points=param.size
+"##, wgsl_header=globals.get_wgsl_header(), par=param_name, fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz, n_points=param.n_points()
 );
 
     //println!("shader source:\n {}", &wgsl_source);
 
     // We are creating a curve from an interval, output vertex count is the same as interval
     // one, but buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
-    let output_buffer = util::create_storage_buffer(device, 4 * std::mem::size_of::<f32>() * param.size);
+    let output_buffer = util::create_storage_buffer(device, 4 * std::mem::size_of::<f32>() * param.n_points());
 
     let bind_info = vec![
         globals.get_bind_info(),
@@ -81,14 +80,14 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     ];
     let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
 
-    let new_data = Data::Geom1D {
-        buffer: output_buffer,
-        param: param.clone(),
-    };
     let operation = Operation {
         bind_group,
         pipeline: Rc::new(pipeline),
         dim: [1, 1, 1],
+    };
+    let new_data = Data::Geom1D {
+        buffer: output_buffer,
+        param: param.clone(),
     };
 
     Ok((new_data, operation))

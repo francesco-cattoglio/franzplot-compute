@@ -8,9 +8,6 @@ use super::{DataID, Data};
 use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
 
-const LOCAL_SIZE_X: usize = 16;
-const LOCAL_SIZE_Y: usize = 16;
-
 #[allow(clippy::too_many_arguments)]
 pub fn create(
     device: &wgpu::Device,
@@ -66,7 +63,7 @@ pub fn create(
 [[group(0), binding(2)]] var<storage, read> interval_2: InputBuffer;
 [[group(0), binding(3)]] var<storage, read_write> output: OutputBuffer;
 
-[[stage(compute), workgroup_size({dim_x}, {dim_y})]]
+[[stage(compute), workgroup_size({pps}, {pps})]]
 fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let par1_idx = global_id.x;
     let par2_idx = global_id.y;
@@ -79,16 +76,16 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let fz = {fz};
     output.positions[index] = vec4<f32>(fx, fy, fz, 1.0);
 }}
-"##, wgsl_header=globals.get_wgsl_header(), dim_x=LOCAL_SIZE_X, dim_y=LOCAL_SIZE_Y,
+"##, wgsl_header=globals.get_wgsl_header(), pps=Parameter::POINTS_PER_SEGMENT,
 par1=param_1_name, par2=param_2_name,
-fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz, size_x=param_1.size
+fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz, size_x=param_1.n_points()
 );
 
     println!("surface shader source:\n {}", &wgsl_source);
 
     // We are creating a curve from an interval, output vertex count is the same as interval
     // one, but buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
-    let output_buffer = util::create_storage_buffer(device, 4 * std::mem::size_of::<f32>() * param_1.size * param_2.size);
+    let output_buffer = util::create_storage_buffer(device, 4 * std::mem::size_of::<f32>() * param_1.n_points() * param_2.n_points());
 
     let bind_info = vec![
         globals.get_bind_info(),
@@ -107,15 +104,15 @@ fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz, size_x=param_1.size
     ];
     let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
 
+    let operation = Operation {
+        bind_group,
+        pipeline: Rc::new(pipeline),
+        dim: [param_1.segments, param_2.segments, 1],
+    };
     let new_data = Data::Geom2D {
         param1: param_1,
         param2: param_2,
         buffer: output_buffer,
-    };
-    let operation = Operation {
-        bind_group,
-        pipeline: Rc::new(pipeline),
-        dim: [1, 1, 1],
     };
 
     Ok((new_data, operation))

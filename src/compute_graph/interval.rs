@@ -29,7 +29,6 @@ pub fn create(
         return Err(ProcessingError::IncorrectAttributes(" please provide an expression \n for the interval's end "));
     }
 
-    let n_evals = 16 * quality;
     // Make sure that the name does not contain any internal whitespace
     let sanitized_name = Globals::sanitize_variable_name_2(&name)?;
 
@@ -46,7 +45,7 @@ pub fn create(
         name: Some(sanitized_name),
         begin: sanitized_begin,
         end: sanitized_end,
-        size: n_evals,
+        segments: quality as u32,
         use_interval_as_uv: false,
     };
 
@@ -65,12 +64,12 @@ let index = global_id.x;
 let delta: f32 = ({interval_end} - {interval_begin}) / (f32({n_points}) - 1.0);
 output.values[index] = {interval_begin} + delta * f32(index);
 }}
-"##, wgsl_globals=globals.get_wgsl_header(), interval_begin=&param.begin, interval_end=&param.end, n_points=param.size
+"##, wgsl_globals=globals.get_wgsl_header(), interval_begin=&param.begin, interval_end=&param.end, n_points=param.n_points()
 );
 
     //println!("shader source:\n {}", &wgsl_source);
 
-    let out_buffer = util::create_storage_buffer(device, std::mem::size_of::<f32>() * param.size);
+    let out_buffer = util::create_storage_buffer(device, std::mem::size_of::<f32>() * param.n_points());
 
     let bind_info = vec![
         globals.get_bind_info(),
