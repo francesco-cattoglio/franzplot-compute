@@ -7,6 +7,7 @@ pub use crate::node_graph::{NodeGraph, NodeID, NodeContents};
 use crate::computable_scene::globals::{Globals, NameValuePair};
 use crate::state::UserState;
 
+mod point;
 mod interval;
 mod curve;
 mod geometry_render;
@@ -98,9 +99,12 @@ impl Parameter {
 
 // a data node only contains GPU buffers that are manipulated by OperationNodes
 pub enum Data {
-    Interval{
+    Interval {
         buffer: wgpu::Buffer,
         param: Parameter,
+    },
+    Geom0D {
+        buffer: wgpu::Buffer,
     },
     Geom1D {
         buffer: wgpu::Buffer,
@@ -228,6 +232,19 @@ impl ComputeGraph {
             None => return Err(ProcessingError::InternalError("Node not found".into())),
         };
         match *to_process.contents() {
+            NodeContents::Point {
+                x, y, z, output
+            } => {
+                let (new_data, operation) = point::create(
+                    device,
+                    &self.globals,
+                    graph.get_attribute_as_string(x).unwrap(),
+                    graph.get_attribute_as_string(y).unwrap(),
+                    graph.get_attribute_as_string(z).unwrap(),
+                )?;
+                self.data.insert(output, new_data);
+                self.operations.insert(graph_node_id, operation);
+            },
             NodeContents::Curve {
                 interval, fx, fy, fz, output
             } => {

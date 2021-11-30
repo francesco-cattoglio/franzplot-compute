@@ -1,0 +1,167 @@
+//// FRANZPLOT DATA FILE V1.1 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.04 or higher
+
+V1(
+  (
+    graph: (
+      nodes: [
+        Some((
+          title: "Point",
+          position: (76,37),
+          error: None,
+          contents: Point(x:0,y:1,z:2,output:3),
+        )),// [0]
+        Some((
+          title: "Rendering",
+          position: (320,35),
+          error: None,
+          contents: Rendering(geometry:4,thickness:5,mask:6,material:7),
+        )),// [1]
+        Some((
+          title: "Point",
+          position: (84,182),
+          error: None,
+          contents: Point(x:8,y:9,z:10,output:11),
+        )),// [2]
+        Some((
+          title: "Point",
+          position: (86,323),
+          error: None,
+          contents: Point(x:12,y:13,z:14,output:15),
+        )),// [3]
+        Some((
+          title: "Rendering",
+          position: (320,184),
+          error: None,
+          contents: Rendering(geometry:16,thickness:17,mask:18,material:19),
+        )),// [4]
+        Some((
+          title: "Rendering",
+          position: (322,321),
+          error: None,
+          contents: Rendering(geometry:20,thickness:21,mask:22,material:23),
+        )),
+      ],
+      attributes: [
+        Some((
+          node_id: 0,
+          contents: Text(label:"x",string:"0.0"),
+        )),// [0]
+        Some((
+          node_id: 0,
+          contents: Text(label:"y",string:"0.0"),
+        )),// [1]
+        Some((
+          node_id: 0,
+          contents: Text(label:"z",string:"0.0"),
+        )),// [2]
+        Some((
+          node_id: 0,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [3]
+        Some((
+          node_id: 1,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [4]
+        Some((
+          node_id: 1,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [5]
+        Some((
+          node_id: 1,
+          contents: Mask(selected:0),
+        )),// [6]
+        Some((
+          node_id: 1,
+          contents: Material(selected:0),
+        )),// [7]
+        Some((
+          node_id: 2,
+          contents: Text(label:"x",string:"1"),
+        )),// [8]
+        Some((
+          node_id: 2,
+          contents: Text(label:"y",string:"1"),
+        )),// [9]
+        Some((
+          node_id: 2,
+          contents: Text(label:"z",string:".5*sin(k)"),
+        )),// [10]
+        Some((
+          node_id: 2,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [11]
+        Some((
+          node_id: 3,
+          contents: Text(label:"x",string:"0.0"),
+        )),// [12]
+        Some((
+          node_id: 3,
+          contents: Text(label:"y",string:"0.0"),
+        )),// [13]
+        Some((
+          node_id: 3,
+          contents: Text(label:"z",string:"1"),
+        )),// [14]
+        Some((
+          node_id: 3,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [15]
+        Some((
+          node_id: 4,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [16]
+        Some((
+          node_id: 4,
+          contents: IntSlider(label:"thickness:",value:8,mode:SizeLabels),
+        )),// [17]
+        Some((
+          node_id: 4,
+          contents: Mask(selected:0),
+        )),// [18]
+        Some((
+          node_id: 4,
+          contents: Material(selected:1),
+        )),// [19]
+        Some((
+          node_id: 5,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [20]
+        Some((
+          node_id: 5,
+          contents: IntSlider(label:"thickness:",value:0,mode:SizeLabels),
+        )),// [21]
+        Some((
+          node_id: 5,
+          contents: Mask(selected:0),
+        )),// [22]
+        Some((
+          node_id: 5,
+          contents: Material(selected:4),
+        )),
+      ],
+      links: {
+        20: 15,
+        16: 11,
+        4: 3,
+      },
+      free_nodes_list: [],
+      free_attributes_list: [],
+    ),
+    globals_names: [
+      "k",
+    ],
+    globals_init_values: [
+      0,
+    ],
+  ),
+  (
+    fc: 1638286437,
+    fs: 1638287785,
+    vn: 1114835930,
+    hs: 0,
+  ),
+)

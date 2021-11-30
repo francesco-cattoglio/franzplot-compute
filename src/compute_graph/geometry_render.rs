@@ -24,6 +24,8 @@ pub fn create(
     let found_data = data_map.get(&data_id).ok_or(ProcessingError::InternalError("Geometry used as input does not exist in the block map".into()))?;
 
     match found_data {
+        Data::Geom0D { buffer,
+        } => handle_0d(device, buffer, thickness, material),
         Data::Geom1D {
             buffer, param,
         } => handle_1d(device, buffer, param.n_points(), thickness, mask, material),
@@ -35,6 +37,118 @@ pub fn create(
         } => todo!(),
         _ => return Err(ProcessingError::InternalError("Geometry render operation cannot handle the kind of data provided as input".into()))
     }
+}
+
+fn handle_0d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, thickness: usize, material_id: usize) -> GeometryResult {
+        // Never go above a certain refinement level: the local group size for a compute shader
+        // invocation should never exceed 512, otherwise the GPU might error out, and with
+        // a refine level of 6 we already hit the 492 points count.
+        // TODO: on mobile group size limit might be 256, and max refine might be 4
+        let refine_amount = std::cmp::min(thickness, 6);
+        let sphere_radius = AVAILABLE_SIZES[thickness];
+
+        use hexasphere::shapes::IcoSphere;
+        let sphere = IcoSphere::new(refine_amount, |_| ());
+
+        let raw_points = sphere.raw_points();
+        let vertex_count = raw_points.len();
+        let reference_vertices: Vec<glam::Vec4> = raw_points
+            .into_iter()
+            .map(|v| {glam::Vec4::new(v.x, v.y, v.z, 0.0)})
+            .collect();
+
+        let indices = sphere.get_all_indices();
+
+        use wgpu::util::DeviceExt;
+        let reference_vertex_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(&reference_vertices),
+                usage: wgpu::BufferUsages::STORAGE,
+        });
+        let index_buffer = device.create_buffer_init(
+            &wgpu::util::BufferInitDescriptor {
+                label: None,
+                contents: bytemuck::cast_slice(&indices),
+                usage: wgpu::BufferUsages::INDEX,
+        });
+
+    let wgsl_source = format!(r##"
+struct MatcapVertex {{
+    position: vec4<f32>;
+    normal: vec4<f32>;
+    uv_coords: vec2<f32>;
+    padding: vec2<f32>;
+}};
+
+// input buffer will contain a single vertex, the actual point coords
+[[block]] struct InputBuffer {{
+    position: vec4<f32>;
+}};
+
+// reference buffer will contain all the deltas needed to turn a single
+// point into an actual icosphere that can be rendered to video
+[[block]] struct ReferenceBuffer {{
+    delta: array<vec4<f32>>;
+}};
+
+// output buffer contains the final Matcap mesh, as usual for rendering nodes
+[[block]] struct OutputBuffer {{
+    vertices: array<MatcapVertex>;
+}};
+
+[[group(0), binding(0)]] var<storage, read> in: InputBuffer;
+[[group(0), binding(1)]] var<storage, read> ref: ReferenceBuffer;
+[[group(0), binding(2)]] var<storage, read_write> out: OutputBuffer;
+
+[[stage(compute), workgroup_size({dimx})]]
+fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+    // this shader prepares the data for point rendering.
+    // there is very little work to do, we just set the final location
+    // of the vertices and store the normals.
+    let point_coords: vec4<f32> = in.position;
+    let normal: vec4<f32> = ref.delta[global_id.x];
+    let idx = global_id.x;
+
+    out.vertices[idx].position = point_coords + {radius} * normal;
+    out.vertices[idx].normal = normal;
+    out.vertices[idx].uv_coords = vec2<f32>(0.0, 0.0);
+    out.vertices[idx].padding = vec2<f32>(0.123, 0.456);
+}}
+"##, radius=sphere_radius, dimx=vertex_count);
+
+    let output_buffer = util::create_storage_buffer(device, vertex_count * std::mem::size_of::<StandardVertexData>());
+
+    let bind_info = vec![
+        BindInfo {
+            buffer: &input_buffer,
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+        },
+        BindInfo {
+            buffer: &reference_vertex_buffer,
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+        },
+        BindInfo {
+            buffer: &output_buffer,
+            ty: wgpu::BufferBindingType::Storage { read_only: false },
+        },
+    ];
+    let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
+
+    let renderable = MatcapData {
+        vertex_buffer: output_buffer,
+        index_buffer,
+        index_count: indices.len() as u32,
+        mask_id: 0,
+        material_id,
+    };
+    let operation = Operation {
+        bind_group,
+        pipeline: Rc::new(pipeline),
+        dim: [1, 1, 1],
+    };
+
+    Ok((renderable, operation))
 }
 
 fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, n_points: usize, thickness: usize, mask_id: usize, material_id: usize) -> GeometryResult {
@@ -319,34 +433,8 @@ size_x=param1.n_points(), size_y=param2.n_points());
 
 // UTILITY FUNCTIONS
 // those are used to:
-// - create the index buffers for point, curve and surface rendering
-// - create the default vertices for the icosahedron representing the point
+// - create the index buffers for curve and surface rendering
 // - create the default vertices positions for each curve section
-
-fn create_point_data(device: &wgpu::Device, refine: usize) -> (String, usize, wgpu::Buffer, u32) {
-    use hexasphere::shapes::IcoSphere;
-    let sphere = IcoSphere::new(refine, |_| ());
-
-    let points = sphere.raw_points();
-    let point_count = points.len();
-
-    let mut shader_consts = String::new();
-    shader_consts += &format!("const vec3 sphere_points[{n}] = {{\n", n=point_count);
-    for p in points {
-        shader_consts += &format!("\tvec3({x}, {y}, {z}),\n", x=p.x, y=p.y, z=p.z );
-    }
-    shader_consts += &format!("}};\n");
-    let indices = sphere.get_all_indices();
-
-    use wgpu::util::DeviceExt;
-    let index_buffer = device.create_buffer_init(
-        &wgpu::util::BufferInitDescriptor {
-            label: None,
-            contents: bytemuck::cast_slice(&indices),
-            usage: wgpu::BufferUsages::INDEX,
-    });
-    (shader_consts, point_count, index_buffer, indices.len() as u32)
-}
 
 fn create_curve_index_buffer(device: &wgpu::Device, x_size: usize, circle_points: usize) -> (wgpu::Buffer, u32) {
     assert!(circle_points > 3);

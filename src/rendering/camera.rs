@@ -40,7 +40,7 @@ impl Camera {
         self.eye = Vec3::new(6.0, 4.0, 4.0);
         self.target = Vec3::new(0.0, 0.0, 0.0);
         let relative_pos = self.eye - self.target;
-        let right = relative_pos.cross(Vec3::unit_z());
+        let right = relative_pos.cross(Vec3::Z);
         self.up = right.cross(relative_pos).normalize();
     }
 
@@ -65,64 +65,64 @@ impl Camera {
     pub fn set_xz_plane(&mut self) {
         let relative_pos = self.eye - self.target;
         let distance = relative_pos.length();
-        self.target = Vec3::zero();
-        self.eye = -distance * Vec3::unit_y();
-        self.up = Vec3::unit_z();
+        self.target = Vec3::ZERO;
+        self.eye = -distance * Vec3::Y;
+        self.up = Vec3::Z;
     }
 
     pub fn set_xy_plane(&mut self) {
         let relative_pos = self.eye - self.target;
         let distance = relative_pos.length();
-        self.target = Vec3::zero();
-        self.eye = distance * Vec3::unit_z();
-        self.up = Vec3::unit_y();
+        self.target = Vec3::ZERO;
+        self.eye = distance * Vec3::Z;
+        self.up = Vec3::Y;
     }
 
     pub fn set_yz_plane(&mut self) {
         let relative_pos = self.eye - self.target;
         let distance = relative_pos.length();
-        self.target = Vec3::zero();
-        self.eye = distance * Vec3::unit_x();
-        self.up = Vec3::unit_z();
+        self.target = Vec3::ZERO;
+        self.eye = distance * Vec3::X;
+        self.up = Vec3::Z;
     }
 
     pub fn set_minus_xz_plane(&mut self) {
         let relative_pos = self.eye - self.target;
         let distance = relative_pos.length();
-        self.target = Vec3::zero();
-        self.eye = distance * Vec3::unit_y();
-        self.up = Vec3::unit_z();
+        self.target = Vec3::ZERO;
+        self.eye = distance * Vec3::Y;
+        self.up = Vec3::Z;
     }
 
     pub fn set_minus_xy_plane(&mut self) {
         let relative_pos = self.eye - self.target;
         let distance = relative_pos.length();
-        self.target = Vec3::zero();
-        self.eye = -distance * Vec3::unit_z();
-        self.up = Vec3::unit_y();
+        self.target = Vec3::ZERO;
+        self.eye = -distance * Vec3::Z;
+        self.up = Vec3::Y;
     }
 
     pub fn set_minus_yz_plane(&mut self) {
         let relative_pos = self.eye - self.target;
         let distance = relative_pos.length();
-        self.target = Vec3::zero();
-        self.eye = -distance * Vec3::unit_x();
-        self.up = Vec3::unit_z();
+        self.target = Vec3::ZERO;
+        self.eye = -distance * Vec3::X;
+        self.up = Vec3::Z;
     }
 
     pub fn set_x1_y1_z1_point(&mut self) {
         let relative_pos = self.eye - self.target;
         let distance = relative_pos.length();
-        self.target = Vec3::zero();
-        self.eye = distance * Vec3::one().normalize();
-        self.up = Vec3::unit_z();
+        self.target = Vec3::ZERO;
+        self.eye = distance * Vec3::ONE.normalize();
+        self.up = Vec3::Z;
     }
 
     pub fn set_x1_y1_z1_wide(&mut self) {
         let relative_pos = self.eye - self.target;
-        self.target = Vec3::zero();
-        self.eye = 14.0 * Vec3::one().normalize();
-        self.up = Vec3::unit_z();
+        self.target = Vec3::ZERO;
+        self.eye = 14.0 * Vec3::ONE.normalize();
+        self.up = Vec3::Z;
     }
 }
 

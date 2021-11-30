@@ -26,8 +26,8 @@ unsafe impl bytemuck::Zeroable for Uniforms {}
 impl Uniforms {
     fn new() -> Self {
         Self {
-            view: Mat4::identity(),
-            proj: Mat4::identity(),
+            view: Mat4::IDENTITY,
+            proj: Mat4::IDENTITY,
             mouse_pos: [0, 0],
             highlight_idx: std::i32::MAX,
             _padding: 0.0,
@@ -739,12 +739,12 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
 
 fn create_wireframe_cross(pos: glam::Vec3, size: f32, color: [u8; 4]) -> Vec<WireframeVertexData> {
     vec![
-        WireframeVertexData { position: (pos - size*glam::Vec3::unit_x()).into(), color },
-        WireframeVertexData { position: (pos + size*glam::Vec3::unit_x()).into(), color },
-        WireframeVertexData { position: (pos - size*glam::Vec3::unit_y()).into(), color },
-        WireframeVertexData { position: (pos + size*glam::Vec3::unit_y()).into(), color },
-        WireframeVertexData { position: (pos - size*glam::Vec3::unit_z()).into(), color },
-        WireframeVertexData { position: (pos + size*glam::Vec3::unit_z()).into(), color },
+        WireframeVertexData { position: (pos - size*glam::Vec3::X).into(), color },
+        WireframeVertexData { position: (pos + size*glam::Vec3::X).into(), color },
+        WireframeVertexData { position: (pos - size*glam::Vec3::Y).into(), color },
+        WireframeVertexData { position: (pos + size*glam::Vec3::Y).into(), color },
+        WireframeVertexData { position: (pos - size*glam::Vec3::Z).into(), color },
+        WireframeVertexData { position: (pos + size*glam::Vec3::Z).into(), color },
     ]
 }
 
