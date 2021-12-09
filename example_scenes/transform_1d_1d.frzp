@@ -1,0 +1,173 @@
+//// FRANZPLOT DATA FILE V1.1 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.04 or higher
+
+V1(
+  (
+    graph: (
+      nodes: [
+        Some((
+          title: "Matrix",
+          position: (197,257),
+          error: None,
+          contents: Matrix(interval:0,row_1:1,row_2:2,row_3:3,output:4),
+        )),// [0]
+        Some((
+          title: "Curve",
+          position: (256,27),
+          error: None,
+          contents: Curve(interval:8,fx:7,fy:6,fz:5,output:25),
+        )),// [1]
+        Some((
+          title: "Rendering",
+          position: (534,31),
+          error: None,
+          contents: Rendering(geometry:9,thickness:10,mask:11,material:12),
+        )),// [2]
+        Some((
+          title: "Rendering",
+          position: (628,200),
+          error: None,
+          contents: Rendering(geometry:13,thickness:14,mask:15,material:16),
+        )),// [3]
+        Some((
+          title: "Transform",
+          position: (504,229),
+          error: None,
+          contents: Transform(geometry:17,matrix:18,output:19),
+        )),// [4]
+        Some((
+          title: "Interval",
+          position: (48,38),
+          error: None,
+          contents: Interval(variable:20,begin:21,end:22,quality:23,output:24),
+        )),
+      ],
+      attributes: [
+        Some((
+          node_id: 0,
+          contents: InputPin(label:"interval",kind:Interval),
+        )),// [0]
+        Some((
+          node_id: 0,
+          contents: MatrixRow(col_1:"1.0",col_2:"0.0",col_3:"0.0",col_4:"0.0"),
+        )),// [1]
+        Some((
+          node_id: 0,
+          contents: MatrixRow(col_1:"0.0",col_2:"1.0",col_3:"0.0",col_4:"1.0"),
+        )),// [2]
+        Some((
+          node_id: 0,
+          contents: MatrixRow(col_1:"0.0",col_2:"0.0",col_3:"1.0",col_4:".0"),
+        )),// [3]
+        Some((
+          node_id: 0,
+          contents: OutputPin(label:"output",kind:Matrix),
+        )),// [4]
+        Some((
+          node_id: 1,
+          contents: Text(label:"fz",string:"0"),
+        )),// [5]
+        Some((
+          node_id: 1,
+          contents: Text(label:"fy",string:"sin(t)"),
+        )),// [6]
+        Some((
+          node_id: 1,
+          contents: Text(label:"fx",string:"cos(t)"),
+        )),// [7]
+        Some((
+          node_id: 1,
+          contents: InputPin(label:"interval",kind:Interval),
+        )),// [8]
+        Some((
+          node_id: 2,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [9]
+        Some((
+          node_id: 2,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [10]
+        Some((
+          node_id: 2,
+          contents: Mask(selected:1),
+        )),// [11]
+        Some((
+          node_id: 2,
+          contents: Material(selected:0),
+        )),// [12]
+        Some((
+          node_id: 3,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [13]
+        Some((
+          node_id: 3,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [14]
+        Some((
+          node_id: 3,
+          contents: Mask(selected:0),
+        )),// [15]
+        Some((
+          node_id: 3,
+          contents: Material(selected:4),
+        )),// [16]
+        Some((
+          node_id: 4,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [17]
+        Some((
+          node_id: 4,
+          contents: InputPin(label:"matrix",kind:Matrix),
+        )),// [18]
+        Some((
+          node_id: 4,
+          contents: OutputPin(label:"output",kind:Geometry),
+        )),// [19]
+        Some((
+          node_id: 5,
+          contents: Text(label:" name",string:"t"),
+        )),// [20]
+        Some((
+          node_id: 5,
+          contents: Text(label:"begin",string:"0"),
+        )),// [21]
+        Some((
+          node_id: 5,
+          contents: Text(label:"  end",string:"3.1415"),
+        )),// [22]
+        Some((
+          node_id: 5,
+          contents: IntSlider(label:"quality",value:4,mode:IntRange(1,16)),
+        )),// [23]
+        Some((
+          node_id: 5,
+          contents: OutputPin(label:"interval",kind:Interval),
+        )),// [24]
+        Some((
+          node_id: 1,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),
+      ],
+      links: {
+        8: 24,
+        9: 25,
+        17: 25,
+        18: 4,
+        13: 19,
+      },
+      free_nodes_list: [],
+      free_attributes_list: [],
+    ),
+    globals_names: [],
+    globals_init_values: [],
+  ),
+  (
+    fc: 1639068788,
+    fs: 1639074128,
+    vn: 1102133219,
+    hs: 0,
+  ),
+)
