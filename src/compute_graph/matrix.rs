@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
-use glam::Mat4;
 
 use super::Operation;
 use crate::computable_scene::globals::Globals;

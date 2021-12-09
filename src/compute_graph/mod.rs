@@ -310,10 +310,17 @@ impl ComputeGraph {
                 self.data.insert(output, new_data);
                 self.operations.insert(graph_node_id, operation);
             },
-            NodeContents::Matrix {
-                interval, row_1, row_2, row_3, output,
+            NodeContents::Transform {
+                geometry, matrix, output,
             } => {
-                unimplemented!()
+                let (new_data, operation) = transform::create(
+                    device,
+                    &self.data,
+                    graph.get_attribute_as_linked_output(geometry),
+                    graph.get_attribute_as_linked_output(matrix),
+                    )?;
+                self.data.insert(output, new_data);
+                self.operations.insert(graph_node_id, operation);
             },
             NodeContents::Rendering {
                 geometry, thickness, mask, material,
