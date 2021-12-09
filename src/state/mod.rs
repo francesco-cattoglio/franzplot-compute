@@ -237,6 +237,7 @@ impl State {
                         self.app.renderer.update_matcaps(&self.app.manager.device, &self.app.assets, compute_graph.matcaps());
                         compute_graph.run_compute(&self.app.manager.device, &self.app.manager.queue);
                         self.app.graph = Some(compute_graph);
+                        dbg!(_recoverable_errors); // TODO: need to report the error to the user!
                     },
                     Err(_unrecoverable_error) => {
 

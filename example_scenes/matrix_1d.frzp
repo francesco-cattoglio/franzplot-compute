@@ -1,0 +1,81 @@
+//// FRANZPLOT DATA FILE V1.1 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.04 or higher
+
+V1(
+  (
+    graph: (
+      nodes: [
+        Some((
+          title: "Matrix",
+          position: (281,80),
+          error: None,
+          contents: Matrix(interval:0,row_1:1,row_2:2,row_3:3,output:4),
+        )),// [0]
+        Some((
+          title: "Interval",
+          position: (53,83),
+          error: None,
+          contents: Interval(variable:5,begin:6,end:7,quality:8,output:9),
+        )),
+      ],
+      attributes: [
+        Some((
+          node_id: 0,
+          contents: InputPin(label:"interval",kind:Interval),
+        )),// [0]
+        Some((
+          node_id: 0,
+          contents: MatrixRow(col_1:"1.0",col_2:"0.0",col_3:"0.0",col_4:"0.0"),
+        )),// [1]
+        Some((
+          node_id: 0,
+          contents: MatrixRow(col_1:"0.0",col_2:"1.0",col_3:"0.0",col_4:"0.0"),
+        )),// [2]
+        Some((
+          node_id: 0,
+          contents: MatrixRow(col_1:"0.0",col_2:"0.0",col_3:"1.0",col_4:"s"),
+        )),// [3]
+        Some((
+          node_id: 0,
+          contents: OutputPin(label:"output",kind:Matrix),
+        )),// [4]
+        Some((
+          node_id: 1,
+          contents: Text(label:" name",string:"s"),
+        )),// [5]
+        Some((
+          node_id: 1,
+          contents: Text(label:"begin",string:"0"),
+        )),// [6]
+        Some((
+          node_id: 1,
+          contents: Text(label:"  end",string:"1"),
+        )),// [7]
+        Some((
+          node_id: 1,
+          contents: IntSlider(label:"quality",value:4,mode:IntRange(1,16)),
+        )),// [8]
+        Some((
+          node_id: 1,
+          contents: OutputPin(label:"interval",kind:Interval),
+        )),
+      ],
+      links: {
+        0: 9,
+      },
+      free_nodes_list: [],
+      free_attributes_list: [],
+    ),
+    globals_names: [],
+    globals_init_values: [],
+  ),
+  (
+    fc: 1639068788,
+    fs: 1639069949,
+    vn: 1102133219,
+    hs: 0,
+  ),
+)

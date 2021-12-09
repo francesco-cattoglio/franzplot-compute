@@ -12,6 +12,8 @@ mod interval;
 mod curve;
 mod geometry_render;
 mod surface;
+mod matrix;
+mod transform;
 
 pub type DataID = i32;
 pub type PrefabId = i32;
@@ -116,8 +118,11 @@ pub enum Data {
         param2: Parameter,
     },
     Matrix0D {
+        buffer: wgpu::Buffer,
     },
     Matrix1D {
+        buffer: wgpu::Buffer,
+        param: Parameter,
     },
     Prefab {
         vertex_buffer: wgpu::Buffer,
@@ -289,6 +294,26 @@ impl ComputeGraph {
                 )?;
                 self.data.insert(output, new_data);
                 self.operations.insert(graph_node_id, operation);
+            },
+            NodeContents::Matrix {
+                interval, row_1, row_2, row_3, output,
+            } => {
+                let (new_data, operation) = matrix::create_from_rows(
+                    device,
+                    &self.globals,
+                    &self.data,
+                    graph.get_attribute_as_linked_output(interval),
+                    graph.get_attribute_as_matrix_row(row_1).unwrap(),
+                    graph.get_attribute_as_matrix_row(row_2).unwrap(),
+                    graph.get_attribute_as_matrix_row(row_3).unwrap(),
+                    )?;
+                self.data.insert(output, new_data);
+                self.operations.insert(graph_node_id, operation);
+            },
+            NodeContents::Matrix {
+                interval, row_1, row_2, row_3, output,
+            } => {
+                unimplemented!()
             },
             NodeContents::Rendering {
                 geometry, thickness, mask, material,

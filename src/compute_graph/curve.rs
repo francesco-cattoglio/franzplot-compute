@@ -65,7 +65,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 
     // We are creating a curve from an interval, output vertex count is the same as interval
     // one, but buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
-    let output_buffer = util::create_storage_buffer(device, 4 * std::mem::size_of::<f32>() * param.n_points());
+    let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<glam::Vec4>() * param.n_points());
 
     let bind_info = vec![
         globals.get_bind_info(),
