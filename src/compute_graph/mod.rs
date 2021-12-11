@@ -52,6 +52,7 @@ pub enum ProcessingError {
     InternalError(String),
     IncorrectAttributes(&'static str),
     IncorrectExpression(String),
+    IncorrectInput(&'static str),
 }
 pub type SingleDataResult = Result<(Data, Operation), ProcessingError>;
 pub type MatcapIter<'a> = Iter<'a, NodeID, MatcapData>;
