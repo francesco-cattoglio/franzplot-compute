@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
+
+use crate::rendering::model::{Model, MODEL_CHUNK_VERTICES};
 use super::Operation;
 use crate::computable_scene::globals::Globals;
 use crate::rendering::{StandardVertexData};
@@ -33,9 +35,9 @@ pub fn create(
             buffer, param1, param2,
         } => handle_2d(device, buffer, param1, param2, mask, material),
         Data::Prefab {
-            ..
-        } => todo!(),
-        _ => return Err(ProcessingError::InternalError("Geometry render operation cannot handle the kind of data provided as input".into()))
+            vertex_buffer, chunks_count, index_buffer, index_count,
+        } => handle_prefab(device, vertex_buffer, *chunks_count, index_buffer, *index_count, material),
+        _ => Err(ProcessingError::InternalError("Geometry render operation cannot handle the kind of data provided as input".into()))
     }
 }
 
@@ -137,7 +139,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 
     let renderable = MatcapData {
         vertex_buffer: output_buffer,
-        index_buffer,
+        index_buffer: Rc::new(index_buffer),
         index_count: indices.len() as u32,
         mask_id: 0,
         material_id,
@@ -151,6 +153,12 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     Ok((renderable, operation))
 }
 
+// TODO: change this function!
+// 1: forget about shader constants, just create a buffer containing the reference position of the
+//    rings that make up the curve, then bind and use it just like you do for point rendering
+// 2: maybe we can skip a memory barrier if we do store some extra information in the curve
+//    geometry, so that we do not need to compute the entire "ref_buff". We also need to handle
+//    the 90 degree curve anyway, so this code requires a bit of a rework anyway
 fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, n_points: usize, thickness: usize, mask_id: usize, material_id: usize) -> GeometryResult {
 
     let section_diameter = AVAILABLE_SIZES[thickness];
@@ -276,7 +284,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 
     let renderable = MatcapData {
         vertex_buffer,
-        index_buffer,
+        index_buffer: Rc::new(index_buffer),
         index_count,
         mask_id,
         material_id,
@@ -422,9 +430,64 @@ size_x=param1.n_points(), size_y=param2.n_points());
     };
     let renderable = MatcapData {
         vertex_buffer,
-        index_buffer,
+        index_buffer: Rc::new(index_buffer),
         index_count,
         mask_id,
+        material_id,
+    };
+
+    Ok((renderable, operation))
+}
+
+fn handle_prefab(device: &wgpu::Device, vertex_buffer: &wgpu::Buffer, chunks_count: usize, index_buffer: &Rc<wgpu::Buffer>, index_count: u32, material_id: usize) -> GeometryResult {
+
+    let wgsl_source = format!(r##"
+[[block]] struct MatcapVertex {{
+    position: vec4<f32>;
+    normal: vec4<f32>;
+    uv_coords: vec2<f32>;
+    padding: vec2<f32>;
+}};
+
+[[block]] struct VertexBuffer {{
+    vertices: array<MatcapVertex>;
+}}
+
+[[group(0), binding(0)]] var<storage, read> in_buff: VertexBuffer;
+[[group(0), binding(1)]] var<storage, read_only> out_buff: VertexBuffer;
+
+[[stage(compute), workgroup_size({vertices_per_chunk})]]
+fn main([[builtin(global_workgroup_id)]] global_id: vec3<u32>) {{
+    let index = global_id.x;
+    out_buff.vertices[index]= in_buff.vertices[index];
+}}
+"##, vertices_per_chunk=MODEL_CHUNK_VERTICES,);
+    println!("3d shader source:\n {}", &wgsl_source);
+
+    let out_buffer = util::create_storage_buffer(device, std::mem::size_of::<StandardVertexData>() * chunks_count * MODEL_CHUNK_VERTICES);
+
+    let bind_info = [
+        BindInfo {
+            buffer: vertex_buffer,
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+        },
+        BindInfo {
+            buffer: &out_buffer,
+            ty: wgpu::BufferBindingType::Storage { read_only: false },
+        },
+    ];
+    let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
+
+    let operation = Operation {
+        bind_group,
+        pipeline: Rc::new(pipeline),
+        dim: [chunks_count as u32, 1, 1],
+    };
+    let renderable = MatcapData {
+        vertex_buffer: out_buffer,
+        index_buffer: Rc::clone(index_buffer),
+        index_count: index_count as u32,
+        mask_id: 0,
         material_id,
     };
 

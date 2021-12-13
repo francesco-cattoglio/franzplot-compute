@@ -231,7 +231,7 @@ impl State {
                 // - try to create a new graph
                 // - if successful, update the scene rendering and report recoverable errors
                 // - if unsuccessful, report the unrecoverable error to the user
-                let process_result = crate::compute_graph::create_compute_graph(&self.app.manager.device, user_state);
+                let process_result = crate::compute_graph::create_compute_graph(&self.app.manager.device, &self.app.assets, user_state);
                 match process_result {
                     Ok((compute_graph, _recoverable_errors)) => {
                         self.app.renderer.update_matcaps(&self.app.manager.device, &self.app.assets, compute_graph.matcaps());

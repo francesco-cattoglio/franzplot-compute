@@ -50,7 +50,7 @@ pub fn create(
             if param1.is_equal(matrix_param)? || param2.is_equal(matrix_param)?
                 => t_2d_same_param(device, buffer, param1, param2, matrix_buffer, matrix_param),
 
-        (Data::Geom2D{buffer, param1, param2}, Data::Matrix1D{buffer: matrix_buffer, param: matrix_param})
+        (Data::Geom2D{..}, Data::Matrix1D{..})
             => Err(ProcessingError::IncorrectInput(" this operation would create \n an object with three parameters, \n which is not supported ")),
         _ => Err(ProcessingError::InternalError("unhandled transform case".into()))
     }

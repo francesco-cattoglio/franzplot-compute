@@ -66,7 +66,7 @@ void main() {{
 "##, globals_header=&globals.shader_header, vertex_struct=GLSL_STANDARD_VERTEX_STRUCT, n_chunk_vertices = MODEL_CHUNK_VERTICES, scaling=sanitized_size
 );
 
-        let out_dim = Dimensions::D3(model.vertex_count, descriptor.prefab_id);
+        let out_dim = Dimensions::D3(model.chunks_count*MODEL_CHUNK_VERTICES, descriptor.prefab_id);
         let out_buffer = out_dim.create_storage_buffer(std::mem::size_of::<StandardVertexData>(), device);
 
         let bindings = [
