@@ -1,0 +1,69 @@
+//// FRANZPLOT DATA FILE V1.1 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.04 or higher
+
+V1(
+  (
+    graph: (
+      nodes: [
+        Some((
+          title: "Primitive",
+          position: (56,62),
+          error: None,
+          contents: Primitive(primitive:0,size:1,output:2),
+        )),// [0]
+        Some((
+          title: "Rendering",
+          position: (279,72),
+          error: None,
+          contents: Rendering(geometry:3,thickness:4,mask:5,material:6),
+        )),
+      ],
+      attributes: [
+        Some((
+          node_id: 0,
+          contents: PrimitiveKind(selected:2),
+        )),// [0]
+        Some((
+          node_id: 0,
+          contents: Text(label:"size:",string:"2.0"),
+        )),// [1]
+        Some((
+          node_id: 0,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [2]
+        Some((
+          node_id: 1,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [3]
+        Some((
+          node_id: 1,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [4]
+        Some((
+          node_id: 1,
+          contents: Mask(selected:0),
+        )),// [5]
+        Some((
+          node_id: 1,
+          contents: Material(selected:0),
+        )),
+      ],
+      links: {
+        3: 2,
+      },
+      free_nodes_list: [],
+      free_attributes_list: [],
+    ),
+    globals_names: [],
+    globals_init_values: [],
+  ),
+  (
+    fc: 1639410198,
+    fs: 1639410240,
+    vn: 2917631829,
+    hs: 0,
+  ),
+)

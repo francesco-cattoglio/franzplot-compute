@@ -442,7 +442,7 @@ size_x=param1.n_points(), size_y=param2.n_points());
 fn handle_prefab(device: &wgpu::Device, vertex_buffer: &wgpu::Buffer, chunks_count: usize, index_buffer: &Rc<wgpu::Buffer>, index_count: u32, material_id: usize) -> GeometryResult {
 
     let wgsl_source = format!(r##"
-[[block]] struct MatcapVertex {{
+struct MatcapVertex {{
     position: vec4<f32>;
     normal: vec4<f32>;
     uv_coords: vec2<f32>;
@@ -451,18 +451,18 @@ fn handle_prefab(device: &wgpu::Device, vertex_buffer: &wgpu::Buffer, chunks_cou
 
 [[block]] struct VertexBuffer {{
     vertices: array<MatcapVertex>;
-}}
+}};
 
 [[group(0), binding(0)]] var<storage, read> in_buff: VertexBuffer;
-[[group(0), binding(1)]] var<storage, read_only> out_buff: VertexBuffer;
+[[group(0), binding(1)]] var<storage, read_write> out_buff: VertexBuffer;
 
 [[stage(compute), workgroup_size({vertices_per_chunk})]]
-fn main([[builtin(global_workgroup_id)]] global_id: vec3<u32>) {{
+fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let index = global_id.x;
     out_buff.vertices[index]= in_buff.vertices[index];
 }}
 "##, vertices_per_chunk=MODEL_CHUNK_VERTICES,);
-    println!("3d shader source:\n {}", &wgsl_source);
+    // println!("3d shader source:\n {}", &wgsl_source);
 
     let out_buffer = util::create_storage_buffer(device, std::mem::size_of::<StandardVertexData>() * chunks_count * MODEL_CHUNK_VERTICES);
 
