@@ -9,9 +9,11 @@ use crate::state::UserState;
 use crate::state::Assets;
 
 mod point;
+mod vector;
 mod interval;
 mod curve;
 mod geometry_render;
+mod vector_render;
 mod surface;
 mod matrix;
 mod transform;
@@ -104,6 +106,9 @@ impl Parameter {
 
 // a data node only contains GPU buffers that are manipulated by OperationNodes
 pub enum Data {
+    Vector {
+        buffer: wgpu::Buffer,
+    },
     Interval {
         buffer: wgpu::Buffer,
         param: Parameter,
@@ -242,6 +247,19 @@ impl ComputeGraph {
             None => return Err(ProcessingError::InternalError("Node not found".into())),
         };
         match *to_process.contents() {
+            NodeContents::Vector {
+                x, y, z, output
+            } => {
+                let (new_data, operation) = vector::create(
+                    device,
+                    &self.globals,
+                    graph.get_attribute_as_string(x).unwrap(),
+                    graph.get_attribute_as_string(y).unwrap(),
+                    graph.get_attribute_as_string(z).unwrap(),
+                )?;
+                self.data.insert(output, new_data);
+                self.operations.insert(graph_node_id, operation);
+            },
             NodeContents::Point {
                 x, y, z, output
             } => {
@@ -349,6 +367,20 @@ impl ComputeGraph {
                     graph.get_attribute_as_linked_output(geometry),
                     graph.get_attribute_as_usize(thickness).unwrap(),
                     graph.get_attribute_as_usize(mask).unwrap(),
+                    graph.get_attribute_as_usize(material).unwrap(),
+                )?;
+                self.renderables.insert(graph_node_id, renderable);
+                self.operations.insert(graph_node_id, operation);
+            },
+            NodeContents::VectorRendering {
+                application_point, vector, thickness, material,
+            } => {
+                let (renderable, operation) = vector_render::create(
+                    device,
+                    &self.data,
+                    graph.get_attribute_as_linked_output(application_point),
+                    graph.get_attribute_as_linked_output(vector),
+                    graph.get_attribute_as_usize(thickness).unwrap(),
                     graph.get_attribute_as_usize(material).unwrap(),
                 )?;
                 self.renderables.insert(graph_node_id, renderable);

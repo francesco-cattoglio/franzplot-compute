@@ -12,7 +12,7 @@ use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
 use crate::node_graph::AVAILABLE_SIZES;
 
-pub type GeometryResult = Result<(MatcapData, Operation), ProcessingError>;
+pub type MatcapResult = Result<(MatcapData, Operation), ProcessingError>;
 
 pub fn create(
     device: &wgpu::Device,
@@ -21,7 +21,7 @@ pub fn create(
     thickness: usize,
     mask: usize,
     material: usize,
-) -> GeometryResult {
+) -> MatcapResult {
     let data_id = geometry_id.ok_or(ProcessingError::InputMissing(" This Curve node \n is missing its input "))?;
     let found_data = data_map.get(&data_id).ok_or(ProcessingError::InternalError("Geometry used as input does not exist in the block map".into()))?;
 
@@ -41,7 +41,7 @@ pub fn create(
     }
 }
 
-fn handle_0d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, thickness: usize, material_id: usize) -> GeometryResult {
+fn handle_0d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, thickness: usize, material_id: usize) -> MatcapResult {
         // Never go above a certain refinement level: the local group size for a compute shader
         // invocation should never exceed 512, otherwise the GPU might error out, and with
         // a refine level of 6 we already hit the 492 points count.
@@ -159,7 +159,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 // 2: maybe we can skip a memory barrier if we do store some extra information in the curve
 //    geometry, so that we do not need to compute the entire "ref_buff". We also need to handle
 //    the 90 degree curve anyway, so this code requires a bit of a rework anyway
-fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, n_points: usize, thickness: usize, mask_id: usize, material_id: usize) -> GeometryResult {
+fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, n_points: usize, thickness: usize, mask_id: usize, material_id: usize) -> MatcapResult {
 
     let section_diameter = AVAILABLE_SIZES[thickness];
     let n_section_points = (thickness + 3)*2;
@@ -298,7 +298,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     Ok((renderable, operation))
 }
 
-fn handle_2d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, param1: &Parameter, param2: &Parameter, mask_id: usize, material_id: usize) -> GeometryResult {
+fn handle_2d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, param1: &Parameter, param2: &Parameter, mask_id: usize, material_id: usize) -> MatcapResult {
     let flag_pattern = true;
     let (index_buffer, index_count) = create_grid_index_buffer(device, param1.n_points(), param2.n_points(), flag_pattern);
     let vertex_buffer = util::create_storage_buffer(device, param1.n_points() * param2.n_points() * std::mem::size_of::<StandardVertexData>());
@@ -439,7 +439,7 @@ size_x=param1.n_points(), size_y=param2.n_points());
     Ok((renderable, operation))
 }
 
-fn handle_prefab(device: &wgpu::Device, vertex_buffer: &wgpu::Buffer, chunks_count: usize, index_buffer: &Rc<wgpu::Buffer>, index_count: u32, material_id: usize) -> GeometryResult {
+fn handle_prefab(device: &wgpu::Device, vertex_buffer: &wgpu::Buffer, chunks_count: usize, index_buffer: &Rc<wgpu::Buffer>, index_count: u32, material_id: usize) -> MatcapResult {
 
     let wgsl_source = format!(r##"
 struct MatcapVertex {{

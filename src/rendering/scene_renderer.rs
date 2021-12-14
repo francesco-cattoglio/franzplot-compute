@@ -377,7 +377,6 @@ impl SceneRenderer {
             self.renderable_ids.push(*data_id);
             self.add_matcap(device, assets, matcap, idx as u32);
         }
-        dbg!(&self.renderables);
     }
 
     fn add_matcap(&mut self, device: &wgpu::Device, assets: &Assets, matcap_data: &MatcapData, object_id: u32) {
