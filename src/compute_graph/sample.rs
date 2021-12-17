@@ -57,6 +57,7 @@ fn sample_1d_0d(
     let sanitized_name = Globals::sanitize_variable_name_2(parameter_name)?;
     let sanitized_value = globals.sanitize_expression_2(&[], sample_value)?;
 
+    // first, we need to check if the parameter name corresponds with the interval one.
     let maybe_curve_param_name = geom_param.name.as_ref();
     if let Some(name) = maybe_curve_param_name {
         // if the name does not match the one from the parameter, error out
@@ -69,7 +70,6 @@ fn sample_1d_0d(
         return Err(ProcessingError::IncorrectAttributes(" the parameter used \n is not known "));
     }
 
-    // first, we need to check if the parameter name corresponds with the interval one.
     let wgsl_source = format!(r##"
 {wgsl_header}
 
@@ -104,7 +104,7 @@ fn main() {{
     output.position = (1.0 - alpha) * in_curve.positions[inf_idx] + alpha * in_curve.positions[sup_idx];
 }}
 "##, wgsl_header=globals.get_wgsl_header(), begin=&geom_param.begin, end=&geom_param.end,
-    sample_value=sanitized_value, array_size=CHUNK_SIZE*geom_param.segments as usize);
+    sample_value=sanitized_value, array_size=geom_param.n_points());
 
     //println!("sample 1d->0d shader source:\n {}", &wgsl_source);
 
@@ -135,428 +135,6 @@ fn main() {{
     Ok((new_data, operation))
 }
 
-fn t_1d_1d(
-    device: &wgpu::Device,
-    geom_buffer: &wgpu::Buffer,
-    geom_param: &Parameter,
-    matrix_buffer: &wgpu::Buffer,
-    ) -> SingleDataResult {
-    let wgsl_source = r##"
-[[block]] struct CurveBuffer {
-    positions: array<vec4<f32>>;
-};
-
-[[block]] struct MatrixBuffer {
-    matrix: mat4x4<f32>;
-};
-
-[[group(0), binding(0)]] var<storage, read> in_curve: CurveBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrix: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: CurveBuffer;
-
-[[stage(compute), workgroup_size(16)]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {
-    let index = global_id.x;
-    output.positions[index] = in_matrix.matrix * in_curve.positions[index];
-}
-"##.to_string();
-
-    // A point has a fixed size
-    let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<glam::Vec4>() * geom_param.n_points());
-    let bind_info = vec![
-        BindInfo {
-            buffer: geom_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-        },
-        BindInfo {
-            buffer: matrix_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-        },
-        BindInfo {
-            buffer: &output_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: false },
-        },
-    ];
-    let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
-
-    let operation = Operation {
-        bind_group,
-        pipeline: Rc::new(pipeline),
-        dim: [geom_param.segments, 1, 1],
-    };
-    let new_data = Data::Geom1D {
-        buffer: output_buffer,
-        param: geom_param.clone(),
-    };
-
-    Ok((new_data, operation))
-}
-
-fn t_1d_same_param(
-    device: &wgpu::Device,
-    geom_buffer: &wgpu::Buffer,
-    matrix_buffer: &wgpu::Buffer,
-    param: &Parameter,
-    ) -> SingleDataResult {
-    let wgsl_source = r##"
-[[block]] struct CurveBuffer {
-    positions: array<vec4<f32>>;
-};
-
-[[block]] struct MatrixBuffer {
-    matrices: array<mat4x4<f32>>;
-};
-
-[[group(0), binding(0)]] var<storage, read> in_curve: CurveBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrices: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: CurveBuffer;
-
-[[stage(compute), workgroup_size(16)]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {
-    let index = global_id.x;
-    output.positions[index] = in_matrices.matrices[index] * in_curve.positions[index];
-}
-"##.to_string();
-
-    // A point has a fixed size
-    let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<glam::Vec4>() * param.n_points());
-    let bind_info = vec![
-        BindInfo {
-            buffer: geom_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-        },
-        BindInfo {
-            buffer: matrix_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-        },
-        BindInfo {
-            buffer: &output_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: false },
-        },
-    ];
-    let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
-
-    let operation = Operation {
-        bind_group,
-        pipeline: Rc::new(pipeline),
-        dim: [param.segments, 1, 1],
-    };
-    let new_data = Data::Geom1D {
-        buffer: output_buffer,
-        param: param.clone(),
-    };
-
-    Ok((new_data, operation))
-}
-
-fn t_1d_up_2d(
-    device: &wgpu::Device,
-    geom_buffer: &wgpu::Buffer,
-    geom_param: &Parameter,
-    matrix_buffer: &wgpu::Buffer,
-    matrix_param: &Parameter,
-    ) -> SingleDataResult {
-    let wgsl_source = r##"
-[[block]] struct CurveBuffer {
-    positions: array<vec4<f32>>;
-};
-
-[[block]] struct MatrixBuffer {
-    matrix: array<mat4x4<f32>>;
-};
-
-[[block]] struct SurfaceBuffer {
-    positions: array<vec4<f32>>;
-};
-
-[[group(0), binding(0)]] var<storage, read> in_curve: CurveBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrices: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: SurfaceBuffer;
-
-[[stage(compute), workgroup_size(16, 16)]]
-fn main(
-    [[builtin(global_invocation_id)]] global_id: vec3<u32>,
-    [[builtin(num_workgroups)]] num_groups: vec3<u32>,
-) {
-    let par1_idx = global_id.x;
-    let par2_idx = global_id.y;
-    let index = par1_idx + num_groups.x * 16u * par2_idx;
-    output.positions[index] = in_matrices.matrix[par2_idx] * in_curve.positions[par1_idx];
-}
-"##.to_string();
-
-    // A point has a fixed size
-    let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<glam::Vec4>() * geom_param.n_points() * matrix_param.n_points());
-    let bind_info = vec![
-        BindInfo {
-            buffer: geom_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-        },
-        BindInfo {
-            buffer: matrix_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-        },
-        BindInfo {
-            buffer: &output_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: false },
-        },
-    ];
-    let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
-
-    let operation = Operation {
-        bind_group,
-        pipeline: Rc::new(pipeline),
-        dim: [geom_param.segments, matrix_param.segments, 1],
-    };
-    let new_data = Data::Geom2D {
-        buffer: output_buffer,
-        param1: geom_param.clone(),
-        param2: matrix_param.clone(),
-    };
-
-    Ok((new_data, operation))
-}
-
-fn t_2d_2d(
-    device: &wgpu::Device,
-    geom_buffer: &wgpu::Buffer,
-    geom_param1: &Parameter,
-    geom_param2: &Parameter,
-    matrix_buffer: &wgpu::Buffer,
-    ) -> SingleDataResult {
-    let wgsl_source = r##"
-[[block]] struct SurfaceBuffer {
-    positions: array<vec4<f32>>;
-};
-
-[[block]] struct MatrixBuffer {
-    matrix: mat4x4<f32>;
-};
-
-[[group(0), binding(0)]] var<storage, read> in_surface: SurfaceBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrix: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: SurfaceBuffer;
-
-[[stage(compute), workgroup_size(16, 16)]]
-fn main(
-    [[builtin(global_invocation_id)]] global_id: vec3<u32>,
-    [[builtin(num_workgroups)]] num_groups: vec3<u32>,
-) {
-    let par1_idx = global_id.x;
-    let par2_idx = global_id.y;
-    let index = par1_idx + num_groups.x * 16u * par2_idx;
-    output.positions[index] = in_matrix.matrix * in_surface.positions[index];
-}
-"##.to_string();
-
-    // A point has a fixed size
-    let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<glam::Vec4>() * geom_param1.n_points() * geom_param2.n_points());
-    let bind_info = vec![
-        BindInfo {
-            buffer: geom_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-        },
-        BindInfo {
-            buffer: matrix_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-        },
-        BindInfo {
-            buffer: &output_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: false },
-        },
-    ];
-    let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
-
-    let operation = Operation {
-        bind_group,
-        pipeline: Rc::new(pipeline),
-        dim: [geom_param1.segments, geom_param2.segments, 1],
-    };
-    let new_data = Data::Geom2D {
-        buffer: output_buffer,
-        param1: geom_param1.clone(),
-        param2: geom_param2.clone(),
-    };
-
-    Ok((new_data, operation))
-}
-
-fn t_2d_same_param(
-    device: &wgpu::Device,
-    geom_buffer: &wgpu::Buffer,
-    geom_param1: &Parameter,
-    geom_param2: &Parameter,
-    matrix_buffer: &wgpu::Buffer,
-    matrix_param: &Parameter,
-    ) -> SingleDataResult {
-
-    let which_idx = if geom_param1.is_equal(matrix_param)? {
-        "par1_idx"
-    } else {
-        "par2_idx"
-    };
-    let wgsl_source = r##"
-[[block]] struct SurfaceBuffer {
-    positions: array<vec4<f32>>;
-};
-
-[[block]] struct MatrixBuffer {
-    matrices: array<mat4x4<f32>>;
-};
-
-[[group(0), binding(0)]] var<storage, read> in_surface: SurfaceBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrices: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: SurfaceBuffer;
-
-[[stage(compute), workgroup_size(16, 16)]]
-fn main(
-    [[builtin(global_invocation_id)]] global_id: vec3<u32>,
-    [[builtin(num_workgroups)]] num_groups: vec3<u32>,
-) {
-    let par1_idx = global_id.x;
-    let par2_idx = global_id.y;
-    let index = par1_idx + num_groups.x * 16u * par2_idx;
-    output.positions[index] = in_matrices.matrices["##.to_string() + which_idx + r##"] * in_surface.positions[index];
-}
-"##;
-
-    let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<glam::Vec4>() * geom_param1.n_points() * geom_param2.n_points());
-    let bind_info = vec![
-        BindInfo {
-            buffer: geom_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-        },
-        BindInfo {
-            buffer: matrix_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-        },
-        BindInfo {
-            buffer: &output_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: false },
-        },
-    ];
-    let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
-
-    let operation = Operation {
-        bind_group,
-        pipeline: Rc::new(pipeline),
-        dim: [geom_param1.segments, geom_param2.segments, 1],
-    };
-    let new_data = Data::Geom2D {
-        buffer: output_buffer,
-        param1: geom_param1.clone(),
-        param2: geom_param2.clone(),
-    };
-
-    Ok((new_data, operation))
-}
-
-
-fn t_prefab (device: &wgpu::Device,
-    vertex_buffer: &wgpu::Buffer,
-    chunks_count: usize,
-    index_buffer: &Rc<wgpu::Buffer>,
-    index_count: u32,
-    matrix_buffer: &wgpu::Buffer,
-    ) -> SingleDataResult {
-
-    let wgsl_source = format!(r##"
-struct MatcapVertex {{
-    position: vec4<f32>;
-    normal: vec4<f32>;
-    uv_coords: vec2<f32>;
-    padding: vec2<f32>;
-}};
-
-[[block]] struct PrefabBuffer {{
-    vertices: array<MatcapVertex>;
-}};
-
-[[block]] struct MatrixBuffer {{
-    matrix: mat4x4<f32>;
-}};
-
-[[group(0), binding(0)]] var<storage, read> in_prefab: PrefabBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrix: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: PrefabBuffer;
-
-[[stage(compute), workgroup_size({vertices_per_chunk})]]
-fn main(
-    [[builtin(global_invocation_id)]] global_id: vec3<u32>,
-) {{
-    let index = global_id.x;
-
-    // in 3d->3d we operate on both the positions AND the normals.
-    // positions are simply multiplied by the matrix, while
-    // for normals, we extract the linear part of the transform
-    // and premultiply the normals by the inverse transpose,
-    // PROVIDED THE MATRIX IS NOT SINGULAR
-    // TODO: possible optimization: precompute inverse transpose
-    // directly in the matrix compute block (for 0D matrices only)
-    let A = mat3x3<f32>(
-        in_matrix.matrix[0].xyz,
-        in_matrix.matrix[1].xyz,
-        in_matrix.matrix[2].xyz,
-    );
-    let det: f32 = determinant(A);
-    if (det > 1e-6) {{
-        // WGSL does not provide any "inverse transpose" function, so compute it by hand
-        var inv_t: mat3x3<f32>;
-        let invdet = 1.0/det;
-        inv_t[0][0] =  (A[1][1] * A[2][2] - A[2][1] * A[1][2]) * invdet;
-        inv_t[1][0] = -(A[0][1] * A[2][2] - A[0][2] * A[2][1]) * invdet;
-        inv_t[2][0] =  (A[0][1] * A[1][2] - A[0][2] * A[1][1]) * invdet;
-        inv_t[0][1] = -(A[1][0] * A[2][2] - A[1][2] * A[2][0]) * invdet;
-        inv_t[1][1] =  (A[0][0] * A[2][2] - A[0][2] * A[2][0]) * invdet;
-        inv_t[2][1] = -(A[0][0] * A[1][2] - A[1][0] * A[0][2]) * invdet;
-        inv_t[0][2] =  (A[1][0] * A[2][1] - A[2][0] * A[1][1]) * invdet;
-        inv_t[1][2] = -(A[0][0] * A[2][1] - A[2][0] * A[0][1]) * invdet;
-        inv_t[2][2] =  (A[0][0] * A[1][1] - A[1][0] * A[0][1]) * invdet;
-
-        let transformed_normal: vec3<f32> = normalize(inv_t * in_prefab.vertices[index].normal.xyz);
-        output.vertices[index].normal = vec4<f32>(transformed_normal, 0.0);
-    }} else {{
-        // this is wrong, but at least it won't produce undefined garbage results
-        output.vertices[index].normal = in_prefab.vertices[index].normal;
-    }}
-    output.vertices[index].position = in_matrix.matrix * in_prefab.vertices[index].position;
-    output.vertices[index].uv_coords = in_prefab.vertices[index].uv_coords;
-    output.vertices[index].padding = in_prefab.vertices[index].padding;
-}}
-"##, vertices_per_chunk=MODEL_CHUNK_VERTICES,);
-
-    let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<StandardVertexData>() * chunks_count * MODEL_CHUNK_VERTICES);
-    let bind_info = vec![
-        BindInfo {
-            buffer: vertex_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-        },
-        BindInfo {
-            buffer: matrix_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: true },
-        },
-        BindInfo {
-            buffer: &output_buffer,
-            ty: wgpu::BufferBindingType::Storage { read_only: false },
-        },
-    ];
-    let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
-
-    let operation = Operation {
-        bind_group,
-        pipeline: Rc::new(pipeline),
-        dim: [chunks_count as u32, 1, 1],
-    };
-    let new_data = Data::Prefab {
-        vertex_buffer: output_buffer,
-        chunks_count,
-        index_buffer: Rc::clone(index_buffer),
-        index_count,
-    };
-
-    Ok((new_data, operation))
-}
-
 fn sample_2d_1d(
     device: &wgpu::Device,
     globals: &Globals,
@@ -567,5 +145,102 @@ fn sample_2d_1d(
     sample_value: &str,
     ) -> SingleDataResult {
 
-    todo!()
-    }
+    // Sanitize all input expressions
+    let sanitized_name = Globals::sanitize_variable_name_2(parameter_name)?;
+    let sanitized_value = globals.sanitize_expression_2(&[], sample_value)?;
+
+    let maybe_curve_param1_name = geom_param1.name.as_ref();
+    let maybe_curve_param2_name = geom_param2.name.as_ref();
+    let (which_param, which_name) = match (maybe_curve_param1_name, maybe_curve_param2_name) {
+        (Some(name), _) if name == &sanitized_name
+            => { (1, name) },
+        (_, Some(name)) if name == &sanitized_name
+            => { (2, name) },
+        _ => return Err(ProcessingError::IncorrectAttributes(" the parameter used \n is not known ")),
+    };
+
+    // the shader will be slightly different depending on which param is the one being sampled
+    let (sampled_param, nonsampled_param) = if which_param == 1 {
+        (geom_param1.clone(), geom_param2.clone())
+    } else {
+        (geom_param2.clone(), geom_param1.clone())
+    };
+
+    let wgsl_source = format!(r##"
+{wgsl_header}
+
+[[block]] struct SurfaceBuffer {{
+    positions: array<vec4<f32>>;
+}};
+
+[[block]] struct CurveBuffer {{
+    positions: array<vec4<f32>>;
+}};
+
+// binding 0 used by global vars, as usual
+[[group(0), binding(1)]] var<storage, read> in_surface: SurfaceBuffer;
+[[group(0), binding(2)]] var<storage, read_write> output: CurveBuffer;
+
+[[stage(compute), workgroup_size({CHUNK_SIZE})]]
+fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+    // parameter space is linear, so we can figure out which index we should access
+    let size = f32({sampled_array_size});
+    let interval_begin: f32 = {begin};
+    let interval_end: f32 = {end};
+    // transform the interval so that it extends from 0 to size-1, and scale the sampling value accordingly
+    let value = ({sample_value} - interval_begin) * (size - 1.0) / (interval_end - interval_begin);
+    // compute the indices to use in the interpolation and interpolation weight
+    let inf_value = floor(value);
+    let sup_value = ceil(value);
+    let alpha = fract(value);
+    // clamp index acces to make sure nothing bad happens,
+    // even if the provided value was outside of parameter interval
+    let inf_idx = u32(clamp(inf_value, 0.0, size - 1.0));
+    let sup_idx = u32(clamp(sup_value, 0.0, size - 1.0));
+
+    // we now have to compute the two indices differently, depending on the parameter
+    var inf_index: u32;
+    var sup_index: u32;
+    if ({sampling_first_param}) {{
+        // if the param being sampled is the first one
+        inf_index = inf_idx + {first_array_size}u * global_id.x;
+        sup_index = sup_idx + {first_array_size}u * global_id.x;
+    }} else {{
+        // if the param being sampled is the second one
+        inf_index = global_id.x + {first_array_size}u * inf_idx;
+        sup_index = global_id.x + {first_array_size}u * sup_idx;
+    }}
+    output.positions[global_id.x] = (1.0 - alpha) * in_surface.positions[inf_index] + alpha * in_surface.positions[sup_index];
+}}
+"##, wgsl_header=&globals.get_wgsl_header(), sampled_array_size=sampled_param.n_points(),
+first_array_size=geom_param1.n_points(),
+sampling_first_param= which_param==1, CHUNK_SIZE=CHUNK_SIZE,
+begin=&sampled_param.begin, end=&sampled_param.end, sample_value=sanitized_value);
+
+    //println!("sample 2d->1d shader source:\n {}", &wgsl_source);
+    let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<glam::Vec4>() * nonsampled_param.n_points());
+    let bind_info = vec![
+        globals.get_bind_info(),
+        BindInfo {
+            buffer: geom_buffer,
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+        },
+        BindInfo {
+            buffer: &output_buffer,
+            ty: wgpu::BufferBindingType::Storage { read_only: false },
+        },
+    ];
+    let (pipeline, bind_group) = naga_compute_pipeline(device, &wgsl_source, &bind_info);
+
+    let operation = Operation {
+        bind_group,
+        pipeline: Rc::new(pipeline),
+        dim: [nonsampled_param.segments, 1, 1],
+    };
+    let new_data = Data::Geom1D {
+        buffer: output_buffer,
+        param: nonsampled_param,
+    };
+
+    Ok((new_data, operation))
+}
