@@ -1,0 +1,154 @@
+//// FRANZPLOT DATA FILE V1.1 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.04 or higher
+
+V1(
+  (
+    graph: (
+      nodes: [
+        Some((
+          title: "Curve",
+          position: (269,39),
+          error: None,
+          contents: Curve(interval:0,fx:1,fy:2,fz:3,output:4),
+        )),// [0]
+        Some((
+          title: "Interval",
+          position: (37,41),
+          error: None,
+          contents: Interval(variable:5,begin:6,end:7,quality:8,output:9),
+        )),// [1]
+        Some((
+          title: "Sample Parameter",
+          position: (321,195),
+          error: None,
+          contents: Sample(geometry:10,parameter:11,value:12,output:13),
+        )),// [2]
+        Some((
+          title: "Rendering",
+          position: (540,37),
+          error: None,
+          contents: Rendering(geometry:14,thickness:15,mask:16,material:17),
+        )),// [3]
+        Some((
+          title: "Rendering",
+          position: (548,179),
+          error: None,
+          contents: Rendering(geometry:18,thickness:19,mask:20,material:21),
+        )),
+      ],
+      attributes: [
+        Some((
+          node_id: 0,
+          contents: InputPin(label:"interval",kind:Interval),
+        )),// [0]
+        Some((
+          node_id: 0,
+          contents: Text(label:"fx",string:"t"),
+        )),// [1]
+        Some((
+          node_id: 0,
+          contents: Text(label:"fy",string:"t"),
+        )),// [2]
+        Some((
+          node_id: 0,
+          contents: Text(label:"fz",string:"0"),
+        )),// [3]
+        Some((
+          node_id: 0,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [4]
+        Some((
+          node_id: 1,
+          contents: Text(label:" name",string:"t"),
+        )),// [5]
+        Some((
+          node_id: 1,
+          contents: Text(label:"begin",string:"-2"),
+        )),// [6]
+        Some((
+          node_id: 1,
+          contents: Text(label:"  end",string:"2"),
+        )),// [7]
+        Some((
+          node_id: 1,
+          contents: IntSlider(label:"quality",value:4,mode:IntRange(1,16)),
+        )),// [8]
+        Some((
+          node_id: 1,
+          contents: OutputPin(label:"interval",kind:Interval),
+        )),// [9]
+        Some((
+          node_id: 2,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [10]
+        Some((
+          node_id: 2,
+          contents: Text(label:"param:",string:"t"),
+        )),// [11]
+        Some((
+          node_id: 2,
+          contents: Text(label:"value:",string:"k"),
+        )),// [12]
+        Some((
+          node_id: 2,
+          contents: OutputPin(label:"output",kind:Geometry),
+        )),// [13]
+        Some((
+          node_id: 3,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [14]
+        Some((
+          node_id: 3,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [15]
+        Some((
+          node_id: 3,
+          contents: Mask(selected:0),
+        )),// [16]
+        Some((
+          node_id: 3,
+          contents: Material(selected:7),
+        )),// [17]
+        Some((
+          node_id: 4,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [18]
+        Some((
+          node_id: 4,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [19]
+        Some((
+          node_id: 4,
+          contents: Mask(selected:0),
+        )),// [20]
+        Some((
+          node_id: 4,
+          contents: Material(selected:0),
+        )),
+      ],
+      links: {
+        14: 4,
+        18: 13,
+        0: 9,
+        10: 4,
+      },
+      free_nodes_list: [],
+      free_attributes_list: [],
+    ),
+    globals_names: [
+      "k",
+    ],
+    globals_init_values: [
+      1,
+    ],
+  ),
+  (
+    fc: 1639754640,
+    fs: 1639754914,
+    vn: 2875942601,
+    hs: 0,
+  ),
+)

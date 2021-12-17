@@ -17,10 +17,9 @@ pub fn create(
     fy: String,
     fz: String,
 ) -> SingleDataResult {
-    let local_params = vec![];
-    let sanitized_fx = globals.sanitize_expression_2(&local_params, &fx)?;
-    let sanitized_fy = globals.sanitize_expression_2(&local_params, &fy)?;
-    let sanitized_fz = globals.sanitize_expression_2(&local_params, &fz)?;
+    let sanitized_fx = globals.sanitize_expression_2(&[], &fx)?;
+    let sanitized_fy = globals.sanitize_expression_2(&[], &fy)?;
+    let sanitized_fz = globals.sanitize_expression_2(&[], &fz)?;
 
     let wgsl_source = format!(r##"
 {wgsl_globals}

@@ -17,6 +17,7 @@ mod vector_render;
 mod surface;
 mod matrix;
 mod transform;
+mod sample;
 mod prefab;
 
 pub type DataID = i32;
@@ -329,6 +330,20 @@ impl ComputeGraph {
                     graph.get_attribute_as_matrix_row(row_1).unwrap(),
                     graph.get_attribute_as_matrix_row(row_2).unwrap(),
                     graph.get_attribute_as_matrix_row(row_3).unwrap(),
+                    )?;
+                self.data.insert(output, new_data);
+                self.operations.insert(graph_node_id, operation);
+            },
+            NodeContents::Sample {
+                geometry, parameter, value, output,
+            } => {
+                let (new_data, operation) = sample::create(
+                    device,
+                    &self.globals,
+                    &self.data,
+                    graph.get_attribute_as_linked_output(geometry),
+                    graph.get_attribute_as_string(parameter).unwrap(),
+                    graph.get_attribute_as_string(value).unwrap(),
                     )?;
                 self.data.insert(output, new_data);
                 self.operations.insert(graph_node_id, operation);

@@ -25,8 +25,7 @@ pub fn create(
     }
 
     // Sanitize all input expressions
-    let local_params = vec![];
-    let sanitized_size = globals.sanitize_expression_2(&local_params, &size)?;
+    let sanitized_size = globals.sanitize_expression_2(&[], &size)?;
 
     let model = models.get(primitive_id).unwrap();
 

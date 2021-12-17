@@ -36,11 +36,10 @@ pub fn create(
     // This is done here because Parameters can be compared, and if we strip all
     // whitespaces here we are sure that the comparison will be succesful if the user
     // inputs the same thing in two different nodes but adds an extra whitespace.
-    // TODO: if the user enters the same number but writes it differently, the comparison can
-    // fail nonetheless, we need to make sure we sanitize the values as well
-    let local_params = vec![];
-    let sanitized_begin = globals.sanitize_expression_2(&local_params, &begin)?;
-    let sanitized_end = globals.sanitize_expression_2(&local_params, &end)?;
+    // TODO: if the user enters the same number but writes it differently, i.e 2.0 vs 1.0+1.0,
+    // the comparison can still fail. Not sure how far we can fix this.
+    let sanitized_begin = globals.sanitize_expression_2(&[], &begin)?;
+    let sanitized_end = globals.sanitize_expression_2(&[], &end)?;
     let param = Parameter {
         name: Some(sanitized_name),
         begin: sanitized_begin,

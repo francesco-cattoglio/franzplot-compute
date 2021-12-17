@@ -133,7 +133,7 @@ impl Globals {
     }
 
     // TODO: rename this and remove the other one once the conversion to the new compute_graph is done
-    pub fn sanitize_expression_2(&self, local_params: &Vec<&str>, expression: &str) -> Result<String, ProcessingError> {
+    pub fn sanitize_expression_2(&self, local_params: &[&str], expression: &str) -> Result<String, ProcessingError> {
         let parsing_result = parse_expression(expression);
         match parsing_result {
             Ok(ast_tree) => {
