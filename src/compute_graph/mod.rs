@@ -12,6 +12,7 @@ mod point;
 mod vector;
 mod interval;
 mod curve;
+mod bezier;
 mod geometry_render;
 mod vector_render;
 mod surface;
@@ -304,7 +305,32 @@ impl ComputeGraph {
                 )?;
                 self.data.insert(output, new_data);
                 self.operations.insert(graph_node_id, operation);
-            }
+            },
+            NodeContents::Bezier {
+                p0, p1, p2, p3, quality, output
+            } => {
+                let mut points = Vec::<NodeID>::new();
+                if let Some(id) = graph.get_attribute_as_linked_output(p0) {
+                    points.push(id);
+                }
+                if let Some(id) = graph.get_attribute_as_linked_output(p1) {
+                    points.push(id);
+                }
+                if let Some(id) = graph.get_attribute_as_linked_output(p2) {
+                    points.push(id);
+                }
+                if let Some(id) = graph.get_attribute_as_linked_output(p3) {
+                    points.push(id);
+                }
+                let (new_data, operation) = bezier::create(
+                    device,
+                    &self.data,
+                    points,
+                    graph.get_attribute_as_usize(quality).unwrap(),
+                )?;
+                self.data.insert(output, new_data);
+                self.operations.insert(graph_node_id, operation);
+            },
             NodeContents::Interval {
                 variable, begin, end, quality, output,
             } => {
