@@ -383,19 +383,6 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 
     let u_coord = f32(i) / f32(x_size - 1u);
     let v_coord = f32(j) / f32(y_size - 1u);
-    //float u_coord, v_coord;
-    //if ({i_interval_uv}) {{
-    //    float u_delta = ({i_interval_end} - {i_interval_begin}) / (x_size - 1.0);
-    //    u_coord = {i_interval_begin} + u_delta * i;
-    //}} else {{
-    //    u_coord = i/(x_size-1.0);
-    //}}
-    //if ({j_interval_uv}) {{
-    //    float v_delta = ({j_interval_end} - {j_interval_begin}) / (y_size - 1.0);
-    //    v_coord = {j_interval_begin} + v_delta * j;
-    //}} else {{
-    //    v_coord = j/(y_size-1.0);
-    //}}
 
     out.vertices[idx].position = in.pos[idx];
     out.vertices[idx].normal = vec4<f32>(normal, 0.0);
@@ -403,8 +390,6 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     out.vertices[idx].padding = vec2<f32>(2.123, 2.456);
 }}
 "##, pps=Parameter::POINTS_PER_SEGMENT,
-i_interval_begin="", i_interval_end="", i_interval_uv="",
-j_interval_begin="", j_interval_end="", j_interval_uv="",
 size_x=param1.n_points(), size_y=param2.n_points());
 
     println!("2d shader source:\n {}", &wgsl_source);

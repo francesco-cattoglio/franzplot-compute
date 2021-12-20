@@ -54,6 +54,7 @@ fn matcap_vs_main(
 // Matcap fragment shader
 [[stage(fragment)]]
 fn matcap_fs_main(in: MatcapVertexOutput) -> [[location(0)]] vec4<f32> {
+    let approx_z: f32 = in.position.z;
     // need to implement the code for the picking buffer
     let todo = picking.distances[0];
     // read mask texture
@@ -64,6 +65,13 @@ fn matcap_fs_main(in: MatcapVertexOutput) -> [[location(0)]] vec4<f32> {
     let scaled_normal = 0.49 * (uniforms.view * normalize(in.normal));
     let matcap_uv = vec2<f32>(scaled_normal.x + 0.5, 0.5 - scaled_normal.y);
     let matcap_color = textureSample(diffuse_texture, diffuse_sampler, matcap_uv);
+
+    let flatness = 0.001/fwidth(in.uv_coords.x) + 0.001/fwidth(in.uv_coords.y);
+    let distance = 1.0/3.0 * approx_z;
+    let threshold = distance + clamp(flatness, 0.0, 0.75);
+    if (mask_color.a != 1.0 && mask_color.a <= threshold) {
+        discard;
+    }
 
     // final color
     let highlight_coeff: f32 = select(1.0, 1.4, in.object_id == uniforms.highlight_id);
