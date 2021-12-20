@@ -346,6 +346,30 @@ impl ComputeGraph {
                 self.data.insert(output, new_data);
                 self.operations.insert(graph_node_id, operation);
             },
+            NodeContents::TranslationMatrix {
+                vector, output,
+            } => {
+                let (new_data, operation) = matrix::create_from_translation(
+                    device,
+                    &self.data,
+                    graph.get_attribute_as_linked_output(vector),
+                    )?;
+                self.data.insert(output, new_data);
+                self.operations.insert(graph_node_id, operation);
+            },
+            NodeContents::RotationMatrix {
+                axis, angle, output,
+            } => {
+                let (new_data, operation) = matrix::create_from_rotation(
+                    device,
+                    &self.globals,
+                    &self.data,
+                    graph.get_attribute_as_axis(axis).unwrap(),
+                    graph.get_attribute_as_string(angle).unwrap(),
+                    )?;
+                self.data.insert(output, new_data);
+                self.operations.insert(graph_node_id, operation);
+            },
             NodeContents::Matrix {
                 interval, row_1, row_2, row_3, output,
             } => {

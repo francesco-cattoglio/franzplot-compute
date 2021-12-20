@@ -42,38 +42,38 @@ pub fn create(
 }
 
 fn handle_0d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, thickness: usize, material_id: usize) -> MatcapResult {
-        // Never go above a certain refinement level: the local group size for a compute shader
-        // invocation should never exceed 512, otherwise the GPU might error out, and with
-        // a refine level of 6 we already hit the 492 points count.
-        // TODO: on mobile group size limit might be 256, and max refine might be 4
-        let refine_amount = std::cmp::min(thickness, 6);
-        let sphere_radius = AVAILABLE_SIZES[thickness];
+    // Never go above a certain refinement level: the local group size for a compute shader
+    // invocation should never exceed 512, otherwise the GPU might error out, and with
+    // a refine level of 6 we already hit the 492 points count.
+    // TODO: on mobile group size limit might be 256, and max refine might be 4
+    let refine_amount = std::cmp::min(thickness, 6);
+    let sphere_radius = AVAILABLE_SIZES[thickness];
 
-        use hexasphere::shapes::IcoSphere;
-        let sphere = IcoSphere::new(refine_amount, |_| ());
+    use hexasphere::shapes::IcoSphere;
+    let sphere = IcoSphere::new(refine_amount, |_| ());
 
-        let raw_points = sphere.raw_points();
-        let vertex_count = raw_points.len();
-        let reference_vertices: Vec<glam::Vec4> = raw_points
-            .into_iter()
-            .map(|v| {glam::Vec4::new(v.x, v.y, v.z, 0.0)})
-            .collect();
+    let raw_points = sphere.raw_points();
+    let vertex_count = raw_points.len();
+    let reference_vertices: Vec<glam::Vec4> = raw_points
+        .into_iter()
+        .map(|v| {glam::Vec4::new(v.x, v.y, v.z, 0.0)})
+        .collect();
 
-        let indices = sphere.get_all_indices();
+    let indices = sphere.get_all_indices();
 
-        use wgpu::util::DeviceExt;
-        let reference_vertex_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: None,
-                contents: bytemuck::cast_slice(&reference_vertices),
-                usage: wgpu::BufferUsages::STORAGE,
-        });
-        let index_buffer = device.create_buffer_init(
-            &wgpu::util::BufferInitDescriptor {
-                label: None,
-                contents: bytemuck::cast_slice(&indices),
-                usage: wgpu::BufferUsages::INDEX,
-        });
+    use wgpu::util::DeviceExt;
+    let reference_vertex_buffer = device.create_buffer_init(
+        &wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&reference_vertices),
+            usage: wgpu::BufferUsages::STORAGE,
+    });
+    let index_buffer = device.create_buffer_init(
+        &wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsages::INDEX,
+    });
 
     let wgsl_source = format!(r##"
 struct MatcapVertex {{

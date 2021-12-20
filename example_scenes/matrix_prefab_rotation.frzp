@@ -1,0 +1,134 @@
+//// FRANZPLOT DATA FILE V1.1 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.04 or higher
+
+V1(
+  (
+    graph: (
+      nodes: [
+        Some((
+          title: "Rotation Matrix",
+          position: (96,182),
+          error: None,
+          contents: RotationMatrix(axis:0,angle:1,output:2),
+        )),// [0]
+        Some((
+          title: "Point",
+          position: (104,61),
+          error: None,
+          contents: Point(x:3,y:4,z:5,output:6),
+        )),// [1]
+        Some((
+          title: "Transform",
+          position: (308,151),
+          error: None,
+          contents: Transform(geometry:7,matrix:8,output:9),
+        )),// [2]
+        Some((
+          title: "Rendering",
+          position: (409,37),
+          error: None,
+          contents: Rendering(geometry:10,thickness:11,mask:12,material:13),
+        )),// [3]
+        Some((
+          title: "Rendering",
+          position: (409,165),
+          error: None,
+          contents: Rendering(geometry:14,thickness:15,mask:16,material:17),
+        )),
+      ],
+      attributes: [
+        Some((
+          node_id: 0,
+          contents: AxisSelect(axis:X),
+        )),// [0]
+        Some((
+          node_id: 0,
+          contents: Text(label:"angle",string:"pi/2"),
+        )),// [1]
+        Some((
+          node_id: 0,
+          contents: OutputPin(label:"output",kind:Matrix),
+        )),// [2]
+        Some((
+          node_id: 1,
+          contents: Text(label:"x",string:"0.0"),
+        )),// [3]
+        Some((
+          node_id: 1,
+          contents: Text(label:"y",string:"1.0"),
+        )),// [4]
+        Some((
+          node_id: 1,
+          contents: Text(label:"z",string:"0.0"),
+        )),// [5]
+        Some((
+          node_id: 1,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [6]
+        Some((
+          node_id: 2,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [7]
+        Some((
+          node_id: 2,
+          contents: InputPin(label:"matrix",kind:Matrix),
+        )),// [8]
+        Some((
+          node_id: 2,
+          contents: OutputPin(label:"output",kind:Geometry),
+        )),// [9]
+        Some((
+          node_id: 3,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [10]
+        Some((
+          node_id: 3,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [11]
+        Some((
+          node_id: 3,
+          contents: Mask(selected:0),
+        )),// [12]
+        Some((
+          node_id: 3,
+          contents: Material(selected:1),
+        )),// [13]
+        Some((
+          node_id: 4,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [14]
+        Some((
+          node_id: 4,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [15]
+        Some((
+          node_id: 4,
+          contents: Mask(selected:0),
+        )),// [16]
+        Some((
+          node_id: 4,
+          contents: Material(selected:6),
+        )),
+      ],
+      links: {
+        7: 6,
+        8: 2,
+        14: 9,
+        10: 6,
+      },
+      free_nodes_list: [],
+      free_attributes_list: [],
+    ),
+    globals_names: [],
+    globals_init_values: [],
+  ),
+  (
+    fc: 1640017500,
+    fs: 1640018494,
+    vn: 2339885557,
+    hs: 0,
+  ),
+)
