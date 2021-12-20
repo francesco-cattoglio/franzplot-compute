@@ -20,6 +20,7 @@ mod matrix;
 mod transform;
 mod sample;
 mod prefab;
+mod plane;
 
 pub type DataID = i32;
 pub type PrefabId = i32;
@@ -382,6 +383,19 @@ impl ComputeGraph {
                     &self.data,
                     graph.get_attribute_as_linked_output(geometry),
                     graph.get_attribute_as_linked_output(matrix),
+                    )?;
+                self.data.insert(output, new_data);
+                self.operations.insert(graph_node_id, operation);
+            },
+            NodeContents::Plane {
+                center, normal, size, output,
+            } => {
+                let (new_data, operation) = plane::create(
+                    device,
+                    &self.data,
+                    graph.get_attribute_as_linked_output(center),
+                    graph.get_attribute_as_linked_output(normal),
+                    graph.get_attribute_as_usize(size).unwrap(),
                     )?;
                 self.data.insert(output, new_data);
                 self.operations.insert(graph_node_id, operation);
