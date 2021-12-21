@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use super::Operation;
-use crate::computable_scene::globals::Globals;
+use super::globals::Globals;
 use crate::rendering::model::{Model, MODEL_CHUNK_VERTICES};
 use crate::rendering::{StandardVertexData};
 use super::Parameter;

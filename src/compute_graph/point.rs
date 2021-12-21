@@ -3,7 +3,7 @@ use std::rc::Rc;
 use glam::Vec4;
 
 use super::Operation;
-use crate::computable_scene::globals::Globals;
+use super::globals::Globals;
 use super::{SingleDataResult, ProcessingError};
 use super::Parameter;
 use super::{DataID, Data};

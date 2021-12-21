@@ -1,5 +1,5 @@
-use crate::computable_scene::*;
 use crate::compute_graph::ComputeGraph;
+use crate::compute_graph::globals::Globals;
 use crate::device_manager::Manager;
 use crate::rendering::camera;
 use crate::rendering::SceneRenderer;
@@ -100,7 +100,6 @@ pub struct AppState {
     pub manager: Manager,
     pub graph: Option<ComputeGraph>,
     pub renderer: SceneRenderer,
-    pub computable_scene: ComputableScene,
     pub sensitivity: Sensitivity,
 }
 
@@ -137,6 +136,7 @@ impl AppState {
     }
 
     pub fn load_scene(&mut self, target_texture: &wgpu::TextureView) {
+        panic!();
         // TODO: right now the chain is not recomputed if globals were not updated. This is
         // sub-optimal, and in the future we might want to be more fine-grained
         // let global_vars_changed = self.computable_scene.globals.update_buffer(&self.manager.queue);
@@ -144,19 +144,19 @@ impl AppState {
             //self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
             //self.computable_scene.graph.run_compute(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
         //}
-        if self.camera_ortho {
-            // this is here instead of inside `update_projection_matrix` because
-            // we are currently using the zoom level to build the orthographic matrix,
-            // while `update_projection_matrix` gets called only on framebuffer resize
-            self.renderer.update_proj(self.camera.build_ortho_matrix());
-        } else {
-            self.computable_scene.renderer.update_proj(self.camera.build_projection_matrix());
-        }
-        self.computable_scene.renderer.update_view(self.camera.build_view_matrix());
-        //self.computable_scene.renderer.update_matcaps(&self.manager.device, &self.assets, &self.computable_scene.graph);
+        //if self.camera_ortho {
+        //    // this is here instead of inside `update_projection_matrix` because
+        //    // we are currently using the zoom level to build the orthographic matrix,
+        //    // while `update_projection_matrix` gets called only on framebuffer resize
+        //    self.renderer.update_proj(self.camera.build_ortho_matrix());
+        //} else {
+        //    self.computable_scene.renderer.update_proj(self.camera.build_projection_matrix());
+        //}
+        //self.computable_scene.renderer.update_view(self.camera.build_view_matrix());
+        ////self.computable_scene.renderer.update_matcaps(&self.manager.device, &self.assets, &self.computable_scene.graph);
 
-        // after updating everything, redraw the scene to the texture
-        self.computable_scene.renderer.render(&self.manager, target_texture);
+        //// after updating everything, redraw the scene to the texture
+        //self.computable_scene.renderer.render(&self.manager, target_texture);
     }
     pub fn update_scene(&mut self, target_texture: &wgpu::TextureView) {
         // TODO: right now the chain is not recomputed if globals were not updated. This is
@@ -193,18 +193,18 @@ impl State {
         let user: UserState = Default::default();
 
         // construct the AppState part from the passed-in manager
-        let computable_scene = ComputableScene {
-            globals: globals::Globals::new(&manager.device, vec![], vec![]),
-            chain: compute_chain::ComputeChain::new(),
-            renderer: SceneRenderer::new_with_axes(&manager.device),
-            mouse_pos: [0.0, 0.0],
-        };
+        //let computable_scene = ComputableScene {
+        //    globals: globals::Globals::new(&manager.device, vec![], vec![]),
+        //    chain: compute_chain::ComputeChain::new(),
+        //    renderer: SceneRenderer::new_with_axes(&manager.device),
+        //    mouse_pos: [0.0, 0.0],
+        //};
 
         let camera = camera::Camera::from_height_width(manager.config.height as f32, manager.config.width as f32);
         let camera_controller = Box::new(camera::VTKController::new());
 
         let app = AppState {
-            computable_scene,
+            //computable_scene,
             assets,
             camera,
             auto_scene_on_processing: true,
@@ -233,14 +233,16 @@ impl State {
                 // - if unsuccessful, report the unrecoverable error to the user
                 let process_result = crate::compute_graph::create_compute_graph(&self.app.manager.device, &self.app.assets, user_state);
                 match process_result {
-                    Ok((compute_graph, _recoverable_errors)) => {
+                    Ok((compute_graph, recoverable_errors)) => {
                         self.app.renderer.update_matcaps(&self.app.manager.device, &self.app.assets, compute_graph.matcaps());
                         compute_graph.run_compute(&self.app.manager.device, &self.app.manager.queue);
                         self.app.graph = Some(compute_graph);
-                        dbg!(_recoverable_errors); // TODO: need to report the error to the user!
+                        for error in recoverable_errors.into_iter() {
+                            self.user.graph.mark_error(error.into());
+                        }
                     },
-                    Err(_unrecoverable_error) => {
-
+                    Err(unrecoverable_error) => {
+                        dbg!(&unrecoverable_error); // TODO: better handling
                     }
                 }
             }
@@ -302,36 +304,23 @@ impl State {
 
     pub fn new_file(&mut self) {
         // reset the userstate and the time stamps, clear the scene
+        panic!("need to re-implement this functionality");
         self.user = UserState::default();
         self.time_stamps = TSs::new_now();
-        self.process_user_state();
+        //self.process_user_state();
     }
 
-    // process the user graph, and return true if no errors were detected
-    pub fn process_user_state(&mut self) -> bool {
-        // try to build a new compute chain.
-        // clear all errors
-        self.user.graph.clear_all_errors();
-        // TODO: refactor some of this perhaps? I feel like a
-        // ComputableScene::process_user_state would be easier to read and reason about
-        // create a new Globals from the user defined names
-        let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        let graph_errors = self.app.computable_scene.process_graph(&self.app.manager.device, &self.app.manager.queue, &self.app.assets, &mut self.user.graph, globals);
-        let no_errors_detected = graph_errors.is_empty();
-        for error in graph_errors.into_iter() {
-            self.user.graph.mark_error(error);
-        }
-        return no_errors_detected;
-    }
     // TODO: rename when switching to wgsl for compute is done
     // process the user graph, and return true if no errors were detected
     pub fn process_user_state_2(&mut self) -> bool {
-        let globals = globals::Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        let graph_errors = self.app.computable_scene.process_graph_2(&self.app.manager.device, &self.app.manager.queue, &self.app.assets, &mut self.user.graph, globals);
-        let no_errors_detected = graph_errors.is_empty();
-        for error in graph_errors.into_iter() {
-            self.user.graph.mark_error(error);
-        }
-        return no_errors_detected;
+        panic!();
+        println!("is this ever used?");
+        return false;
+        //let globals = Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
+        //let no_errors_detected = graph_errors.is_empty();
+        //for error in graph_errors.into_iter() {
+            //self.user.graph.mark_error(error);
+        //}
+        //return no_errors_detected;
     }
 }

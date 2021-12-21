@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use crate::compute_graph::ProcessingError;
+use crate::compute_graph::RecoverableError;
 use crate::cpp_gui::imnodes;
 use crate::cpp_gui::PinShape;
 use crate::rust_gui::Availables;
@@ -918,6 +920,67 @@ pub struct GraphError {
     pub node_id: NodeID,
     pub severity: Severity,
     pub message: String,
+}
+
+impl From<RecoverableError> for GraphError {
+    fn from(recoverable_error: RecoverableError) -> Self {
+        let id = recoverable_error.node_id;
+        let error = recoverable_error.error;
+        match error {
+            ProcessingError::IncorrectAttributes(message) => {
+                println!("incorrect attributes error for {}: {}", id, &message);
+                GraphError {
+                    severity: Severity::Error,
+                    node_id: id,
+                    message: String::from(message),
+                }
+            },
+            ProcessingError::NoInputData => {
+                println!("input not build warning for {}", id);
+                GraphError {
+                    severity: Severity::Warning,
+                    node_id: id,
+                    message: String::from("Input data missing"),
+                }
+            },
+            ProcessingError::InputMissing(message) => {
+                println!("missing input error for {}: {}", id, &message);
+                GraphError {
+                    severity: Severity::Error,
+                    node_id: id,
+                    message: String::from(message),
+                }
+            },
+            ProcessingError::IncorrectInput(message) => {
+                println!("incorrect input error for {}: {}", id, &message);
+                GraphError {
+                    severity: Severity::Error,
+                    node_id: id,
+                    message: String::from(message),
+                }
+            },
+            ProcessingError::IncorrectExpression(message) => {
+                println!("incorrect expression error for {}: {}", id, &message);
+                GraphError {
+                    severity: Severity::Error,
+                    node_id: id,
+                    message,
+                }
+            },
+            ProcessingError::InternalError(message) => {
+                println!("internal error: {}", &message);
+                GraphError {
+                    severity: Severity::Error,
+                    node_id: id,
+                    message,
+                }
+                // A panic is a bit eccessive. Failing fast is good, but the user might be
+                // unable to report the error to the developer.
+                //
+                // panic!();
+            },
+        }
+    }
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug,)]

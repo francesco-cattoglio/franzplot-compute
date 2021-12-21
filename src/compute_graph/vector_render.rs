@@ -3,7 +3,6 @@ use std::rc::Rc;
 
 use crate::rendering::model::{Model, MODEL_CHUNK_VERTICES};
 use super::Operation;
-use crate::computable_scene::globals::Globals;
 use crate::rendering::{StandardVertexData};
 use crate::node_graph::AVAILABLE_SIZES;
 use super::{MatcapData, ProcessingError};

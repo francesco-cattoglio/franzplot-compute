@@ -1,7 +1,9 @@
 use imgui::*;
+use crate::compute_graph::globals::Globals;
 use crate::file_io;
 use crate::state::State;
-use crate::computable_scene::compute_block::BlockId;
+pub type BlockId = i32;
+pub type PrefabId = i32;
 
 const MAX_UNDO_HISTORY : usize = 10;
 pub type MaskIds = [TextureId; 5];
@@ -251,13 +253,6 @@ impl Gui {
 
     fn render_editor_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
         if ui.button("Generate Scene") {
-            let processing_succesful = state.process_user_state();
-            if processing_succesful && state.app.auto_scene_on_processing {
-                self.opened_tab[1] = true;
-            }
-        }
-        ui.same_line();
-        if ui.button("Test New Compute") {
             use crate::state::action::Action;
             let action = Action::ProcessGraph(state.user.clone());
             state.process(action);
@@ -318,8 +313,7 @@ impl Gui {
         ui.same_line();
         if ui.button("New") { // TODO: we need a check: the name must be valid!
             let new_name = self.new_variable_buffer.to_string();
-            use crate::computable_scene::globals::Globals;
-            if let Ok(valid_name) = Globals::sanitize_variable_name(&new_name) {
+            if let Ok(valid_name) = Globals::sanitize_variable_name_2(&new_name) {
                 globals_names.push(valid_name);
                 globals_init_values.push(0.0);
                 self.new_variable_buffer.clear();
@@ -435,13 +429,14 @@ impl Gui {
             self.winit_proxy.send_event(super::CustomEvent::MouseThaw).unwrap();
         }
         if ui.is_item_active() && ui.is_mouse_double_clicked(MouseButton::Left) {
-            let clicked_object = state.app.computable_scene.renderer.object_under_cursor(&state.app.manager.device);
-            if clicked_object == self.selected_object {
-                self.selected_object = None;
-            } else {
-                self.selected_object = clicked_object;
-            }
-            state.app.computable_scene.renderer.highlight_object(self.selected_object);
+            // TODO: reimplement selection functionality
+            //let clicked_object = state.app.computable_scene.renderer.object_under_cursor(&state.app.manager.device);
+            //if clicked_object == self.selected_object {
+            //    self.selected_object = None;
+            //} else {
+            //    self.selected_object = clicked_object;
+            //}
+            //state.app.computable_scene.renderer.highlight_object(self.selected_object);
         }
         state.app.camera_enabled = ui.is_item_hovered();
         ui.columns(1, "scene columns", false);

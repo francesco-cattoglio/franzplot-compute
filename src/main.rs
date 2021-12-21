@@ -12,7 +12,6 @@ use imgui::{FontSource, FontGlyphRanges};
 mod util;
 mod rendering;
 mod state;
-mod computable_scene;
 mod device_manager;
 mod shader_processing;
 mod node_graph;

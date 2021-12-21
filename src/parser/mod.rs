@@ -109,7 +109,7 @@ pub enum AstNode {
 
 impl AstNode {
     pub fn to_string(&self, global_idents: &[String]) -> String {
-        use crate::computable_scene::globals::GLOBAL_CONSTANTS;
+        use crate::compute_graph::globals::GLOBAL_CONSTANTS;
         match self {
              // BEWARE: use the debug format, or it will forego the fractional part for integers
             AstNode::Number(val) => { format!("{:?}", val) },

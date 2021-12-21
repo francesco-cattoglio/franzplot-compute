@@ -1,5 +1,5 @@
 use crate::state::UserState;
-use crate::computable_scene::globals::NameValuePair;
+use crate::compute_graph::globals::NameValuePair;
 
 pub enum Action {
     ProcessGraph(UserState),

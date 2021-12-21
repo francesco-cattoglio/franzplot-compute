@@ -1,19 +1,14 @@
-pub mod compute_block;
-pub mod compute_chain;
 pub mod globals;
 
 use globals::Globals;
-use compute_chain::ComputeChain;
 use crate::compute_graph::{ProcessingError, ComputeGraph};
 use crate::state::Assets;
 use crate::rendering::SceneRenderer;
-use compute_block::BlockCreationError;
 use crate::node_graph::NodeGraph;
 use crate::node_graph::{ GraphError, Severity };
 
 pub struct ComputableScene{
     pub globals: Globals,
-    pub chain: ComputeChain,
     pub renderer: SceneRenderer,
     pub mouse_pos: [f32; 2],
 }

@@ -3,7 +3,6 @@ use std::rc::Rc;
 
 use super::Operation;
 use super::Parameter;
-use crate::computable_scene::globals::Globals;
 use crate::rendering::StandardVertexData;
 use crate::rendering::model::MODEL_CHUNK_VERTICES;
 use super::{SingleDataResult, ProcessingError};

@@ -4,9 +4,11 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 use crate::rendering::model::Model;
 pub use crate::node_graph::{NodeGraph, NodeID, NodeContents};
-use crate::computable_scene::globals::{Globals, NameValuePair};
+use crate::compute_graph::globals::{Globals, NameValuePair};
 use crate::state::UserState;
 use crate::state::Assets;
+
+pub mod globals;
 
 mod point;
 mod vector;
@@ -31,8 +33,8 @@ pub struct UnrecoverableError {
 }
 #[derive(Clone, Debug)]
 pub struct RecoverableError {
-    node_id: NodeID,
-    error: ProcessingError,
+    pub node_id: NodeID,
+    pub error: ProcessingError,
 }
 
 pub struct Operation {

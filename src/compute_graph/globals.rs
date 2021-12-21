@@ -1,4 +1,3 @@
-use crate::computable_scene::BlockCreationError;
 use crate::compute_graph::ProcessingError;
 use crate::shader_processing::BindInfo;
 use crate::parser::{parse_expression, AstNode, AstError};
@@ -11,7 +10,7 @@ pub struct Globals {
     buffer: wgpu::Buffer,
     pub bind_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
-    pub shader_header: String,
+    pub shader_header: String, // TODO: remove all the GLSL shader headers
     wgsl_header: String,
 }
 
@@ -35,32 +34,6 @@ impl Globals {
                 value: *value,
             })
             .collect()
-    }
-
-    pub fn sanitize_variable_name(name: &str) -> Result<String, BlockCreationError> {
-        let parsing_result = parse_expression(name);
-        match parsing_result {
-            Ok(ast_tree) => {
-                // it is not enough to parse the expression correctly. We must be sure that
-                // the expression is JUST a single ident, and that ident is not the same as an
-                // existing constant.
-                match ast_tree {
-                    AstNode::Ident(ident) => {
-                        for constant in GLOBAL_CONSTANTS.iter() {
-                            if constant.0 == ident {
-                                return Err(BlockCreationError::IncorrectExpression("cannot use a mathematical constant as a variable name".into()));
-                            }
-                            if constant.0.starts_with('_') {
-                                return Err(BlockCreationError::IncorrectExpression("variable names cannot start with an underscore".into()));
-                            }
-                        }
-                        Ok(ident)
-                    }
-                    _ => Err(BlockCreationError::IncorrectExpression("cannot use an expression as variable name".into())),
-                }
-            },
-            Err(_err) => Err(BlockCreationError::IncorrectExpression("invalid variable name".into())),
-        }
     }
 
     pub fn get_wgsl_header(&self) -> &str {
@@ -94,41 +67,6 @@ impl Globals {
                 }
             },
             Err(_err) => Err(ProcessingError::IncorrectExpression("invalid variable name".into())),
-        }
-    }
-
-    pub fn sanitize_expression(&self, local_params: &Vec<&str>, expression: &str) -> Result<String, BlockCreationError> {
-        let parsing_result = parse_expression(expression);
-        match parsing_result {
-            Ok(ast_tree) => {
-                // the expression parsed correctly, but now we need to check if all the identifiers it
-                // contains actually exist.
-                let all_idents = ast_tree.find_all_idents();
-                'validate: for ident in all_idents.into_iter() {
-                    // if the ident is inside the variable names, we are good.
-                    if self.names.contains(&ident) {
-                        continue 'validate;
-                    }
-                    // if the ident is inside the global constants, we are good
-                    for constant in GLOBAL_CONSTANTS.iter() {
-                        if constant.0 == ident {
-                            continue 'validate;
-                        }
-                    }
-                    // if the ident is one of the parameters taken as input by the node, we are also good.
-                    for param in local_params.iter() {
-                        if param == &ident {
-                            continue 'validate;
-                        }
-                    }
-
-                    // OTHERWISE, write down an error!
-                    let err = format!("Unknown variable or parameter used: '{}'", ident);
-                    return Err(BlockCreationError::IncorrectExpression(err));
-                }
-                Ok(ast_tree.to_string(&self.names))
-            },
-            Err(ast_error) => Err(Self::ast_to_block_error(ast_error)),
         }
     }
 
@@ -185,22 +123,6 @@ impl Globals {
         }
     }
 
-    fn ast_to_block_error(error: AstError) -> BlockCreationError {
-        match error {
-            AstError::UnreachableMatch(e) => BlockCreationError::InternalError(e),
-            AstError::InternalError(e) => BlockCreationError::InternalError(e),
-            AstError::InvalidCharacter(e) => BlockCreationError::IncorrectExpression(e),
-            AstError::PowAmbiguity(e) => BlockCreationError::IncorrectExpression(e),
-            AstError::ImplicitProduct(e) => BlockCreationError::IncorrectExpression(e),
-            AstError::MultipleSigns(e) => BlockCreationError::IncorrectExpression(e),
-            AstError::MultipleOps(e) => BlockCreationError::IncorrectExpression(e),
-            AstError::MultipleExpressions(e) => BlockCreationError::IncorrectExpression(e),
-            AstError::FailedParse(e) => BlockCreationError::IncorrectExpression(e),
-            AstError::MissingParenthesis(e) => BlockCreationError::IncorrectExpression(e),
-            AstError::EmptyExpression(e) => BlockCreationError::IncorrectExpression(e),
-            AstError::InvalidName(e) => BlockCreationError::IncorrectExpression(e),
-        }
-    }
 
     pub fn new(device: &wgpu::Device, variables_names: Vec<String>, init_values: Vec<f32>) -> Self {
         // assert there are as many variables as init values
