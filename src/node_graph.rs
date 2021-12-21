@@ -168,16 +168,14 @@ impl Attribute {
                     Axis::Y => 1,
                     Axis::Z => 2,
                 };
-                ui.text("TODO: combo box");
                 let value_changed = false;
-                //let value_changed = ComboBox::new("##axis")
-                //    .build_simple_string(ui, &mut selected, &choices);
-                //*axis = match selected {
-                //    0 => Axis::X,
-                //    1 => Axis::Y,
-                //    2 => Axis::Z,
-                //    _ => panic!()
-                //};
+                let value_changed = ui.combo_simple_string("##axis", &mut selected, &choices);
+                *axis = match selected {
+                    0 => Axis::X,
+                    1 => Axis::Y,
+                    2 => Axis::Z,
+                    _ => panic!()
+                };
                 imnodes::EndStaticAttribute();
                 value_changed
             },
@@ -367,11 +365,10 @@ impl Attribute {
                 ui.set_next_item_width(widget_width);
                 let mut value_changed = false;
                 let list: Vec<&ImString> = availables.model_names.iter().collect();
-                ui.text("TODO: combo box");
-                //if ComboBox::new("##primitive").build_simple_string(ui, selected, &list) {
-                //    value_changed = true;
-                //}
+                let mut index = *selected;
+                let value_changed = ui.combo_simple_string("##primitive", &mut index, &list);
                 imnodes::EndStaticAttribute();
+                *selected = index;
                 value_changed
             },
             AttributeContents::Unknown {
