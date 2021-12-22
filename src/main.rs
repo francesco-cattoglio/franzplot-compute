@@ -78,7 +78,7 @@ fn add_custom_font(imgui_context: &mut imgui::Context, font_size: f32) -> imgui:
     }])
 }
 
-fn main() {
+fn main() -> Result<(), &'static str>{
     let matches = clap::App::new("Franzplot")
         .version(clap::crate_version!())
         .author("Francesco Cattoglio")
@@ -228,7 +228,16 @@ fn main() {
         } else if exe_path.is_dir() {
             exe_path
         } else {
-            panic!("Could not find the 'resources' folder");
+            let error_message = "Could not find the 'resources' folder. Make sure to extract \
+                all the contents of the compressed folder, and to keep the Franzplot executable \
+                next to the 'resources' folder";
+            rfd::MessageDialog::new()
+                .set_level(rfd::MessageLevel::Error)
+                .set_description(error_message)
+                .set_buttons(rfd::MessageButtons::Ok)
+                .show();
+
+            return Err(error_message);
         }
     };
     let mut masks_dir = resources_path.clone();
@@ -286,7 +295,7 @@ fn main() {
     assert!(!materials.is_empty(), "Error while loading resources: could not load any material.");
 
     // do the same for models
-    let mut models_dir = resources_path.clone();
+    let mut models_dir = resources_path;
     models_dir.push("models");
     let models_dir_files = std::fs::read_dir(models_dir)
         .unwrap(); // unwraps the dir reading, giving an iterator over its files
