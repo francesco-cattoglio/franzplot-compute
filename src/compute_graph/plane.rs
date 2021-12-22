@@ -133,11 +133,11 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 
     let bind_info = [
         BindInfo {
-            buffer: &center_buffer,
+            buffer: center_buffer,
             ty: wgpu::BufferBindingType::Storage { read_only: true, }
         },
         BindInfo {
-            buffer: &normal_buffer,
+            buffer: normal_buffer,
             ty: wgpu::BufferBindingType::Storage { read_only: true, }
         },
         BindInfo {

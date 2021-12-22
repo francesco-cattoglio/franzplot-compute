@@ -558,9 +558,9 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         }),
         layout: None,
         label: None,
-        primitive: primitive_triangles.clone(),
+        primitive: primitive_triangles,
         depth_stencil: depth_stencil_state.clone(),
-        multisample: multisample_state.clone(),
+        multisample: multisample_state,
     });
 
     let billboard = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {

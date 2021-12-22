@@ -124,7 +124,7 @@ impl Globals {
     }
 
 
-    pub fn new(device: &wgpu::Device, variables_names: &Vec<String>, init_values: &Vec<f32>) -> Self {
+    pub fn new(device: &wgpu::Device, variables_names: &[String], init_values: &[f32]) -> Self {
         // assert there are as many variables as init values
         assert!(variables_names.len() == init_values.len());
 
@@ -137,7 +137,7 @@ impl Globals {
         for (_constant_name, value) in GLOBAL_CONSTANTS {
             init_vec.push(*value);
         }
-        init_vec.extend_from_slice(&init_values);
+        init_vec.extend_from_slice(init_values);
 
         // create the actual buffer, the bind layout and the bind group
         use wgpu::util::DeviceExt;

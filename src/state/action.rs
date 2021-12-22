@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-use crate::state::UserState;
 use crate::compute_graph::globals::NameValuePair;
 
 pub enum Action {

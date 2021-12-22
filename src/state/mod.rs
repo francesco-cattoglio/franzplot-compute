@@ -135,29 +135,6 @@ impl AppState {
         }
     }
 
-    pub fn load_scene(&mut self, target_texture: &wgpu::TextureView) {
-        panic!();
-        // TODO: right now the chain is not recomputed if globals were not updated. This is
-        // sub-optimal, and in the future we might want to be more fine-grained
-        // let global_vars_changed = self.computable_scene.globals.update_buffer(&self.manager.queue);
-        //if global_vars_changed {
-            //self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
-            //self.computable_scene.graph.run_compute(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
-        //}
-        //if self.camera_ortho {
-        //    // this is here instead of inside `update_projection_matrix` because
-        //    // we are currently using the zoom level to build the orthographic matrix,
-        //    // while `update_projection_matrix` gets called only on framebuffer resize
-        //    self.renderer.update_proj(self.camera.build_ortho_matrix());
-        //} else {
-        //    self.computable_scene.renderer.update_proj(self.camera.build_projection_matrix());
-        //}
-        //self.computable_scene.renderer.update_view(self.camera.build_view_matrix());
-        ////self.computable_scene.renderer.update_matcaps(&self.manager.device, &self.assets, &self.computable_scene.graph);
-
-        //// after updating everything, redraw the scene to the texture
-        //self.computable_scene.renderer.render(&self.manager, target_texture);
-    }
     pub fn update_scene(&mut self, target_texture: &wgpu::TextureView) {
         // TODO: right now the chain is not recomputed if globals were not updated. This is
         // sub-optimal, and in the future we might want to be more fine-grained
@@ -314,9 +291,9 @@ impl State {
         let mut contents = String::new();
         use std::io::Read;
         file.read_to_string(&mut contents)
-            .or_else(|error| Err(format!("Error opening file: {}", &error)))?;
+            .map_err(|error| format!("Error opening file: {}", &error))?;
         let saved_data: FileVersion = ron::from_str(&contents)
-            .or_else(|_| Err("Error reading file contents. Is this a franzplot file?".to_string()))?;
+            .map_err(|_| "Error reading file contents. Is this a franzplot file?".to_string())?;
         match saved_data {
             FileVersion::V0(user_state) => {
                 // loading an older file that does NOT have timestamp infos

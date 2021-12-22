@@ -6,10 +6,7 @@ Tutte le feature necessarie per un uso di base del software sono state implement
 
 Known bugs & issues:
 - in Debug l'avvio è piuttosto lento; in Release l'avvio è molto più veloce (5 secondi vs 0.5).
-- la Translation Matrix è stata implementata con un metodo quick&dirt, qualora si decidesse di
-  aggiungere la possibilità di operare sui vettori in qualsiasi maniera (ad es, applicargli trasformazioni
-  o calcolarli come sottrazione di due punti), sarà necessario re-implementarla usando un nuovo tipo di
-  compute block.
+- (re)implementazione dell'export su PNG
 
 Features a data da destinarsi:
 - implementazione della visualizzazione delle curve u-v sulle superfici

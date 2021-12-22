@@ -250,7 +250,7 @@ pub fn create_graph_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     let _requested_logical_rectangle = rust_gui.render(&ui, [logical_size.width, logical_size.height], state, &executor);
     // after calling the gui render function we know if we need to render the scene or not
 
-    platform.prepare_render(&ui, &window);
+    platform.prepare_render(&ui, window);
     renderer
         .render(ui.render(), &state.app.manager.queue, &state.app.manager.device, &mut rpass)
         .expect("Imgui rendering failed");

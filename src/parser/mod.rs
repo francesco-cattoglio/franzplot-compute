@@ -276,9 +276,9 @@ fn ast_node_from_pair(pair: pest::iterators::Pair<Rule>) -> Result<AstNode, AstE
         Rule::non_signed_number => {
             // we found a number, just parse it and store as a f32!
             let parsed_number = pair.as_str().parse::<f32>();
-            let number: f32 = parsed_number.or_else(|err| {
+            let number: f32 = parsed_number.map_err(|err| {
                 let err_str = format!("unable to parse string `{}` as a number", err);
-                Err(AstError::InternalError(err_str))
+                AstError::InternalError(err_str)
             })?;
             Ok(AstNode::Number(number))
         },

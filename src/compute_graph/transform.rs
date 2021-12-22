@@ -29,7 +29,7 @@ pub fn create(
     let data_id = matrix_id.ok_or_else(|| ProcessingError::InputMissing(" This Transform node \n is missing its Matrix input ".into()))?;
     let matrix_data = data_map
         .get(&data_id)
-        .ok_or_else(|| ProcessingError::NoInputData)?;
+        .ok_or(ProcessingError::NoInputData)?;
 
     match (&geometry_data, &matrix_data) {
         (Data::Geom0D{buffer: geom_buffer}, Data::Matrix0D{buffer: matrix_buffer})

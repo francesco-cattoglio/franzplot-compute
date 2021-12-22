@@ -365,7 +365,6 @@ impl Attribute {
                 ui.text("Kind:");
                 ui.same_line();
                 ui.set_next_item_width(widget_width);
-                let mut value_changed = false;
                 let list: Vec<&ImString> = availables.model_names.iter().collect();
                 let mut index = *selected;
                 let value_changed = ui.combo_simple_string("##primitive", &mut index, &list);
