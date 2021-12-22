@@ -27,8 +27,8 @@ pub type DataID = i32;
 pub type PrefabId = i32;
 #[derive(Clone, Debug)]
 pub struct UnrecoverableError {
-    node_id: NodeID,
-    error: &'static str,
+    pub node_id: NodeID,
+    pub error: &'static str, // TODO: rename this to "message"
 }
 #[derive(Clone, Debug)]
 pub struct RecoverableError {

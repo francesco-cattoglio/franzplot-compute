@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use crate::compute_graph::ProcessingError;
 use crate::compute_graph::RecoverableError;
+use crate::compute_graph::UnrecoverableError;
 use crate::cpp_gui::imnodes;
 use crate::cpp_gui::PinShape;
 use crate::rust_gui::Availables;
@@ -921,6 +922,17 @@ pub struct GraphError {
     pub message: String,
 }
 
+impl From<UnrecoverableError> for GraphError {
+    fn from(unrecoverable_error: UnrecoverableError) -> Self {
+        let id = unrecoverable_error.node_id;
+        let error = unrecoverable_error.error;
+        GraphError {
+            severity: Severity::Error,
+            node_id: id,
+            message: error.into(),
+        }
+    }
+}
 impl From<RecoverableError> for GraphError {
     fn from(recoverable_error: RecoverableError) -> Self {
         let id = recoverable_error.node_id;

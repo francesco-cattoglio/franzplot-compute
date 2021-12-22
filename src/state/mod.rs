@@ -256,14 +256,19 @@ impl State {
                         self.app.renderer.update_matcaps(&self.app.manager.device, &self.app.assets, compute_graph.matcaps());
                         compute_graph.run_compute(&self.app.manager.device, &self.app.manager.queue);
                         self.app.graph = Some(compute_graph);
-                        for error in recoverable_errors.into_iter() {
-                            self.user.graph.mark_error(error.into());
+                        if recoverable_errors.is_empty() {
+                            Ok(())
+                        } else {
+                            for error in recoverable_errors.into_iter() {
+                                self.user.graph.mark_error(error.into());
+                            }
+                            Err("Recoverable errors detected".into())
                         }
-                        Ok(())
                     },
                     Err(unrecoverable_error) => {
-                        dbg!(&unrecoverable_error); // TODO: better handling
-                        Ok(())
+                        let formatted_error = format!("Unrecoverable error: {:?}", &unrecoverable_error);
+                        self.user.graph.mark_error(unrecoverable_error.into());
+                        Err(formatted_error) // TODO: better handling
                     }
                 }
             }
