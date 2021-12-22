@@ -20,11 +20,16 @@ pub fn create(
     geometry_id: Option<DataID>,
     matrix_id: Option<DataID>,
 ) -> SingleDataResult {
-    let data_id = geometry_id.ok_or(ProcessingError::InputMissing(" This Transform node \n is missing its Geometry input "))?;
-    let geometry_data = data_map.get(&data_id).ok_or(ProcessingError::NoInputData)?;
+    let data_id = geometry_id
+        .ok_or_else(|| ProcessingError::InputMissing(" This Transform node \n is missing its Geometry input ".into()))?;
+    let geometry_data = data_map
+        .get(&data_id)
+        .ok_or(ProcessingError::NoInputData)?;
 
-    let data_id = matrix_id.ok_or(ProcessingError::InputMissing(" This Transform node \n is missing its Matrix input "))?;
-    let matrix_data = data_map.get(&data_id).ok_or(ProcessingError::NoInputData)?;
+    let data_id = matrix_id.ok_or_else(|| ProcessingError::InputMissing(" This Transform node \n is missing its Matrix input ".into()))?;
+    let matrix_data = data_map
+        .get(&data_id)
+        .ok_or_else(|| ProcessingError::NoInputData)?;
 
     match (&geometry_data, &matrix_data) {
         (Data::Geom0D{buffer: geom_buffer}, Data::Matrix0D{buffer: matrix_buffer})
@@ -52,13 +57,13 @@ pub fn create(
                 => t_2d_same_param(device, buffer, param1, param2, matrix_buffer, matrix_param),
 
         (Data::Geom2D{..}, Data::Matrix1D{..})
-            => Err(ProcessingError::IncorrectInput(" this operation would create \n an object with three parameters, \n which is not supported ")),
+            => Err(ProcessingError::IncorrectInput(" this operation would create \n an object with three parameters, \n which is not supported ".into())),
 
         (Data::Prefab { vertex_buffer, chunks_count, index_buffer, index_count }, Data::Matrix0D { buffer: matrix_buffer })
             => t_prefab(device, vertex_buffer, *chunks_count, index_buffer, *index_count, matrix_buffer),
 
         (Data::Prefab { .. }, Data::Matrix1D { .. })
-            => Err(ProcessingError::IncorrectInput(" parametric transforms on primitives \n are not allowed ")),
+            => Err(ProcessingError::IncorrectInput(" parametric transforms on primitives \n are not allowed ".into())),
 
         _ => Err(ProcessingError::InternalError("unhandled transform case".into()))
     }

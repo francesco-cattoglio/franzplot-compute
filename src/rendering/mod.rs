@@ -30,15 +30,6 @@ impl StandardVertexData {
     }
 }
 
-pub const GLSL_STANDARD_VERTEX_STRUCT: & str = r##"
-struct Vertex {
-    vec4 position;
-    vec4 normal;
-    vec2 uv_coords;
-    vec2 _padding;
-};
-"##;
-
 unsafe impl bytemuck::Pod for StandardVertexData {}
 unsafe impl bytemuck::Zeroable for StandardVertexData {}
 

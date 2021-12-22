@@ -40,7 +40,6 @@ pub fn create_storage_buffer(device: &wgpu::Device, buffer_size: usize) -> wgpu:
 
 
 pub fn load_imgui_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, renderer: &mut imgui_wgpu::Renderer, files: &[P]) -> rust_gui::MaskIds {
-    use std::convert::TryInto;
     files.iter()
         .map(|path| {
             let texture = texture::Texture::thumbnail(&manager.device, &manager.queue, path, None).unwrap();
@@ -70,7 +69,6 @@ pub fn imgui_model_names<P: AsRef<std::path::Path>>(files: &[P]) -> Vec<imgui::I
 }
 
 pub fn load_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, files: &[P]) -> texture::Masks {
-    use std::convert::TryInto;
     files.iter()
         .map(|path| {
             texture::Texture::load(&manager.device, &manager.queue, path, None).unwrap()

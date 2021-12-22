@@ -1,18 +1,6 @@
-pub struct CustomBindDescriptor<'a> {
-    pub position: u32,
-    pub buffer: &'a wgpu::Buffer,
-}
-
 pub struct BindInfo<'a> {
     pub ty: wgpu::BufferBindingType,
     pub buffer: &'a wgpu::Buffer,
-}
-
-pub fn compile_graphics_shader(
-    _device: &wgpu::Device,
-    _shader_src: &str,
-    ) -> wgpu::ShaderModule {
-    todo!()
 }
 
 pub fn naga_compute_pipeline(device: &wgpu::Device, wgsl_source: &str, bindings: &[BindInfo]) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
@@ -69,34 +57,5 @@ pub fn naga_compute_pipeline(device: &wgpu::Device, wgsl_source: &str, bindings:
         entry_point: "main",
     });
     (compute_pipeline, compute_bind_group)
-}
-
-pub fn create_bind_groups(
-    device: &wgpu::Device,
-    pipeline: &wgpu::ComputePipeline,
-    groups: &[Vec<&wgpu::Buffer>],
-    ) -> Vec<wgpu::BindGroup> {
-        let mut bind_groups = Vec::<wgpu::BindGroup>::new();
-        for (group_id, group) in groups.iter().enumerate() {
-            // for each group, we go through all the buffers that belong to that group and create
-            // a BindGroupEntry for it.
-            let mut descriptor_entries = Vec::<wgpu::BindGroupEntry>::new();
-            for (location, buffer) in group.iter().enumerate() {
-                descriptor_entries.push(
-                    wgpu::BindGroupEntry {
-                        binding: location as u32,
-                        resource: buffer.as_entire_binding(),
-                });
-            }
-            // then we recover the layout that naga deduced from the wgsl shader
-            // and let the device create a bind group combining the two things.
-            dbg!(pipeline.get_bind_group_layout(group_id as u32));
-            bind_groups.push(device.create_bind_group(&wgpu::BindGroupDescriptor {
-                layout: &pipeline.get_bind_group_layout(group_id as u32),
-                entries: &descriptor_entries,
-                label: None,
-            }));
-        }
-        bind_groups
 }
 

@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::rendering::model::{Model, MODEL_CHUNK_VERTICES};
+use crate::rendering::model::MODEL_CHUNK_VERTICES;
 use super::Operation;
-use crate::rendering::{StandardVertexData};
+use crate::rendering::StandardVertexData;
 use super::{MatcapData, ProcessingError};
 use super::Parameter;
-use super::{DataID, Data, NodeID};
+use super::{DataID, Data};
 use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
 use crate::node_graph::AVAILABLE_SIZES;
@@ -21,8 +21,11 @@ pub fn create(
     mask: usize,
     material: usize,
 ) -> MatcapResult {
-    let data_id = geometry_id.ok_or(ProcessingError::InputMissing(" This Curve node \n is missing its input "))?;
-    let found_data = data_map.get(&data_id).ok_or(ProcessingError::InternalError("Geometry used as input does not exist in the block map".into()))?;
+    let data_id = geometry_id
+        .ok_or_else(|| ProcessingError::InputMissing(" This Curve node \n is missing its input ".into()))?;
+    let found_data = data_map
+        .get(&data_id)
+        .ok_or_else(|| ProcessingError::InternalError("Geometry used as input does not exist in the block map".into()))?;
 
     match found_data {
         Data::Geom0D { buffer,
@@ -54,7 +57,7 @@ fn handle_0d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, thickness: usiz
     let raw_points = sphere.raw_points();
     let vertex_count = raw_points.len();
     let reference_vertices: Vec<glam::Vec4> = raw_points
-        .into_iter()
+        .iter()
         .map(|v| {glam::Vec4::new(v.x, v.y, v.z, 0.0)})
         .collect();
 
@@ -122,7 +125,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 
     let bind_info = vec![
         BindInfo {
-            buffer: &input_buffer,
+            buffer: input_buffer,
             ty: wgpu::BufferBindingType::Storage { read_only: true },
         },
         BindInfo {
@@ -271,7 +274,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 
     let bind_info = vec![
         BindInfo {
-            buffer: &input_buffer,
+            buffer: input_buffer,
             ty: wgpu::BufferBindingType::Storage { read_only: true },
         },
         BindInfo {
@@ -397,7 +400,7 @@ size_x=param1.n_points(), size_y=param2.n_points());
 
     let bind_info = vec![
         BindInfo {
-            buffer: &input_buffer,
+            buffer: input_buffer,
             ty: wgpu::BufferBindingType::Storage { read_only: true },
         },
         BindInfo {
@@ -553,6 +556,8 @@ fn create_grid_index_buffer(device: &wgpu::Device, x_size: usize, y_size: usize,
             let top_left_idx =  ( i  + (j+1) * x_size) as u32;
             let top_right_idx = (i+1 + (j+1) * x_size) as u32;
 
+            // some code is shared between branches, but this makes it easier to read the code IMO
+            #[allow(clippy::branches_sharing_code)]
             if (i+j)%2==1 && flag_pattern {
                 // triangulate the quad using the "flag" pattern
                 index_vector.push(bot_left_idx);

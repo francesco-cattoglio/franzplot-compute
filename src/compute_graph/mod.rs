@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 use std::collections::btree_map::Iter;
 use std::rc::Rc;
 use indexmap::IndexMap;
-use crate::rendering::model::Model;
 pub use crate::node_graph::{NodeGraph, NodeID, NodeContents};
 use crate::compute_graph::globals::{Globals, NameValuePair};
 use crate::state::UserState;
@@ -56,12 +55,12 @@ impl Operation {
 
 #[derive(Debug, Clone)]
 pub enum ProcessingError {
-    InputMissing(&'static str),
+    InputMissing(String),
     NoInputData,
     InternalError(String),
-    IncorrectAttributes(&'static str),
+    IncorrectAttributes(String),
     IncorrectExpression(String),
-    IncorrectInput(&'static str),
+    IncorrectInput(String),
 }
 pub type SingleDataResult = Result<(Data, Operation), ProcessingError>;
 pub type MatcapIter<'a> = Iter<'a, NodeID, MatcapData>;
@@ -92,11 +91,11 @@ impl Parameter {
                 if self_name == other_name {
                     // having the same name but a different quality, begin or end attribute is an error.
                     if self.segments != other.segments {
-                        Err(ProcessingError::IncorrectAttributes("The input intervals \n have the same name \n but different 'quality' "))
+                        Err(ProcessingError::IncorrectAttributes("The input intervals \n have the same name \n but different 'quality' ".into()))
                     } else if self.begin != other.begin {
-                        Err(ProcessingError::IncorrectAttributes("The input intervals \n have the same name \n but different 'begin' "))
+                        Err(ProcessingError::IncorrectAttributes("The input intervals \n have the same name \n but different 'begin' ".into()))
                     } else if self.end != other.end {
-                        Err(ProcessingError::IncorrectAttributes(" The input intervals \n have the same name \n but different 'end' "))
+                        Err(ProcessingError::IncorrectAttributes(" The input intervals \n have the same name \n but different 'end' ".into()))
                     } else {
                         Ok(true)
                     }

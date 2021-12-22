@@ -1,5 +1,6 @@
+use std::path::Path;
+
 use crate::compute_graph::ComputeGraph;
-use crate::compute_graph::globals::Globals;
 use crate::device_manager::Manager;
 use crate::rendering::camera;
 use crate::rendering::SceneRenderer;
@@ -255,7 +256,7 @@ impl State {
         }
     }
 
-    pub fn write_to_frzp(&mut self, path: &std::path::PathBuf) {
+    pub fn write_to_frzp(&mut self, path: &Path) {
         let mut file = std::fs::File::create(path).unwrap();
         let ser_config = ron::ser::PrettyConfig::new()
             .with_depth_limit(5)
@@ -279,7 +280,7 @@ impl State {
         file.write_all(contents.as_bytes()).unwrap();
     }
 
-    pub fn read_from_frzp(&mut self, path: &std::path::PathBuf) -> Result<(), &'static str> {
+    pub fn read_from_frzp(&mut self, path: &Path) -> Result<(), &'static str> {
         let mut file = std::fs::File::open(path).unwrap();
         let mut contents = String::new();
         use std::io::Read;
@@ -308,19 +309,5 @@ impl State {
         self.user = UserState::default();
         self.time_stamps = TSs::new_now();
         //self.process_user_state();
-    }
-
-    // TODO: rename when switching to wgsl for compute is done
-    // process the user graph, and return true if no errors were detected
-    pub fn process_user_state_2(&mut self) -> bool {
-        panic!();
-        println!("is this ever used?");
-        return false;
-        //let globals = Globals::new(&self.app.manager.device, self.user.globals_names.clone(), self.user.globals_init_values.clone());
-        //let no_errors_detected = graph_errors.is_empty();
-        //for error in graph_errors.into_iter() {
-            //self.user.graph.mark_error(error);
-        //}
-        //return no_errors_detected;
     }
 }

@@ -15,6 +15,10 @@ pub fn create(
     control_points_ids: Vec<DataID>,
     quality: usize,
 ) -> SingleDataResult {
+    if !(1..=16).contains(&quality) {
+        return Err(ProcessingError::IncorrectAttributes("Interval quality attribute must be an integer in the [1, 16] range".into()))
+    }
+
     let param = super::Parameter {
         name: None,
         begin: "0.0".into(),
@@ -23,7 +27,7 @@ pub fn create(
         use_interval_as_uv: false,
     };
     match control_points_ids.len() {
-        0..=1 => Err(ProcessingError::InputMissing(" A Bezier curve requires \n at least 2 points ")),
+        0..=1 => Err(ProcessingError::InputMissing(" A Bezier curve requires \n at least 2 points ".into())),
         2 => new_bezier_1st_degree(device, data_map, control_points_ids, param),
         3 => new_bezier_2nd_degree(device, data_map, control_points_ids, param),
         4 => new_bezier_3rd_degree(device, data_map, control_points_ids, param),
@@ -250,10 +254,12 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 }
 
 fn get_point_buffer(data_map: &BTreeMap<DataID, Data>, id: DataID) -> Result<&wgpu::Buffer, ProcessingError> {
-    let found_element = data_map.get(&id).ok_or(ProcessingError::InternalError("Point input does not exist in the block map".into()))?;
+    let found_element = data_map
+        .get(&id)
+        .ok_or_else(|| ProcessingError::InternalError("Point input does not exist in the block map".into()))?;
     match found_element {
-        Data::Geom0D{ buffer } => Ok(&buffer),
-        _ => Err(ProcessingError::IncorrectInput(" the input provided to Bezier \n is not a Point "))
+        Data::Geom0D{ buffer } => Ok(buffer),
+        _ => Err(ProcessingError::IncorrectInput(" the input provided to Bezier \n is not a Point ".into()))
     }
 }
 

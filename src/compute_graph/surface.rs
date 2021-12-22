@@ -20,8 +20,10 @@ pub fn create(
     fz: String,
 ) -> SingleDataResult {
     //println!("new curve processing");
-    let interval_1_id = interval_1.ok_or(ProcessingError::InputMissing(" This Surface node \n is missing its first input "))?;
-    let interval_2_id = interval_2.ok_or(ProcessingError::InputMissing(" This Surface node \n is missing its second input "))?;
+    let interval_1_id = interval_1
+        .ok_or_else(|| ProcessingError::InputMissing(" This Surface node \n is missing its first input ".into()))?;
+    let interval_2_id = interval_2
+        .ok_or_else(|| ProcessingError::InputMissing(" This Surface node \n is missing its second input ".into()))?;
     let interval_1_data = data_map.get(&interval_1_id).ok_or(ProcessingError::NoInputData)?;
     let interval_2_data = data_map.get(&interval_2_id).ok_or(ProcessingError::NoInputData)?;
 

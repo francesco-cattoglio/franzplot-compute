@@ -17,8 +17,11 @@ pub fn create(
     fz: String,
 ) -> SingleDataResult {
     //println!("new curve processing");
-    let data_id = interval_id.ok_or(ProcessingError::InputMissing(" This Curve node \n is missing its input "))?;
-    let found_data = data_map.get(&data_id).ok_or(ProcessingError::NoInputData)?;
+    let data_id = interval_id
+        .ok_or_else(|| ProcessingError::InputMissing(" This Curve node \n is missing its input ".into()))?;
+    let found_data = data_map
+        .get(&data_id)
+        .ok_or(ProcessingError::NoInputData)?;
 
     let (input_buffer, param) = match found_data {
         Data::Interval {

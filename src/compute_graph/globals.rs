@@ -238,6 +238,9 @@ impl Globals {
         for (name, old_value) in zipped {
             // search for the pair that has the same name of the value that we want to update
             if let Some(pair) = pairs.iter().find(|e| &e.name == name) {
+                // direct comparison of floats is ok in this case: those are not results of
+                // random computations, those are values taken from imgui interface.
+                #[allow(clippy::float_cmp)]
                 if *old_value != pair.value {
                     *old_value = pair.value;
                     values_changed = true;

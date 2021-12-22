@@ -1,9 +1,9 @@
 use crate::node_graph::NodeID;
 use crate::state::Assets;
-use crate::rendering::texture::{Texture};
+use crate::rendering::texture::Texture;
 use crate::rendering::*;
 use crate::device_manager;
-use crate::compute_graph::{ComputeGraph, MatcapData, MatcapIter};
+use crate::compute_graph::{MatcapData, MatcapIter};
 use wgpu::util::DeviceExt;
 use glam::Mat4;
 
@@ -89,8 +89,8 @@ impl SceneRenderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let depth_texture = Texture::create_depth_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
-        let output_texture = Texture::create_output_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
+        let depth_texture = Texture::create_depth_texture(device, wgpu::Extent3d::default(), SAMPLE_COUNT);
+        let output_texture = Texture::create_output_texture(device, wgpu::Extent3d::default(), SAMPLE_COUNT);
 
         Self {
             picking_buffer_length,
@@ -572,9 +572,9 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         }),
         layout: None,
         label: None,
-        primitive: primitive_triangles.clone(),
+        primitive: primitive_triangles,
         depth_stencil: depth_stencil_state.clone(),
-        multisample: multisample_state.clone(),
+        multisample: multisample_state,
     });
 
     let wireframe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -586,13 +586,13 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         fragment: Some(wgpu::FragmentState {
             module: &wgsl_module,
             entry_point: "color_fs_main",
-            targets: &[color_target_state.clone()],
+            targets: &[color_target_state],
         }),
         layout: None,
         label: None,
-        primitive: primitive_lines.clone(),
-        depth_stencil: depth_stencil_state.clone(),
-        multisample: multisample_state.clone(),
+        primitive: primitive_lines,
+        depth_stencil: depth_stencil_state,
+        multisample: multisample_state,
     });
     Pipelines {
         matcap,

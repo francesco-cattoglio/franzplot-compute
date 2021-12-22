@@ -1,13 +1,12 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use crate::rendering::model::{Model, MODEL_CHUNK_VERTICES};
+use crate::rendering::model::MODEL_CHUNK_VERTICES;
 use super::Operation;
-use crate::rendering::{StandardVertexData};
+use crate::rendering::StandardVertexData;
 use crate::node_graph::AVAILABLE_SIZES;
 use super::{MatcapData, ProcessingError};
-use super::Parameter;
-use super::{DataID, Data, NodeID};
+use super::{DataID, Data};
 use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
 
@@ -22,20 +21,26 @@ pub fn create(
     thickness: usize,
     material_id: usize,
 ) -> MatcapResult {
-    let data_id = application_point_id.ok_or(ProcessingError::InputMissing(" This Vector Rendering node \n is missing its first input "))?;
-    let found_appl_point = data_map.get(&data_id).ok_or(ProcessingError::InternalError("Application Point used as input does not exist in the block map".into()))?;
+    let data_id = application_point_id
+        .ok_or_else(|| ProcessingError::InputMissing(" This Vector Rendering node \n is missing its first input ".into()))?;
+    let found_appl_point = data_map
+        .get(&data_id)
+        .ok_or_else(|| ProcessingError::InternalError("Application Point used as input does not exist in the block map".into()))?;
     let appl_point_buffer = if let Data::Geom0D{ buffer } = found_appl_point {
         buffer
     } else {
-        return Err(ProcessingError::IncorrectInput(" the first input provided \n is not a point "));
+        return Err(ProcessingError::IncorrectInput(" the first input provided \n is not a point ".into()));
     };
 
-    let data_id = vector_id.ok_or(ProcessingError::InputMissing(" This Vector Rendering node \n is missing its second input "))?;
-    let found_vector = data_map.get(&data_id).ok_or(ProcessingError::InternalError("Vector used as input does not exist in the block map".into()))?;
+    let data_id = vector_id
+        .ok_or_else(|| ProcessingError::InputMissing(" This Vector Rendering node \n is missing its second input ".into()))?;
+    let found_vector = data_map
+        .get(&data_id)
+        .ok_or_else(|| ProcessingError::InternalError("Vector used as input does not exist in the block map".into()))?;
     let vector_buffer = if let Data::Vector{ buffer } = found_vector {
         buffer
     } else {
-        return Err(ProcessingError::IncorrectInput(" the second input provided \n is not a vector "));
+        return Err(ProcessingError::IncorrectInput(" the second input provided \n is not a vector ".into()));
     };
 
         // then we create the basic shape of the arrow. It points upwards and has length 1.0
@@ -125,11 +130,11 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 
     let bind_info = vec![
         BindInfo {
-            buffer: &appl_point_buffer,
+            buffer: appl_point_buffer,
             ty: wgpu::BufferBindingType::Storage { read_only: true },
         },
         BindInfo {
-            buffer: &vector_buffer,
+            buffer: vector_buffer,
             ty: wgpu::BufferBindingType::Storage { read_only: true },
         },
         BindInfo {

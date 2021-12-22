@@ -1,15 +1,12 @@
-use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use super::Operation;
 use super::globals::Globals;
 use crate::rendering::model::{Model, MODEL_CHUNK_VERTICES};
-use crate::rendering::{StandardVertexData};
-use super::Parameter;
-use super::{DataID, Data, NodeID};
+use crate::rendering::StandardVertexData;
+use super::Data;
 use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
-use crate::node_graph::AVAILABLE_SIZES;
 use super::{SingleDataResult, ProcessingError};
 
 
@@ -21,7 +18,7 @@ pub fn create(
     size: String,
 ) -> SingleDataResult {
     if size.is_empty() {
-        return Err(ProcessingError::IncorrectAttributes(" please provide a value \n for the primitive size "));
+        return Err(ProcessingError::IncorrectAttributes(" please provide a value \n for the primitive size ".into()));
     }
 
     // Sanitize all input expressions

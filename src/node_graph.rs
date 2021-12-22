@@ -170,7 +170,6 @@ impl Attribute {
                     Axis::Y => 1,
                     Axis::Z => 2,
                 };
-                let value_changed = false;
                 let value_changed = ui.combo_simple_string("##axis", &mut selected, &choices);
                 *axis = match selected {
                     0 => Axis::X,
@@ -190,7 +189,7 @@ impl Attribute {
                 ui.text(&label);
                 ui.same_line();
                 ui.set_next_item_width(widget_width);
-                let mut value_changed = match mode {
+                let value_changed = match mode {
                     SliderMode::IntRange(min, max) => {
                         Slider::new("", *min, *max)
                             .flags(SliderFlags::NO_INPUT)
@@ -199,7 +198,7 @@ impl Attribute {
                     SliderMode::SizeLabels => {
                         let max_id = AVAILABLE_SIZES.len() - 1;
                         let string_id = max_id.min(*value as usize);
-                        let display_string: String = format!("{}", AVAILABLE_SIZES[string_id]).into();
+                        let display_string: String = format!("{}", AVAILABLE_SIZES[string_id]);
                         Slider::new("", 0, max_id as i32)
                             .display_format(&display_string)
                             .flags(SliderFlags::NO_INPUT)
@@ -1447,11 +1446,9 @@ impl NodeGraph {
             .iter()
             .enumerate()
             .filter_map(|pair| {
-                if let Some(node) = pair.1.as_ref() {
-                    Some((pair.0 as NodeID, node))
-                } else {
-                    None
-                }
+                pair.1
+                    .as_ref()
+                    .map(|node| {(pair.0 as NodeID, node)})
             })
     }
 
@@ -1491,10 +1488,8 @@ impl NodeGraph {
     }
 
     pub fn clear_all_errors(&mut self) {
-        for slot in self.nodes.iter_mut() {
-            if let Some(node) = slot {
-                node.error = None;
-            }
+        for node in self.nodes.iter_mut().flatten() {
+            node.error = None;
         }
     }
 

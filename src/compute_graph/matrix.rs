@@ -59,11 +59,14 @@ pub fn create_from_translation(
     data_map: &BTreeMap<DataID, Data>,
     vector_id: Option<DataID>,
 ) -> SingleDataResult {
-    let data_id = vector_id.ok_or(ProcessingError::InputMissing(" This Translation Matrix node \n is missing its input "))?;
-    let found_data = data_map.get(&data_id).ok_or(ProcessingError::InternalError("Vector used as input does not exist in the block map".into()))?;
+    let data_id = vector_id
+        .ok_or_else(|| ProcessingError::InputMissing(" This Translation Matrix node \n is missing its input ".into()))?;
+    let found_data = data_map
+        .get(&data_id)
+        .ok_or_else(|| ProcessingError::InternalError("Vector used as input does not exist in the block map".into()))?;
     let vector_buffer = match found_data {
         Data::Vector { buffer } => buffer,
-        _ => return Err(ProcessingError::IncorrectInput(" Translation Matrix first input \n is not a point "))
+        _ => return Err(ProcessingError::IncorrectInput(" Translation Matrix first input \n is not a point ".into()))
     };
 
     let wgsl_source = format!(r##"

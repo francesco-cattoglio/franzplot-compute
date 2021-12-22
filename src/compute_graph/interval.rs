@@ -1,10 +1,9 @@
-use std::collections::BTreeMap;
 use std::rc::Rc;
 use super::Operation;
 use super::globals::Globals;
 use super::{SingleDataResult, ProcessingError};
 use super::Parameter;
-use super::{DataID, Data};
+use super::Data;
 use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
 
@@ -16,17 +15,17 @@ pub fn create(
     end: String,
     quality: usize,
 ) -> SingleDataResult {
-    if quality < 1 || quality > 16 {
-        return Err(ProcessingError::IncorrectAttributes("Interval quality attribute must be an integer in the [1, 16] range"))
+    if !(1..=16).contains(&quality) {
+        return Err(ProcessingError::IncorrectAttributes("Interval quality attribute must be an integer in the [1, 16] range".into()))
     }
     if name.is_empty() {
-        return Err(ProcessingError::IncorrectAttributes(" please provide a name \n for the interval's variable "));
+        return Err(ProcessingError::IncorrectAttributes(" please provide a name \n for the interval's variable ".into()));
     }
     if begin.is_empty() {
-        return Err(ProcessingError::IncorrectAttributes(" please provide an expression \n for the interval's begin "));
+        return Err(ProcessingError::IncorrectAttributes(" please provide an expression \n for the interval's begin ".into()));
     }
     if end.is_empty() {
-        return Err(ProcessingError::IncorrectAttributes(" please provide an expression \n for the interval's end "));
+        return Err(ProcessingError::IncorrectAttributes(" please provide an expression \n for the interval's end ".into()));
     }
 
     // Make sure that the name does not contain any internal whitespace

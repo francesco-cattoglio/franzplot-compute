@@ -4,8 +4,6 @@ use std::rc::Rc;
 use super::Operation;
 use super::Parameter;
 use super::globals::Globals;
-use crate::rendering::StandardVertexData;
-use crate::rendering::model::MODEL_CHUNK_VERTICES;
 use super::{SingleDataResult, ProcessingError};
 use super::{DataID, Data};
 use crate::util;
@@ -23,12 +21,15 @@ pub fn create(
     parameter_name: String,
     sample_value: String,
 ) -> SingleDataResult {
-    let data_id = geometry_id.ok_or(ProcessingError::InputMissing(" This Sample node \n is missing its Geometry input "))?;
-    let geometry_data = data_map.get(&data_id).ok_or(ProcessingError::NoInputData)?;
+    let data_id = geometry_id
+        .ok_or_else(|| ProcessingError::InputMissing(" This Sample node \n is missing its Geometry input ".into()))?;
+    let geometry_data = data_map
+        .get(&data_id)
+        .ok_or(ProcessingError::NoInputData)?;
 
     match &geometry_data {
         Data::Geom0D{..}
-            => Err(ProcessingError::IncorrectInput(" cannot sample from \n a point (0d geometry) ")),
+            => Err(ProcessingError::IncorrectInput(" cannot sample from \n a point (0d geometry) ".into())),
 
         Data::Geom1D{buffer, param}
             => sample_1d_0d(device, globals, buffer, param, &parameter_name, &sample_value),
@@ -37,9 +38,9 @@ pub fn create(
             => sample_2d_1d(device, globals, buffer, param1, param2, &parameter_name, &sample_value),
 
         Data::Prefab { .. }
-            => Err(ProcessingError::IncorrectInput(" cannot sample from \n a primitive ")),
+            => Err(ProcessingError::IncorrectInput(" cannot sample from \n a primitive ".into())),
 
-        _ => Err(ProcessingError::InternalError("unhandled sample case".into()))
+        _ => Err(ProcessingError::InternalError(" input provided to sample \n is not a geometry ".into()))
     }
 
 }
@@ -62,12 +63,12 @@ fn sample_1d_0d(
     if let Some(name) = maybe_curve_param_name {
         // if the name does not match the one from the parameter, error out
         if name != &sanitized_name {
-            return Err(ProcessingError::IncorrectAttributes(" the parameter used \n is not known "));
+            return Err(ProcessingError::IncorrectAttributes(" the parameter used \n is not known ".into()));
         }
     } else {
         // if the geometry parameter does not exist, error our as well.
         // TODO: we might want to change this, so that one can sample a Bezier curve
-        return Err(ProcessingError::IncorrectAttributes(" the parameter used \n is not known "));
+        return Err(ProcessingError::IncorrectAttributes(" the parameter used \n is not known ".into()));
     }
 
     let wgsl_source = format!(r##"
@@ -156,7 +157,7 @@ fn sample_2d_1d(
             => { (1, name) },
         (_, Some(name)) if name == &sanitized_name
             => { (2, name) },
-        _ => return Err(ProcessingError::IncorrectAttributes(" the parameter used \n is not known ")),
+        _ => return Err(ProcessingError::IncorrectAttributes(" the parameter used \n is not known ".into())),
     };
 
     // the shader will be slightly different depending on which param is the one being sampled

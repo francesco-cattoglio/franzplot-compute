@@ -1,17 +1,13 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use super::{MatcapData, Operation};
-use super::globals::Globals;
-use crate::rendering::model::{Model, MODEL_CHUNK_VERTICES};
-use crate::rendering::{StandardVertexData};
-use super::Parameter;
-use super::{DataID, Data, NodeID};
+use super::Operation;
+use crate::rendering::model::MODEL_CHUNK_VERTICES;
+use crate::rendering::StandardVertexData;
+use super::{DataID, Data};
 use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
-use crate::node_graph::AVAILABLE_SIZES;
 use super::{SingleDataResult, ProcessingError};
-
 
 pub fn create(
     device: &wgpu::Device,
@@ -21,18 +17,24 @@ pub fn create(
     side_length: usize,
 ) -> SingleDataResult {
 
-    let data_id = center.ok_or(ProcessingError::InputMissing(" This Plane node \n is missing its point input "))?;
-    let found_center = data_map.get(&data_id).ok_or(ProcessingError::InternalError("Geometry used as input does not exist in the block map".into()))?;
+    let data_id = center
+        .ok_or_else(|| ProcessingError::InputMissing(" This Plane node \n is missing its point input ".into()))?;
+    let found_center = data_map
+        .get(&data_id)
+        .ok_or_else(|| ProcessingError::InternalError("Geometry used as input does not exist in the block map".into()))?;
     let center_buffer = match found_center {
         Data::Geom0D { buffer } => buffer,
-        _ => return Err(ProcessingError::IncorrectInput(" Plane first input \n is not a point "))
+        _ => return Err(ProcessingError::IncorrectInput(" Plane first input \n is not a point ".into()))
     };
 
-    let data_id = normal.ok_or(ProcessingError::InputMissing(" This Plane node \n is missing its normal input "))?;
-    let found_normal = data_map.get(&data_id).ok_or(ProcessingError::InternalError("Vector used as input does not exist in the block map".into()))?;
+    let data_id = normal
+        .ok_or_else(|| ProcessingError::InputMissing(" This Plane node \n is missing its normal input ".into()))?;
+    let found_normal = data_map
+        .get(&data_id)
+        .ok_or_else(|| ProcessingError::InternalError("Vector used as input does not exist in the block map".into()))?;
     let normal_buffer = match found_normal {
         Data::Vector { buffer } => buffer,
-        _ => return Err(ProcessingError::IncorrectInput(" Plane second input \n is not a vector "))
+        _ => return Err(ProcessingError::IncorrectInput(" Plane second input \n is not a vector ".into()))
     };
 
 
