@@ -25,7 +25,7 @@ pub fn create(
         .ok_or_else(|| ProcessingError::InputMissing(" This Vector Rendering node \n is missing its first input ".into()))?;
     let found_appl_point = data_map
         .get(&data_id)
-        .ok_or_else(|| ProcessingError::InternalError("Application Point used as input does not exist in the block map".into()))?;
+        .ok_or(ProcessingError::NoInputData)?;
     let appl_point_buffer = if let Data::Geom0D{ buffer } = found_appl_point {
         buffer
     } else {
@@ -36,7 +36,7 @@ pub fn create(
         .ok_or_else(|| ProcessingError::InputMissing(" This Vector Rendering node \n is missing its second input ".into()))?;
     let found_vector = data_map
         .get(&data_id)
-        .ok_or_else(|| ProcessingError::InternalError("Vector used as input does not exist in the block map".into()))?;
+        .ok_or(ProcessingError::NoInputData)?;
     let vector_buffer = if let Data::Vector{ buffer } = found_vector {
         buffer
     } else {

@@ -25,7 +25,7 @@ pub fn create(
         .ok_or_else(|| ProcessingError::InputMissing(" This Curve node \n is missing its input ".into()))?;
     let found_data = data_map
         .get(&data_id)
-        .ok_or_else(|| ProcessingError::InternalError("Geometry used as input does not exist in the block map".into()))?;
+        .ok_or(ProcessingError::NoInputData)?;
 
     match found_data {
         Data::Geom0D { buffer,

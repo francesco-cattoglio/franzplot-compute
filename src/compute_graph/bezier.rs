@@ -256,7 +256,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 fn get_point_buffer(data_map: &BTreeMap<DataID, Data>, id: DataID) -> Result<&wgpu::Buffer, ProcessingError> {
     let found_element = data_map
         .get(&id)
-        .ok_or_else(|| ProcessingError::InternalError("Point input does not exist in the block map".into()))?;
+        .ok_or(ProcessingError::NoInputData)?;
     match found_element {
         Data::Geom0D{ buffer } => Ok(buffer),
         _ => Err(ProcessingError::IncorrectInput(" the input provided to Bezier \n is not a Point ".into()))

@@ -21,7 +21,7 @@ pub fn create(
         .ok_or_else(|| ProcessingError::InputMissing(" This Plane node \n is missing its point input ".into()))?;
     let found_center = data_map
         .get(&data_id)
-        .ok_or_else(|| ProcessingError::InternalError("Geometry used as input does not exist in the block map".into()))?;
+        .ok_or(ProcessingError::NoInputData)?;
     let center_buffer = match found_center {
         Data::Geom0D { buffer } => buffer,
         _ => return Err(ProcessingError::IncorrectInput(" Plane first input \n is not a point ".into()))
@@ -31,7 +31,7 @@ pub fn create(
         .ok_or_else(|| ProcessingError::InputMissing(" This Plane node \n is missing its normal input ".into()))?;
     let found_normal = data_map
         .get(&data_id)
-        .ok_or_else(|| ProcessingError::InternalError("Vector used as input does not exist in the block map".into()))?;
+        .ok_or(ProcessingError::NoInputData)?;
     let normal_buffer = match found_normal {
         Data::Vector { buffer } => buffer,
         _ => return Err(ProcessingError::IncorrectInput(" Plane second input \n is not a vector ".into()))

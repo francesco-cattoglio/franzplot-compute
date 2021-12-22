@@ -63,7 +63,7 @@ pub fn create_from_translation(
         .ok_or_else(|| ProcessingError::InputMissing(" This Translation Matrix node \n is missing its input ".into()))?;
     let found_data = data_map
         .get(&data_id)
-        .ok_or_else(|| ProcessingError::InternalError("Vector used as input does not exist in the block map".into()))?;
+        .ok_or(ProcessingError::NoInputData)?;
     let vector_buffer = match found_data {
         Data::Vector { buffer } => buffer,
         _ => return Err(ProcessingError::IncorrectInput(" Translation Matrix first input \n is not a point ".into()))
