@@ -55,8 +55,8 @@ fn sample_1d_0d(
     ) -> SingleDataResult {
 
     // Sanitize all input expressions
-    let sanitized_name = Globals::sanitize_variable_name_2(parameter_name)?;
-    let sanitized_value = globals.sanitize_expression_2(&[], sample_value)?;
+    let sanitized_name = Globals::sanitize_variable_name(parameter_name)?;
+    let sanitized_value = globals.sanitize_expression(&[], sample_value)?;
 
     // first, we need to check if the parameter name corresponds with the interval one.
     let maybe_curve_param_name = geom_param.name.as_ref();
@@ -147,8 +147,8 @@ fn sample_2d_1d(
     ) -> SingleDataResult {
 
     // Sanitize all input expressions
-    let sanitized_name = Globals::sanitize_variable_name_2(parameter_name)?;
-    let sanitized_value = globals.sanitize_expression_2(&[], sample_value)?;
+    let sanitized_name = Globals::sanitize_variable_name(parameter_name)?;
+    let sanitized_value = globals.sanitize_expression(&[], sample_value)?;
 
     let maybe_curve_param1_name = geom_param1.name.as_ref();
     let maybe_curve_param2_name = geom_param2.name.as_ref();

@@ -22,7 +22,7 @@ pub use action::Action;
 
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct UserState {
-    pub graph: node_graph::NodeGraph,
+    pub node_graph: node_graph::NodeGraph,
     pub globals_names: Vec<String>,
     pub globals_init_values: Vec<f32>,
 }
@@ -226,7 +226,7 @@ impl State {
                 // - try to create a new compute graph
                 // - if successful, update the scene rendering and report recoverable errors
                 // - if unsuccessful, report the unrecoverable error to the user
-                self.user.graph.clear_all_errors();
+                self.user.node_graph.clear_all_errors();
                 let process_result = crate::compute_graph::create_compute_graph(&self.app.manager.device, &self.app.assets, &self.user);
                 match process_result {
                     Ok((compute_graph, recoverable_errors)) => {
@@ -237,14 +237,14 @@ impl State {
                             Ok(())
                         } else {
                             for error in recoverable_errors.into_iter() {
-                                self.user.graph.mark_error(error.into());
+                                self.user.node_graph.mark_error(error.into());
                             }
                             Err("Recoverable errors detected".into())
                         }
                     },
                     Err(unrecoverable_error) => {
                         let formatted_error = format!("Unrecoverable error: {:?}", &unrecoverable_error);
-                        self.user.graph.mark_error(unrecoverable_error.into());
+                        self.user.node_graph.mark_error(unrecoverable_error.into());
                         Err(formatted_error) // TODO: better handling
                     }
                 }
@@ -305,7 +305,7 @@ impl State {
                 self.time_stamps = time_stamps;
             }
         }
-        self.user.graph.push_positions_to_imnodes();
+        self.user.node_graph.push_positions_to_imnodes();
         Ok(())
     }
 }

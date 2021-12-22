@@ -46,9 +46,9 @@ pub fn create(
 
     // Sanitize all input expressions
     let local_params = vec![param_1_name.as_str(), param_2_name.as_str()];
-    let sanitized_fx = globals.sanitize_expression_2(&local_params, &fx)?;
-    let sanitized_fy = globals.sanitize_expression_2(&local_params, &fy)?;
-    let sanitized_fz = globals.sanitize_expression_2(&local_params, &fz)?;
+    let sanitized_fx = globals.sanitize_expression(&local_params, &fx)?;
+    let sanitized_fy = globals.sanitize_expression(&local_params, &fy)?;
+    let sanitized_fz = globals.sanitize_expression(&local_params, &fz)?;
 
     let wgsl_source = format!(r##"
 {wgsl_header}

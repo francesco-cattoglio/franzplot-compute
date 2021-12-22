@@ -69,7 +69,7 @@ impl Gui {
     /// only existing one on the undo stack.
     /// an action that is required when creating a new file or opening an existing one
     pub fn reset_undo_history(&mut self, state: &State) {
-        self.undo_stack = vec![(0.0, serde_json::to_string(&state.user.graph).unwrap())].into();
+        self.undo_stack = vec![(0.0, serde_json::to_string(&state.user.node_graph).unwrap())].into();
         self.undo_cursor = 0;
         self.graph_edited = false;
     }
@@ -82,23 +82,23 @@ impl Gui {
 
     pub fn issue_undo(&mut self, state: &mut State, timestamp: f64) {
         // if the user is actively editing a node, we want to stop the editing and issue a savestate!
-        if state.user.graph.currently_editing() {
+        if state.user.node_graph.currently_editing() {
             // stop the editing on the imgui side
             use crate::cpp_gui::ImGui;
             ImGui::ClearActiveID();
             // stop the editing on the rust side
-            state.user.graph.stop_editing();
+            state.user.node_graph.stop_editing();
             // issue a savestate
             self.issue_savestate(state, timestamp);
         }
         if self.undo_cursor != 0 {
-            let zoom_level = state.user.graph.zoom_level;
+            let zoom_level = state.user.node_graph.zoom_level;
             self.undo_cursor -= 1;
             let old_state = self.undo_stack.get(self.undo_cursor).unwrap();
             // println!("Restored state from {} seconds ago", ui.time() - old_state.0);
-            state.user.graph = serde_json::from_str(&old_state.1).unwrap();
-            state.user.graph.zoom_level = zoom_level;
-            state.user.graph.push_positions_to_imnodes();
+            state.user.node_graph = serde_json::from_str(&old_state.1).unwrap();
+            state.user.node_graph.zoom_level = zoom_level;
+            state.user.node_graph.push_positions_to_imnodes();
         }
     }
 
@@ -117,20 +117,20 @@ impl Gui {
             self.undo_stack.truncate(preserved_elements);
             self.undo_cursor += 1;
         }
-        let serialized_graph = serde_json::to_string(&state.user.graph).unwrap();
+        let serialized_graph = serde_json::to_string(&state.user.node_graph).unwrap();
         self.undo_stack.push_back((timestamp, serialized_graph));
         self.graph_edited = true;
     }
 
     pub fn issue_redo(&mut self, state: &mut State) {
         if self.undo_cursor != self.undo_stack.len()-1 {
-            let zoom_level = state.user.graph.zoom_level;
+            let zoom_level = state.user.node_graph.zoom_level;
             self.undo_cursor += 1;
             let restored_state = self.undo_stack.get(self.undo_cursor).unwrap();
             // println!("Restored state from {} seconds ago", ui.time() - restored_state.0);
-            state.user.graph = serde_json::from_str(&restored_state.1).unwrap();
-            state.user.graph.zoom_level = zoom_level;
-            state.user.graph.push_positions_to_imnodes();
+            state.user.node_graph = serde_json::from_str(&restored_state.1).unwrap();
+            state.user.node_graph.zoom_level = zoom_level;
+            state.user.node_graph.push_positions_to_imnodes();
             self.graph_edited = true;
         }
     }
@@ -315,7 +315,7 @@ impl Gui {
         ui.same_line();
         if ui.button("New") { // TODO: we need a check: the name must be valid!
             let new_name = self.new_variable_buffer.to_string();
-            if let Ok(valid_name) = Globals::sanitize_variable_name_2(&new_name) {
+            if let Ok(valid_name) = Globals::sanitize_variable_name(&new_name) {
                 globals_names.push(valid_name);
                 globals_init_values.push(0.0);
                 self.new_variable_buffer.clear();
@@ -343,18 +343,18 @@ impl Gui {
             // This prevents us from jumping across multiple levels in a single zoom action, which is
             // good because a single mouse wheel scroll can report a huge delta.
             if self.accumulated_zoom < -1.0 {
-                state.user.graph.zoom_down_graph(relative_pos);
+                state.user.node_graph.zoom_down_graph(relative_pos);
                 self.accumulated_zoom = 0.0;
             }
             if self.accumulated_zoom > 1.0 {
-                state.user.graph.zoom_up_graph(relative_pos);
+                state.user.node_graph.zoom_up_graph(relative_pos);
                 self.accumulated_zoom = 0.0;
             }
         }
         // regardless of interaction, reset the added_zoom variable
         self.added_zoom = 0.0;
         // run the rendering
-        let requested_savestate = state.user.graph.render(ui, &self.availables, &self.graph_fonts);
+        let requested_savestate = state.user.node_graph.render(ui, &self.availables, &self.graph_fonts);
 
         if let Some(requested_stamp) = requested_savestate {
             // first, get the timestamp for the last savestate. This is because if the user only moves some nodes around
@@ -405,7 +405,7 @@ impl Gui {
         ui.text("Selected object:");
         // TODO: maybe you want to do something different if the user deletes the node and then goes back to the scene
         let node_name = if let Some(block_id) = self.selected_object {
-                if let Some(node) = state.user.graph.get_node(block_id) {
+                if let Some(node) = state.user.node_graph.get_node(block_id) {
                     node.title.clone()
                 } else {
                     String::from("<deleted>")

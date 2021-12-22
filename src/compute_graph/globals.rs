@@ -44,7 +44,7 @@ impl Globals {
         &self.buffer
     }
 
-    pub fn sanitize_variable_name_2(name: &str) -> Result<String, ProcessingError> {
+    pub fn sanitize_variable_name(name: &str) -> Result<String, ProcessingError> {
         let parsing_result = parse_expression(name);
         match parsing_result {
             Ok(ast_tree) => {
@@ -71,7 +71,7 @@ impl Globals {
     }
 
     // TODO: rename this and remove the other one once the conversion to the new compute_graph is done
-    pub fn sanitize_expression_2(&self, local_params: &[&str], expression: &str) -> Result<String, ProcessingError> {
+    pub fn sanitize_expression(&self, local_params: &[&str], expression: &str) -> Result<String, ProcessingError> {
         let parsing_result = parse_expression(expression);
         match parsing_result {
             Ok(ast_tree) => {
@@ -102,11 +102,11 @@ impl Globals {
                 }
                 Ok(ast_tree.to_string(&self.names))
             },
-            Err(ast_error) => Err(Self::ast_to_block_error_2(ast_error)),
+            Err(ast_error) => Err(Self::ast_to_block_error(ast_error)),
         }
     }
 
-    fn ast_to_block_error_2(error: AstError) -> ProcessingError {
+    fn ast_to_block_error(error: AstError) -> ProcessingError {
         match error {
             AstError::UnreachableMatch(e) => ProcessingError::InternalError(e),
             AstError::InternalError(e) => ProcessingError::InternalError(e),

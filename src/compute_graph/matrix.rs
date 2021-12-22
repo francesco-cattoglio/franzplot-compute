@@ -22,7 +22,7 @@ pub fn create_from_rotation(
     dbg!(&angle);
     // Sanitize all input expressions to get any error, but do not save the result (it will have all the global vars
     // renamed like `pi`->`globals.pi`)
-    let _ = globals.sanitize_expression_2(&[], &angle)?;
+    let _ = globals.sanitize_expression(&[], &angle)?;
     match axis {
         Axis::X => {
             row_1 = ["1.0".into(),               "0.0".into(),                "0.0".into(), "0.0".into()];
@@ -147,18 +147,18 @@ pub fn create_from_rows(
         local_params.push(param.name.as_ref().unwrap().as_str())
     }
 
-    let sanitized_m11 = globals.sanitize_expression_2(&local_params, &row_1[0])?;
-    let sanitized_m12 = globals.sanitize_expression_2(&local_params, &row_1[1])?;
-    let sanitized_m13 = globals.sanitize_expression_2(&local_params, &row_1[2])?;
-    let sanitized_m14 = globals.sanitize_expression_2(&local_params, &row_1[3])?;
-    let sanitized_m21 = globals.sanitize_expression_2(&local_params, &row_2[0])?;
-    let sanitized_m22 = globals.sanitize_expression_2(&local_params, &row_2[1])?;
-    let sanitized_m23 = globals.sanitize_expression_2(&local_params, &row_2[2])?;
-    let sanitized_m24 = globals.sanitize_expression_2(&local_params, &row_2[3])?;
-    let sanitized_m31 = globals.sanitize_expression_2(&local_params, &row_3[0])?;
-    let sanitized_m32 = globals.sanitize_expression_2(&local_params, &row_3[1])?;
-    let sanitized_m33 = globals.sanitize_expression_2(&local_params, &row_3[2])?;
-    let sanitized_m34 = globals.sanitize_expression_2(&local_params, &row_3[3])?;
+    let sanitized_m11 = globals.sanitize_expression(&local_params, &row_1[0])?;
+    let sanitized_m12 = globals.sanitize_expression(&local_params, &row_1[1])?;
+    let sanitized_m13 = globals.sanitize_expression(&local_params, &row_1[2])?;
+    let sanitized_m14 = globals.sanitize_expression(&local_params, &row_1[3])?;
+    let sanitized_m21 = globals.sanitize_expression(&local_params, &row_2[0])?;
+    let sanitized_m22 = globals.sanitize_expression(&local_params, &row_2[1])?;
+    let sanitized_m23 = globals.sanitize_expression(&local_params, &row_2[2])?;
+    let sanitized_m24 = globals.sanitize_expression(&local_params, &row_2[3])?;
+    let sanitized_m31 = globals.sanitize_expression(&local_params, &row_3[0])?;
+    let sanitized_m32 = globals.sanitize_expression(&local_params, &row_3[1])?;
+    let sanitized_m33 = globals.sanitize_expression(&local_params, &row_3[2])?;
+    let sanitized_m34 = globals.sanitize_expression(&local_params, &row_3[3])?;
 
     if let Some((input_buffer, param)) = optional_interval {
         let wgsl_source = format!(r##"

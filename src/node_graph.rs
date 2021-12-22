@@ -924,7 +924,7 @@ pub struct GraphError {
 impl From<UnrecoverableError> for GraphError {
     fn from(unrecoverable_error: UnrecoverableError) -> Self {
         let id = unrecoverable_error.node_id;
-        let error = unrecoverable_error.error;
+        let error = unrecoverable_error.message;
         GraphError {
             severity: Severity::Error,
             node_id: id,
@@ -1752,7 +1752,7 @@ impl NodeGraph {
                     PairInfo::NonCompatible => None,
                 }
             },
-            // TODO: maybe log a warning instead of a panic?
+
             (Some(None), Some(_)) => unreachable!("When attempting to create a link, the first attribute was not found in the map"),
             (None, Some(_)) => unreachable!("When attempting to create a link, the first attribute was not found in the map"),
             (Some(_), Some(None)) => unreachable!("When attempting to create a link, the second attribute was not found in the map"),

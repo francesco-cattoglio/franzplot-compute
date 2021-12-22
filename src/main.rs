@@ -528,10 +528,10 @@ fn main() -> Result<(), &'static str>{
                     CustomEvent::ExportGraphPng(path_buf) => {
                         println!("Exporting graph: {:?}", &path_buf);
                         // zoom out once or twice
-                        state.user.graph.zoom_down_graph([0.0, 0.0]);
+                        state.user.node_graph.zoom_down_graph([0.0, 0.0]);
                         //state.user.graph.zoom_down_graph([0.0, 0.0]);
-                        state.user.graph.push_all_to_corner();
-                        state.user.graph.push_positions_to_imnodes();
+                        state.user.node_graph.push_all_to_corner();
+                        state.user.node_graph.push_positions_to_imnodes();
                         util::create_graph_png(&mut state, &path_buf,&window,&mut platform,&mut renderer,&mut rust_gui,&mut imgui, window_size.to_logical(hidpi_factor));
                     },
                     CustomEvent::ExportScenePng(path_buf) => {

@@ -22,7 +22,7 @@ pub fn create(
     }
 
     // Sanitize all input expressions
-    let sanitized_size = globals.sanitize_expression_2(&[], &size)?;
+    let sanitized_size = globals.sanitize_expression(&[], &size)?;
 
     let model = models.get(primitive_id).unwrap();
 

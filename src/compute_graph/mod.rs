@@ -28,7 +28,7 @@ pub type PrefabId = i32;
 #[derive(Clone, Debug)]
 pub struct UnrecoverableError {
     pub node_id: NodeID,
-    pub error: &'static str, // TODO: rename this to "message"
+    pub message: &'static str,
 }
 #[derive(Clone, Debug)]
 pub struct RecoverableError {
@@ -167,7 +167,7 @@ pub fn create_compute_graph(device: &wgpu::Device, assets: &Assets, user_state: 
         // compute a map from BlockId to descriptor data and
         // a map from BlockId to all the inputs that a block has
         let mut node_inputs = BTreeMap::<NodeID, Vec<NodeID>>::new();
-        let graph = &user_state.graph;
+        let graph = &user_state.node_graph;
         let globals = Globals::new(device, &user_state.globals_names, &user_state.globals_init_values);
         for (node_id, node) in graph.get_nodes() {
             let existing_inputs: Vec<NodeID> = node.get_input_nodes(graph);
@@ -189,7 +189,7 @@ pub fn create_compute_graph(device: &wgpu::Device, assets: &Assets, user_state: 
             |node_id: NodeID| {
                 UnrecoverableError {
                     node_id,
-                    error: " cycle detected \n at this node "
+                    message: " cycle detected \n at this node "
                 }
             }
         )?;
