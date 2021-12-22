@@ -379,7 +379,7 @@ impl Gui {
         // and add the UI for updating them
         let mut requested_cursor = MouseCursor::Arrow;
         let width_token = ui.push_item_width(80.0);
-        if let Some(compute_graph) = &mut state.app.graph {
+        if let Some(compute_graph) = &mut state.app.comp_graph {
             let mut cloned_pairs = compute_graph.globals.clone_names_values();
             for pair in cloned_pairs.iter_mut() {
                 // to make each slider unique, we are gonna push an invisible unique imgui label

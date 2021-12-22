@@ -99,7 +99,7 @@ pub struct AppState {
     pub camera: camera::Camera,
     pub assets: Assets,
     pub manager: Manager,
-    pub graph: Option<ComputeGraph>,
+    pub comp_graph: Option<ComputeGraph>,
     pub renderer: SceneRenderer,
     pub sensitivity: Sensitivity,
 }
@@ -191,7 +191,7 @@ impl State {
             camera_controller,
             renderer: SceneRenderer::new_with_axes(&manager.device),
             manager,
-            graph: None,
+            comp_graph: None,
             sensitivity: Sensitivity::default(),
         };
 
@@ -216,7 +216,7 @@ impl State {
                 self.user = UserState::default();
                 // clear all the created renderables and the entire compute graph
                 self.app.renderer.clear_matcaps();
-                self.app.graph = None;
+                self.app.comp_graph = None;
                 // new timestamp for the new file
                 self.time_stamps = TSs::new_now();
                 Ok(())
@@ -232,7 +232,7 @@ impl State {
                     Ok((compute_graph, recoverable_errors)) => {
                         self.app.renderer.update_matcaps(&self.app.manager.device, &self.app.assets, compute_graph.matcaps());
                         compute_graph.run_compute(&self.app.manager.device, &self.app.manager.queue);
-                        self.app.graph = Some(compute_graph);
+                        self.app.comp_graph = Some(compute_graph);
                         if recoverable_errors.is_empty() {
                             Ok(())
                         } else {
@@ -251,7 +251,7 @@ impl State {
             }
             Action::UpdateGlobals(pairs) => {
                 // if the compute graph exists, tell it to update the globals
-                if let Some(graph) = &mut self.app.graph {
+                if let Some(graph) = &mut self.app.comp_graph {
                     graph.update_globals(&self.app.manager.device, &self.app.manager.queue, pairs);
                     Ok(())
                 } else {
