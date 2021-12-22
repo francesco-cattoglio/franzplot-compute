@@ -129,7 +129,6 @@ impl AppState {
         self.camera.aspect = size.width as f32/size.height as f32;
     }
 
-
     pub fn update_camera(&mut self, camera_inputs: &camera::InputState) {
         if self.camera_enabled {
             self.camera_controller.update_camera(&mut self.camera, camera_inputs, &self.sensitivity, self.camera_lock_up);
@@ -226,13 +225,32 @@ impl State {
         }
     }
 
-    pub fn process(&mut self, action: Action) {
+    pub fn process(&mut self, action: Action) -> Result<(), String>{
         match action {
-            Action::ProcessGraph(user_state) => {
-                // - try to create a new graph
+            Action::WriteToFile(path) => {
+                self.write_to_frzp(&path);
+                Ok(())
+            } ,
+            Action::OpenFile(path) => {
+                self.read_from_frzp(&path)
+            },
+            Action::NewFile() => {
+                // reset the user state: this will zero out the node graph and its global vars
+                self.user = UserState::default();
+                // clear all the created renderables and the entire compute graph
+                self.app.renderer.clear_matcaps();
+                self.app.graph = None;
+                // new timestamp for the new file
+                self.time_stamps = TSs::new_now();
+                Ok(())
+            },
+            Action::ProcessUserState() => {
+                // - clear previous node graph errors
+                // - try to create a new compute graph
                 // - if successful, update the scene rendering and report recoverable errors
                 // - if unsuccessful, report the unrecoverable error to the user
-                let process_result = crate::compute_graph::create_compute_graph(&self.app.manager.device, &self.app.assets, user_state);
+                self.user.graph.clear_all_errors();
+                let process_result = crate::compute_graph::create_compute_graph(&self.app.manager.device, &self.app.assets, &self.user);
                 match process_result {
                     Ok((compute_graph, recoverable_errors)) => {
                         self.app.renderer.update_matcaps(&self.app.manager.device, &self.app.assets, compute_graph.matcaps());
@@ -241,9 +259,11 @@ impl State {
                         for error in recoverable_errors.into_iter() {
                             self.user.graph.mark_error(error.into());
                         }
+                        Ok(())
                     },
                     Err(unrecoverable_error) => {
                         dbg!(&unrecoverable_error); // TODO: better handling
+                        Ok(())
                     }
                 }
             }
@@ -251,12 +271,16 @@ impl State {
                 // if the compute graph exists, tell it to update the globals
                 if let Some(graph) = &mut self.app.graph {
                     graph.update_globals(&self.app.manager.device, &self.app.manager.queue, pairs);
+                    Ok(())
+                } else {
+                    dbg!("tried to update globals, but there is no graph!"); // TODO: better handling
+                    Ok(())
                 }
             }
         }
     }
 
-    pub fn write_to_frzp(&mut self, path: &Path) {
+    fn write_to_frzp(&mut self, path: &Path) {
         let mut file = std::fs::File::create(path).unwrap();
         let ser_config = ron::ser::PrettyConfig::new()
             .with_depth_limit(5)
@@ -277,17 +301,17 @@ impl State {
 
         contents.push_str(&serialized_data);
         use std::io::Write;
-        file.write_all(contents.as_bytes()).unwrap();
+        file.write_all(contents.as_bytes()).unwrap(); // TODO: handle writing failures
     }
 
-    pub fn read_from_frzp(&mut self, path: &Path) -> Result<(), &'static str> {
+    fn read_from_frzp(&mut self, path: &Path) -> Result<(), String> {
         let mut file = std::fs::File::open(path).unwrap();
         let mut contents = String::new();
         use std::io::Read;
         file.read_to_string(&mut contents)
-            .or(Err("Error opening file. Content is not UTF-8."))?;
+            .or_else(|error| Err(format!("Error opening file: {}", &error)))?;
         let saved_data: FileVersion = ron::from_str(&contents)
-            .or(Err("Error reading file contents. Is this a franzplot file?"))?;
+            .or_else(|_| Err("Error reading file contents. Is this a franzplot file?".to_string()))?;
         match saved_data {
             FileVersion::V0(user_state) => {
                 // loading an older file that does NOT have timestamp infos
@@ -301,13 +325,5 @@ impl State {
         }
         self.user.graph.push_positions_to_imnodes();
         Ok(())
-    }
-
-    pub fn new_file(&mut self) {
-        // reset the userstate and the time stamps, clear the scene
-        panic!("need to re-implement this functionality");
-        self.user = UserState::default();
-        self.time_stamps = TSs::new_now();
-        //self.process_user_state();
     }
 }

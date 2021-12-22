@@ -124,7 +124,7 @@ impl Globals {
     }
 
 
-    pub fn new(device: &wgpu::Device, variables_names: Vec<String>, init_values: Vec<f32>) -> Self {
+    pub fn new(device: &wgpu::Device, variables_names: &Vec<String>, init_values: &Vec<f32>) -> Self {
         // assert there are as many variables as init values
         assert!(variables_names.len() == init_values.len());
 
@@ -196,14 +196,14 @@ impl Globals {
         }
 
         // process all variables
-        let zipped_iterator = variables_names.into_iter().zip(init_values.into_iter());
+        let zipped_iterator = variables_names.iter().zip(init_values.iter());
         for pair in zipped_iterator {
             // print the name to the shader header and
             // add the pair to both the 'names' and the 'values' vectors
             shader_header += &format!("\tfloat {};\n", &pair.0);
             wgsl_header += &format!("\t{}: f32;\n", &pair.0);
-            names.push(pair.0);
-            values.push(pair.1);
+            names.push(pair.0.clone());
+            values.push(*pair.1);
         }
         shader_header += "};\n";
         // when we close the wgsl struct, we also need to write the binding to the group 1

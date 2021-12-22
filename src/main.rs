@@ -25,6 +25,8 @@ mod tests;
 
 use std::env;
 
+use crate::state::Action;
+
 #[allow(unused)]
 #[derive(Debug)]
 pub enum CustomEvent {
@@ -165,7 +167,7 @@ fn main() {
 
     let mut builder = winit::window::WindowBuilder::new();
     builder = builder
-        .with_title("test")
+        .with_title("Franzplot")
         .with_window_icon(Some(icon))
         .with_inner_size(window_size);
     if maybe_export_path.is_some() {
@@ -475,7 +477,12 @@ fn main() {
                         file_io::async_pick_open(event_loop_proxy.clone(), &executor);
                     },
                     CustomEvent::NewFile => {
-                        state.new_file();
+                        // when we are actually creating a new file, we need to both
+                        // "reset the state" and "reset the gui"
+                        // state reset is done with the appropriate action
+                        let action = Action::NewFile();
+                        state.process(action).expect("failed to create a new file");
+                        // and after that we can tell the GUI to also reset some of its parts
                         rust_gui.reset_undo_history(&state);
                         rust_gui.reset_nongraph_data();
                     },
@@ -486,11 +493,19 @@ fn main() {
                         }
                     },
                     CustomEvent::SaveFile(path_buf) => {
-                        state.write_to_frzp(&path_buf);
+                        let action = Action::WriteToFile(path_buf);
+                        match state.process(action) {
+                            Ok(()) => {
+                            },
+                            Err(error) => {
+                                file_io::async_dialog_failure(&executor, error);
+                            }
+                        }
                         rust_gui.graph_edited = false;
                     },
                     CustomEvent::OpenFile(path_buf) => {
-                        match state.read_from_frzp(&path_buf) {
+                        let action = Action::OpenFile(path_buf);
+                        match state.process(action) {
                             Ok(()) => {
                                 rust_gui.reset_undo_history(&state);
                                 rust_gui.reset_nongraph_data();

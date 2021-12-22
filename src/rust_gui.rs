@@ -1,7 +1,7 @@
 use imgui::*;
 use crate::compute_graph::globals::Globals;
 use crate::file_io;
-use crate::state::State;
+use crate::state::{Action, State};
 pub type BlockId = i32;
 pub type PrefabId = i32;
 
@@ -155,7 +155,8 @@ impl Gui {
                         if self.graph_edited {
                             file_io::async_confirm_new(self.winit_proxy.clone(), executor);
                         } else {
-                            state.new_file();
+                            let action = Action::NewFile();
+                            state.process(action).expect("failed to create a new file");
                         }
                     }
                     ui.separator();
@@ -253,9 +254,10 @@ impl Gui {
 
     fn render_editor_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
         if ui.button("Generate Scene") {
-            use crate::state::action::Action;
-            let action = Action::ProcessGraph(state.user.clone());
-            state.process(action);
+            let action = Action::ProcessUserState();
+            if state.process(action).is_ok() {
+                self.opened_tab[1] = true;
+            }
         }
         ui.same_line();
         if ui.button("Undo") {

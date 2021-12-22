@@ -312,9 +312,13 @@ impl SceneRenderer {
         self.wireframe_axes = Some(render_bundle);
     }
 
-    pub fn update_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, matcaps: MatcapIter<'_>) {
+    pub fn clear_matcaps(&mut self) {
         self.renderables.clear();
         self.renderable_ids.clear();
+    }
+
+    pub fn update_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, matcaps: MatcapIter<'_>) {
+        self.clear_matcaps();
         // go through all blocks,
         // chose the "Rendering" ones,
         // turn their data into a renderable

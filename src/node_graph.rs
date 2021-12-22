@@ -175,7 +175,7 @@ impl Attribute {
                     0 => Axis::X,
                     1 => Axis::Y,
                     2 => Axis::Z,
-                    _ => panic!()
+                    _ => panic!("Something went wrong when selecting an Axis from a combo box")
                 };
                 imnodes::EndStaticAttribute();
                 value_changed
@@ -931,11 +931,11 @@ impl From<RecoverableError> for GraphError {
                 GraphError {
                     severity: Severity::Error,
                     node_id: id,
-                    message: String::from(message),
+                    message,
                 }
             },
             ProcessingError::NoInputData => {
-                println!("input not build warning for {}", id);
+                println!("input not built warning for {}", id);
                 GraphError {
                     severity: Severity::Warning,
                     node_id: id,
@@ -947,7 +947,7 @@ impl From<RecoverableError> for GraphError {
                 GraphError {
                     severity: Severity::Error,
                     node_id: id,
-                    message: String::from(message),
+                    message,
                 }
             },
             ProcessingError::IncorrectInput(message) => {
@@ -955,7 +955,7 @@ impl From<RecoverableError> for GraphError {
                 GraphError {
                     severity: Severity::Error,
                     node_id: id,
-                    message: String::from(message),
+                    message,
                 }
             },
             ProcessingError::IncorrectExpression(message) => {
@@ -973,10 +973,6 @@ impl From<RecoverableError> for GraphError {
                     node_id: id,
                     message,
                 }
-                // A panic is a bit eccessive. Failing fast is good, but the user might be
-                // unable to report the error to the developer.
-                //
-                // panic!();
             },
         }
     }
@@ -1745,7 +1741,7 @@ impl NodeGraph {
                     PairInfo::NonCompatible => None,
                 }
             },
-            // TODO: maybe log a warning instead of panic?
+            // TODO: maybe log a warning instead of a panic?
             (Some(None), Some(_)) => unreachable!("When attempting to create a link, the first attribute was not found in the map"),
             (None, Some(_)) => unreachable!("When attempting to create a link, the first attribute was not found in the map"),
             (Some(_), Some(None)) => unreachable!("When attempting to create a link, the second attribute was not found in the map"),
