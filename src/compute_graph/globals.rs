@@ -10,7 +10,6 @@ pub struct Globals {
     buffer: wgpu::Buffer,
     pub bind_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
-    pub shader_header: String, // TODO: remove all the GLSL shader headers
     wgsl_header: String,
 }
 
@@ -70,7 +69,6 @@ impl Globals {
         }
     }
 
-    // TODO: rename this and remove the other one once the conversion to the new compute_graph is done
     pub fn sanitize_expression(&self, local_params: &[&str], expression: &str) -> Result<String, ProcessingError> {
         let parsing_result = parse_expression(expression);
         match parsing_result {
@@ -177,7 +175,6 @@ impl Globals {
         // and store the names and the values of the globals that we will save in our struct.
         // Please note: we do this operation after the buffer init because this operation
         // consumes the input vectors.
-        let mut shader_header = String::new();
         let mut wgsl_header = String::new();
         let mut names = Vec::<String>::new();
         let mut values = Vec::<f32>::new();
@@ -188,10 +185,7 @@ impl Globals {
         //}
         wgsl_header += "[[block]] struct Globals {\n";
 
-        // is glsl, we put those constants inside the global variables
-        shader_header += "layout(set = 1, binding = 0) uniform Uniforms {\n";
         for (constant_name, _constant_value) in GLOBAL_CONSTANTS {
-            shader_header += &format!("\tfloat {};\n", constant_name);
             wgsl_header += &format!("\t{}: f32;\n", constant_name);
         }
 
@@ -200,18 +194,15 @@ impl Globals {
         for pair in zipped_iterator {
             // print the name to the shader header and
             // add the pair to both the 'names' and the 'values' vectors
-            shader_header += &format!("\tfloat {};\n", &pair.0);
             wgsl_header += &format!("\t{}: f32;\n", &pair.0);
             names.push(pair.0.clone());
             values.push(*pair.1);
         }
-        shader_header += "};\n";
         // when we close the wgsl struct, we also need to write the binding to the group 1
         wgsl_header += "};\n";
         wgsl_header += "[[group(0), binding(0)]] var<uniform> globals: Globals;\n";
 
 
-        //println!("debug info for shader header: {}", &shader_header);
         Self {
             bind_layout,
             bind_group,
@@ -219,7 +210,6 @@ impl Globals {
             values,
             buffer,
             buffer_size,
-            shader_header,
             wgsl_header,
         }
     }
