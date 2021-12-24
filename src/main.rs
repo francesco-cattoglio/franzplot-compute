@@ -419,32 +419,34 @@ fn main() -> Result<(), &'static str>{
                 let requested_logical_rectangle = rust_gui.render(&ui, [size.width, size.height], &mut state, &executor);
                 // after calling the gui render function we know if we need to render the scene or not
                 if let Some(logical_rectangle) = requested_logical_rectangle {
+                    // the GUI told us that we have to create a scene in the given logical
+                    // rectangle. Convert it to physical to make sure that we have the actual size
                     let physical_rectangle = PhysicalRectangle::from_imgui_rectangle(&logical_rectangle, hidpi_factor);
+                    let texture_size = wgpu::Extent3d {
+                        height: physical_rectangle.size.height,
+                        width: physical_rectangle.size.width,
+                        depth_or_array_layers: 1,
+                    };
                     let scene_texture = renderer.textures.get(scene_texture_id).unwrap();
-                    // first, check if the scene size has changed. If so, re-create the scene
-                    // texture and depth buffer
+                    // first, check if the scene size has changed. If so, re-create the texture
+                    // that is used by imgui to render the scene to.
                     if (physical_rectangle.size.width != scene_texture.width() || physical_rectangle.size.height != scene_texture.height())
                             && (physical_rectangle.size.width > 8 && physical_rectangle.size.height > 8) {
-                        let texture_size = wgpu::Extent3d {
-                            height: physical_rectangle.size.height,
-                            width: physical_rectangle.size.width,
-                            depth_or_array_layers: 1,
-                        };
-                        state.app.update_depth_buffer(texture_size);
-                        state.app.update_projection_matrix(texture_size);
                         let new_scene_texture = rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
                         renderer.textures.replace(scene_texture_id, new_scene_texture.into()).unwrap();
                     }
-                    // update the scene
-                    let scene_texture_view = renderer.textures.get(scene_texture_id).unwrap().view();
+                    // after that, load the texture that will be used as output
+                    let scene_view = renderer.textures.get(scene_texture_id).unwrap().view();
 
                     let relative_pos = [
                         cursor_position.x - physical_rectangle.position.x,
                         cursor_position.y - physical_rectangle.position.y,
                     ];
-                    state.app.renderer.update_mouse_pos(&relative_pos);
-                    state.app.update_camera(&camera_inputs);
-                    state.app.update_scene(scene_texture_view);
+                    state.app.renderer.update_mouse_pos(&relative_pos); // TODO: this should be done with actions as well
+                    state.app.update_camera(&camera_inputs); // TODO: this should be done with actions as well
+                    // and then ask the state to render the scene
+                    let render_request = Action::RenderScene(texture_size, scene_view);
+                    state.process(render_request);
                 }
 
                 platform.prepare_render(&ui, &window);
@@ -537,19 +539,6 @@ fn main() -> Result<(), &'static str>{
                     CustomEvent::ExportScenePng(path_buf) => {
                         println!("Exporting scene: {:?}", &path_buf);
                         util::create_scene_png(&mut state, &path_buf);
-                        // TODO: this is hacked in and needs some refactoring:
-                        // util::create_png modifies the state changing the depth buffer and the
-                        // projection because we run the rendering on the output png size.
-                        // before we continue with our normal execution we need to resize
-                        // everything back
-                        let scene_texture = renderer.textures.get(scene_texture_id).unwrap();
-                        let texture_size = wgpu::Extent3d {
-                            height: scene_texture.height(),
-                            width: scene_texture.width(),
-                            depth_or_array_layers: 1,
-                        };
-                        state.app.update_depth_buffer(texture_size);
-                        state.app.update_projection_matrix(texture_size);
                     },
                     CustomEvent::MouseFreeze => {
                         // set mouse as frozen

@@ -38,7 +38,7 @@ pub fn create(
         } => handle_2d(device, buffer, param1, param2, mask, material),
         Data::Prefab {
             vertex_buffer, chunks_count, index_buffer, index_count,
-        } => handle_prefab(device, vertex_buffer, *chunks_count, index_buffer, *index_count, material),
+        } => handle_prefab(device, vertex_buffer, *chunks_count, index_buffer, *index_count, mask, material),
         _ => Err(ProcessingError::InternalError("Geometry render operation cannot handle the kind of data provided as input".into()))
     }
 }
@@ -426,7 +426,7 @@ size_x=param1.n_points(), size_y=param2.n_points());
     Ok((renderable, operation))
 }
 
-fn handle_prefab(device: &wgpu::Device, vertex_buffer: &wgpu::Buffer, chunks_count: usize, index_buffer: &Rc<wgpu::Buffer>, index_count: u32, material_id: usize) -> MatcapResult {
+fn handle_prefab(device: &wgpu::Device, vertex_buffer: &wgpu::Buffer, chunks_count: usize, index_buffer: &Rc<wgpu::Buffer>, index_count: u32, mask_id: usize, material_id: usize) -> MatcapResult {
 
     let wgsl_source = format!(r##"
 struct MatcapVertex {{
@@ -474,7 +474,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
         vertex_buffer: out_buffer,
         index_buffer: Rc::clone(index_buffer),
         index_count: index_count as u32,
-        mask_id: 0,
+        mask_id,
         material_id,
     };
 

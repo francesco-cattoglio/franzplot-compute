@@ -53,6 +53,7 @@ pub struct SceneRenderer {
     renderable_ids: Vec<NodeID>,
     uniforms: Uniforms,
     uniforms_buffer: wgpu::Buffer,
+    texture_extent: wgpu::Extent3d,
     depth_texture: Texture,
     output_texture: Texture,
 }
@@ -89,8 +90,9 @@ impl SceneRenderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let depth_texture = Texture::create_depth_texture(device, wgpu::Extent3d::default(), SAMPLE_COUNT);
-        let output_texture = Texture::create_output_texture(device, wgpu::Extent3d::default(), SAMPLE_COUNT);
+        let texture_extent = wgpu::Extent3d::default();
+        let depth_texture = Texture::create_depth_texture(device, texture_extent, SAMPLE_COUNT);
+        let output_texture = Texture::create_output_texture(device, texture_extent, SAMPLE_COUNT);
 
         Self {
             picking_buffer_length,
@@ -100,6 +102,7 @@ impl SceneRenderer {
             billboards: Vec::new(),
             renderables: Vec::new(),
             renderable_ids: Vec::new(),
+            texture_extent,
             depth_texture,
             output_texture,
             uniforms,
@@ -118,9 +121,12 @@ impl SceneRenderer {
         }
     }
 
-    pub fn update_depth_buffer_size(&mut self, device: &wgpu::Device, size: wgpu::Extent3d) {
-        self.output_texture = Texture::create_output_texture(device, size, SAMPLE_COUNT);
-        self.depth_texture = Texture::create_depth_texture(device, size, SAMPLE_COUNT);
+    pub fn resize_if_needed(&mut self, device: &wgpu::Device, new_size: wgpu::Extent3d) {
+        if new_size.ne(&self.texture_extent) {
+            self.texture_extent = new_size;
+            self.output_texture = Texture::create_output_texture(device, new_size, SAMPLE_COUNT);
+            self.depth_texture = Texture::create_depth_texture(device, new_size, SAMPLE_COUNT);
+        }
     }
 
     pub fn clear_wireframe_axes(&mut self) {
@@ -317,7 +323,7 @@ impl SceneRenderer {
         self.renderable_ids.clear();
     }
 
-    pub fn update_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, matcaps: MatcapIter<'_>) {
+    pub fn recreate_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, matcaps: MatcapIter<'_>) {
         self.clear_matcaps();
         // go through all blocks,
         // chose the "Rendering" ones,

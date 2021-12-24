@@ -22,6 +22,7 @@ pub use action::Action;
 
 #[derive(Clone, Default, Deserialize, Serialize)]
 pub struct UserState {
+    #[serde(rename = "graph")]
     pub node_graph: node_graph::NodeGraph,
     pub globals_names: Vec<String>,
     pub globals_init_values: Vec<f32>,
@@ -121,39 +122,10 @@ impl AppState {
         self.renderer.clear_axes_labels();
     }
 
-    pub fn update_depth_buffer(&mut self, size: wgpu::Extent3d) {
-        self.renderer.update_depth_buffer_size(&self.manager.device, size);
-    }
-
-    pub fn update_projection_matrix(&mut self, size: wgpu::Extent3d) {
-        self.camera.aspect = size.width as f32/size.height as f32;
-    }
-
     pub fn update_camera(&mut self, camera_inputs: &camera::InputState) {
         if self.camera_enabled {
             self.camera_controller.update_camera(&mut self.camera, camera_inputs, &self.sensitivity, self.camera_lock_up);
         }
-    }
-
-    pub fn update_scene(&mut self, target_texture: &wgpu::TextureView) {
-        // TODO: right now the chain is not recomputed if globals were not updated. This is
-        // sub-optimal, and in the future we might want to be more fine-grained
-        // let global_vars_changed = self.computable_scene.globals.update_buffer(&self.manager.queue);
-        //if global_vars_changed {
-            //self.computable_scene.chain.run_chain(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
-            //self.computable_scene.graph.run_compute(&self.manager.device, &self.manager.queue, &self.computable_scene.globals);
-        //}
-        if self.camera_ortho {
-            // this is here instead of inside `update_projection_matrix` because
-            // we are currently using the zoom level to build the orthographic matrix,
-            // while `update_projection_matrix` gets called only on framebuffer resize
-            self.renderer.update_proj(self.camera.build_ortho_matrix());
-        } else {
-            self.renderer.update_proj(self.camera.build_projection_matrix());
-        }
-        self.renderer.update_view(self.camera.build_view_matrix());
-        // after updating everything, redraw the scene to the texture
-        self.renderer.render(&self.manager, target_texture);
     }
 }
 
@@ -169,15 +141,7 @@ impl State {
         // at program start, we can just set the user data to its default value
         let user: UserState = Default::default();
 
-        // construct the AppState part from the passed-in manager
-        //let computable_scene = ComputableScene {
-        //    globals: globals::Globals::new(&manager.device, vec![], vec![]),
-        //    chain: compute_chain::ComputeChain::new(),
-        //    renderer: SceneRenderer::new_with_axes(&manager.device),
-        //    mouse_pos: [0.0, 0.0],
-        //};
-
-        let camera = camera::Camera::from_height_width(manager.config.height as f32, manager.config.width as f32);
+        let camera = camera::Camera::default();
         let camera_controller = Box::new(camera::VTKController::new());
 
         let app = AppState {
@@ -221,6 +185,23 @@ impl State {
                 self.time_stamps = TSs::new_now();
                 Ok(())
             },
+            Action::RenderScene(extent, view) => {
+                // create aliases
+                let renderer = &mut self.app.renderer;
+                let camera = &mut self.app.camera;
+                renderer.resize_if_needed(&self.app.manager.device, extent);
+                let aspect_ratio = extent.width as f32/extent.height as f32;
+                let projection_matrix = if self.app.camera_ortho {
+                    camera.build_ortho_matrix(aspect_ratio)
+                } else {
+                    camera.build_projection_matrix(aspect_ratio)
+                };
+                renderer.update_proj(projection_matrix);
+                renderer.update_view(camera.build_view_matrix());
+                // after updating everything, redraw the scene to the texture
+                renderer.render(&self.app.manager, view);
+                Ok(())
+            },
             Action::ProcessUserState() => {
                 // - clear previous node graph errors
                 // - try to create a new compute graph
@@ -230,8 +211,9 @@ impl State {
                 let process_result = crate::compute_graph::create_compute_graph(&self.app.manager.device, &self.app.assets, &self.user);
                 match process_result {
                     Ok((compute_graph, recoverable_errors)) => {
-                        self.app.renderer.update_matcaps(&self.app.manager.device, &self.app.assets, compute_graph.matcaps());
+                        // run the first compute, and create the matcaps in the SceneRenderer
                         compute_graph.run_compute(&self.app.manager.device, &self.app.manager.queue);
+                        self.app.renderer.recreate_matcaps(&self.app.manager.device, &self.app.assets, compute_graph.matcaps());
                         self.app.comp_graph = Some(compute_graph);
                         if recoverable_errors.is_empty() {
                             Ok(())

@@ -6,7 +6,6 @@ pub struct Camera {
     eye: Vec3,
     target: Vec3,
     up: Vec3,
-    pub aspect: f32,
     pub fov_y: f32,
     pub z_near: f32,
     pub z_far: f32,
@@ -18,7 +17,6 @@ impl Default for Camera {
             fov_y: 0.2 * std::f32::consts::PI,
             z_near: 0.1,
             z_far: 250.0,
-            aspect: 1.0,
             eye: Vec3::default(),
             target: Vec3::default(),
             up: Vec3::default(),
@@ -29,13 +27,6 @@ impl Default for Camera {
 }
 
 impl Camera {
-    pub fn from_height_width(height: f32, width: f32) -> Self {
-        Self {
-            aspect: width/height,
-            .. Default::default()
-        }
-    }
-
     pub fn default_view(&mut self) {
         self.eye = Vec3::new(6.0, 4.0, 4.0);
         self.target = Vec3::new(0.0, 0.0, 0.0);
@@ -48,17 +39,17 @@ impl Camera {
         Mat4::look_at_rh(self.eye, self.target, self.up)
     }
 
-    pub fn build_projection_matrix(&self) -> Mat4 {
-        Mat4::perspective_rh(self.fov_y, self.aspect, self.z_near, self.z_far)
+    pub fn build_projection_matrix(&self, aspect: f32) -> Mat4 {
+        Mat4::perspective_rh(self.fov_y, aspect, self.z_near, self.z_far)
     }
 
-    pub fn build_ortho_matrix(&self) -> Mat4 {
+    pub fn build_ortho_matrix(&self, aspect: f32) -> Mat4 {
         let relative_pos = self.eye - self.target;
         let distance = relative_pos.length();
         // the constant that premultiplies the distance was chosen because on my monitor
         // it is the one that makes the switch between orthographic and perspective almost seamless
         let half_h = 0.25 * distance;
-        let half_w = half_h * self.aspect;
+        let half_w = half_h * aspect;
         Mat4::orthographic_lh(-half_w, half_w, -half_h, half_h, 128.0, -128.0)
     }
 
