@@ -16,14 +16,14 @@ all = ["teachers-edition", "dev-tools"]
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
 bytemuck = "1.2"
-wgpu = { version = "0.11.1", features = ["trace", "spirv"] }
+wgpu = { version = "0.12", features = ["trace", "spirv"] }
 num-iter = "0.1"
 anyhow = "1.0"
 futures = { version = "0.3.10", features = ["thread-pool"] }
 env_logger = "0.9"
 glam = { version = "0.20", features = ["bytemuck"] }
 maplit = "1.0"
-winit = "0.25"
+winit = "0.26"
 tobj = "2.0"
 image = "0.23"
 png = "0.16.8"
@@ -33,10 +33,9 @@ serde_json = "1"
 ron = "0.6.4"
 clap = "2.33"
 obj = "0.10"
-imgui = "0.8.0"
-imgui-winit-support = "0.8.0"
-imgui-wgpu = "0.18"
-#imgui-wgpu = { git = 'https://github.com/kylc/imgui-wgpu-rs.git', rev = 'fbbc0cfc7de25a4821980cb2170195c7b3b0fcf4' }
+imgui = "0.8"
+imgui-winit-support = { version = "0.8", default-features = false, features = ["winit-26"] }
+imgui-wgpu = { git = 'https://github.com/Yatekii/imgui-wgpu-rs/', rev = 'c7ae1fb897cdd31e0b0c86717a603ab253ac8624'}
 wgpu-subscriber = "0.1"
 cxx = "1.0.56"
 pathfinding = "2.0"

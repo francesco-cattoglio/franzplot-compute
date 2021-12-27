@@ -219,6 +219,7 @@ impl SceneRenderer {
                     depth_read_only: false,
                     stencil_read_only: false,
                 }),
+                multiview: None,
                 sample_count: SAMPLE_COUNT,
             }
         );
@@ -294,6 +295,7 @@ impl SceneRenderer {
                     depth_read_only: false,
                     stencil_read_only: false,
                 }),
+                multiview: None,
                 sample_count: SAMPLE_COUNT,
             }
         );
@@ -353,6 +355,7 @@ impl SceneRenderer {
                     depth_read_only: false,
                     stencil_read_only: false,
                 }),
+                multiview: None,
                 sample_count: SAMPLE_COUNT,
             }
         );
@@ -533,7 +536,7 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
     // in particular, there are two primitive kinds: the triangles for the billboard and matcap
     // objects or the lines only for the wireframe effect
     let primitive_triangles = wgpu::PrimitiveState {
-        clamp_depth: false,
+        unclipped_depth: false,
         conservative: false,
         topology: wgpu::PrimitiveTopology::TriangleList,
         strip_index_format: None,
@@ -542,7 +545,7 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         polygon_mode: wgpu::PolygonMode::Fill,
     };
     let primitive_lines = wgpu::PrimitiveState {
-        clamp_depth: false,
+        unclipped_depth: false,
         conservative: false,
         topology: wgpu::PrimitiveTopology::LineList,
         strip_index_format: None,
@@ -567,6 +570,7 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         primitive: primitive_triangles,
         depth_stencil: depth_stencil_state.clone(),
         multisample: multisample_state,
+        multiview: None,
     });
 
     let billboard = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -585,6 +589,7 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         primitive: primitive_triangles,
         depth_stencil: depth_stencil_state.clone(),
         multisample: multisample_state,
+        multiview: None,
     });
 
     let wireframe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -603,6 +608,7 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         primitive: primitive_lines,
         depth_stencil: depth_stencil_state,
         multisample: multisample_state,
+        multiview: None,
     });
     Pipelines {
         matcap,
