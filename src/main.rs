@@ -145,12 +145,7 @@ fn main() -> Result<(), &'static str>{
         // web winit always reports a size of zero
         #[cfg(not(target_arch = "wasm32"))]
         let screen_size = monitor.size();
-        // TODO fix and test that we can export any size
-        if maybe_export_path.is_some() {
-            winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
-        } else {
-            winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
-        }
+        winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
     } else {
         winit::dpi::PhysicalSize::new(1280, 800)
     };

@@ -337,21 +337,19 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     var x_tangent: vec3<f32>;
     if (i == 0u) {{
         x_tangent = (-1.5 * in.pos[idx] + 2.0 * in.pos[idx + 1u] - 0.5 * in.pos[idx + 2u]).xyz;
-    }} else {{ if (i == x_size - 1u) {{
+    }} else if (i == x_size - 1u) {{
         x_tangent = ( 1.5 * in.pos[idx] - 2.0 * in.pos[idx - 1u] + 0.5 * in.pos[idx - 2u]).xyz;
     }} else {{
         x_tangent = (-0.5 * in.pos[idx - 1u] + 0.5 * in.pos[idx + 1u]).xyz;
     }}
-    }} // TODO: move to an `else if` statement when naga supports it
     var y_tangent: vec3<f32>;
     if (j == 0u) {{
         y_tangent = (-1.5 * in.pos[idx] + 2.0 * in.pos[idx + x_size] - 0.5 * in.pos[idx + 2u * x_size]).xyz;
-    }} else {{ if (j == y_size - 1u) {{
+    }} else if (j == y_size - 1u) {{
         y_tangent = ( 1.5 * in.pos[idx] - 2.0 * in.pos[idx - x_size] + 0.5 * in.pos[idx - 2u * x_size]).xyz;
     }} else {{
         y_tangent = (-0.5 * in.pos[idx - x_size] + 0.5 * in.pos[idx + x_size]).xyz;
     }}
-    }} // TODO: move to an `else if` statement when naga supports it
 
     //// TODO: investigate the best criterion for deciding when to zero out the normal vector.
     ///  If we get it wrong, we might produce artifacts (black spots) even in very simple cases,

@@ -339,7 +339,7 @@ pub fn create_graph_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     use std::io::Write;
     for chunk in padded_vector.chunks(buffer_dimensions.padded_bytes_per_row) {
         png_writer
-            .write(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
+            .write_all(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
             .unwrap();
     }
     png_writer.finish().unwrap();
@@ -439,7 +439,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     use std::io::Write;
     for chunk in padded_buffer.chunks(buffer_dimensions.padded_bytes_per_row) {
         png_writer
-            .write(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
+            .write_all(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
             .unwrap();
     }
     png_writer.finish().unwrap();

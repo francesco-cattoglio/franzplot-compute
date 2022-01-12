@@ -114,13 +114,14 @@ impl AstNode {
              // BEWARE: use the debug format, or it will forego the fractional part for integers
             AstNode::Number(val) => { format!("{:?}", val) },
             AstNode::Ident(ident) => {
-                // we need to check if the identifier is the name of a global variable or not.
-                // if it does, we need to prepend it with "globals."
-                if global_idents.contains(ident) {
-                    "globals.".to_string() + ident
-                } else if GLOBAL_CONSTANTS.iter().any(|e| e.0 == ident) {
+                // we need to check if the identifier is the name of a global identifier
+                // (this is true for both variables and math constants).
+                if global_idents.contains(ident) || GLOBAL_CONSTANTS.iter().any(|e| e.0 == ident) {
+                    // if it does, we need to prepend it with `globals.` so that the shader
+                    // can access the corresponding member in the `globals` struct.
                     "globals.".to_string() + ident
                 } else {
+                    // Otherwise, we can just clone the string
                     ident.clone()
                 }
             },

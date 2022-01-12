@@ -179,10 +179,6 @@ impl Globals {
         let mut names = Vec::<String>::new();
         let mut values = Vec::<f32>::new();
 
-        //// in wgsl, the constants go outside of all functions
-        //for (constant_name, constant_value) in GLOBAL_CONSTANTS {
-        //    wgsl_header += &format!("let {}: f32 = {:?};\n", constant_name, constant_value);
-        //}
         wgsl_header += "struct Globals {\n";
 
         for (constant_name, _constant_value) in GLOBAL_CONSTANTS {
