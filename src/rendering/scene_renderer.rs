@@ -1,9 +1,9 @@
+use crate::node_graph::NodeID;
 use crate::state::Assets;
-use crate::rendering::texture::{Texture};
+use crate::rendering::texture::Texture;
 use crate::rendering::*;
 use crate::device_manager;
-use crate::computable_scene::compute_chain::ComputeChain;
-use crate::computable_scene::compute_block::{BlockId, ComputeBlock, Dimensions, RenderingData, VectorRenderingData};
+use crate::compute_graph::{MatcapData, MatcapIter};
 use wgpu::util::DeviceExt;
 use glam::Mat4;
 
@@ -25,8 +25,8 @@ unsafe impl bytemuck::Zeroable for Uniforms {}
 impl Uniforms {
     fn new() -> Self {
         Self {
-            view: Mat4::identity(),
-            proj: Mat4::identity(),
+            view: Mat4::IDENTITY,
+            proj: Mat4::IDENTITY,
             mouse_pos: [0, 0],
             highlight_idx: std::i32::MAX,
             _padding: 0.0,
@@ -50,9 +50,10 @@ pub struct SceneRenderer {
     billboards: Vec<wgpu::RenderBundle>,
     wireframe_axes: Option<wgpu::RenderBundle>,
     renderables: Vec<wgpu::RenderBundle>,
-    renderable_ids: Vec<BlockId>,
+    renderable_ids: Vec<NodeID>,
     uniforms: Uniforms,
     uniforms_buffer: wgpu::Buffer,
+    texture_extent: wgpu::Extent3d,
     depth_texture: Texture,
     output_texture: Texture,
 }
@@ -89,8 +90,9 @@ impl SceneRenderer {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
-        let depth_texture = Texture::create_depth_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
-        let output_texture = Texture::create_output_texture(&device, wgpu::Extent3d::default(), SAMPLE_COUNT);
+        let texture_extent = wgpu::Extent3d::default();
+        let depth_texture = Texture::create_depth_texture(device, texture_extent, SAMPLE_COUNT);
+        let output_texture = Texture::create_output_texture(device, texture_extent, SAMPLE_COUNT);
 
         Self {
             picking_buffer_length,
@@ -100,6 +102,7 @@ impl SceneRenderer {
             billboards: Vec::new(),
             renderables: Vec::new(),
             renderable_ids: Vec::new(),
+            texture_extent,
             depth_texture,
             output_texture,
             uniforms,
@@ -108,7 +111,7 @@ impl SceneRenderer {
         }
     }
 
-    pub fn highlight_object(&mut self, object: Option<BlockId>) {
+    pub fn highlight_object(&mut self, object: Option<NodeID>) {
         if let Some(id) = object {
             if let Some(idx) = self.renderable_ids.iter().position(|elem| *elem == id) {
                 self.uniforms.highlight_idx = idx as i32;
@@ -118,52 +121,11 @@ impl SceneRenderer {
         }
     }
 
-    pub fn update_depth_buffer_size(&mut self, device: &wgpu::Device, size: wgpu::Extent3d) {
-        self.output_texture = Texture::create_output_texture(device, size, SAMPLE_COUNT);
-        self.depth_texture = Texture::create_depth_texture(device, size, SAMPLE_COUNT);
-    }
-
-    pub fn update_renderables(&mut self, device: &wgpu::Device, assets: &Assets, chain: &ComputeChain) {
-        self.renderables.clear();
-        self.renderable_ids.clear();
-        // go through all blocks,
-        // chose the "Rendering" ones,
-        // turn their data into a renderable
-        let rendering_data: Vec<(&BlockId, &RenderingData)> = chain.valid_blocks()
-            .filter_map(|(id, block)| {
-                if let ComputeBlock::Rendering(data) = block {
-                    Some((id, data))
-                } else {
-                    None
-                }
-            })
-        .collect();
-
-        let vector_rendering_data: Vec<(&BlockId, &VectorRenderingData)> = chain.valid_blocks()
-            .filter_map(|(id, block)| {
-                if let ComputeBlock::VectorRendering(data) = block {
-                    Some((id, data))
-                } else {
-                    None
-                }
-            })
-        .collect();
-
-        // if the buffer used for object picking is not big enough, resize it (i.e create a new one)
-        if rendering_data.len() > self.picking_buffer_length {
-            let (picking_buffer, _picking_bind_layout, picking_bind_group) = create_picking_buffer(device, rendering_data.len());
-            self.picking_buffer_length = rendering_data.len();
-            self.picking_buffer = picking_buffer;
-            self.picking_bind_group = picking_bind_group;
-        }
-
-        for (idx, (block_id, data)) in rendering_data.into_iter().enumerate() {
-            self.renderable_ids.push(*block_id);
-            self.add_renderable(device, assets, data, idx as u32);
-        }
-        for (block_id, data) in vector_rendering_data.into_iter() {
-            self.renderable_ids.push(*block_id);
-            self.add_renderable_vector(device, assets, data);
+    pub fn resize_if_needed(&mut self, device: &wgpu::Device, new_size: wgpu::Extent3d) {
+        if new_size.ne(&self.texture_extent) {
+            self.texture_extent = new_size;
+            self.output_texture = Texture::create_output_texture(device, new_size, SAMPLE_COUNT);
+            self.depth_texture = Texture::create_depth_texture(device, new_size, SAMPLE_COUNT);
         }
     }
 
@@ -257,6 +219,7 @@ impl SceneRenderer {
                     depth_read_only: false,
                     stencil_read_only: false,
                 }),
+                multiview: None,
                 sample_count: SAMPLE_COUNT,
             }
         );
@@ -332,6 +295,7 @@ impl SceneRenderer {
                     depth_read_only: false,
                     stencil_read_only: false,
                 }),
+                multiview: None,
                 sample_count: SAMPLE_COUNT,
             }
         );
@@ -356,26 +320,45 @@ impl SceneRenderer {
         self.wireframe_axes = Some(render_bundle);
     }
 
+    pub fn clear_matcaps(&mut self) {
+        self.renderables.clear();
+        self.renderable_ids.clear();
+    }
 
-    fn add_renderable(&mut self, device: &wgpu::Device, assets: &Assets, rendering_data: &RenderingData, object_id: u32) {
+    pub fn recreate_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, matcaps: MatcapIter<'_>) {
+        self.clear_matcaps();
+        // go through all blocks,
+        // chose the "Rendering" ones,
+        // turn their data into a renderable
+
+        // if the buffer used for object picking is not big enough, resize it (i.e create a new one)
+        if matcaps.len() > self.picking_buffer_length {
+            let (picking_buffer, _picking_bind_layout, picking_bind_group) = create_picking_buffer(device, matcaps.len());
+            self.picking_buffer_length = matcaps.len();
+            self.picking_buffer = picking_buffer;
+            self.picking_bind_group = picking_bind_group;
+        }
+
+        for (idx, (data_id, matcap)) in matcaps.enumerate() {
+            self.renderable_ids.push(*data_id);
+            self.add_matcap(device, assets, matcap, idx as u32);
+        }
+    }
+
+    fn add_matcap(&mut self, device: &wgpu::Device, assets: &Assets, matcap_data: &MatcapData, object_id: u32) {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
-                label: Some("Render bundle encoder for RenderingData"),
+                label: Some("Render bundle encoder for MatcapData"),
                 color_formats: &[SCENE_FORMAT],
                 depth_stencil: Some(wgpu::RenderBundleDepthStencil{
                     format: DEPTH_FORMAT,
                     depth_read_only: false,
                     stencil_read_only: false,
                 }),
+                multiview: None,
                 sample_count: SAMPLE_COUNT,
             }
         );
-        let index_buffer = match rendering_data.out_dim {
-            Dimensions::D0 => rendering_data.index_buffer.as_ref().unwrap(),
-            Dimensions::D1(_) => rendering_data.index_buffer.as_ref().unwrap(),
-            Dimensions::D2(_, _) => rendering_data.index_buffer.as_ref().unwrap(),
-            Dimensions::D3(_, prefab_id) => &assets.models[prefab_id as usize].index_buffer,
-        };
         // In order to create a correct uniforms bind group, we need to recover the layour from the correct pipeline
         let uniforms_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
             layout: &self.pipelines.matcap.get_bind_group_layout(0),
@@ -388,64 +371,23 @@ impl SceneRenderer {
             label: Some("Uniforms bind group"),
         });
         render_bundle_encoder.set_pipeline(&self.pipelines.matcap);
-        render_bundle_encoder.set_vertex_buffer(0, rendering_data.vertex_buffer.slice(..));
-        render_bundle_encoder.set_index_buffer(index_buffer.slice(..), wgpu::IndexFormat::Uint32);
+        render_bundle_encoder.set_vertex_buffer(0, matcap_data.vertex_buffer.slice(..));
+        render_bundle_encoder.set_index_buffer(matcap_data.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
         render_bundle_encoder.set_bind_group(0, &uniforms_bind_group, &[]);
         render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
-        render_bundle_encoder.set_bind_group(2, &assets.masks[rendering_data.mask_id].bind_group, &[]);
-        render_bundle_encoder.set_bind_group(3, &assets.materials[rendering_data.material_id].bind_group, &[]);
+        render_bundle_encoder.set_bind_group(2, &assets.masks[matcap_data.mask_id].bind_group, &[]);
+        render_bundle_encoder.set_bind_group(3, &assets.materials[matcap_data.material_id].bind_group, &[]);
         // encode the object_id in the instance used for indexed rendering, so that the shader
         // will be able to recover the id by reading the gl_InstanceIndex variable
         let instance_id = object_id;
         //render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, instance_id..instance_id+1);
-        render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, 0..1);
+        render_bundle_encoder.draw_indexed(0..matcap_data.index_count, 0, 0..1);
         let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
             label: Some("Render bundle for a single scene object"),
         });
         self.renderables.push(render_bundle);
     }
 
-    // TODO: DRY! This should be merged with add_renderable() function!
-    fn add_renderable_vector(&mut self, device: &wgpu::Device, assets: &Assets, rendering_data: &VectorRenderingData) {
-        let mut render_bundle_encoder = device.create_render_bundle_encoder(
-            &wgpu::RenderBundleEncoderDescriptor{
-                label: Some("Render bundle encoder for VectorRenderingData"),
-                color_formats: &[SCENE_FORMAT],
-                depth_stencil: Some(wgpu::RenderBundleDepthStencil{
-                    format: DEPTH_FORMAT,
-                    depth_read_only: false,
-                    stencil_read_only: false,
-                }),
-                sample_count: SAMPLE_COUNT,
-            }
-        );
-        // In order to create a correct uniforms bind group, we need to recover the layour from the correct pipeline
-        let uniforms_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
-            layout: &self.pipelines.matcap.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: self.uniforms_buffer.as_entire_binding(),
-                },
-            ],
-            label: Some("Uniforms bind group"),
-        });
-        render_bundle_encoder.set_pipeline(&self.pipelines.matcap);
-        render_bundle_encoder.set_vertex_buffer(0, rendering_data.out_buffer.slice(..));
-        render_bundle_encoder.set_index_buffer(rendering_data.index_buffer.slice(..), wgpu::IndexFormat::Uint32);
-        render_bundle_encoder.set_bind_group(0, &uniforms_bind_group, &[]);
-        render_bundle_encoder.set_bind_group(1, &self.picking_bind_group, &[]);
-        render_bundle_encoder.set_bind_group(2, &assets.masks[0].bind_group, &[]);
-        render_bundle_encoder.set_bind_group(3, &assets.materials[rendering_data.material_id].bind_group, &[]);
-        // encode the object_id in the instance used for indexed rendering, so that the shader
-        // will be able to recover the id by reading the gl_InstanceIndex variable
-        let instance_id = 0; //TODO: this needs fixing, otherwise this breaks the object picking
-        render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, instance_id..instance_id+1);
-        let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
-            label: Some("Render bundle for a single scene object"),
-        });
-        self.renderables.push(render_bundle);
-    }
 
     pub fn update_view(&mut self, view: Mat4) {
         self.uniforms.view = view;
@@ -506,7 +448,7 @@ impl SceneRenderer {
         manager.queue.submit(std::iter::once(render_queue));
     }
 
-    pub fn object_under_cursor(&self, device: &wgpu::Device) -> Option<BlockId> {
+    pub fn object_under_cursor(&self, device: &wgpu::Device) -> Option<NodeID> {
         use crate::util::copy_buffer_as;
         let picking_distances = copy_buffer_as::<i32>(&self.picking_buffer, device);
         // extract the min value in the picking distances array and its index
@@ -515,7 +457,7 @@ impl SceneRenderer {
             .enumerate()
             .min_by_key(|(_idx, value)| *value)?;
         // if the value is different from the initialization value, we can use this
-        // idx to recover the BlockId of the renderable that is closer to the camera
+        // idx to recover the NodeID of the renderable that is closer to the camera
         if min_value != std::i32::MAX {
             Some(self.renderable_ids[min_idx])
         } else {
@@ -594,7 +536,7 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
     // in particular, there are two primitive kinds: the triangles for the billboard and matcap
     // objects or the lines only for the wireframe effect
     let primitive_triangles = wgpu::PrimitiveState {
-        clamp_depth: false,
+        unclipped_depth: false,
         conservative: false,
         topology: wgpu::PrimitiveTopology::TriangleList,
         strip_index_format: None,
@@ -603,7 +545,7 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         polygon_mode: wgpu::PolygonMode::Fill,
     };
     let primitive_lines = wgpu::PrimitiveState {
-        clamp_depth: false,
+        unclipped_depth: false,
         conservative: false,
         topology: wgpu::PrimitiveTopology::LineList,
         strip_index_format: None,
@@ -625,9 +567,10 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         }),
         layout: None,
         label: None,
-        primitive: primitive_triangles.clone(),
+        primitive: primitive_triangles,
         depth_stencil: depth_stencil_state.clone(),
-        multisample: multisample_state.clone(),
+        multisample: multisample_state,
+        multiview: None,
     });
 
     let billboard = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -643,9 +586,10 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         }),
         layout: None,
         label: None,
-        primitive: primitive_triangles.clone(),
+        primitive: primitive_triangles,
         depth_stencil: depth_stencil_state.clone(),
-        multisample: multisample_state.clone(),
+        multisample: multisample_state,
+        multiview: None,
     });
 
     let wireframe = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -657,13 +601,14 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         fragment: Some(wgpu::FragmentState {
             module: &wgsl_module,
             entry_point: "color_fs_main",
-            targets: &[color_target_state.clone()],
+            targets: &[color_target_state],
         }),
         layout: None,
         label: None,
-        primitive: primitive_lines.clone(),
-        depth_stencil: depth_stencil_state.clone(),
-        multisample: multisample_state.clone(),
+        primitive: primitive_lines,
+        depth_stencil: depth_stencil_state,
+        multisample: multisample_state,
+        multiview: None,
     });
     Pipelines {
         matcap,
@@ -674,12 +619,12 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
 
 fn create_wireframe_cross(pos: glam::Vec3, size: f32, color: [u8; 4]) -> Vec<WireframeVertexData> {
     vec![
-        WireframeVertexData { position: (pos - size*glam::Vec3::unit_x()).into(), color },
-        WireframeVertexData { position: (pos + size*glam::Vec3::unit_x()).into(), color },
-        WireframeVertexData { position: (pos - size*glam::Vec3::unit_y()).into(), color },
-        WireframeVertexData { position: (pos + size*glam::Vec3::unit_y()).into(), color },
-        WireframeVertexData { position: (pos - size*glam::Vec3::unit_z()).into(), color },
-        WireframeVertexData { position: (pos + size*glam::Vec3::unit_z()).into(), color },
+        WireframeVertexData { position: (pos - size*glam::Vec3::X).into(), color },
+        WireframeVertexData { position: (pos + size*glam::Vec3::X).into(), color },
+        WireframeVertexData { position: (pos - size*glam::Vec3::Y).into(), color },
+        WireframeVertexData { position: (pos + size*glam::Vec3::Y).into(), color },
+        WireframeVertexData { position: (pos - size*glam::Vec3::Z).into(), color },
+        WireframeVertexData { position: (pos + size*glam::Vec3::Z).into(), color },
     ]
 }
 

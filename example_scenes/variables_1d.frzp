@@ -1,0 +1,143 @@
+//// FRANZPLOT DATA FILE V1.1 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.04 or higher
+
+V1(
+  (
+    graph: (
+      nodes: [
+        Some((
+          title: "Interval",
+          position: (56,68),
+          error: None,
+          contents: Interval(variable:0,begin:1,end:2,quality:3,output:4),
+        )),// [0]
+        Some((
+          title: "Curve",
+          position: (261,65),
+          error: None,
+          contents: Curve(interval:5,fx:6,fy:7,fz:8,output:9),
+        )),// [1]
+        Some((
+          title: "Output cerchio",
+          position: (456.00006,74),
+          error: None,
+          contents: Rendering(geometry:10,thickness:27,mask:28,material:29),
+        )),
+      ],
+      attributes: [
+        Some((
+          node_id: 0,
+          contents: Text(label:" name",string:"s"),
+        )),// [0]
+        Some((
+          node_id: 0,
+          contents: Text(label:"begin",string:"0"),
+        )),// [1]
+        Some((
+          node_id: 0,
+          contents: Text(label:"  end",string:"k*pi"),
+        )),// [2]
+        Some((
+          node_id: 0,
+          contents: IntSlider(label:"quality",value:3,mode:IntRange(1,16)),
+        )),// [3]
+        Some((
+          node_id: 0,
+          contents: OutputPin(label:"interval",kind:Interval),
+        )),// [4]
+        Some((
+          node_id: 1,
+          contents: InputPin(label:"interval",kind:Interval),
+        )),// [5]
+        Some((
+          node_id: 1,
+          contents: Text(label:"fx",string:"sin(s)"),
+        )),// [6]
+        Some((
+          node_id: 1,
+          contents: Text(label:"fy",string:"cos(s)"),
+        )),// [7]
+        Some((
+          node_id: 1,
+          contents: Text(label:"fz",string:"0"),
+        )),// [8]
+        Some((
+          node_id: 1,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [9]
+        Some((
+          node_id: 6,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [10]
+        None,// [11]
+        None,// [12]
+        None,// [13]
+        None,// [14]
+        None,// [15]
+        None,// [16]
+        None,// [17]
+        None,// [18]
+        None,// [19]
+        None,// [20]
+        None,// [21]
+        None,// [22]
+        None,// [23]
+        None,// [24]
+        None,// [25]
+        None,// [26]
+        Some((
+          node_id: 6,
+          contents: IntSlider(label:"thickness:",value:0,mode:SizeLabels),
+        )),// [27]
+        Some((
+          node_id: 6,
+          contents: Mask(selected:0),
+        )),// [28]
+        Some((
+          node_id: 6,
+          contents: Material(selected:4),
+        )),// [29]
+        None,
+      ],
+      links: {
+        5: 4,
+        10: 9,
+      },
+      free_nodes_list: [],
+      free_attributes_list: [
+        30,// [0]
+        11,// [1]
+        12,// [2]
+        13,// [3]
+        14,// [4]
+        15,// [5]
+        16,// [6]
+        17,// [7]
+        18,// [8]
+        19,// [9]
+        20,// [10]
+        21,// [11]
+        22,// [12]
+        23,// [13]
+        24,// [14]
+        25,// [15]
+        26,
+      ],
+    ),
+    globals_names: [
+      "k",
+    ],
+    globals_init_values: [
+      1,
+    ],
+  ),
+  (
+    fc: 0,
+    fs: 1637519928,
+    vn: 4099954857,
+    hs: 0,
+  ),
+)

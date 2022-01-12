@@ -12,7 +12,6 @@ use imgui::{FontSource, FontGlyphRanges};
 mod util;
 mod rendering;
 mod state;
-mod computable_scene;
 mod device_manager;
 mod shader_processing;
 mod node_graph;
@@ -20,10 +19,13 @@ mod rust_gui;
 mod cpp_gui;
 mod file_io;
 mod parser;
+mod compute_graph;
 #[cfg(test)]
 mod tests;
 
 use std::env;
+
+use crate::state::Action;
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -48,6 +50,7 @@ impl PhysicalRectangle {
     fn from_imgui_rectangle(rectangle: &rust_gui::SceneRectangle, hidpi_factor: f64) -> Self {
         let logical_pos = winit::dpi::LogicalPosition::new(rectangle.position[0], rectangle.position[1]);
         let logical_size = winit::dpi::LogicalSize::new(rectangle.size[0], rectangle.size[1]);
+
         PhysicalRectangle {
             position: logical_pos.to_physical(hidpi_factor),
             size: logical_size.to_physical(hidpi_factor),
@@ -75,7 +78,7 @@ fn add_custom_font(imgui_context: &mut imgui::Context, font_size: f32) -> imgui:
     }])
 }
 
-fn main() {
+fn main() -> Result<(), &'static str>{
     let matches = clap::App::new("Franzplot")
         .version(clap::crate_version!())
         .author("Francesco Cattoglio")
@@ -142,11 +145,7 @@ fn main() {
         // web winit always reports a size of zero
         #[cfg(not(target_arch = "wasm32"))]
         let screen_size = monitor.size();
-        if maybe_export_path.is_some() {
-            winit::dpi::PhysicalSize::new(screen_size.width, screen_size.height)
-        } else {
-            winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
-        }
+        winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
     } else {
         winit::dpi::PhysicalSize::new(1280, 800)
     };
@@ -163,16 +162,11 @@ fn main() {
 
     let mut builder = winit::window::WindowBuilder::new();
     builder = builder
-        .with_title("test")
+        .with_title("Franzplot")
         .with_window_icon(Some(icon))
         .with_inner_size(window_size);
     if maybe_export_path.is_some() {
         builder = builder.with_visible(false);
-    }
-    #[cfg(windows_OFF)] // TODO check for news regarding this
-    {
-        use winit::platform::windows::WindowBuilderExtWindows;
-        builder = builder.with_no_redirection_bitmap(true);
     }
     let window = builder.build(&event_loop).unwrap();
 
@@ -229,7 +223,16 @@ fn main() {
         } else if exe_path.is_dir() {
             exe_path
         } else {
-            panic!("Could not find the 'resources' folder");
+            let error_message = "Could not find the 'resources' folder. Make sure to extract \
+                all the contents of the compressed folder, and to keep the Franzplot executable \
+                next to the 'resources' folder";
+            rfd::MessageDialog::new()
+                .set_level(rfd::MessageLevel::Error)
+                .set_description(error_message)
+                .set_buttons(rfd::MessageButtons::Ok)
+                .show();
+
+            return Err(error_message);
         }
     };
     let mut masks_dir = resources_path.clone();
@@ -247,7 +250,6 @@ fn main() {
         "blank.png",
         "alpha_grid.png",
     ];
-    use std::convert::TryInto;
     let mask_files: [std::path::PathBuf; 5] = mask_names
         .iter()
         .map(|name| {
@@ -285,10 +287,10 @@ fn main() {
 
     let masks = util::load_masks(&device_manager, &mask_files);
     let materials = util::load_materials(&device_manager, &material_files);
-    assert!(materials.len() > 0, "Error while loading resources: could not load any material.");
+    assert!(!materials.is_empty(), "Error while loading resources: could not load any material.");
 
     // do the same for models
-    let mut models_dir = resources_path.clone();
+    let mut models_dir = resources_path;
     models_dir.push("models");
     let models_dir_files = std::fs::read_dir(models_dir)
         .unwrap(); // unwraps the dir reading, giving an iterator over its files
@@ -313,7 +315,7 @@ fn main() {
     model_files.sort();
     let models = util::load_models(&device_manager.device, &model_files);
     let model_names = util::imgui_model_names(&model_files);
-    assert!(models.len() > 0, "Error while loading resources: could not load any model.");
+    assert!(!models.is_empty(), "Error while loading resources: could not load any model.");
 
     let assets = state::Assets {
         materials,
@@ -392,7 +394,7 @@ fn main() {
                 let mut encoder: wgpu::CommandEncoder =
                     state.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-                let frame_view = frame.output.texture.create_view(&wgpu::TextureViewDescriptor::default());
+                let frame_view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
                 let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: None,
                     color_attachments: &[wgpu::RenderPassColorAttachment {
@@ -412,32 +414,34 @@ fn main() {
                 let requested_logical_rectangle = rust_gui.render(&ui, [size.width, size.height], &mut state, &executor);
                 // after calling the gui render function we know if we need to render the scene or not
                 if let Some(logical_rectangle) = requested_logical_rectangle {
+                    // the GUI told us that we have to create a scene in the given logical
+                    // rectangle. Convert it to physical to make sure that we have the actual size
                     let physical_rectangle = PhysicalRectangle::from_imgui_rectangle(&logical_rectangle, hidpi_factor);
+                    let texture_size = wgpu::Extent3d {
+                        height: physical_rectangle.size.height,
+                        width: physical_rectangle.size.width,
+                        depth_or_array_layers: 1,
+                    };
                     let scene_texture = renderer.textures.get(scene_texture_id).unwrap();
-                    // first, check if the scene size has changed. If so, re-create the scene
-                    // texture and depth buffer
+                    // first, check if the scene size has changed. If so, re-create the texture
+                    // that is used by imgui to render the scene to.
                     if (physical_rectangle.size.width != scene_texture.width() || physical_rectangle.size.height != scene_texture.height())
                             && (physical_rectangle.size.width > 8 && physical_rectangle.size.height > 8) {
-                        let texture_size = wgpu::Extent3d {
-                            height: physical_rectangle.size.height,
-                            width: physical_rectangle.size.width,
-                            depth_or_array_layers: 1,
-                        };
-                        state.app.update_depth_buffer(texture_size);
-                        state.app.update_projection_matrix(texture_size);
                         let new_scene_texture = rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
                         renderer.textures.replace(scene_texture_id, new_scene_texture.into()).unwrap();
                     }
-                    // update the scene
-                    let scene_texture_view = renderer.textures.get(scene_texture_id).unwrap().view();
+                    // after that, load the texture that will be used as output
+                    let scene_view = renderer.textures.get(scene_texture_id).unwrap().view();
 
                     let relative_pos = [
                         cursor_position.x - physical_rectangle.position.x,
                         cursor_position.y - physical_rectangle.position.y,
                     ];
-                    state.app.computable_scene.renderer.update_mouse_pos(&relative_pos);
-                    state.app.update_camera(&camera_inputs);
-                    state.app.update_scene(scene_texture_view);
+                    state.app.renderer.update_mouse_pos(&relative_pos); // TODO: this should be done with actions as well
+                    state.app.update_camera(&camera_inputs); // TODO: this should be done with actions as well
+                    // and then ask the state to render the scene
+                    let render_request = Action::RenderScene(texture_size, scene_view);
+                    state.process(render_request);
                 }
 
                 platform.prepare_render(&ui, &window);
@@ -449,6 +453,7 @@ fn main() {
 
                 // submit the framebuffer rendering pass
                 state.app.manager.queue.submit(Some(encoder.finish()));
+                frame.present();
             }
             // Emitted after all RedrawRequested events have been processed and control flow is about to be taken away from the program.
             // If there are no RedrawRequested events, it is emitted immediately after MainEventsCleared.
@@ -478,8 +483,13 @@ fn main() {
                         file_io::async_pick_open(event_loop_proxy.clone(), &executor);
                     },
                     CustomEvent::NewFile => {
-                        state.new_file();
-                        rust_gui.reset_undo_history(&mut state);
+                        // when we are actually creating a new file, we need to both
+                        // "reset the state" and "reset the gui"
+                        // state reset is done with the appropriate action
+                        let action = Action::NewFile();
+                        state.process(action).expect("failed to create a new file");
+                        // and after that we can tell the GUI to also reset some of its parts
+                        rust_gui.reset_undo_history(&state);
                         rust_gui.reset_nongraph_data();
                     },
                     CustomEvent::RequestExit => {
@@ -489,13 +499,21 @@ fn main() {
                         }
                     },
                     CustomEvent::SaveFile(path_buf) => {
-                        state.write_to_frzp(&path_buf);
+                        let action = Action::WriteToFile(path_buf);
+                        match state.process(action) {
+                            Ok(()) => {
+                            },
+                            Err(error) => {
+                                file_io::async_dialog_failure(&executor, error);
+                            }
+                        }
                         rust_gui.graph_edited = false;
                     },
                     CustomEvent::OpenFile(path_buf) => {
-                        match state.read_from_frzp(&path_buf) {
+                        let action = Action::OpenFile(path_buf);
+                        match state.process(action) {
                             Ok(()) => {
-                                rust_gui.reset_undo_history(&mut state);
+                                rust_gui.reset_undo_history(&state);
                                 rust_gui.reset_nongraph_data();
                                 rust_gui.opened_tab[0] = true;
                             },
@@ -507,28 +525,15 @@ fn main() {
                     CustomEvent::ExportGraphPng(path_buf) => {
                         println!("Exporting graph: {:?}", &path_buf);
                         // zoom out once or twice
-                        state.user.graph.zoom_down_graph([0.0, 0.0]);
+                        state.user.node_graph.zoom_down_graph([0.0, 0.0]);
                         //state.user.graph.zoom_down_graph([0.0, 0.0]);
-                        state.user.graph.push_all_to_corner();
-                        state.user.graph.push_positions_to_imnodes();
+                        state.user.node_graph.push_all_to_corner();
+                        state.user.node_graph.push_positions_to_imnodes();
                         util::create_graph_png(&mut state, &path_buf,&window,&mut platform,&mut renderer,&mut rust_gui,&mut imgui, window_size.to_logical(hidpi_factor));
                     },
                     CustomEvent::ExportScenePng(path_buf) => {
                         println!("Exporting scene: {:?}", &path_buf);
                         util::create_scene_png(&mut state, &path_buf);
-                        // TODO: this is hacked in and needs some refactoring:
-                        // util::create_png modifies the state changing the depth buffer and the
-                        // projection because we run the rendering on the output png size.
-                        // before we continue with our normal execution we need to resize
-                        // everything back
-                        let scene_texture = renderer.textures.get(scene_texture_id).unwrap();
-                        let texture_size = wgpu::Extent3d {
-                            height: scene_texture.height(),
-                            width: scene_texture.width(),
-                            depth_or_array_layers: 1,
-                        };
-                        state.app.update_depth_buffer(texture_size);
-                        state.app.update_projection_matrix(texture_size);
                     },
                     CustomEvent::MouseFreeze => {
                         // set mouse as frozen

@@ -2,6 +2,7 @@ use crate::rust_gui;
 use crate::device_manager;
 use crate::rendering::texture;
 use crate::rendering::model;
+use crate::state::Action;
 use crate::state::State;
 
 use std::future::Future;
@@ -28,9 +29,18 @@ impl Executor {
     }
 }
 
+pub fn create_storage_buffer(device: &wgpu::Device, buffer_size: usize) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: None,
+        mapped_at_creation: false,
+        size: buffer_size as wgpu::BufferAddress,
+        // Beware:copy and map are only needed when debugging/inspecting
+        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
+    })
+}
+
 
 pub fn load_imgui_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, renderer: &mut imgui_wgpu::Renderer, files: &[P]) -> rust_gui::MaskIds {
-    use std::convert::TryInto;
     files.iter()
         .map(|path| {
             let texture = texture::Texture::thumbnail(&manager.device, &manager.queue, path, None).unwrap();
@@ -60,7 +70,6 @@ pub fn imgui_model_names<P: AsRef<std::path::Path>>(files: &[P]) -> Vec<imgui::I
 }
 
 pub fn load_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, files: &[P]) -> texture::Masks {
-    use std::convert::TryInto;
     files.iter()
         .map(|path| {
             texture::Texture::load(&manager.device, &manager.queue, path, None).unwrap()
@@ -242,7 +251,7 @@ pub fn create_graph_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     let _requested_logical_rectangle = rust_gui.render(&ui, [logical_size.width, logical_size.height], state, &executor);
     // after calling the gui render function we know if we need to render the scene or not
 
-    platform.prepare_render(&ui, &window);
+    platform.prepare_render(&ui, window);
     renderer
         .render(ui.render(), &state.app.manager.queue, &state.app.manager.device, &mut rpass)
         .expect("Imgui rendering failed");
@@ -330,7 +339,7 @@ pub fn create_graph_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     use std::io::Write;
     for chunk in padded_vector.chunks(buffer_dimensions.padded_bytes_per_row) {
         png_writer
-            .write(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
+            .write_all(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
             .unwrap();
     }
     png_writer.finish().unwrap();
@@ -350,14 +359,14 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
         width,
         depth_or_array_layers: 1,
     };
-    state.app.update_depth_buffer(texture_size);
-    state.app.update_projection_matrix(texture_size);
     let output_texture = super::rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
-    let processing_succesful = state.process_user_state();
-    if !processing_succesful {
-        println!("Warning: errors detected in the scene");
+    let processing_result = state.process(Action::ProcessUserState());
+    if let Err(error) = processing_result {
+            println!("Warning: errors detected in the scene: {}", error);
     }
-    state.app.update_scene(&output_texture.view);
+
+    let render_request = Action::RenderScene(texture_size, &output_texture.view);
+    state.process(render_request).expect("failed to render the scene due to an unknown error");
 
     let buffer_dimensions = BufferDimensions::new(width as usize, height as usize);
     // The output buffer lets us retrieve the data as an array
@@ -430,7 +439,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     use std::io::Write;
     for chunk in padded_buffer.chunks(buffer_dimensions.padded_bytes_per_row) {
         png_writer
-            .write(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
+            .write_all(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
             .unwrap();
     }
     png_writer.finish().unwrap();

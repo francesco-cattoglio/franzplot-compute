@@ -1,0 +1,234 @@
+//// FRANZPLOT DATA FILE V1.1 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.04 or higher
+
+V1(
+  (
+    graph: (
+      nodes: [
+        Some((
+          title: "Vector",
+          position: (26,156),
+          error: None,
+          contents: Vector(x:0,y:1,z:2,output:3),
+        )),// [0]
+        Some((
+          title: "Vector Rendering",
+          position: (223,154),
+          error: None,
+          contents: VectorRendering(application_point:4,vector:5,thickness:6,material:7),
+        )),// [1]
+        Some((
+          title: "Point",
+          position: (26,21),
+          error: None,
+          contents: Point(x:8,y:9,z:10,output:11),
+        )),// [2]
+        Some((
+          title: "Vector",
+          position: (26,315),
+          error: None,
+          contents: Vector(x:12,y:13,z:14,output:15),
+        )),// [3]
+        Some((
+          title: "Vector Rendering",
+          position: (224,316),
+          error: None,
+          contents: VectorRendering(application_point:16,vector:17,thickness:18,material:19),
+        )),// [4]
+        Some((
+          title: "Vector",
+          position: (422,317),
+          error: None,
+          contents: Vector(x:20,y:21,z:22,output:23),
+        )),// [5]
+        Some((
+          title: "Vector Rendering",
+          position: (617,316),
+          error: None,
+          contents: VectorRendering(application_point:24,vector:25,thickness:26,material:27),
+        )),// [6]
+        Some((
+          title: "Vector",
+          position: (425,156),
+          error: None,
+          contents: Vector(x:28,y:29,z:30,output:31),
+        )),// [7]
+        Some((
+          title: "Vector Rendering",
+          position: (616,155),
+          error: None,
+          contents: VectorRendering(application_point:32,vector:33,thickness:34,material:35),
+        )),
+      ],
+      attributes: [
+        Some((
+          node_id: 0,
+          contents: Text(label:"x",string:"1"),
+        )),// [0]
+        Some((
+          node_id: 0,
+          contents: Text(label:"y",string:"0.0"),
+        )),// [1]
+        Some((
+          node_id: 0,
+          contents: Text(label:"z",string:"0.0"),
+        )),// [2]
+        Some((
+          node_id: 0,
+          contents: OutputPin(label:"vector",kind:Vector),
+        )),// [3]
+        Some((
+          node_id: 1,
+          contents: InputPin(label:"application point",kind:Geometry),
+        )),// [4]
+        Some((
+          node_id: 1,
+          contents: InputPin(label:"vector",kind:Vector),
+        )),// [5]
+        Some((
+          node_id: 1,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [6]
+        Some((
+          node_id: 1,
+          contents: Material(selected:0),
+        )),// [7]
+        Some((
+          node_id: 2,
+          contents: Text(label:"x",string:"0.0"),
+        )),// [8]
+        Some((
+          node_id: 2,
+          contents: Text(label:"y",string:"0.0"),
+        )),// [9]
+        Some((
+          node_id: 2,
+          contents: Text(label:"z",string:"0.0"),
+        )),// [10]
+        Some((
+          node_id: 2,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [11]
+        Some((
+          node_id: 3,
+          contents: Text(label:"x",string:"0.0"),
+        )),// [12]
+        Some((
+          node_id: 3,
+          contents: Text(label:"y",string:"1"),
+        )),// [13]
+        Some((
+          node_id: 3,
+          contents: Text(label:"z",string:"0.0"),
+        )),// [14]
+        Some((
+          node_id: 3,
+          contents: OutputPin(label:"vector",kind:Vector),
+        )),// [15]
+        Some((
+          node_id: 4,
+          contents: InputPin(label:"application point",kind:Geometry),
+        )),// [16]
+        Some((
+          node_id: 4,
+          contents: InputPin(label:"vector",kind:Vector),
+        )),// [17]
+        Some((
+          node_id: 4,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [18]
+        Some((
+          node_id: 4,
+          contents: Material(selected:1),
+        )),// [19]
+        Some((
+          node_id: 5,
+          contents: Text(label:"x",string:"0.0"),
+        )),// [20]
+        Some((
+          node_id: 5,
+          contents: Text(label:"y",string:"-1"),
+        )),// [21]
+        Some((
+          node_id: 5,
+          contents: Text(label:"z",string:"0.0"),
+        )),// [22]
+        Some((
+          node_id: 5,
+          contents: OutputPin(label:"vector",kind:Vector),
+        )),// [23]
+        Some((
+          node_id: 6,
+          contents: InputPin(label:"application point",kind:Geometry),
+        )),// [24]
+        Some((
+          node_id: 6,
+          contents: InputPin(label:"vector",kind:Vector),
+        )),// [25]
+        Some((
+          node_id: 6,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [26]
+        Some((
+          node_id: 6,
+          contents: Material(selected:5),
+        )),// [27]
+        Some((
+          node_id: 7,
+          contents: Text(label:"x",string:"-1"),
+        )),// [28]
+        Some((
+          node_id: 7,
+          contents: Text(label:"y",string:"0.0"),
+        )),// [29]
+        Some((
+          node_id: 7,
+          contents: Text(label:"z",string:"0.0"),
+        )),// [30]
+        Some((
+          node_id: 7,
+          contents: OutputPin(label:"vector",kind:Vector),
+        )),// [31]
+        Some((
+          node_id: 8,
+          contents: InputPin(label:"application point",kind:Geometry),
+        )),// [32]
+        Some((
+          node_id: 8,
+          contents: InputPin(label:"vector",kind:Vector),
+        )),// [33]
+        Some((
+          node_id: 8,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [34]
+        Some((
+          node_id: 8,
+          contents: Material(selected:2),
+        )),
+      ],
+      links: {
+        17: 15,
+        5: 3,
+        4: 11,
+        16: 11,
+        25: 23,
+        24: 11,
+        32: 11,
+        33: 31,
+      },
+      free_nodes_list: [],
+      free_attributes_list: [],
+    ),
+    globals_names: [],
+    globals_init_values: [],
+  ),
+  (
+    fc: 1639499164,
+    fs: 1639500578,
+    vn: 2421246409,
+    hs: 0,
+  ),
+)

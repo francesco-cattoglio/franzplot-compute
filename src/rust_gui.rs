@@ -1,7 +1,9 @@
 use imgui::*;
+use crate::compute_graph::globals::Globals;
 use crate::file_io;
-use crate::state::State;
-use crate::computable_scene::compute_block::BlockId;
+use crate::state::{Action, State};
+pub type BlockId = i32;
+pub type PrefabId = i32;
 
 const MAX_UNDO_HISTORY : usize = 10;
 pub type MaskIds = [TextureId; 5];
@@ -15,7 +17,7 @@ pub struct Availables {
 
 pub struct Gui {
     pub scene_texture_id: TextureId,
-    pub new_variable_buffer: ImString,
+    pub new_variable_buffer: String,
     pub new_variable_error: Option<String>,
     graph_fonts: Vec<imgui::FontId>,
     winit_proxy: winit::event_loop::EventLoopProxy<super::CustomEvent>,
@@ -52,7 +54,7 @@ impl Gui {
             winit_proxy,
             undo_stack: vec![(0.0, serde_json::to_string(&empty_graph).unwrap())].into(),
             undo_cursor: 0,
-            new_variable_buffer: ImString::with_capacity(8),
+            new_variable_buffer: String::with_capacity(8),
             new_variable_error: None,
             graph_edited: false,
             selected_object: None,
@@ -67,7 +69,7 @@ impl Gui {
     /// only existing one on the undo stack.
     /// an action that is required when creating a new file or opening an existing one
     pub fn reset_undo_history(&mut self, state: &State) {
-        self.undo_stack = vec![(0.0, serde_json::to_string(&state.user.graph).unwrap())].into();
+        self.undo_stack = vec![(0.0, serde_json::to_string(&state.user.node_graph).unwrap())].into();
         self.undo_cursor = 0;
         self.graph_edited = false;
     }
@@ -80,23 +82,23 @@ impl Gui {
 
     pub fn issue_undo(&mut self, state: &mut State, timestamp: f64) {
         // if the user is actively editing a node, we want to stop the editing and issue a savestate!
-        if state.user.graph.currently_editing() {
+        if state.user.node_graph.currently_editing() {
             // stop the editing on the imgui side
             use crate::cpp_gui::ImGui;
             ImGui::ClearActiveID();
             // stop the editing on the rust side
-            state.user.graph.stop_editing();
+            state.user.node_graph.stop_editing();
             // issue a savestate
             self.issue_savestate(state, timestamp);
         }
         if self.undo_cursor != 0 {
-            let zoom_level = state.user.graph.zoom_level;
+            let zoom_level = state.user.node_graph.zoom_level;
             self.undo_cursor -= 1;
             let old_state = self.undo_stack.get(self.undo_cursor).unwrap();
             // println!("Restored state from {} seconds ago", ui.time() - old_state.0);
-            state.user.graph = serde_json::from_str(&old_state.1).unwrap();
-            state.user.graph.zoom_level = zoom_level;
-            state.user.graph.push_positions_to_imnodes();
+            state.user.node_graph = serde_json::from_str(&old_state.1).unwrap();
+            state.user.node_graph.zoom_level = zoom_level;
+            state.user.node_graph.push_positions_to_imnodes();
         }
     }
 
@@ -115,27 +117,27 @@ impl Gui {
             self.undo_stack.truncate(preserved_elements);
             self.undo_cursor += 1;
         }
-        let serialized_graph = serde_json::to_string(&state.user.graph).unwrap();
+        let serialized_graph = serde_json::to_string(&state.user.node_graph).unwrap();
         self.undo_stack.push_back((timestamp, serialized_graph));
         self.graph_edited = true;
     }
 
     pub fn issue_redo(&mut self, state: &mut State) {
         if self.undo_cursor != self.undo_stack.len()-1 {
-            let zoom_level = state.user.graph.zoom_level;
+            let zoom_level = state.user.node_graph.zoom_level;
             self.undo_cursor += 1;
             let restored_state = self.undo_stack.get(self.undo_cursor).unwrap();
             // println!("Restored state from {} seconds ago", ui.time() - restored_state.0);
-            state.user.graph = serde_json::from_str(&restored_state.1).unwrap();
-            state.user.graph.zoom_level = zoom_level;
-            state.user.graph.push_positions_to_imnodes();
+            state.user.node_graph = serde_json::from_str(&restored_state.1).unwrap();
+            state.user.node_graph.zoom_level = zoom_level;
+            state.user.node_graph.push_positions_to_imnodes();
             self.graph_edited = true;
         }
     }
 
     pub fn render(&mut self, ui: &Ui<'_>, size: [f32; 2], state: &mut State, executor: &crate::util::Executor) -> Option<SceneRectangle> {
         // create main window
-        let window_begun = Window::new(im_str!("Rust window"))
+        let window_begun = Window::new("Rust window")
             .no_decoration()
             .menu_bar(true)
             .movable(false)
@@ -148,31 +150,32 @@ impl Gui {
         if let Some(window_token) = window_begun {
             // menu bar
             if let Some(menu_bar_token) = ui.begin_menu_bar() {
-                ui.menu(im_str!("File"), true, || {
-                    if MenuItem::new(im_str!("New")).build(ui) {
+                ui.menu("File", || {
+                    if MenuItem::new("New").build(ui) {
                         if self.graph_edited {
                             file_io::async_confirm_new(self.winit_proxy.clone(), executor);
                         } else {
-                            state.new_file();
+                            let action = Action::NewFile();
+                            state.process(action).expect("failed to create a new file");
                         }
                     }
                     ui.separator();
-                    if MenuItem::new(im_str!("Open")).build(ui) {
+                    if MenuItem::new("Open").build(ui) {
                         if self.graph_edited {
                             file_io::async_confirm_open(self.winit_proxy.clone(), executor);
                         } else {
                             file_io::async_pick_open(self.winit_proxy.clone(), executor);
                         }
                     }
-                    if MenuItem::new(im_str!("Save")).build(ui) {
+                    if MenuItem::new("Save").build(ui) {
                         file_io::async_pick_save(self.winit_proxy.clone(), executor);
                     }
                     ui.separator();
-                    if MenuItem::new(im_str!("Export scene")).build(ui) {
+                    if MenuItem::new("Export scene").build(ui) {
                         file_io::async_pick_png(self.winit_proxy.clone(), executor);
                     }
                     ui.separator();
-                    if MenuItem::new(im_str!("Exit")).build(ui) {
+                    if MenuItem::new("Exit").build(ui) {
                         if self.graph_edited {
                             file_io::async_confirm_exit(self.winit_proxy.clone(), executor);
                         } else {
@@ -181,14 +184,14 @@ impl Gui {
                         }
                     }
                 });
-                if MenuItem::new(im_str!("About")).build(ui) {
-                    println!("\"About\" entry clicked");
-                }
-                menu_bar_token.end(ui);
+                //if MenuItem::new("About").build(ui) {
+                //    println!("\"About\" entry clicked");
+                //}
+                menu_bar_token.end();
             }
 
             // main tabs for graph, rendering and settings
-            let tab_bar_begun = TabBar::new(im_str!("main tab bar"))
+            let tab_bar_begun = TabBar::new("main tab bar")
                 .begin(ui);
 
 
@@ -202,12 +205,12 @@ impl Gui {
                 } else {
                     force_selected = TabItemFlags::empty();
                 }
-                let node_tab_token = TabItem::new(im_str!("Node editor"))
+                let node_tab_token = TabItem::new("Node editor")
                     .flags(force_selected)
                     .begin(ui);
                 if let Some(token) = node_tab_token {
                     self.render_editor_tab(ui, state);
-                    token.end(ui);
+                    token.end();
                 }
 
                 // SCENE VISUALIZATION TAB LOGIC
@@ -218,12 +221,12 @@ impl Gui {
                 } else {
                     force_selected = TabItemFlags::empty();
                 }
-                let scene_tab_token = TabItem::new(im_str!("Scene"))
+                let scene_tab_token = TabItem::new("Scene")
                     .flags(force_selected)
                     .begin(ui);
                 if let Some(token) = scene_tab_token {
                     requested_scene_rectangle = Some(self.render_scene_tab(ui, state));
-                    token.end(ui);
+                    token.end();
                 }
 
                 // SETTINGS TAB LOGIC
@@ -234,49 +237,49 @@ impl Gui {
                 } else {
                     force_selected = TabItemFlags::empty();
                 }
-                let settings_tab_token = TabItem::new(im_str!("Settings"))
+                let settings_tab_token = TabItem::new("Settings")
                     .flags(force_selected)
                     .begin(ui);
                 if let Some(token) = settings_tab_token {
                     self.render_settings_tab(ui, state);
-                    token.end(ui);
+                    token.end();
                 }
 
-                tab_bar_token.end(ui);
+                tab_bar_token.end();
             }
-            window_token.end(ui);
+            window_token.end();
         }
         requested_scene_rectangle
     }
 
     fn render_editor_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
-        if ui.button(im_str!("Generate Scene"), [0.0, 0.0]) {
-            let processing_succesful = state.process_user_state();
-            if processing_succesful && state.app.auto_scene_on_processing {
+        if ui.button("Generate Scene") {
+            let action = Action::ProcessUserState();
+            if state.process(action).is_ok() {
                 self.opened_tab[1] = true;
             }
         }
-        ui.same_line(0.0);
-        if ui.button(im_str!("Undo"), [0.0, 0.0]) {
+        ui.same_line();
+        if ui.button("Undo") {
             self.issue_undo(state, ui.time());
         }
-        ui.same_line(0.0);
-        if ui.button(im_str!("Redo"), [0.0, 0.0]) {
+        ui.same_line();
+        if ui.button("Redo") {
             self.issue_redo(state);
         }
 
         if cfg!(feature = "teachers-edition") {
             use chrono::TimeZone;
-            let file_info = im_str!("Created: {}; edited: {}; rn: {:X}",
+            let file_info = format!("Created: {}; edited: {}; rn: {:X}",
                 chrono::Utc.timestamp(state.time_stamps.fc, 0).to_string(),
                 chrono::Utc.timestamp(state.time_stamps.fs, 0).to_string(),
                 state.time_stamps.vn,
             );
-            ui.same_line(0.0);
+            ui.same_line();
             ui.text(file_info);
         }
 
-        ui.columns(2, im_str!("editor columns"), false);
+        ui.columns(2, "editor columns", false);
         ui.set_current_column_width(120.0);
         // the following code is similar to what a Vec::drain_filter would do,
         // but operates on 2 vectors at the same time.
@@ -288,32 +291,30 @@ impl Gui {
             let id_token = ui.push_id(i as i32);
             ui.set_next_item_width(80.0);
             ui.text(&globals_names[i]);
-            ui.same_line(0.0);
+            ui.same_line();
             // this is safe because there is no way that the user clicks two buttons in a single
             // frame
-            if ui.small_button(im_str!("X")) {
+            if ui.small_button("X") {
                 globals_init_values.remove(i);
                 globals_names.remove(i);
             } else {
-                Drag::new(im_str!(""))
+                Drag::new("")
                     .speed(0.01)
                     .build(ui, &mut globals_init_values[i]);
                 i += 1;
             }
-            id_token.pop(ui);
+            id_token.pop();
         }
-        ui.text(im_str!("add new variable:"));
+        ui.text("add new variable:");
         ui.set_next_item_width(75.0);
-        let variable_name_changed = InputText::new(ui, im_str!("##new_var_input"), &mut self.new_variable_buffer)
-            .resize_buffer(false)
+        let variable_name_changed = InputText::new(ui, "##new_var_input", &mut self.new_variable_buffer)
             .build();
         if variable_name_changed {
             self.new_variable_error = None;
         }
-        ui.same_line(0.0);
-        if ui.button(im_str!("New"), [0.0, 0.0]) { // TODO: we need a check: the name must be valid!
+        ui.same_line();
+        if ui.button("New") { // TODO: we need a check: the name must be valid!
             let new_name = self.new_variable_buffer.to_string();
-            use crate::computable_scene::globals::Globals;
             if let Ok(valid_name) = Globals::sanitize_variable_name(&new_name) {
                 globals_names.push(valid_name);
                 globals_init_values.push(0.0);
@@ -342,18 +343,18 @@ impl Gui {
             // This prevents us from jumping across multiple levels in a single zoom action, which is
             // good because a single mouse wheel scroll can report a huge delta.
             if self.accumulated_zoom < -1.0 {
-                state.user.graph.zoom_down_graph(relative_pos);
+                state.user.node_graph.zoom_down_graph(relative_pos);
                 self.accumulated_zoom = 0.0;
             }
             if self.accumulated_zoom > 1.0 {
-                state.user.graph.zoom_up_graph(relative_pos);
+                state.user.node_graph.zoom_up_graph(relative_pos);
                 self.accumulated_zoom = 0.0;
             }
         }
         // regardless of interaction, reset the added_zoom variable
         self.added_zoom = 0.0;
         // run the rendering
-        let requested_savestate = state.user.graph.render(ui, &self.availables, &self.graph_fonts);
+        let requested_savestate = state.user.node_graph.render(ui, &self.availables, &self.graph_fonts);
 
         if let Some(requested_stamp) = requested_savestate {
             // first, get the timestamp for the last savestate. This is because if the user only moves some nodes around
@@ -367,29 +368,34 @@ impl Gui {
             }
         }
 
-        ui.columns(1, im_str!("editor columns"), false);
+        ui.columns(1, "editor columns", false);
     }
 
     fn render_scene_tab(&mut self, ui: &Ui<'_>, state: &mut State) -> SceneRectangle {
-        ui.columns(2, im_str!("scene columns"), false);
+        ui.columns(2, "scene columns", false);
         ui.set_current_column_width(120.0);
         ui.text("Global variables");
 
         // and add the UI for updating them
-        let width_token = ui.push_item_width(80.0);
-        let zip_iter = state.app.computable_scene.globals.get_variables_iter();
         let mut requested_cursor = MouseCursor::Arrow;
-        for (name, value) in zip_iter {
-            // to make each slider unique, we are gonna push an invisible unique imgui label
-            let imgui_name = ImString::new("##".to_string() + name);
-            ui.text(name);
-            Drag::new(&imgui_name)
-                .speed(0.02)
-                .build(ui, value);
+        let width_token = ui.push_item_width(80.0);
+        if let Some(compute_graph) = &mut state.app.comp_graph {
+            let mut cloned_pairs = compute_graph.globals.clone_names_values();
+            for pair in cloned_pairs.iter_mut() {
+                // to make each slider unique, we are gonna push an invisible unique imgui label
+                let imgui_name = ImString::new("##".to_string() + &pair.name);
+                ui.text(&pair.name);
+                Drag::new(&imgui_name)
+                    .speed(0.02)
+                    .build(ui, &mut pair.value);
 
-            if ui.is_item_hovered() {
-                requested_cursor = MouseCursor::ResizeEW;
+                if ui.is_item_hovered() {
+                    requested_cursor = MouseCursor::ResizeEW;
+                }
             }
+            // TODO: only call the relevant function if we actually change the values here already
+            let action = crate::state::Action::UpdateGlobals(cloned_pairs);
+            state.process(action);
         }
         let available_region = ui.content_region_avail();
         if available_region[1] > 250.0 {
@@ -399,7 +405,7 @@ impl Gui {
         ui.text("Selected object:");
         // TODO: maybe you want to do something different if the user deletes the node and then goes back to the scene
         let node_name = if let Some(block_id) = self.selected_object {
-                if let Some(node) = state.user.graph.get_node(block_id) {
+                if let Some(node) = state.user.node_graph.get_node(block_id) {
                     node.title.clone()
                 } else {
                     String::from("<deleted>")
@@ -425,16 +431,17 @@ impl Gui {
             self.winit_proxy.send_event(super::CustomEvent::MouseThaw).unwrap();
         }
         if ui.is_item_active() && ui.is_mouse_double_clicked(MouseButton::Left) {
-            let clicked_object = state.app.computable_scene.renderer.object_under_cursor(&state.app.manager.device);
-            if clicked_object == self.selected_object {
-                self.selected_object = None;
-            } else {
-                self.selected_object = clicked_object;
-            }
-            state.app.computable_scene.renderer.highlight_object(self.selected_object);
+            // TODO: reimplement selection functionality
+            //let clicked_object = state.app.computable_scene.renderer.object_under_cursor(&state.app.manager.device);
+            //if clicked_object == self.selected_object {
+            //    self.selected_object = None;
+            //} else {
+            //    self.selected_object = clicked_object;
+            //}
+            //state.app.computable_scene.renderer.highlight_object(self.selected_object);
         }
         state.app.camera_enabled = ui.is_item_hovered();
-        ui.columns(1, im_str!("scene columns"), false);
+        ui.columns(1, "scene columns", false);
         SceneRectangle {
             position: scene_pos,
             size: available_region,
@@ -443,49 +450,42 @@ impl Gui {
 
     fn render_settings_tab(&mut self, ui: &Ui<'_>, state: &mut State) {
         let sensitivity = &mut state.app.sensitivity;
-        ui.text(im_str!("Zoom sensitivity"));
+        ui.text("Zoom sensitivity");
         let width_token = ui.push_item_width(120.0);
-        imgui::Slider::new(im_str!("zoom speed for graph"))
-            .range(0.20 ..= 5.0)
-            .display_format(im_str!("%.2f"))
+        imgui::Slider::new("zoom speed for graph", 0.20, 5.0)
+            .display_format("%.2f")
             .flags(SliderFlags::NO_INPUT)
             .flags(SliderFlags::LOGARITHMIC)
             .build(ui, &mut sensitivity.graph_zoom);
-        imgui::Slider::new(im_str!("zoom speed for scene"))
-            .range(0.20 ..= 5.0)
-            .display_format(im_str!("%.2f"))
+        imgui::Slider::new("zoom speed for scene", 0.20, 5.0)
+            .display_format("%.2f")
             .flags(SliderFlags::NO_INPUT)
             .flags(SliderFlags::LOGARITHMIC)
             .build(ui, &mut sensitivity.scene_zoom);
-        ui.text(im_str!("Camera settings"));
-        ui.checkbox(im_str!("use orthographic projection"), &mut state.app.camera_ortho);
-        ui.checkbox(im_str!("lock camera to vertical position"), &mut state.app.camera_lock_up);
-        imgui::Slider::new(im_str!("horizontal sensitivity"))
-            .range(0.2 ..= 5.0)
-            .display_format(im_str!("%.2f"))
+        ui.text("Camera settings");
+        ui.checkbox("use orthographic projection", &mut state.app.camera_ortho);
+        ui.checkbox("lock camera to vertical position", &mut state.app.camera_lock_up);
+        imgui::Slider::new("horizontal sensitivity", 0.2, 5.0)
+            .display_format("%.2f")
             .flags(SliderFlags::NO_INPUT)
             .flags(SliderFlags::LOGARITHMIC)
             .build(ui, &mut sensitivity.camera_horizontal);
-        imgui::Slider::new(im_str!("vertical sensitivity"))
-            .range(0.2 ..= 5.0)
-            .display_format(im_str!("%.2f"))
+        imgui::Slider::new("vertical sensitivity", 0.2, 5.0)
+            .display_format("%.2f")
             .flags(SliderFlags::NO_INPUT)
             .flags(SliderFlags::LOGARITHMIC)
             .build(ui, &mut sensitivity.camera_vertical);
-        ui.text(im_str!("Axes and labels"));
+        ui.text("Axes and labels");
         let mut recreate_axes = false;
-        recreate_axes |= imgui::Slider::new(im_str!("length of x, y and z axes"))
-            .range(0 ..= 16)
+        recreate_axes |= imgui::Slider::new("length of x, y and z axes", 0, 16)
             .flags(SliderFlags::NO_INPUT)
             .build(ui, &mut self.axes_length);
-        recreate_axes |= imgui::Slider::new(im_str!("size of unit marks along axes"))
-            .range(0.0 ..= 0.25)
-            .display_format(im_str!("%.3f"))
+        recreate_axes |= imgui::Slider::new("size of unit marks along axes", 0.0, 0.25)
+            .display_format("%.3f")
             .flags(SliderFlags::NO_INPUT)
             .build(ui, &mut self.axes_marks_size);
-        recreate_axes |= imgui::Slider::new(im_str!("size of axis labels"))
-            .range(0.0 ..= 0.5)
-            .display_format(im_str!("%.2f"))
+        recreate_axes |= imgui::Slider::new("size of axis labels", 0.0, 0.5)
+            .display_format("%.2f")
             .flags(SliderFlags::NO_INPUT)
             .build(ui, &mut self.labels_size);
         if recreate_axes {
@@ -499,8 +499,8 @@ impl Gui {
             }
         }
         if cfg!(feature = "dev-tools") {
-            ui.text(im_str!("Dev options"));
-            ui.checkbox(im_str!("Automatically open scene tab if graph processing was succesful"), &mut state.app.auto_scene_on_processing);
+            ui.text("Dev options");
+            ui.checkbox("Automatically open scene tab if graph processing was succesful", &mut state.app.auto_scene_on_processing);
         }
         width_token.pop(ui);
     }

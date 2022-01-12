@@ -47,10 +47,10 @@ pub fn async_confirm_load(event_loop_proxy: EventLoopProxy<CustomEvent>, executo
     });
 }
 
-pub fn async_dialog_failure(executor: &Executor, error: &'static str) {
+pub fn async_dialog_failure(executor: &Executor, error: String) {
     let error_dialog = rfd::AsyncMessageDialog::new()
         .set_level(rfd::MessageLevel::Error)
-        .set_description(error)
+        .set_description(&error)
         .set_buttons(rfd::MessageButtons::Ok)
         .show();
 

@@ -35,6 +35,7 @@ impl Manager {
         let adapter_future = instance.request_adapter(
             &wgpu::RequestAdapterOptions {
                 power_preference: wgpu::PowerPreference::LowPower, // TODO: HighPower caused an issue on at least one AMD discrete GPU card
+                force_fallback_adapter: false, // TODO: what is this?
                 compatible_surface: Some(&surface),
             }
         );
@@ -46,6 +47,8 @@ impl Manager {
                 features: wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
                 limits: wgpu::Limits {
                     max_storage_buffers_per_shader_stage: 6, // TODO: we need to make sure that every possible GPU supports this
+                    max_compute_workgroup_size_x: 512,
+                    max_compute_invocations_per_workgroup: 512,
                     .. Default::default()
                 },
             },
@@ -72,10 +75,10 @@ impl Manager {
         }
     }
 
-    pub fn get_frame(&mut self) -> Option<wgpu::SurfaceFrame> {
+    pub fn get_frame(&mut self) -> Option<wgpu::SurfaceTexture> {
         // get the framebuffer frame. We might need to re-create the swapchain if for some
         // reason our current one is outdated
-        let maybe_frame = self.surface.get_current_frame();
+        let maybe_frame = self.surface.get_current_texture();
         match maybe_frame {
                 Ok(surface_frame) => {
                     Some(surface_frame)

@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::StandardVertexData;
 
 pub const MODEL_CHUNK_VERTICES: usize = 32;
@@ -5,8 +7,8 @@ pub const MODEL_CHUNK_VERTICES: usize = 32;
 #[derive(Debug)]
 pub struct Model {
     pub vertex_buffer: wgpu::Buffer,
-    pub index_buffer: wgpu::Buffer,
-    pub vertex_count: usize,
+    pub index_buffer: Rc<wgpu::Buffer>,
+    pub chunks_count: usize,
     pub index_count: u32,
 }
 
@@ -73,10 +75,11 @@ impl Model {
             usage: wgpu::BufferUsages::INDEX,
         });
 
+        assert!(vertices.len() % MODEL_CHUNK_VERTICES == 0);
         Self {
             vertex_buffer,
-            vertex_count: vertices.len(),
-            index_buffer,
+            chunks_count: vertices.len() / MODEL_CHUNK_VERTICES,
+            index_buffer: Rc::new(index_buffer),
             index_count: indices.len() as u32,
         }
     }

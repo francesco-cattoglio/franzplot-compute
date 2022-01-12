@@ -3,25 +3,26 @@ use std::io;
 
 fn main() -> io::Result<()> {
     let cpp_files = vec![
-        "src/cpp_gui/imnodes-ee6d407/imnodes.cpp",
+        "src/cpp_gui/imnodes-e563371/imnodes.cpp",
         "src/cpp_gui/imnodes_shims.cpp",
     ];
     let include_files = vec![
-        "src/cpp_gui/imgui-1.80/imstb_truetype.h",
-        "src/cpp_gui/imgui-1.80/imstb_textedit.h",
-        "src/cpp_gui/imgui-1.80/imgui_internal.h",
-        "src/cpp_gui/imgui-1.80/imstb_rectpack.h",
-        "src/cpp_gui/imgui-1.80/imconfig.h",
-        "src/cpp_gui/imgui-1.80/imgui.h",
-        "src/cpp_gui/imnodes-ee6d407/imnodes.h",
+        "src/cpp_gui/imgui-1.84/imstb_truetype.h",
+        "src/cpp_gui/imgui-1.84/imstb_textedit.h",
+        "src/cpp_gui/imgui-1.84/imgui_internal.h",
+        "src/cpp_gui/imgui-1.84/imstb_rectpack.h",
+        "src/cpp_gui/imgui-1.84/imconfig.h",
+        "src/cpp_gui/imgui-1.84/imgui.h",
+        "src/cpp_gui/imnodes-e563371/imnodes_internal.h",
+        "src/cpp_gui/imnodes-e563371/imnodes.h",
         "src/cpp_gui/imnodes_shims.h",
         "src/cpp_gui/imgui_shims.h",
     ];
 
     cxx_build::bridge("src/cpp_gui/mod.rs")
         .files(&cpp_files)
-        .include("src/cpp_gui/imgui-1.80/")
-        .include("src/cpp_gui/imnodes-ee6d407/")
+        .include("src/cpp_gui/imgui-1.84/")
+        .include("src/cpp_gui/imnodes-e563371/")
         .flag_if_supported("-std=c++11")
         .compile("cxxbridge-gui");
 

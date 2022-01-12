@@ -2,7 +2,17 @@
 #include "imgui.h"
 #include "franzplot-compute/src/cpp_gui/mod.rs.h"
 
-namespace imnodes {
+namespace ImNodes {
+
+    void Initialize() {
+        ImNodes::CreateContext();
+        return;
+    }
+
+    void Shutdown() {
+        ImNodes::DestroyContext(nullptr);
+        return;
+    }
 
     bool IsLinkCreated(int& started_at_attribute_id, int& ended_at_attribute_id) {
         return IsLinkCreated(&started_at_attribute_id, &ended_at_attribute_id, nullptr);
@@ -47,7 +57,7 @@ namespace imnodes {
         {
             std::vector<int> selected_nodes;
             selected_nodes.resize(num_selected_nodes);
-            imnodes::GetSelectedNodes(selected_nodes.data());
+            ImNodes::GetSelectedNodes(selected_nodes.data());
             // copy the Cpp array over the rust one
             to_return.reserve(num_selected_nodes);
             for (int node_id : selected_nodes)
@@ -58,21 +68,23 @@ namespace imnodes {
     }
 
     void ApplyStyle(const StyleShim& new_style) {
-        auto& style = imnodes::GetStyle();
-        style.grid_spacing = new_style.grid_spacing;
-        style.node_padding_horizontal = new_style.node_padding_horizontal;
-        style.node_padding_vertical = new_style.node_padding_vertical;
-        style.link_thickness = new_style.link_thickness;
+        auto& style = ImNodes::GetStyle();
+        style.GridSpacing = new_style.grid_spacing;
+        style.NodePadding = ImVec2{new_style.node_padding_horizontal, new_style.node_padding_vertical};
+        style.LinkThickness = new_style.link_thickness;
 
-        style.pin_circle_radius = new_style.pin_circle_radius;
-        style.pin_quad_side_length = new_style.pin_quad_side_length;
-        style.pin_triangle_side_length = new_style.pin_triangle_side_length;
-        style.pin_line_thickness = new_style.pin_line_thickness;
-        style.pin_hover_radius = new_style.pin_hover_radius;
+        style.PinCircleRadius = new_style.pin_circle_radius;
+        style.PinQuadSideLength = new_style.pin_quad_side_length;
+        style.PinTriangleSideLength = new_style.pin_triangle_side_length;
+        style.PinLineThickness = new_style.pin_line_thickness;
+        style.PinHoverRadius = new_style.pin_hover_radius;
     }
 
     void EnableCtrlScroll(bool enabled, const bool& key_modifier) {
-        imnodes::GetIO().emulate_three_button_mouse.enabled = enabled;
-        imnodes::GetIO().emulate_three_button_mouse.modifier = &key_modifier;
+        if (enabled) {
+            ImNodes::GetIO().EmulateThreeButtonMouse.Modifier = &key_modifier;
+        } else {
+            ImNodes::GetIO().EmulateThreeButtonMouse.Modifier = nullptr;
+        }
     }
 }
