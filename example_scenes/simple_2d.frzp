@@ -127,9 +127,9 @@ V1(
         None,
       ],
       links: {
+        9: 4,
         8: 21,
         10: 26,
-        9: 4,
       },
       free_nodes_list: [],
       free_attributes_list: [
@@ -146,16 +146,12 @@ V1(
         20,
       ],
     ),
-    globals_names: [
-      "k",
-    ],
-    globals_init_values: [
-      3.15,
-    ],
+    globals_names: [],
+    globals_init_values: [],
   ),
   (
     fc: 0,
-    fs: 1637518278,
+    fs: 1641990760,
     vn: 4099954857,
     hs: 0,
   ),

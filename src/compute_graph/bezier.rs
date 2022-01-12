@@ -46,11 +46,11 @@ fn new_bezier_1st_degree(
     let p1_buff = get_point_buffer(data_map, control_points_ids[1])?;
 
     let wgsl_source = format!(r##"
-[[block]] struct PointBuffer {{
+struct PointBuffer {{
     position: vec4<f32>;
 }};
 
-[[block]] struct OutputBuffer {{
+struct OutputBuffer {{
     positions: array<vec4<f32>>;
 }};
 
@@ -111,11 +111,11 @@ fn new_bezier_2nd_degree(
     let p2_buff = get_point_buffer(data_map, control_points_ids[2])?;
 
     let wgsl_source = format!(r##"
-[[block]] struct PointBuffer {{
+struct PointBuffer {{
     position: vec4<f32>;
 }};
 
-[[block]] struct OutputBuffer {{
+struct OutputBuffer {{
     positions: array<vec4<f32>>;
 }};
 
@@ -185,11 +185,11 @@ fn new_bezier_3rd_degree(
     let p3_buff = get_point_buffer(data_map, control_points_ids[3])?;
 
     let wgsl_source = format!(r##"
-[[block]] struct PointBuffer {{
+struct PointBuffer {{
     position: vec4<f32>;
 }};
 
-[[block]] struct OutputBuffer {{
+struct OutputBuffer {{
     positions: array<vec4<f32>>;
 }};
 

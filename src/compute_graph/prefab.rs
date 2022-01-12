@@ -36,7 +36,7 @@ struct MatcapVertex {{
     padding: vec2<f32>;
 }};
 
-[[block]] struct VertexBuffer {{
+struct VertexBuffer {{
     vertices: array<MatcapVertex>;
 }};
 

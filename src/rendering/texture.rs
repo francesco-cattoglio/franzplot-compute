@@ -72,7 +72,7 @@ impl Texture {
                     binding: 1,
                     count: None,
                     visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Comparison),
                 },
             ],
             label: Some("texture bind group layout"),

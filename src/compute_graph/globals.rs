@@ -183,7 +183,7 @@ impl Globals {
         //for (constant_name, constant_value) in GLOBAL_CONSTANTS {
         //    wgsl_header += &format!("let {}: f32 = {:?};\n", constant_name, constant_value);
         //}
-        wgsl_header += "[[block]] struct Globals {\n";
+        wgsl_header += "struct Globals {\n";
 
         for (constant_name, _constant_value) in GLOBAL_CONSTANTS {
             wgsl_header += &format!("\t{}: f32;\n", constant_name);

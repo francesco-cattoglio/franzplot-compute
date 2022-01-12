@@ -1,4 +1,3 @@
-[[block]]
 struct Uniforms {
     view: mat4x4<f32>;
     proj: mat4x4<f32>;
@@ -7,7 +6,6 @@ struct Uniforms {
     padding: i32;
 };
 
-[[block]]
 struct PickingBuffer {
     distances: array<f32>;
 };

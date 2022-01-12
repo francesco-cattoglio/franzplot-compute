@@ -106,8 +106,7 @@ V1(
         10: 9,
         5: 4,
       },
-      free_nodes_list: [
-      ],
+      free_nodes_list: [],
       free_attributes_list: [
         30,// [0]
         11,// [1]
@@ -128,16 +127,12 @@ V1(
         26,
       ],
     ),
-    globals_names: [
-      "k",
-    ],
-    globals_init_values: [
-      3.15,
-    ],
+    globals_names: [],
+    globals_init_values: [],
   ),
   (
     fc: 0,
-    fs: 1633526102,
+    fs: 1641990740,
     vn: 4099954857,
     hs: 0,
   ),

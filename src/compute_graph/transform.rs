@@ -76,11 +76,11 @@ fn t_0d_0d(
     matrix_buffer: &wgpu::Buffer,
     ) -> SingleDataResult {
     let wgsl_source = r##"
-[[block]] struct PointBuffer {
+struct PointBuffer {
     position: vec4<f32>;
 };
 
-[[block]] struct MatrixBuffer {
+struct MatrixBuffer {
     matrix: mat4x4<f32>;
 };
 
@@ -131,15 +131,15 @@ fn t_0d_up_1d(
     matrix_param: &Parameter,
     ) -> SingleDataResult {
     let wgsl_source = r##"
-[[block]] struct PointBuffer {
+struct PointBuffer {
     position: vec4<f32>;
 };
 
-[[block]] struct MatrixBuffer {
+struct MatrixBuffer {
     matrices: array<mat4x4<f32>>;
 };
 
-[[block]] struct CurveBuffer {
+struct CurveBuffer {
     positions: array<vec4<f32>>;
 };
 
@@ -192,11 +192,11 @@ fn t_1d_1d(
     matrix_buffer: &wgpu::Buffer,
     ) -> SingleDataResult {
     let wgsl_source = r##"
-[[block]] struct CurveBuffer {
+struct CurveBuffer {
     positions: array<vec4<f32>>;
 };
 
-[[block]] struct MatrixBuffer {
+struct MatrixBuffer {
     matrix: mat4x4<f32>;
 };
 
@@ -249,11 +249,11 @@ fn t_1d_same_param(
     param: &Parameter,
     ) -> SingleDataResult {
     let wgsl_source = r##"
-[[block]] struct CurveBuffer {
+struct CurveBuffer {
     positions: array<vec4<f32>>;
 };
 
-[[block]] struct MatrixBuffer {
+struct MatrixBuffer {
     matrices: array<mat4x4<f32>>;
 };
 
@@ -307,15 +307,15 @@ fn t_1d_up_2d(
     matrix_param: &Parameter,
     ) -> SingleDataResult {
     let wgsl_source = r##"
-[[block]] struct CurveBuffer {
+struct CurveBuffer {
     positions: array<vec4<f32>>;
 };
 
-[[block]] struct MatrixBuffer {
+struct MatrixBuffer {
     matrix: array<mat4x4<f32>>;
 };
 
-[[block]] struct SurfaceBuffer {
+struct SurfaceBuffer {
     positions: array<vec4<f32>>;
 };
 
@@ -375,11 +375,11 @@ fn t_2d_2d(
     matrix_buffer: &wgpu::Buffer,
     ) -> SingleDataResult {
     let wgsl_source = r##"
-[[block]] struct SurfaceBuffer {
+struct SurfaceBuffer {
     positions: array<vec4<f32>>;
 };
 
-[[block]] struct MatrixBuffer {
+struct MatrixBuffer {
     matrix: mat4x4<f32>;
 };
 
@@ -446,11 +446,11 @@ fn t_2d_same_param(
         "par2_idx"
     };
     let wgsl_source = r##"
-[[block]] struct SurfaceBuffer {
+struct SurfaceBuffer {
     positions: array<vec4<f32>>;
 };
 
-[[block]] struct MatrixBuffer {
+struct MatrixBuffer {
     matrices: array<mat4x4<f32>>;
 };
 
@@ -518,11 +518,11 @@ struct MatcapVertex {{
     padding: vec2<f32>;
 }};
 
-[[block]] struct PrefabBuffer {{
+struct PrefabBuffer {{
     vertices: array<MatcapVertex>;
 }};
 
-[[block]] struct MatrixBuffer {{
+struct MatrixBuffer {{
     matrix: mat4x4<f32>;
 }};
 

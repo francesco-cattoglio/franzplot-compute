@@ -41,11 +41,11 @@ pub fn create(
     let wgsl_source = format!(r##"
 {wgsl_header}
 
-[[block]] struct InputBuffer {{
+struct InputBuffer {{
     values: array<f32>;
 }};
 
-[[block]] struct OutputBuffer {{
+struct OutputBuffer {{
     positions: array<vec4<f32>>;
 }};
 

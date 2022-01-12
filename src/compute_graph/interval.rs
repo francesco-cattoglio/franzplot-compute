@@ -50,7 +50,7 @@ pub fn create(
     let wgsl_source = format!(r##"
 {wgsl_globals}
 
-[[block]] struct OutputBuffer {{
+struct OutputBuffer {{
 values: array<f32>;
 }};
 

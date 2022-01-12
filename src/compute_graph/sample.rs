@@ -74,11 +74,11 @@ fn sample_1d_0d(
     let wgsl_source = format!(r##"
 {wgsl_header}
 
-[[block]] struct CurveBuffer {{
+struct CurveBuffer {{
     positions: array<vec4<f32>>;
 }};
 
-[[block]] struct PointBuffer {{
+struct PointBuffer {{
     position: vec4<f32>;
 }};
 
@@ -170,11 +170,11 @@ fn sample_2d_1d(
     let wgsl_source = format!(r##"
 {wgsl_header}
 
-[[block]] struct SurfaceBuffer {{
+struct SurfaceBuffer {{
     positions: array<vec4<f32>>;
 }};
 
-[[block]] struct CurveBuffer {{
+struct CurveBuffer {{
     positions: array<vec4<f32>>;
 }};
 

@@ -86,18 +86,18 @@ struct MatcapVertex {{
 }};
 
 // input buffer will contain a single vertex, the actual point coords
-[[block]] struct InputBuffer {{
+struct InputBuffer {{
     position: vec4<f32>;
 }};
 
 // reference buffer will contain all the deltas needed to turn a single
 // point into an actual icosphere that can be rendered to video
-[[block]] struct ReferenceBuffer {{
+struct ReferenceBuffer {{
     delta: array<vec4<f32>>;
 }};
 
 // output buffer contains the final Matcap mesh, as usual for rendering nodes
-[[block]] struct OutputBuffer {{
+struct OutputBuffer {{
     vertices: array<MatcapVertex>;
 }};
 
@@ -178,11 +178,11 @@ struct MatcapVertex {{
     padding: vec2<f32>;
 }};
 
-[[block]] struct InputBuffer {{
+struct InputBuffer {{
     positions: array<vec4<f32>>;
 }};
 
-[[block]] struct OutputBuffer {{
+struct OutputBuffer {{
     vertices: array<MatcapVertex>;
 }};
 
@@ -205,7 +205,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     var tangent: vec3<f32>;
     if (idx == 0) {{
         tangent = (-1.5*in.positions[idx] + 2.0*in.positions[idx + 1] - 0.5*in.positions[idx + 2]).xyz;
-    }} elseif (idx == x_size - 1) {{
+    }} else if (idx == x_size - 1) {{
         tangent = ( 1.5*in.positions[idx] - 2.0*in.positions[idx - 1] + 0.5*in.positions[idx - 2]).xyz;
     }} else {{
         tangent = (-0.5*in.positions[idx - 1] + 0.5*in.positions[idx+1]).xyz;
@@ -312,11 +312,11 @@ struct MatcapVertex {{
     padding: vec2<f32>;
 }};
 
-[[block]] struct InputBuffer {{
+struct InputBuffer {{
     pos: array<vec4<f32>>;
 }};
 
-[[block]] struct OutputBuffer {{
+struct OutputBuffer {{
     vertices: array<MatcapVertex>;
 }};
 
@@ -436,7 +436,7 @@ struct MatcapVertex {{
     padding: vec2<f32>;
 }};
 
-[[block]] struct VertexBuffer {{
+struct VertexBuffer {{
     vertices: array<MatcapVertex>;
 }};
 

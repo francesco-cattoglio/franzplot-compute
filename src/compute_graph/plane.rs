@@ -69,15 +69,15 @@ struct MatcapVertex {{
     padding: vec2<f32>;
 }};
 
-[[block]] struct PointBuffer {{
+struct PointBuffer {{
     position: vec4<f32>;
 }};
 
-[[block]] struct NormalBuffer {{
+struct NormalBuffer {{
     direction: vec4<f32>;
 }};
 
-[[block]] struct VertexBuffer {{
+struct VertexBuffer {{
     vertices: array<MatcapVertex>;
 }};
 

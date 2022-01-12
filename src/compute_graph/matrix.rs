@@ -70,11 +70,11 @@ pub fn create_from_translation(
     };
 
     let wgsl_source = format!(r##"
-[[block]] struct VectorBuffer {{
+struct VectorBuffer {{
     direction: vec4<f32>;
 }};
 
-[[block]] struct OutputBuffer {{
+struct OutputBuffer {{
     matrix: mat4x4<f32>;
 }};
 
@@ -164,11 +164,11 @@ pub fn create_from_rows(
         let wgsl_source = format!(r##"
 {wgsl_header}
 
-[[block]] struct InputBuffer {{
+struct InputBuffer {{
     values: array<f32>;
 }};
 
-[[block]] struct OutputBuffer {{
+struct OutputBuffer {{
     matrices: array<mat4x4<f32>>;
 }};
 
@@ -222,7 +222,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
         let wgsl_source = format!(r##"
 {wgsl_header}
 
-[[block]] struct OutputBuffer {{
+struct OutputBuffer {{
     matrix: mat4x4<f32>;
 }};
 

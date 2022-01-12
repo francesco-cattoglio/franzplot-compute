@@ -58,22 +58,22 @@ struct MatcapVertex {{
 }};
 
 // input buffer will contain a single vertex, the actual point coords
-[[block]] struct PointBuffer {{
+struct PointBuffer {{
     position: vec4<f32>;
 }};
 
-[[block]] struct VectorBuffer {{
+struct VectorBuffer {{
     direction: vec4<f32>;
 }};
 
 // reference buffer contains all the points for the actual arrow-shaped mesh
 // used to represent the vector.
-[[block]] struct ReferenceBuffer {{
+struct ReferenceBuffer {{
     vertices: array<MatcapVertex>;
 }};
 
 // output buffer contains the final Matcap mesh, as usual for rendering nodes
-[[block]] struct OutputBuffer {{
+struct OutputBuffer {{
     vertices: array<MatcapVertex>;
 }};
 
