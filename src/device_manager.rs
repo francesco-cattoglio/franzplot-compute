@@ -9,6 +9,7 @@ pub struct Manager {
     pub size: winit::dpi::PhysicalSize<u32>,
     pub surface: wgpu::Surface,
     pub config: wgpu::SurfaceConfiguration,
+    pub sample_count: u32,
 }
 
 
@@ -24,6 +25,10 @@ const DEFAULT_BACKEND: wgpu::Backends = wgpu::Backends::VULKAN;
 impl Manager {
     pub fn new(window: &Window, trace_path: Option<&std::path::Path>, backend_override: Option<wgpu::Backends>) -> Self {
         use futures::executor::block_on;
+        let sample_count = match backend_override {
+            Some(wgpu::Backends::GL) => 1,
+            _ => 4,
+        };
         let instance = wgpu::Instance::new(backend_override.unwrap_or(DEFAULT_BACKEND));
 
         let (size, surface) = unsafe {
@@ -44,7 +49,8 @@ impl Manager {
         let device_future = adapter.request_device(
             &wgpu::DeviceDescriptor {
                 label: Some("requested device"),
-                features: wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
+                //features: wgpu::Features::MAPPABLE_PRIMARY_BUFFERS,
+                features: wgpu::Features::empty(),
                 limits: wgpu::Limits {
                     max_storage_buffers_per_shader_stage: 6, // TODO: we need to make sure that every possible GPU supports this
                     max_compute_workgroup_size_x: 512,
@@ -72,6 +78,7 @@ impl Manager {
             size,
             surface,
             config,
+            sample_count,
         }
     }
 

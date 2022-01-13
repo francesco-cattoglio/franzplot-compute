@@ -107,7 +107,7 @@ pub struct AppState {
 
 impl AppState {
     pub fn set_wireframe_axes(&mut self, length: i32, cross_size: f32) {
-        self.renderer.set_wireframe_axes(length, cross_size, &self.manager.device);
+        self.renderer.set_wireframe_axes(&self.manager, length, cross_size);
     }
 
     pub fn clear_wireframe_axes(&mut self) {
@@ -115,7 +115,7 @@ impl AppState {
     }
 
     pub fn set_axes_labels(&mut self, axis_length: i32, label_size: f32) {
-        self.renderer.set_axes_labels(axis_length as f32, label_size, &self.manager.device);
+        self.renderer.set_axes_labels(&self.manager, axis_length as f32, label_size);
     }
 
     pub fn clear_axes_labels(&mut self) {
@@ -153,7 +153,7 @@ impl State {
             camera_lock_up: true,
             camera_ortho: false,
             camera_controller,
-            renderer: SceneRenderer::new_with_axes(&manager.device),
+            renderer: SceneRenderer::new_with_axes(&manager),
             manager,
             comp_graph: None,
             sensitivity: Sensitivity::default(),
@@ -189,7 +189,7 @@ impl State {
                 // create aliases
                 let renderer = &mut self.app.renderer;
                 let camera = &mut self.app.camera;
-                renderer.resize_if_needed(&self.app.manager.device, extent);
+                renderer.resize_if_needed(&self.app.manager, extent);
                 let aspect_ratio = extent.width as f32/extent.height as f32;
                 let projection_matrix = if self.app.camera_ortho {
                     camera.build_ortho_matrix(aspect_ratio)
@@ -213,7 +213,7 @@ impl State {
                     Ok((compute_graph, recoverable_errors)) => {
                         // run the first compute, and create the matcaps in the SceneRenderer
                         compute_graph.run_compute(&self.app.manager.device, &self.app.manager.queue);
-                        self.app.renderer.recreate_matcaps(&self.app.manager.device, &self.app.assets, compute_graph.matcaps());
+                        self.app.renderer.recreate_matcaps(&self.app.manager, &self.app.assets, compute_graph.matcaps());
                         self.app.comp_graph = Some(compute_graph);
                         if recoverable_errors.is_empty() {
                             Ok(())

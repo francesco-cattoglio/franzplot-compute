@@ -17,8 +17,6 @@ struct Uniforms {
     _padding: f32,
 }
 
-const SAMPLE_COUNT: u32 = 4;
-
 unsafe impl bytemuck::Pod for Uniforms {}
 unsafe impl bytemuck::Zeroable for Uniforms {}
 
@@ -65,22 +63,22 @@ struct Pipelines {
 }
 
 impl SceneRenderer {
-    pub fn new_with_axes(device: &wgpu::Device) -> Self {
-        let mut renderer = Self::new(device);
-        renderer.set_wireframe_axes(2, 0.075, device);
-        renderer.set_axes_labels(2.0, 0.15, device);
-        //renderer.add_test_axis(device);
+    pub fn new_with_axes(manager: &device_manager::Manager) -> Self {
+        let mut renderer = Self::new(&manager);
+        renderer.set_wireframe_axes(manager, 2, 0.075);
+        renderer.set_axes_labels(manager, 2.0, 0.15);
         renderer
     }
 
-    pub fn new(device: &wgpu::Device) -> Self {
+    pub fn new(manager: &device_manager::Manager) -> Self {
+        let device = &manager.device;
         // the object picking buffer is initially created with a reasonable default length
         // If the user displays more than this many objects, the buffer will get resized.
         let picking_buffer_length = 16;
         let (picking_buffer, picking_bind_layout, picking_bind_group) = create_picking_buffer(device, picking_buffer_length);
 
         // pipelines from the wgsl shader, layouts are auto-deduced
-        let pipelines = create_pipelines(device);
+        let pipelines = create_pipelines(manager);
 
         // create the buffer that will be needed for the uniforms
         let uniforms = Uniforms::new();
@@ -91,8 +89,8 @@ impl SceneRenderer {
         });
 
         let texture_extent = wgpu::Extent3d::default();
-        let depth_texture = Texture::create_depth_texture(device, texture_extent, SAMPLE_COUNT);
-        let output_texture = Texture::create_output_texture(device, texture_extent, SAMPLE_COUNT);
+        let depth_texture = Texture::create_depth_texture(device, texture_extent, manager.sample_count);
+        let output_texture = Texture::create_output_texture(device, texture_extent, manager.sample_count);
 
         Self {
             picking_buffer_length,
@@ -121,11 +119,12 @@ impl SceneRenderer {
         }
     }
 
-    pub fn resize_if_needed(&mut self, device: &wgpu::Device, new_size: wgpu::Extent3d) {
+    pub fn resize_if_needed(&mut self, manager: &device_manager::Manager, new_size: wgpu::Extent3d) {
         if new_size.ne(&self.texture_extent) {
+            let device = &manager.device;
             self.texture_extent = new_size;
-            self.output_texture = Texture::create_output_texture(device, new_size, SAMPLE_COUNT);
-            self.depth_texture = Texture::create_depth_texture(device, new_size, SAMPLE_COUNT);
+            self.output_texture = Texture::create_output_texture(device, new_size, manager.sample_count);
+            self.depth_texture = Texture::create_depth_texture(device, new_size, manager.sample_count);
         }
     }
 
@@ -137,7 +136,7 @@ impl SceneRenderer {
         self.billboards.clear();
     }
 
-    pub fn set_axes_labels(&mut self, distance_from_origin: f32, size: f32, device: &wgpu::Device) {
+    pub fn set_axes_labels(&mut self, manager: &device_manager::Manager, distance_from_origin: f32, size: f32) {
         self.clear_axes_labels();
         // we create the letters using triangles with repeated vertices. They are composed just by a
         // bunch of triangles anyway.
@@ -201,15 +200,16 @@ impl SceneRenderer {
                 })
             )
             .collect();
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let vertex_buffer = manager.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
-        self.add_billboard(device, &vertex_buffer, vertices.len() as u32);
+        self.add_billboard(manager, &vertex_buffer, vertices.len() as u32);
     }
 
-    fn add_billboard(&mut self, device: &wgpu::Device, vertex_buffer: &wgpu::Buffer, vertex_count: u32) {
+    fn add_billboard(&mut self, manager: &device_manager::Manager, vertex_buffer: &wgpu::Buffer, vertex_count: u32) {
+        let device = &manager.device;
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for billboard"),
@@ -220,7 +220,7 @@ impl SceneRenderer {
                     stencil_read_only: false,
                 }),
                 multiview: None,
-                sample_count: SAMPLE_COUNT,
+                sample_count: manager.sample_count,
             }
         );
         // In order to create a correct uniforms bind group, we need to recover the layour from the correct pipeline
@@ -244,7 +244,7 @@ impl SceneRenderer {
         self.billboards.push(render_bundle);
     }
 
-    pub fn set_wireframe_axes(&mut self, length: i32, cross_size: f32, device: &wgpu::Device) {
+    pub fn set_wireframe_axes(&mut self, manager: &device_manager::Manager, length: i32, cross_size: f32) {
         // for each of the three axis
         // create a line plus as many small cross as needed, to help visualize unit lengths
         let mut vertices = Vec::new();
@@ -276,16 +276,17 @@ impl SceneRenderer {
             WireframeVertexData { position: [0.0, 0.0,            0.0], color: [0, 0, colo_l, 255] },
         ]);
 
-        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        let vertex_buffer = manager.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: None,
             contents: bytemuck::cast_slice(&vertices),
             usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
         });
 
-        self.add_wireframe(device, &vertex_buffer, vertices.len() as u32);
+        self.add_wireframe(manager, &vertex_buffer, vertices.len() as u32);
     }
 
-    fn add_wireframe(&mut self, device: &wgpu::Device, vertex_buffer: &wgpu::Buffer, vertex_count: u32) {
+    fn add_wireframe(&mut self, manager: &device_manager::Manager, vertex_buffer: &wgpu::Buffer, vertex_count: u32) {
+        let device = &manager.device;
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for wireframe"),
@@ -296,7 +297,7 @@ impl SceneRenderer {
                     stencil_read_only: false,
                 }),
                 multiview: None,
-                sample_count: SAMPLE_COUNT,
+                sample_count: manager.sample_count,
             }
         );
         // In order to create a correct uniforms bind group, we need to recover the layour from the correct pipeline
@@ -325,7 +326,7 @@ impl SceneRenderer {
         self.renderable_ids.clear();
     }
 
-    pub fn recreate_matcaps(&mut self, device: &wgpu::Device, assets: &Assets, matcaps: MatcapIter<'_>) {
+    pub fn recreate_matcaps(&mut self, manager: &device_manager::Manager, assets: &Assets, matcaps: MatcapIter<'_>) {
         self.clear_matcaps();
         // go through all blocks,
         // chose the "Rendering" ones,
@@ -333,7 +334,7 @@ impl SceneRenderer {
 
         // if the buffer used for object picking is not big enough, resize it (i.e create a new one)
         if matcaps.len() > self.picking_buffer_length {
-            let (picking_buffer, _picking_bind_layout, picking_bind_group) = create_picking_buffer(device, matcaps.len());
+            let (picking_buffer, _picking_bind_layout, picking_bind_group) = create_picking_buffer(&manager.device, matcaps.len());
             self.picking_buffer_length = matcaps.len();
             self.picking_buffer = picking_buffer;
             self.picking_bind_group = picking_bind_group;
@@ -341,11 +342,12 @@ impl SceneRenderer {
 
         for (idx, (data_id, matcap)) in matcaps.enumerate() {
             self.renderable_ids.push(*data_id);
-            self.add_matcap(device, assets, matcap, idx as u32);
+            self.add_matcap(manager, assets, matcap, idx as u32);
         }
     }
 
-    fn add_matcap(&mut self, device: &wgpu::Device, assets: &Assets, matcap_data: &MatcapData, object_id: u32) {
+    fn add_matcap(&mut self, manager: &device_manager::Manager, assets: &Assets, matcap_data: &MatcapData, object_id: u32) {
+        let device = &manager.device;
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for MatcapData"),
@@ -356,7 +358,7 @@ impl SceneRenderer {
                     stencil_read_only: false,
                 }),
                 multiview: None,
-                sample_count: SAMPLE_COUNT,
+                sample_count: manager.sample_count,
             }
         );
         // In order to create a correct uniforms bind group, we need to recover the layour from the correct pipeline
@@ -388,7 +390,6 @@ impl SceneRenderer {
         self.renderables.push(render_bundle);
     }
 
-
     pub fn update_view(&mut self, view: Mat4) {
         self.uniforms.view = view;
     }
@@ -417,12 +418,21 @@ impl SceneRenderer {
         });
 
         {
+            let (view, resolve_target);
+            if manager.sample_count > 1 {
+                view = &self.output_texture.view;
+                resolve_target = Some(target_view);
+            } else {
+                view = target_view;
+                resolve_target = None;
+            };
+
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("scene render pass"),
                 color_attachments: &[
                     wgpu::RenderPassColorAttachment {
-                        view: &self.output_texture.view,
-                        resolve_target: Some(target_view),
+                        view,
+                        resolve_target,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(clear_color),
                             store: true,
@@ -503,10 +513,10 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
         (picking_buffer, picking_bind_layout, picking_bind_group)
 }
 
-fn create_pipelines(device: &wgpu::Device) -> Pipelines {
+fn create_pipelines(manager: &device_manager::Manager) -> Pipelines {
     // read/import the shader source code and create a module from it
     let wgsl_source = include_str!("matcap.wgsl");
-    let wgsl_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+    let wgsl_module = manager.device.create_shader_module(&wgpu::ShaderModuleDescriptor {
         label: Some("matcap shader module"),
         source: wgpu::ShaderSource::Wgsl(wgsl_source.into()),
     });
@@ -528,7 +538,7 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         stencil: wgpu::StencilState::default(),
     });
     let multisample_state = wgpu::MultisampleState {
-        count: SAMPLE_COUNT,
+        count: manager.sample_count,
         mask: !0,
         alpha_to_coverage_enabled: false,
     };
@@ -553,6 +563,8 @@ fn create_pipelines(device: &wgpu::Device) -> Pipelines {
         cull_mode: None,
         polygon_mode: wgpu::PolygonMode::Fill,
     };
+
+    let device = &manager.device;
 
     let matcap = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         vertex: wgpu::VertexState {
