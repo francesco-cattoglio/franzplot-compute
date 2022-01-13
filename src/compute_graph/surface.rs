@@ -83,7 +83,7 @@ par1=param_1_name, par2=param_2_name,
 fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz, size_x=param_1.n_points()
 );
 
-    println!("surface shader source:\n {}", &wgsl_source);
+    //println!("surface shader source:\n {}", &wgsl_source);
 
     // We are creating a curve from an interval, output vertex count is the same as interval
     // one, but buffer size is 4 times as much, because we are storing a Vec4 instead of a f32

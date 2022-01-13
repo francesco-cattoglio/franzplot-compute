@@ -268,7 +268,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 }}
 "##, curve_constants=curve_consts, points_per_section=n_section_points, dimx=n_points);
 
-    println!("shader source:\n {}", &wgsl_source);
+    //println!("shader source:\n {}", &wgsl_source);
     // We are creating a curve from an interval, output vertex count is the same as interval
     // one, but buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
 
@@ -392,7 +392,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 "##, pps=Parameter::POINTS_PER_SEGMENT,
 size_x=param1.n_points(), size_y=param2.n_points());
 
-    println!("2d shader source:\n {}", &wgsl_source);
+    //println!("2d shader source:\n {}", &wgsl_source);
     // We are creating a curve from an interval, output vertex count is the same as interval
     // one, but buffer size is 4 times as much, because we are storing a Vec4 instead of a f32
 

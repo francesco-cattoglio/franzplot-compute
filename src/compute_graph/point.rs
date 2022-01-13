@@ -38,7 +38,7 @@ fn main() {{
 "##, wgsl_globals=globals.get_wgsl_header(), fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz,
 );
 
-    println!("point shader source:\n {}", &wgsl_source);
+    //println!("point shader source:\n {}", &wgsl_source);
 
     let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<Vec4>());
     let bind_info = vec![
