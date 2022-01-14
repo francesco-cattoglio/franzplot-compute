@@ -58,11 +58,14 @@ debug = true
 [profile.dev.package.image]
 opt-level = 2
 
-#[patch.crates-io]
+[patch.crates-io]
+wgpu = { git = 'https://github.com/gfx-rs/wgpu', rev = '5b2b6f514b2b0f3a4dd0a8de881e794f23e4b07e' }
+wgpu-core = { git = 'https://github.com/gfx-rs/wgpu', rev = '5b2b6f514b2b0f3a4dd0a8de881e794f23e4b07e' }
+wgpu-hal = { git = 'https://github.com/gfx-rs/wgpu', rev = '5b2b6f514b2b0f3a4dd0a8de881e794f23e4b07e' }
+wgpu-types = { git = 'https://github.com/gfx-rs/wgpu', rev = '5b2b6f514b2b0f3a4dd0a8de881e794f23e4b07e' }
 #wgpu-core = { path = "../wgpu/wgpu-core" }
 #wgpu-hal = { path = "../wgpu/wgpu-hal" }
 #wgpu-types = { path = "../wgpu/wgpu-types" }
-#wgpu-info = { path = "../wgpu/wgpu-info" }
 
 #[patch."https://github.com/gfx-rs/gfx"]
 #gfx-hal = { path = "../gfx/src/hal" }

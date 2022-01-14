@@ -60,9 +60,9 @@ dependencies = [
 
 [[package]]
 name = "ash"
-version = "0.34.0+1.2.203"
+version = "0.35.0+1.2.203"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0f780da53d0063880d45554306489f09dd8d1bda47688b4a57bc579119356df"
+checksum = "5a7638ce84f8c84d6fd6faa63aa267574d345181ba591c0eeb5550d4c30cd600"
 dependencies = [
  "libloading",
 ]
@@ -818,9 +818,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fcd999463524c52659517fe2cea98493cfe485d10565e7b0fb07dbba7ad2753"
+checksum = "418d37c8b1d42553c93648be529cb70f920d3baf8ef469b74b9638df426e0b4c"
 dependencies = [
  "cfg-if 1.0.0",
  "libc",
@@ -1251,8 +1251,7 @@ dependencies = [
 [[package]]
 name = "metal"
 version = "0.23.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0514f491f4cc03632ab399ee01e2c1c1b12d3e1cf2d667c1ff5f87d6dcd2084"
+source = "git+https://github.com/gfx-rs/metal-rs?rev=140c8f4#140c8f4e39001ae154f153ffc767da6c0c9d7f06"
 dependencies = [
  "bitflags",
  "block",
@@ -1311,9 +1310,8 @@ dependencies = [
 
 [[package]]
 name = "naga"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1dfa3912b150e6bfb38a7e94d3f53b950a456a905bb8858590af02006e2e78be"
+version = "0.8.0"
+source = "git+https://github.com/gfx-rs/naga?rev=c0b7ac7#c0b7ac7f542cc42ccac6f2ec3fc1fb01309cf4d7"
 dependencies = [
  "bit-set",
  "bitflags",
@@ -2003,9 +2001,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1ecab6c735a6bb4139c0caafd0cc3635748bbb3acf4550e8138122099251f309"
+checksum = "f2dd574626839106c320a323308629dcb1acfc96e32a8cba364ddc61ac23ee83"
 
 [[package]]
 name = "smithay-client-toolkit"
@@ -2470,8 +2468,7 @@ checksum = "d8b77fdfd5a253be4ab714e4ffa3c49caf146b4de743e97510c0656cf90f1e8e"
 [[package]]
 name = "wgpu"
 version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b97cd781ff044d6d697b632a2e212032c2e957d1afaa21dbf58069cbb8f78567"
+source = "git+https://github.com/gfx-rs/wgpu?rev=5b2b6f514b2b0f3a4dd0a8de881e794f23e4b07e#5b2b6f514b2b0f3a4dd0a8de881e794f23e4b07e"
 dependencies = [
  "arrayvec",
  "js-sys",
@@ -2491,9 +2488,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-core"
-version = "0.12.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c4688c000eb841ca55f7b35db659b78d6e1cd77d7caf8fb929f4e181f754047d"
+version = "0.12.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=5b2b6f514b2b0f3a4dd0a8de881e794f23e4b07e#5b2b6f514b2b0f3a4dd0a8de881e794f23e4b07e"
 dependencies = [
  "arrayvec",
  "bitflags",
@@ -2516,9 +2512,8 @@ dependencies = [
 
 [[package]]
 name = "wgpu-hal"
-version = "0.12.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92e33cb9c380dd1166f316dfc511ad9646f72cf2deb47e90bd714db3617a6998"
+version = "0.12.0"
+source = "git+https://github.com/gfx-rs/wgpu?rev=5b2b6f514b2b0f3a4dd0a8de881e794f23e4b07e#5b2b6f514b2b0f3a4dd0a8de881e794f23e4b07e"
 dependencies = [
  "arrayvec",
  "ash",
@@ -2568,8 +2563,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "549533d9e1cdd4b4cda7718d33ff500fc4c34b5467b71d76b547ae0324f3b2a2"
+source = "git+https://github.com/gfx-rs/wgpu?rev=5b2b6f514b2b0f3a4dd0a8de881e794f23e4b07e#5b2b6f514b2b0f3a4dd0a8de881e794f23e4b07e"
 dependencies = [
  "bitflags",
  "bitflags_serde_shim",
