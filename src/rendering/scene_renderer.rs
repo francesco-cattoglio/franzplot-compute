@@ -64,7 +64,7 @@ struct Pipelines {
 
 impl SceneRenderer {
     pub fn new_with_axes(manager: &device_manager::Manager) -> Self {
-        let mut renderer = Self::new(&manager);
+        let mut renderer = Self::new(manager);
         renderer.set_wireframe_axes(manager, 2, 0.075);
         renderer.set_axes_labels(manager, 2.0, 0.15);
         renderer

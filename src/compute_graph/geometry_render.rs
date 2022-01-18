@@ -45,9 +45,8 @@ pub fn create(
 
 fn handle_0d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, thickness: usize, material_id: usize) -> MatcapResult {
     // Never go above a certain refinement level: the local group size for a compute shader
-    // invocation should never exceed 512, otherwise the GPU might error out, and with
+    // invocation should never exceed 512, due to the requested limits, and with
     // a refine level of 6 we already hit the 492 points count.
-    // TODO: on mobile group size limit might be 256, and max refine might be 4
     let refine_amount = std::cmp::min(thickness, 6);
     let sphere_radius = AVAILABLE_SIZES[thickness];
 
@@ -169,7 +168,15 @@ fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, n_points: usize
     let (index_buffer, index_count) = create_curve_index_buffer(device, n_points, n_section_points);
     let vertex_buffer = util::create_storage_buffer(device, n_points * n_section_points * std::mem::size_of::<StandardVertexData>());
 
-    let curve_consts = create_curve_shader_constants(section_diameter/2.0, n_section_points);
+    let reference_vertices = create_curve_reference_points(section_diameter/2.0, n_section_points);
+    use wgpu::util::DeviceExt;
+    let reference_buffer = device.create_buffer_init(
+        &wgpu::util::BufferInitDescriptor {
+            label: None,
+            contents: bytemuck::cast_slice(&reference_vertices),
+            usage: wgpu::BufferUsages::STORAGE,
+    });
+
     let wgsl_source = format!(r##"
 struct MatcapVertex {{
     position: vec4<f32>;
@@ -182,12 +189,19 @@ struct InputBuffer {{
     positions: array<vec4<f32>>;
 }};
 
+// reference buffer will contain the 2D coordinates of the points
+// that make up a single section (or slice) of the curve.
+struct ReferenceBuffer {{
+    coords: array<vec2<f32>>;
+}};
+
 struct OutputBuffer {{
     vertices: array<MatcapVertex>;
 }};
 
 [[group(0), binding(0)]] var<storage, read> in: InputBuffer;
-[[group(0), binding(1)]] var<storage, read_write> out: OutputBuffer;
+[[group(0), binding(1)]] var<storage, read> ref: ReferenceBuffer;
+[[group(0), binding(2)]] var<storage, read_write> out: OutputBuffer;
 
 var<workgroup> tangent_buff: array<vec3<f32>, {dimx}>;
 var<workgroup> ref_buff: array<vec3<f32>, {dimx}>;
@@ -195,9 +209,6 @@ var<workgroup> ref_buff: array<vec3<f32>, {dimx}>;
 [[stage(compute), workgroup_size({dimx})]]
 fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     // this shader prepares the data for curve rendering.
-    {curve_constants}
-
-
     let x_size: i32 = {dimx};
 
     let idx: i32 = i32(global_id.x);
@@ -252,21 +263,19 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
         frame_up,
         section_position,
     );
-    // workaround WGSL limitations: assign section_points to a temporary var
-    // so that we can index it with dinamic indices
     for (var i: i32 = 0; i < {points_per_section}; i = i + 1) {{
         // the curve section is written as list of vec2 constant points, turn them into actual positions
         // or directions and multiply them by the transform matrix. Note that the new_basis
         // is orthonormal, so there is no need to compute the inverse transpose
         let out_idx = idx * {points_per_section} + i;
-        let section_point = vec3<f32>(0.0, section_points[i].x, section_points[i].y);
+        let section_point = vec3<f32>(0.0, ref.coords[i].x, ref.coords[i].y);
         out.vertices[out_idx].position = new_basis * vec4<f32>(section_point, 1.0);
         out.vertices[out_idx].normal = new_basis * vec4<f32>(normalize(section_point), 0.0);
         out.vertices[out_idx].uv_coords = vec2<f32>(f32(idx)/(f32(x_size) - 1.0), f32(i)/(f32({points_per_section}) - 1.0));
         out.vertices[out_idx].padding = vec2<f32>(1.123, 1.456);
     }}
 }}
-"##, curve_constants=curve_consts, points_per_section=n_section_points, dimx=n_points);
+"##, points_per_section=n_section_points, dimx=n_points);
 
     //println!("shader source:\n {}", &wgsl_source);
     // We are creating a curve from an interval, output vertex count is the same as interval
@@ -275,6 +284,10 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let bind_info = vec![
         BindInfo {
             buffer: input_buffer,
+            ty: wgpu::BufferBindingType::Storage { read_only: true },
+        },
+        BindInfo {
+            buffer: &reference_buffer,
             ty: wgpu::BufferBindingType::Storage { read_only: true },
         },
         BindInfo {
@@ -529,16 +542,13 @@ fn create_curve_segment(segment: (usize, usize), circle_points: usize) -> Vec::<
     indices
 }
 
-fn create_curve_shader_constants(radius: f32, n_section_points: usize) -> String {
-    let mut shader_consts = String::new();
-    shader_consts += &format!("var section_points = array<vec2<f32>, {n}> (\n", n=n_section_points);
+fn create_curve_reference_points(radius: f32, n_section_points: usize) -> Vec<glam::Vec2> {
+    let mut reference_points = Vec::<glam::Vec2>::new();
     for i in 0 .. n_section_points {
         let theta = 2.0 * std::f32::consts::PI * i as f32 / (n_section_points - 1) as f32;
-        shader_consts += &format!("\t\tvec2<f32>({:#?}, {:#?}),\n", radius*theta.cos(), radius*theta.sin() );
+        reference_points.push(glam::Vec2::new(radius*theta.cos(), radius*theta.sin() ));
     }
-    shader_consts += &format!("\t);\n");
-
-    shader_consts
+    reference_points
 }
 
 fn create_grid_index_buffer(device: &wgpu::Device, x_size: usize, y_size: usize, flag_pattern: bool) -> (wgpu::Buffer, u32) {

@@ -152,7 +152,7 @@ fn sample_2d_1d(
 
     let maybe_curve_param1_name = geom_param1.name.as_ref();
     let maybe_curve_param2_name = geom_param2.name.as_ref();
-    let (which_param, which_name) = match (maybe_curve_param1_name, maybe_curve_param2_name) {
+    let (which_param, _which_name) = match (maybe_curve_param1_name, maybe_curve_param2_name) {
         (Some(name), _) if name == &sanitized_name
             => { (1, name) },
         (_, Some(name)) if name == &sanitized_name
