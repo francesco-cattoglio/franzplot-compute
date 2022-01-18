@@ -91,6 +91,8 @@ struct InputBuffer {{
 
 // reference buffer will contain all the deltas needed to turn a single
 // point into an actual icosphere that can be rendered to video
+// NOTE: we use a storage buffer instead of a uniform to keep
+// the code similar to the handle_1d shader.
 struct ReferenceBuffer {{
     delta: array<vec4<f32>>;
 }};
@@ -154,12 +156,9 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     Ok((renderable, operation))
 }
 
-// TODO: change this function!
-// 1: forget about shader constants, just create a buffer containing the reference position of the
-//    rings that make up the curve, then bind and use it just like you do for point rendering
-// 2: maybe we can skip a memory barrier if we do store some extra information in the curve
-//    geometry, so that we do not need to compute the entire "ref_buff". We also need to handle
-//    the 90 degree curve anyway, so this code requires a bit of a rework anyway
+// TODO: maybe we can skip a memory barrier if we do store some extra information in the curve
+// geometry, so that we do not need to compute the entire "ref_buff". We also need to handle
+// the 90 degree curve anyway, so this code requires a bit of a rework anyway
 fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, n_points: usize, thickness: usize, mask_id: usize, material_id: usize) -> MatcapResult {
 
     let section_diameter = AVAILABLE_SIZES[thickness];
@@ -191,6 +190,8 @@ struct InputBuffer {{
 
 // reference buffer will contain the 2D coordinates of the points
 // that make up a single section (or slice) of the curve.
+// NOTE: we use a storage buffer instead of a uniform due to
+// the strict layout limitations on UBOs
 struct ReferenceBuffer {{
     coords: array<vec2<f32>>;
 }};
