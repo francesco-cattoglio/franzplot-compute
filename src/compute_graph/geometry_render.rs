@@ -204,7 +204,6 @@ struct OutputBuffer {{
 [[group(0), binding(1)]] var<storage, read> ref: ReferenceBuffer;
 [[group(0), binding(2)]] var<storage, read_write> out: OutputBuffer;
 
-var<workgroup> tangent_buff: array<vec3<f32>, {dimx}>;
 var<workgroup> ref_buff: array<vec3<f32>, {dimx}>;
 
 [[stage(compute), workgroup_size({dimx})]]
@@ -213,6 +212,38 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let x_size: i32 = {dimx};
 
     let idx: i32 = i32(global_id.x);
+
+    if (idx == 0) {{
+        var ref_curr: vec3<f32>;
+        for (var i: i32 = 0; i < x_size; i = i + 1) {{
+            // first: compute the tangent
+            var tangent: vec3<f32>;
+            if (i == 0) {{
+                tangent = (-1.5*in.positions[i] + 2.0*in.positions[i + 1] - 0.5*in.positions[i + 2]).xyz;
+            }} else if (i == x_size - 1) {{
+                tangent = ( 1.5*in.positions[i] - 2.0*in.positions[i - 1] + 0.5*in.positions[i - 2]).xyz;
+            }} else {{
+                tangent = (-0.5*in.positions[i - 1] + 0.5*in.positions[i+1]).xyz;
+            }}
+            tangent = normalize(tangent);
+
+            // initialize ref_curr if we are at the first execution of this loop
+            if (i == 0) {{
+                if (abs(tangent.x) > 0.2) {{
+                    ref_curr = vec3<f32>(0.0, 0.0, 1.0);
+                }} else {{
+                    ref_curr = vec3<f32>(1.0, 0.0, 0.0);
+                }}
+            }}
+
+            let next_dir: vec3<f32> = tangent;
+            // TODO: handle 90 degrees curve
+            ref_buff[i] = normalize(ref_curr - next_dir * dot(ref_curr, next_dir));
+            ref_curr = ref_buff[i];
+        }}
+    }}
+
+    workgroupBarrier();
 
     var tangent: vec3<f32>;
     if (idx == 0) {{
@@ -224,27 +255,6 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     }}
 
     tangent = normalize(tangent);
-    tangent_buff[idx] = tangent;
-
-    workgroupBarrier();
-
-    if (idx == 0) {{
-        var ref_curr: vec3<f32>;
-        if (abs(tangent.x) > 0.2) {{
-            ref_curr = vec3<f32>(0.0, 0.0, 1.0);
-        }} else {{
-            ref_curr = vec3<f32>(1.0, 0.0, 0.0);
-        }}
-        for (var i: i32 = 0; i < x_size; i = i + 1) {{
-            let next_dir: vec3<f32> = tangent_buff[i];
-            // TODO: handle 90 degrees curve
-            ref_buff[i] = normalize(ref_curr - next_dir * dot(ref_curr, next_dir));
-            ref_curr = ref_buff[i];
-        }}
-    }}
-
-    workgroupBarrier();
-
     // now all the compute threads can access the ref_buff, which contains a reference
     // vector for every frame. Each thread computes the transformed section.
     let section_position: vec4<f32> = in.positions[idx];
