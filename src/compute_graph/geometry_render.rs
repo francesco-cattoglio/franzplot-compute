@@ -225,6 +225,9 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 
     tangent = normalize(tangent);
     tangent_buff[idx] = tangent;
+    // Workaround for an intel bug: initialize the ref_buff to something
+    // so at least we don't get NANs if/when the workgroupBarrier fails
+    ref_buff[idx] = normalize(vec3<f32>(0.13, 0.85, 0.42));
 
     workgroupBarrier();
 
