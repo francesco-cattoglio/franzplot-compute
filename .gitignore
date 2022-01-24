@@ -25,3 +25,7 @@
 
 # Microsoft Visual Studio folder
 /.vs
+
+# Perf measurements
+flamegraph.svg
+perf.data*
