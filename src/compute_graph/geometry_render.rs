@@ -207,6 +207,45 @@ struct OutputBuffer {{
 var<workgroup> tangent_buff: array<vec3<f32>, {dimx}>;
 var<workgroup> ref_buff: array<vec3<f32>, {dimx}>;
 
+var<workgroup> spine_alpha: array<f32, 16>;
+
+fn compute_tangent(idx: i32, size_x: i32) -> vec3<f32> {{
+    var tangent: vec3<f32>;
+    if (idx == 0) {{
+        tangent = (-1.5*in.positions[idx] + 2.0*in.positions[idx + 1] - 0.5*in.positions[idx + 2]).xyz;
+    }} else if (idx == size_x - 1) {{
+        tangent = ( 1.5*in.positions[idx] - 2.0*in.positions[idx - 1] + 0.5*in.positions[idx - 2]).xyz;
+    }} else {{
+        tangent = (-0.5*in.positions[idx - 1] + 0.5*in.positions[idx+1]).xyz;
+    }}
+
+    return normalize(tangent);
+}}
+
+fn compute_default_spine(tangent: vec3<f32>) -> vec3<f32> {{
+    if (abs(tangent.x) > 0.333) {{
+        return normalize(cross(tangent, vec3<f32>(0.0, 1.0, 0.0)));
+    }} else {{
+        return normalize(cross(tangent, vec3<f32>(1.0, 0.0, 0.0)));
+    }}
+}}
+
+fn compute_next_section_angle(tangent: vec3<f32>, default_spine: vec3<f32>, actual_spine: vec3<f32>) -> f32 {{
+    let angle = acos(dot(default_spine, actual_spine));
+    return angle * sign(dot(tangent, cross(default_spine, actual_spine)));
+}}
+
+fn rotationMatrix(axis: vec3<f32>, angle: f32) -> mat4x4<f32> {{
+    let s = sin(angle);
+    let c = cos(angle);
+    let oc = 1.0 - c;
+
+    return mat4x4<f32>(oc * axis.x * axis.x + c,           oc * axis.x * axis.y - axis.z * s,  oc * axis.z * axis.x + axis.y * s,  0.0,
+                oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,  0.0,
+                oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c,           0.0,
+                0.0,                                0.0,                                0.0,                                1.0);
+}}
+
 [[stage(compute), workgroup_size({dimx})]]
 fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     // this shader prepares the data for curve rendering.
@@ -214,35 +253,30 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 
     let idx: i32 = i32(global_id.x);
 
-    var tangent: vec3<f32>;
-    if (idx == 0) {{
-        tangent = (-1.5*in.positions[idx] + 2.0*in.positions[idx + 1] - 0.5*in.positions[idx + 2]).xyz;
-    }} else if (idx == x_size - 1) {{
-        tangent = ( 1.5*in.positions[idx] - 2.0*in.positions[idx - 1] + 0.5*in.positions[idx - 2]).xyz;
-    }} else {{
-        tangent = (-0.5*in.positions[idx - 1] + 0.5*in.positions[idx+1]).xyz;
-    }}
-
-    tangent = normalize(tangent);
+    var tangent = compute_tangent(idx, x_size);
     tangent_buff[idx] = tangent;
-    // Workaround for an intel bug: initialize the ref_buff to something
-    // so at least we don't get NANs if/when the workgroupBarrier fails
-    ref_buff[idx] = normalize(vec3<f32>(0.13, 0.85, 0.42));
 
     workgroupBarrier();
 
-    if (idx == 0) {{
-        var ref_curr: vec3<f32>;
-        if (abs(tangent.x) > 0.2) {{
-            ref_curr = vec3<f32>(0.0, 0.0, 1.0);
-        }} else {{
-            ref_curr = vec3<f32>(1.0, 0.0, 0.0);
-        }}
-        for (var i: i32 = 0; i < x_size; i = i + 1) {{
-            let next_dir: vec3<f32> = tangent_buff[i];
+    let group_idx = idx / 16;
+    let local_idx = idx % 16;
+
+    if (local_idx == 0) {{
+        var ref_curr = compute_default_spine(tangent);
+        // loop inside this group
+        for (var i: i32 = 0; i < 16; i = i + 1) {{
+            let next_dir: vec3<f32> = tangent_buff[idx + i];
             // TODO: handle 90 degrees curve
-            ref_buff[i] = normalize(ref_curr - next_dir * dot(ref_curr, next_dir));
-            ref_curr = ref_buff[i];
+            ref_buff[idx + i] = normalize(ref_curr - next_dir * dot(ref_curr, next_dir));
+            ref_curr = ref_buff[idx + i];
+        }}
+        // after this computation is done, we can compare the ref buffer with the spine that the next section will be using
+        if (idx + 16 < x_size) {{
+            let next_section_dir = compute_tangent(idx + 16, x_size);
+            let next_section_spine = normalize(ref_curr - next_section_dir * dot(ref_curr, next_section_dir));
+            let next_default_spine = compute_default_spine(next_section_dir);
+            let alpha = compute_next_section_angle(next_section_dir, next_default_spine, next_section_spine);
+            spine_alpha[group_idx] = alpha;
         }}
     }}
 
@@ -253,9 +287,15 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let section_position: vec4<f32> = in.positions[idx];
     // compute the three directions for the frame: forward direction
     let frame_forward = vec4<f32>(tangent, 0.0);
-    // up direction
+    // up direction; remember that we need to rotate the spine by the sum of all previous
+    // section alphas!
+    var angle = 0.0;
+    for (var i: i32 = 0; i < group_idx; i = i+1) {{
+        angle = angle + spine_alpha[i];
+    }}
+    let adjust_rotation = rotationMatrix(tangent, -1.0 * angle);
     let ref_vector: vec3<f32> = ref_buff[idx];
-    let frame_up = vec4<f32>(ref_vector, 0.0);
+    let frame_up = adjust_rotation * vec4<f32>(ref_vector, 0.0);
     // and left direction
     let left_dir: vec3<f32> = -1.0 * normalize(cross(frame_forward.xyz, frame_up.xyz));
     let frame_left = vec4<f32>(left_dir, 0.0);
