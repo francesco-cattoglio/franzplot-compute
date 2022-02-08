@@ -3,8 +3,6 @@ pub mod model;
 pub mod texture;
 pub mod scene_renderer;
 
-// TODO: just copy-paste the entire scene_renderer in here? Or move all these constants
-// in that module and pub use the useful ones
 pub use scene_renderer::SceneRenderer;
 
 #[repr(C)]

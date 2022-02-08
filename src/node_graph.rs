@@ -856,7 +856,7 @@ pub struct Node {
     pub title: String,
     position: [f32; 2],
     error: Option<GraphError>,
-    pub contents: NodeContents, // TODO: made this public to implement the translation matrix more easily. change back to private
+    contents: NodeContents,
 }
 
 impl Node {
