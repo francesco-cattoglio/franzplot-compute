@@ -125,9 +125,14 @@ impl AstNode {
                     ident.clone()
                 }
             },
-            // we might want to add even more parenthesis because expression could be right after a binary operator
-            // We need to check if this is necessary to correctly translate stuff like "3 * -sin(pi)" to the shading language
-            AstNode::UnaryOp{ operator, arg } => { format!("({}{})", operator.to_string(), arg.to_string(global_idents)) },
+            // WGSL does not have a UnaryPlus operator, so if we do have one, we just turn it into a no-op
+            AstNode::UnaryOp{ operator, arg } => {
+                if let Operator::Plus = operator {
+                    arg.to_string(global_idents)
+                } else {
+                    format!("({}{})", operator.to_string(), arg.to_string(global_idents))
+                }
+            }
             AstNode::PowOp{ base, exp } => { format!("pow({},{})", base.to_string(global_idents), exp.to_string(global_idents)) },
             AstNode::BinOp{ lhs, repeated_rhs } =>  {
                 let mut to_return = String::new();
