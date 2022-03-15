@@ -21,7 +21,7 @@ jobs:
       - name: Release binary
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: macos_M1_test
+          tag_name: macos_22_02_a
           files: target/release/franzplot
           fail_on_unmatched_files: true
         env:
