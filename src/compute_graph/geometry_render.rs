@@ -44,9 +44,8 @@ pub fn create(
 }
 
 fn handle_0d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, thickness: usize, material_id: usize) -> MatcapResult {
-    // Never go above a certain refinement level: the local group size for a compute shader
-    // invocation should never exceed 512, due to the requested limits, and with
-    // a refine level of 6 we already hit the 492 points count.
+    // Never go above a certain refinement level:
+    // with a refine level of 6 we already hit the 492 points count.
     let refine_amount = std::cmp::min(thickness, 6);
     let sphere_radius = AVAILABLE_SIZES[thickness];
 
@@ -54,12 +53,21 @@ fn handle_0d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, thickness: usiz
     let sphere = IcoSphere::new(refine_amount, |_| ());
 
     let raw_points = sphere.raw_points();
-    let vertex_count = raw_points.len();
-    let reference_vertices: Vec<glam::Vec4> = raw_points
+
+    let mut reference_vertices: Vec<glam::Vec4> = raw_points
         .iter()
         .map(|v| {glam::Vec4::new(v.x, v.y, v.z, 0.0)})
         .collect();
 
+    // TODO: DRY, same code in model.rs
+    let vertices_remainder = reference_vertices.len() % MODEL_CHUNK_VERTICES;
+    if vertices_remainder != 0 {
+        // extend the vertices to round up its size up to the next MODEL_CHUNK_VERTICES
+        let new_size = reference_vertices.len() + (MODEL_CHUNK_VERTICES - vertices_remainder);
+        reference_vertices.resize(new_size, glam::Vec4::ZERO);
+    }
+    let vertex_count = reference_vertices.len();
+    let chunks_count = vertex_count / MODEL_CHUNK_VERTICES;
     let indices = sphere.get_all_indices();
 
     use wgpu::util::DeviceExt;
@@ -106,7 +114,7 @@ struct OutputBuffer {{
 [[group(0), binding(1)]] var<storage, read> ref: ReferenceBuffer;
 [[group(0), binding(2)]] var<storage, read_write> out: OutputBuffer;
 
-[[stage(compute), workgroup_size({dimx})]]
+[[stage(compute), workgroup_size({vertices_per_chunk})]]
 fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     // this shader prepares the data for point rendering.
     // there is very little work to do, we just set the final location
@@ -120,7 +128,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     out.vertices[idx].uv_coords = vec2<f32>(0.0, 0.0);
     out.vertices[idx].padding = vec2<f32>(0.123, 0.456);
 }}
-"##, radius=sphere_radius, dimx=vertex_count);
+"##, vertices_per_chunk=MODEL_CHUNK_VERTICES, radius=sphere_radius);
 
     let output_buffer = util::create_storage_buffer(device, vertex_count * std::mem::size_of::<StandardVertexData>());
 
@@ -150,7 +158,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let operation = Operation {
         bind_group,
         pipeline: Rc::new(pipeline),
-        dim: [1, 1, 1],
+        dim: [chunks_count as u32, 1, 1],
     };
 
     Ok((renderable, operation))
