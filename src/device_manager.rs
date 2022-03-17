@@ -53,8 +53,8 @@ impl Manager {
                 features: wgpu::Features::empty(),
                 limits: wgpu::Limits {
                     max_storage_buffers_per_shader_stage: 6, // TODO: we need to make sure that every possible GPU supports this
-                    max_compute_workgroup_size_x: 512,
-                    max_compute_invocations_per_workgroup: 512,
+                    max_compute_workgroup_size_x: 256,
+                    max_compute_invocations_per_workgroup: 256,
                     .. Default::default()
                 },
             },
