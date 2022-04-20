@@ -239,8 +239,18 @@ fn compute_default_spine(tangent: vec3<f32>) -> vec3<f32> {{
 }}
 
 fn compute_next_section_angle(tangent: vec3<f32>, default_spine: vec3<f32>, actual_spine: vec3<f32>) -> f32 {{
-    let angle = acos(dot(default_spine, actual_spine));
-    return angle * sign(dot(tangent, cross(default_spine, actual_spine)));
+    let dot_prod = dot(default_spine, actual_spine);
+    // the dot product might be slightly larger than -1 or 1, due to numerical approximations.
+    // clamp it before use!
+    let angle = acos(clamp(dot_prod, -1.0, 1.0));
+    // sign can return zero if the argument is zero (which can happen if cross returns zero)
+    // instead of multiplying it as-is, just run a comparison instead.
+    let sign = sign(dot(tangent, cross(default_spine, actual_spine)));
+    if (sign < 0.0) {{
+        return -angle;
+    }} else {{
+        return angle;
+    }}
 }}
 
 fn rotationMatrix(axis: vec3<f32>, angle: f32) -> mat4x4<f32> {{
@@ -252,6 +262,23 @@ fn rotationMatrix(axis: vec3<f32>, angle: f32) -> mat4x4<f32> {{
                 oc * axis.x * axis.y + axis.z * s,  oc * axis.y * axis.y + c,           oc * axis.y * axis.z - axis.x * s,  0.0,
                 oc * axis.z * axis.x - axis.y * s,  oc * axis.y * axis.z + axis.x * s,  oc * axis.z * axis.z + c,           0.0,
                 0.0,                                0.0,                                0.0,                                1.0);
+}}
+
+fn compute_next_spine_simple(curr_spine: vec3<f32>, next_tan: vec3<f32>) -> vec3<f32> {{
+    return normalize(curr_spine - next_tan * dot(curr_spine, next_tan));
+}}
+
+// computes the next spine vector using the double reflection method. See
+// "Computation of Rotation Minimizing Frame in Computer Graphics", 2007, Wenping Wang
+fn compute_next_spine_dr(x_i: vec3<f32>, spine_i: vec3<f32>, t_i: vec3<f32>, x_j: vec3<f32>, t_j: vec3<f32>) -> vec3<f32> {{
+    let v_1: vec3<f32> = x_j - x_i;
+    let c_1: f32 = dot(v_1, v_1);
+    let spine_i_L = spine_i - (2.0/c_1) * dot(v_1, spine_i) * v_1;
+    let t_i_L = t_i - (2.0/c_1) * dot(v_1, t_i) * v_1;
+    let v_2: vec3<f32> = t_j - t_i_L;
+    let c_2: f32 = dot(v_2, v_2);
+    let spine_j = spine_i_L - (2.0/c_2) * dot(v_2, spine_i_L) * v_2;
+    return normalize(spine_j);
 }}
 
 [[stage(compute), workgroup_size({dimx})]]
@@ -270,20 +297,21 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let local_idx = idx % 16;
 
     if (local_idx == 0) {{
-        var ref_curr = compute_default_spine(tangent);
+        let starting_spine = compute_default_spine(tangent);
+        var ref_curr = starting_spine;
         // loop inside this group
         for (var i: i32 = 0; i < 16; i = i + 1) {{
             let next_dir: vec3<f32> = tangent_buff[idx + i];
             // TODO: handle 90 degrees curve
-            ref_buff[idx + i] = normalize(ref_curr - next_dir * dot(ref_curr, next_dir));
+            ref_buff[idx + i] = compute_next_spine_simple(ref_curr, next_dir);
             ref_curr = ref_buff[idx + i];
         }}
         // after this computation is done, we can compare the ref buffer with the spine that the next section will be using
         if (idx + 16 < x_size) {{
-            let next_section_dir = compute_tangent(idx + 16, x_size);
-            let next_section_spine = normalize(ref_curr - next_section_dir * dot(ref_curr, next_section_dir));
-            let next_default_spine = compute_default_spine(next_section_dir);
-            let alpha = compute_next_section_angle(next_section_dir, next_default_spine, next_section_spine);
+            let next_section_tan = compute_tangent(idx + 16, x_size);
+            let next_section_spine = compute_next_spine_dr(in.positions[idx].xyz, starting_spine, tangent, in.positions[idx+16].xyz, next_section_tan);
+            let next_default_spine = compute_default_spine(next_section_tan);
+            let alpha = compute_next_section_angle(next_section_tan, next_default_spine, next_section_spine);
             spine_alpha[group_idx] = alpha;
         }}
     }}

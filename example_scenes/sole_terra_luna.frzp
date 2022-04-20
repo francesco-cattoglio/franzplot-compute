@@ -1,0 +1,199 @@
+//// FRANZPLOT DATA FILE V1.1 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 21.04 or higher
+
+V1(
+  (
+    graph: (
+      nodes: [
+        Some((
+          title: "Point",
+          position: (739.125,-59.6875),
+          error: None,
+          contents: Point(x:0,y:1,z:2,output:3),
+        )),// [0]
+        Some((
+          title: "Rendering",
+          position: (963.125,-65.6875),
+          error: None,
+          contents: Rendering(geometry:4,thickness:5,mask:6,material:7),
+        )),// [1]
+        Some((
+          title: "Interval",
+          position: (675.125,116.3125),
+          error: None,
+          contents: Interval(variable:8,begin:9,end:10,quality:11,output:12),
+        )),// [2]
+        Some((
+          title: "Curve",
+          position: (909.125,72.3125),
+          error: None,
+          contents: Curve(interval:13,fx:14,fy:15,fz:16,output:17),
+        )),// [3]
+        Some((
+          title: "Curve",
+          position: (912.125,240.3125),
+          error: None,
+          contents: Curve(interval:18,fx:19,fy:20,fz:21,output:22),
+        )),// [4]
+        Some((
+          title: "Rendering",
+          position: (1118.125,77.3125),
+          error: None,
+          contents: Rendering(geometry:23,thickness:24,mask:25,material:26),
+        )),// [5]
+        Some((
+          title: "Rendering",
+          position: (1127.125,230.3125),
+          error: None,
+          contents: Rendering(geometry:27,thickness:28,mask:29,material:30),
+        )),
+      ],
+      attributes: [
+        Some((
+          node_id: 0,
+          contents: Text(label:"x",string:"0.0"),
+        )),// [0]
+        Some((
+          node_id: 0,
+          contents: Text(label:"y",string:"0.0"),
+        )),// [1]
+        Some((
+          node_id: 0,
+          contents: Text(label:"z",string:"0.0"),
+        )),// [2]
+        Some((
+          node_id: 0,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [3]
+        Some((
+          node_id: 1,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [4]
+        Some((
+          node_id: 1,
+          contents: IntSlider(label:"thickness:",value:5,mode:SizeLabels),
+        )),// [5]
+        Some((
+          node_id: 1,
+          contents: Mask(selected:0),
+        )),// [6]
+        Some((
+          node_id: 1,
+          contents: Material(selected:3),
+        )),// [7]
+        Some((
+          node_id: 2,
+          contents: Text(label:" name",string:"t"),
+        )),// [8]
+        Some((
+          node_id: 2,
+          contents: Text(label:"begin",string:"0"),
+        )),// [9]
+        Some((
+          node_id: 2,
+          contents: Text(label:"  end",string:"2*pi"),
+        )),// [10]
+        Some((
+          node_id: 2,
+          contents: IntSlider(label:"quality",value:16,mode:IntRange(1,16)),
+        )),// [11]
+        Some((
+          node_id: 2,
+          contents: OutputPin(label:"interval",kind:Interval),
+        )),// [12]
+        Some((
+          node_id: 3,
+          contents: InputPin(label:"interval",kind:Interval),
+        )),// [13]
+        Some((
+          node_id: 3,
+          contents: Text(label:"fx",string:"5*cos(t)"),
+        )),// [14]
+        Some((
+          node_id: 3,
+          contents: Text(label:"fy",string:"5*sin(t)"),
+        )),// [15]
+        Some((
+          node_id: 3,
+          contents: Text(label:"fz",string:"0"),
+        )),// [16]
+        Some((
+          node_id: 3,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [17]
+        Some((
+          node_id: 4,
+          contents: InputPin(label:"interval",kind:Interval),
+        )),// [18]
+        Some((
+          node_id: 4,
+          contents: Text(label:"fx",string:"5*cos(t)+cos(13*t)"),
+        )),// [19]
+        Some((
+          node_id: 4,
+          contents: Text(label:"fy",string:"5*sin(t)+sin(13*t)"),
+        )),// [20]
+        Some((
+          node_id: 4,
+          contents: Text(label:"fz",string:"0"),
+        )),// [21]
+        Some((
+          node_id: 4,
+          contents: OutputPin(label:"geometry",kind:Geometry),
+        )),// [22]
+        Some((
+          node_id: 5,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [23]
+        Some((
+          node_id: 5,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [24]
+        Some((
+          node_id: 5,
+          contents: Mask(selected:3),
+        )),// [25]
+        Some((
+          node_id: 5,
+          contents: Material(selected:0),
+        )),// [26]
+        Some((
+          node_id: 6,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [27]
+        Some((
+          node_id: 6,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [28]
+        Some((
+          node_id: 6,
+          contents: Mask(selected:3),
+        )),// [29]
+        Some((
+          node_id: 6,
+          contents: Material(selected:7),
+        )),
+      ],
+      links: {
+        23: 17,
+        4: 3,
+        13: 12,
+        18: 12,
+        27: 22,
+      },
+      free_nodes_list: [],
+      free_attributes_list: [],
+    ),
+    globals_names: [],
+    globals_init_values: [],
+  ),
+  (
+    fc: 1649408218,
+    fs: 1649410251,
+    vn: 3848562112,
+    hs: 0,
+  ),
+)
