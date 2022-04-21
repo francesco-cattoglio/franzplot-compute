@@ -245,8 +245,8 @@ fn compute_next_section_angle(tangent: vec3<f32>, default_spine: vec3<f32>, actu
     let angle = acos(clamp(dot_prod, -1.0, 1.0));
     // sign can return zero if the argument is zero (which can happen if cross returns zero)
     // instead of multiplying it as-is, just run a comparison instead.
-    let sign = sign(dot(tangent, cross(default_spine, actual_spine)));
-    if (sign < 0.0) {{
+    let computed_sign = sign(dot(tangent, cross(default_spine, actual_spine)));
+    if (computed_sign < 0.0) {{
         return -angle;
     }} else {{
         return angle;
