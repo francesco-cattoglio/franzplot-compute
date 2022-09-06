@@ -167,25 +167,41 @@ impl FourBytes for i32 {
 #[allow(unused)]
 pub fn copy_buffer_as<T: FourBytes>(buffer: &wgpu::Buffer, device: &wgpu::Device) -> Vec<T> {
     use futures::executor::block_on;
-    let future_result = buffer.slice(..).map_async(wgpu::MapMode::Read);
-    device.poll(wgpu::Maintain::Wait);
-    block_on(future_result).unwrap();
-    let mapped_buffer = buffer.slice(..).get_mapped_range();
-    let data: &[u8] = &mapped_buffer;
-    use std::convert::TryInto;
-    // Since contents are got in bytes, this converts these bytes back to f32
-    let result: Vec<T> = data
-        .chunks_exact(4)
-        .map(|b| T::from_bytes(b.try_into().unwrap()))
-        .skip(0)
-        .step_by(1)
-        .collect();
-    // With the current interface, we have to make sure all mapped views are
-    // dropped before we unmap the buffer.
-    drop(mapped_buffer);
-    buffer.unmap();
+    // copied from the hello-compute example
+    // Sets the buffer up for mapping, sending over the result of the mapping back to us when it is finished.
+    let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+    buffer.slice(..).map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
 
-    result
+    // Poll the device in a blocking manner so that our future resolves.
+    // In an actual application, `device.poll(...)` should
+    // be called in an event loop or on another thread.
+    device.poll(wgpu::Maintain::Wait);
+
+    let mapping_result = block_on(receiver.receive());
+    if let Some(Ok(())) = mapping_result {
+        // Gets contents of buffer
+        let mapped_buffer = buffer.slice(..).get_mapped_range();
+        let data: &[u8] = &mapped_buffer;
+        // Since contents are got in bytes, this converts these bytes back to u32
+        // TODO: check if there is an easier way to do this, by simple use of bytemuck::cast_slice
+        // and trait bounds `+ bytemuck::Pod`
+        use std::convert::TryInto;
+        let result: Vec<T> = data
+            .chunks_exact(4)
+            .map(|b| T::from_bytes(b.try_into().unwrap()))
+            .skip(0)
+            .step_by(1)
+            .collect();
+        // With the current interface, we have to make sure all mapped views are
+        // dropped before we unmap the buffer.
+        drop(mapped_buffer);
+        buffer.unmap(); // Unmaps buffer from memory
+
+        // Returns data from buffer
+        result
+    } else {
+        panic!("failed to run copy a gpu buffer!")
+    }
 }
 
 /// support struct for copying textures to png
@@ -229,14 +245,14 @@ pub fn create_graph_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
 
     let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
         label: None,
-        color_attachments: &[wgpu::RenderPassColorAttachment {
+        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
             view: &output_texture.view,
             resolve_target: None,
             ops: wgpu::Operations {
                 load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
                 store: true,
             },
-        }],
+        })],
         depth_stencil_attachment: None,
     });
 
@@ -300,7 +316,10 @@ pub fn create_graph_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     state.app.manager.queue.submit(Some(command_buffer));
 
     let buffer_slice = png_buffer.slice(..);
-    let buffer_future = buffer_slice.map_async(wgpu::MapMode::Read);
+    // copied from the hello-compute example
+    // Sets the buffer up for mapping, sending over the result of the mapping back to us when it is finished.
+    let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+    buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
 
     // Poll the device in a blocking manner so that our future resolves.
     // In an actual application, `device.poll(...)` should
@@ -313,42 +332,46 @@ pub fn create_graph_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     }
 
     use futures::executor::block_on;
-    block_on(buffer_future).unwrap();
-    let padded_buffer = buffer_slice.get_mapped_range();
-    let mut padded_vector = Vec::<u8>::new();
-    for chunk in padded_buffer.chunks_exact(4).into_iter() {
-        padded_vector.push(chunk[2]);
-        padded_vector.push(chunk[1]);
-        padded_vector.push(chunk[0]);
-        padded_vector.push(chunk[3]);
+    let mapping_result = block_on(receiver.receive());
+    if let Some(Ok(())) = mapping_result {
+        let padded_buffer = buffer_slice.get_mapped_range();
+        let mut padded_vector = Vec::<u8>::new();
+        for chunk in padded_buffer.chunks_exact(4).into_iter() {
+            padded_vector.push(chunk[2]);
+            padded_vector.push(chunk[1]);
+            padded_vector.push(chunk[0]);
+            padded_vector.push(chunk[3]);
+        }
+
+        let mut png_encoder = png::Encoder::new(
+            std::fs::File::create(output_path).unwrap(),
+            buffer_dimensions.width as u32,
+            buffer_dimensions.height as u32,
+        );
+        png_encoder.set_depth(png::BitDepth::Eight);
+        png_encoder.set_color(png::ColorType::RGBA);
+        let mut png_writer = png_encoder
+            .write_header()
+            .unwrap()
+            .into_stream_writer_with_size(buffer_dimensions.unpadded_bytes_per_row);
+
+        // from the padded_buffer we write just the unpadded bytes into the image
+        use std::io::Write;
+        for chunk in padded_vector.chunks(buffer_dimensions.padded_bytes_per_row) {
+            png_writer
+                .write_all(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
+                .unwrap();
+        }
+        png_writer.finish().unwrap();
+
+        // With the current interface, we have to make sure all mapped views are
+        // dropped before we unmap the buffer.
+        drop(padded_buffer);
+
+        png_buffer.unmap();
+    } else {
+        panic!("failed to create the graph png!")
     }
-
-    let mut png_encoder = png::Encoder::new(
-        std::fs::File::create(output_path).unwrap(),
-        buffer_dimensions.width as u32,
-        buffer_dimensions.height as u32,
-    );
-    png_encoder.set_depth(png::BitDepth::Eight);
-    png_encoder.set_color(png::ColorType::RGBA);
-    let mut png_writer = png_encoder
-        .write_header()
-        .unwrap()
-        .into_stream_writer_with_size(buffer_dimensions.unpadded_bytes_per_row);
-
-    // from the padded_buffer we write just the unpadded bytes into the image
-    use std::io::Write;
-    for chunk in padded_vector.chunks(buffer_dimensions.padded_bytes_per_row) {
-        png_writer
-            .write_all(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
-            .unwrap();
-    }
-    png_writer.finish().unwrap();
-
-    // With the current interface, we have to make sure all mapped views are
-    // dropped before we unmap the buffer.
-    drop(padded_buffer);
-
-    png_buffer.unmap();
 }
 
 pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_path: &P) {
@@ -407,47 +430,55 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     state.app.manager.queue.submit(Some(command_buffer));
 
     let buffer_slice = png_buffer.slice(..);
-    let buffer_future = buffer_slice.map_async(wgpu::MapMode::Read);
+    use futures::executor::block_on;
+    // copied from the hello-compute example
+    // Sets the buffer up for mapping, sending over the result of the mapping back to us when it is finished.
+    let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+    buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
 
     // Poll the device in a blocking manner so that our future resolves.
     // In an actual application, `device.poll(...)` should
     // be called in an event loop or on another thread.
     state.app.manager.device.poll(wgpu::Maintain::Wait);
+
     // If a file system is available, write the buffer as a PNG
     let has_file_system_available = cfg!(not(target_arch = "wasm32"));
     if !has_file_system_available {
         return;
     }
 
-    use futures::executor::block_on;
-    block_on(buffer_future).unwrap();
-    let padded_buffer = buffer_slice.get_mapped_range();
+    let mapping_result = block_on(receiver.receive());
+    if let Some(Ok(())) = mapping_result {
+        let padded_buffer = buffer_slice.get_mapped_range();
 
-    let mut png_encoder = png::Encoder::new(
-        std::fs::File::create(output_path).unwrap(),
-        buffer_dimensions.width as u32,
-        buffer_dimensions.height as u32,
-    );
-    png_encoder.set_depth(png::BitDepth::Eight);
-    png_encoder.set_color(png::ColorType::RGBA);
-    let mut png_writer = png_encoder
-        .write_header()
-        .unwrap()
-        .into_stream_writer_with_size(buffer_dimensions.unpadded_bytes_per_row);
+        let mut png_encoder = png::Encoder::new(
+            std::fs::File::create(output_path).unwrap(),
+            buffer_dimensions.width as u32,
+            buffer_dimensions.height as u32,
+        );
+        png_encoder.set_depth(png::BitDepth::Eight);
+        png_encoder.set_color(png::ColorType::RGBA);
+        let mut png_writer = png_encoder
+            .write_header()
+            .unwrap()
+            .into_stream_writer_with_size(buffer_dimensions.unpadded_bytes_per_row);
 
-    // from the padded_buffer we write just the unpadded bytes into the image
-    use std::io::Write;
-    for chunk in padded_buffer.chunks(buffer_dimensions.padded_bytes_per_row) {
-        png_writer
-            .write_all(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
-            .unwrap();
+        // from the padded_buffer we write just the unpadded bytes into the image
+        use std::io::Write;
+        for chunk in padded_buffer.chunks(buffer_dimensions.padded_bytes_per_row) {
+            png_writer
+                .write_all(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
+                .unwrap();
+        }
+        png_writer.finish().unwrap();
+
+        // With the current interface, we have to make sure all mapped views are
+        // dropped before we unmap the buffer.
+        drop(padded_buffer);
+
+        png_buffer.unmap();
+    } else {
+        panic!("failed to run generate scene png!")
     }
-    png_writer.finish().unwrap();
-
-    // With the current interface, we have to make sure all mapped views are
-    // dropped before we unmap the buffer.
-    drop(padded_buffer);
-
-    png_buffer.unmap();
 }
 

@@ -5,7 +5,7 @@ pub struct BindInfo<'a> {
 
 pub fn naga_compute_pipeline(device: &wgpu::Device, wgsl_source: &str, bindings: &[BindInfo]) -> (wgpu::ComputePipeline, wgpu::BindGroup) {
     // first, compile the wgsl shader
-    let wgsl_module = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+    let wgsl_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("compute shader module"),
         source: wgpu::ShaderSource::Wgsl(wgsl_source.into()),
     });

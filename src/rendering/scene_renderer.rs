@@ -213,7 +213,7 @@ impl SceneRenderer {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for billboard"),
-                color_formats: &[SCENE_FORMAT],
+                color_formats: &[Some(SCENE_FORMAT)],
                 depth_stencil: Some(wgpu::RenderBundleDepthStencil{
                     format: DEPTH_FORMAT,
                     depth_read_only: false,
@@ -290,7 +290,7 @@ impl SceneRenderer {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for wireframe"),
-                color_formats: &[SCENE_FORMAT],
+                color_formats: &[Some(SCENE_FORMAT)],
                 depth_stencil: Some(wgpu::RenderBundleDepthStencil{
                     format: DEPTH_FORMAT,
                     depth_read_only: false,
@@ -351,7 +351,7 @@ impl SceneRenderer {
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
                 label: Some("Render bundle encoder for MatcapData"),
-                color_formats: &[SCENE_FORMAT],
+                color_formats: &[Some(SCENE_FORMAT)],
                 depth_stencil: Some(wgpu::RenderBundleDepthStencil{
                     format: DEPTH_FORMAT,
                     depth_read_only: false,
@@ -430,14 +430,14 @@ impl SceneRenderer {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("scene render pass"),
                 color_attachments: &[
-                    wgpu::RenderPassColorAttachment {
+                    Some(wgpu::RenderPassColorAttachment {
                         view,
                         resolve_target,
                         ops: wgpu::Operations {
                             load: wgpu::LoadOp::Clear(clear_color),
                             store: true,
                         },
-                    }
+                    })
                 ],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &self.depth_texture.view,
@@ -516,7 +516,7 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
 fn create_pipelines(manager: &device_manager::Manager) -> Pipelines {
     // read/import the shader source code and create a module from it
     let wgsl_source = include_str!("matcap.wgsl");
-    let wgsl_module = manager.device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+    let wgsl_module = manager.device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("matcap shader module"),
         source: wgpu::ShaderSource::Wgsl(wgsl_source.into()),
     });
@@ -575,7 +575,7 @@ fn create_pipelines(manager: &device_manager::Manager) -> Pipelines {
         fragment: Some(wgpu::FragmentState {
             module: &wgsl_module,
             entry_point: "matcap_fs_main",
-            targets: &[color_target_state.clone()],
+            targets: &[Some(color_target_state.clone())],
         }),
         layout: None,
         label: None,
@@ -594,7 +594,7 @@ fn create_pipelines(manager: &device_manager::Manager) -> Pipelines {
         fragment: Some(wgpu::FragmentState {
             module: &wgsl_module,
             entry_point: "color_fs_main",
-            targets: &[color_target_state.clone()],
+            targets: &[Some(color_target_state.clone())],
         }),
         layout: None,
         label: None,
@@ -613,7 +613,7 @@ fn create_pipelines(manager: &device_manager::Manager) -> Pipelines {
         fragment: Some(wgpu::FragmentState {
             module: &wgsl_module,
             entry_point: "color_fs_main",
-            targets: &[color_target_state],
+            targets: &[Some(color_target_state)],
         }),
         layout: None,
         label: None,

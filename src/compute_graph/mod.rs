@@ -49,7 +49,7 @@ impl Operation {
         });
         compute_pass.set_pipeline(&self.pipeline);
         compute_pass.set_bind_group(0, &self.bind_group, &[]);
-        compute_pass.dispatch(self.dim[0], self.dim[1], self.dim[2]);
+        compute_pass.dispatch_workgroups(self.dim[0], self.dim[1], self.dim[2]);
     }
 }
 
