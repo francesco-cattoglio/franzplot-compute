@@ -46,23 +46,15 @@ fn new_bezier_1st_degree(
     let p1_buff = get_point_buffer(data_map, control_points_ids[1])?;
 
     let wgsl_source = format!(r##"
-struct PointBuffer {{
-    position: vec4<f32>;
-}};
+@group(0) @binding(0) var<storage, read> p0: vec4<f32>;
+@group(0) @binding(1) var<storage, read> p1: vec4<f32>;
+@group(0) @binding(2) var<storage, read_write> out_pos: array<vec4<f32>>;
 
-struct OutputBuffer {{
-    positions: array<vec4<f32>>;
-}};
-
-[[group(0), binding(0)]] var<storage, read> p0: PointBuffer;
-[[group(0), binding(1)]] var<storage, read> p1: PointBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: OutputBuffer;
-
-[[stage(compute), workgroup_size({CHUNK_SIZE})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({CHUNK_SIZE})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let index = global_id.x;
     let t = f32(index) / (f32({n_points}) - 1.0);
-    output.positions[index] = (1.0 - t) * p0.position + t * p1.position;
+    out_pos[index] = (1.0 - t) * p0 + t * p1;
 }}
 "##, CHUNK_SIZE=CHUNK_SIZE, n_points=param.n_points()
 );
@@ -111,27 +103,19 @@ fn new_bezier_2nd_degree(
     let p2_buff = get_point_buffer(data_map, control_points_ids[2])?;
 
     let wgsl_source = format!(r##"
-struct PointBuffer {{
-    position: vec4<f32>;
-}};
+@group(0) @binding(0) var<storage, read> p0: vec4<f32>;
+@group(0) @binding(1) var<storage, read> p1: vec4<f32>;
+@group(0) @binding(2) var<storage, read> p2: vec4<f32>;
+@group(0) @binding(3) var<storage, read_write> out_pos: array<vec4<f32>>;
 
-struct OutputBuffer {{
-    positions: array<vec4<f32>>;
-}};
-
-[[group(0), binding(0)]] var<storage, read> p0: PointBuffer;
-[[group(0), binding(1)]] var<storage, read> p1: PointBuffer;
-[[group(0), binding(2)]] var<storage, read> p2: PointBuffer;
-[[group(0), binding(3)]] var<storage, read_write> output: OutputBuffer;
-
-[[stage(compute), workgroup_size({CHUNK_SIZE})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({CHUNK_SIZE})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let index = global_id.x;
     let t = f32(index) / (f32({n_points}) - 1.0);
-    output.positions[index] =
-                              (1.0 - t) * (1.0 - t) * p0.position
-                      + 2.0 * (1.0 - t) *     t     * p1.position
-                      +           t     *     t     * p2.position;
+    out_pos[index] =
+                              (1.0 - t) * (1.0 - t) * p0
+                      + 2.0 * (1.0 - t) *     t     * p1
+                      +           t     *     t     * p2;
 }}
 "##, CHUNK_SIZE=CHUNK_SIZE, n_points=param.n_points()
 );
@@ -185,29 +169,21 @@ fn new_bezier_3rd_degree(
     let p3_buff = get_point_buffer(data_map, control_points_ids[3])?;
 
     let wgsl_source = format!(r##"
-struct PointBuffer {{
-    position: vec4<f32>;
-}};
+@group(0) @binding(0) var<storage, read> p0: vec4<f32>;
+@group(0) @binding(1) var<storage, read> p1: vec4<f32>;
+@group(0) @binding(2) var<storage, read> p2: vec4<f32>;
+@group(0) @binding(3) var<storage, read> p3: vec4<f32>;
+@group(0) @binding(4) var<storage, read_write> out_pos: array<vec4<f32>>;
 
-struct OutputBuffer {{
-    positions: array<vec4<f32>>;
-}};
-
-[[group(0), binding(0)]] var<storage, read> p0: PointBuffer;
-[[group(0), binding(1)]] var<storage, read> p1: PointBuffer;
-[[group(0), binding(2)]] var<storage, read> p2: PointBuffer;
-[[group(0), binding(3)]] var<storage, read> p3: PointBuffer;
-[[group(0), binding(4)]] var<storage, read_write> output: OutputBuffer;
-
-[[stage(compute), workgroup_size({CHUNK_SIZE})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({CHUNK_SIZE})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let index = global_id.x;
     let t = f32(index) / (f32({n_points}) - 1.0);
-    output.positions[index] =
-                              (1.0 - t) * (1.0 - t) * (1.0 - t) * p0.position
-                      + 3.0 * (1.0 - t) * (1.0 - t) *     t     * p1.position
-                      + 3.0 * (1.0 - t) *     t     *     t     * p2.position
-                      +           t     *     t     *     t     * p3.position;
+    out_pos[index] =
+                              (1.0 - t) * (1.0 - t) * (1.0 - t) * p0
+                      + 3.0 * (1.0 - t) * (1.0 - t) *     t     * p1
+                      + 3.0 * (1.0 - t) *     t     *     t     * p2
+                      +           t     *     t     *     t     * p3;
 }}
 "##, CHUNK_SIZE=CHUNK_SIZE, n_points=param.n_points()
 );

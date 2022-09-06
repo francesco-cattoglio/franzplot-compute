@@ -12,6 +12,14 @@ use crate::shader_processing::{naga_compute_pipeline, BindInfo};
 use crate::node_graph::AVAILABLE_SIZES;
 
 pub type MatcapResult = Result<(MatcapData, Operation), ProcessingError>;
+const WGSL_MATCAP_VERTEX: &str = "
+struct MatcapVertex {
+    position: vec4<f32>,
+    normal: vec4<f32>,
+    uv_coords: vec2<f32>,
+    padding: vec2<f32>,
+}
+";
 
 pub fn create(
     device: &wgpu::Device,
@@ -119,7 +127,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     // this shader prepares the data for point rendering.
     // there is very little work to do, we just set the final location
     // of the vertices and store the normals.
-    let point_coords: vec4<f32> = in.position;
+    let point_coords: vec4<f32> = in_pos;
     let normal: vec4<f32> = ref.delta[global_id.x];
     let idx = global_id.x;
 
@@ -185,32 +193,16 @@ fn handle_1d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, n_points: usize
     });
 
     let wgsl_source = format!(r##"
-struct MatcapVertex {{
-    position: vec4<f32>;
-    normal: vec4<f32>;
-    uv_coords: vec2<f32>;
-    padding: vec2<f32>;
-}};
+{WGSL_MATCAP_VERTEX}
 
-struct InputBuffer {{
-    positions: array<vec4<f32>>;
-}};
+@group(0) @binding(0) var<storage, read> in_pos: array<vec4<f32>>;
 
 // reference buffer will contain the 2D coordinates of the points
 // that make up a single section (or slice) of the curve.
 // NOTE: we use a storage buffer instead of a uniform due to
 // the strict layout limitations on UBOs
-struct ReferenceBuffer {{
-    coords: array<vec2<f32>>;
-}};
-
-struct OutputBuffer {{
-    vertices: array<MatcapVertex>;
-}};
-
-[[group(0), binding(0)]] var<storage, read> in: InputBuffer;
-[[group(0), binding(1)]] var<storage, read> ref: ReferenceBuffer;
-[[group(0), binding(2)]] var<storage, read_write> out: OutputBuffer;
+@group(0) @binding(1) var<storage, read> ref_coords: array<vec2<f32>>;
+@group(0) @binding(2) var<storage, read_write> out_vert: array<MatcapVertex>;
 
 var<workgroup> tangent_buff: array<vec3<f32>, {dimx}>;
 var<workgroup> ref_buff: array<vec3<f32>, {dimx}>;
@@ -220,11 +212,11 @@ var<workgroup> spine_alpha: array<f32, 16>;
 fn compute_tangent(idx: i32, size_x: i32) -> vec3<f32> {{
     var tangent: vec3<f32>;
     if (idx == 0) {{
-        tangent = (-1.5*in.positions[idx] + 2.0*in.positions[idx + 1] - 0.5*in.positions[idx + 2]).xyz;
+        tangent = (-1.5*in_pos[idx] + 2.0*in_pos[idx + 1] - 0.5*in_pos[idx + 2]).xyz;
     }} else if (idx == size_x - 1) {{
-        tangent = ( 1.5*in.positions[idx] - 2.0*in.positions[idx - 1] + 0.5*in.positions[idx - 2]).xyz;
+        tangent = ( 1.5*in_pos[idx] - 2.0*in_pos[idx - 1] + 0.5*in_pos[idx - 2]).xyz;
     }} else {{
-        tangent = (-0.5*in.positions[idx - 1] + 0.5*in.positions[idx+1]).xyz;
+        tangent = (-0.5*in_pos[idx - 1] + 0.5*in_pos[idx+1]).xyz;
     }}
 
     return normalize(tangent);
@@ -281,8 +273,8 @@ fn compute_next_spine_dr(x_i: vec3<f32>, spine_i: vec3<f32>, t_i: vec3<f32>, x_j
     return normalize(spine_j);
 }}
 
-[[stage(compute), workgroup_size({dimx})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({dimx})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     // this shader prepares the data for curve rendering.
     let x_size: i32 = {dimx};
 
@@ -309,7 +301,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
         // after this computation is done, we can compare the ref buffer with the spine that the next section will be using
         if (idx + 16 < x_size) {{
             let next_section_tan = compute_tangent(idx + 16, x_size);
-            let next_section_spine = compute_next_spine_dr(in.positions[idx].xyz, starting_spine, tangent, in.positions[idx+16].xyz, next_section_tan);
+            let next_section_spine = compute_next_spine_dr(in_pos[idx].xyz, starting_spine, tangent, in_pos[idx+16].xyz, next_section_tan);
             let next_default_spine = compute_default_spine(next_section_tan);
             let alpha = compute_next_section_angle(next_section_tan, next_default_spine, next_section_spine);
             spine_alpha[group_idx] = alpha;
@@ -320,7 +312,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
 
     // now all the compute threads can access the ref_buff, which contains a reference
     // vector for every frame. Each thread computes the transformed section.
-    let section_position: vec4<f32> = in.positions[idx];
+    let section_position: vec4<f32> = in_pos[idx];
     // compute the three directions for the frame: forward direction
     let frame_forward = vec4<f32>(tangent, 0.0);
     // up direction; remember that we need to rotate the spine by the sum of all previous
@@ -348,11 +340,11 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
         // or directions and multiply them by the transform matrix. Note that the new_basis
         // is orthonormal, so there is no need to compute the inverse transpose
         let out_idx = idx * {points_per_section} + i;
-        let section_point = vec3<f32>(0.0, ref.coords[i].x, ref.coords[i].y);
-        out.vertices[out_idx].position = new_basis * vec4<f32>(section_point, 1.0);
-        out.vertices[out_idx].normal = new_basis * vec4<f32>(normalize(section_point), 0.0);
-        out.vertices[out_idx].uv_coords = vec2<f32>(f32(idx)/(f32(x_size) - 1.0), f32(i)/(f32({points_per_section}) - 1.0));
-        out.vertices[out_idx].padding = vec2<f32>(1.123, 1.456);
+        let section_point = vec3<f32>(0.0, ref_coords[i].x, ref_coords[i].y);
+        out_vert[out_idx].position = new_basis * vec4<f32>(section_point, 1.0);
+        out_vert[out_idx].normal = new_basis * vec4<f32>(normalize(section_point), 0.0);
+        out_vert[out_idx].uv_coords = vec2<f32>(f32(idx)/(f32(x_size) - 1.0), f32(i)/(f32({points_per_section}) - 1.0));
+        out_vert[out_idx].padding = vec2<f32>(1.123, 1.456);
     }}
 }}
 "##, points_per_section=n_section_points, dimx=n_points);

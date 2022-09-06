@@ -50,17 +50,13 @@ pub fn create(
     let wgsl_source = format!(r##"
 {wgsl_globals}
 
-struct OutputBuffer {{
-values: array<f32>;
-}};
+@group(0) @binding(1) var<storage, read_write> out_values: array<f32>;
 
-[[group(0), binding(1)]] var<storage, read_write> output: OutputBuffer;
-
-[[stage(compute), workgroup_size({n_points})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({n_points})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
 let index = global_id.x;
 let delta: f32 = ({interval_end} - {interval_begin}) / (f32({n_points}) - 1.0);
-output.values[index] = {interval_begin} + delta * f32(index);
+out_values[index] = {interval_begin} + delta * f32(index);
 }}
 "##, wgsl_globals=globals.get_wgsl_header(), interval_begin=&param.begin, interval_end=&param.end, n_points=param.n_points()
 );

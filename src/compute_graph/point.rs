@@ -22,20 +22,16 @@ pub fn create(
     let wgsl_source = format!(r##"
 {wgsl_globals}
 
-struct OutputBuffer {{
-positions: vec4<f32>;
-}};
+@group(0) @binding(1) var<storage, read_write> out_pos: vec4<f32>;
 
-[[group(0), binding(1)]] var<storage, read_write> out: OutputBuffer;
-
-[[stage(compute), workgroup_size(1)]]
+@compute @workgroup_size(1)
 fn main() {{
-    out.positions.x = {fx};
-    out.positions.y = {fy};
-    out.positions.z = {fz};
-    out.positions.w = 1.0;
+    out_pos.x = {sanitized_fx};
+    out_pos.y = {sanitized_fy};
+    out_pos.z = {sanitized_fz};
+    out_pos.w = 1.0;
 }}
-"##, wgsl_globals=globals.get_wgsl_header(), fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz,
+"##, wgsl_globals=globals.get_wgsl_header(),
 );
 
     //println!("point shader source:\n {}", &wgsl_source);

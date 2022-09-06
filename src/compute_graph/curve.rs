@@ -16,7 +16,6 @@ pub fn create(
     fy: String,
     fz: String,
 ) -> SingleDataResult {
-    //println!("new curve processing");
     let data_id = interval_id
         .ok_or_else(|| ProcessingError::InputMissing(" This Curve node \n is missing its input ".into()))?;
     let found_data = data_map
@@ -41,25 +40,17 @@ pub fn create(
     let wgsl_source = format!(r##"
 {wgsl_header}
 
-struct InputBuffer {{
-    values: array<f32>;
-}};
+@group(0) @binding(1) var<storage, read> in_values: array<f32>;
+@group(0) @binding(2) var<storage, read_write> out_pos: array<vec4<f32>>;
 
-struct OutputBuffer {{
-    positions: array<vec4<f32>>;
-}};
-
-[[group(0), binding(1)]] var<storage, read> input: InputBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: OutputBuffer;
-
-[[stage(compute), workgroup_size({n_points})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({n_points})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let index = global_id.x;
-    let {par} = input.values[index];
+    let {par} = in_values[index];
     let fx = {fx};
     let fy = {fy};
     let fz = {fz};
-    output.positions[index] = vec4<f32>(fx, fy, fz, 1.0);
+    out_pos[index] = vec4<f32>(fx, fy, fz, 1.0);
 }}
 "##, wgsl_header=globals.get_wgsl_header(), par=param_name, fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz, n_points=param.n_points()
 );

@@ -182,7 +182,7 @@ impl Globals {
         wgsl_header += "struct Globals {\n";
 
         for (constant_name, _constant_value) in GLOBAL_CONSTANTS {
-            wgsl_header += &format!("\t{}: f32;\n", constant_name);
+            wgsl_header += &format!("\t{}: f32,\n", constant_name);
         }
 
         // process all variables
@@ -190,13 +190,13 @@ impl Globals {
         for pair in zipped_iterator {
             // print the name to the shader header and
             // add the pair to both the 'names' and the 'values' vectors
-            wgsl_header += &format!("\t{}: f32;\n", &pair.0);
+            wgsl_header += &format!("\t{}: f32\n", &pair.0);
             names.push(pair.0.clone());
             values.push(*pair.1);
         }
         // when we close the wgsl struct, we also need to write the binding to the group 1
-        wgsl_header += "};\n";
-        wgsl_header += "[[group(0), binding(0)]] var<uniform> globals: Globals;\n";
+        wgsl_header += "}\n";
+        wgsl_header += "@group(0) @binding(0) var<uniform> globals: Globals;\n";
 
 
         Self {
