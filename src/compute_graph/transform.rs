@@ -76,21 +76,13 @@ fn t_0d_0d(
     matrix_buffer: &wgpu::Buffer,
     ) -> SingleDataResult {
     let wgsl_source = r##"
-struct PointBuffer {
-    position: vec4<f32>;
-};
+@group(0) @binding(0) var<storage, read> in_point: vec4<f32>;
+@group(0) @binding(1) var<storage, read> in_matrix: mat4x4<f32>;
+@group(0) @binding(2) var<storage, read_write> out_point: vec4<f32>;
 
-struct MatrixBuffer {
-    matrix: mat4x4<f32>;
-};
-
-[[group(0), binding(0)]] var<storage, read> in_point: PointBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrix: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: PointBuffer;
-
-[[stage(compute), workgroup_size(1)]]
+@compute @workgroup_size(1)
 fn main() {
-    output.position = in_matrix.matrix * in_point.position;
+    out_point = in_matrix * in_point;
 }
 "##.to_string();
 
@@ -131,26 +123,14 @@ fn t_0d_up_1d(
     matrix_param: &Parameter,
     ) -> SingleDataResult {
     let wgsl_source = r##"
-struct PointBuffer {
-    position: vec4<f32>;
-};
+@group(0) @binding(0) var<storage, read> in_pos: vec4<f32>;
+@group(0) @binding(1) var<storage, read> in_matrices: array<mat4x4<f32>>;
+@group(0) @binding(2) var<storage, read_write> out_pos: array<vec4<f32>>;
 
-struct MatrixBuffer {
-    matrices: array<mat4x4<f32>>;
-};
-
-struct CurveBuffer {
-    positions: array<vec4<f32>>;
-};
-
-[[group(0), binding(0)]] var<storage, read> in_point: PointBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrices: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: CurveBuffer;
-
-[[stage(compute), workgroup_size(16)]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {
+@compute @workgroup_size(16)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let index = global_id.x;
-    output.positions[index] = in_matrices.matrices[index] * in_point.position;
+    out_pos[index] = in_matrices[index] * in_pos;
 }
 "##.to_string();
 
@@ -192,22 +172,14 @@ fn t_1d_1d(
     matrix_buffer: &wgpu::Buffer,
     ) -> SingleDataResult {
     let wgsl_source = r##"
-struct CurveBuffer {
-    positions: array<vec4<f32>>;
-};
+@group(0) @binding(0) var<storage, read> in_pos: array<vec4<f32>>;
+@group(0) @binding(1) var<storage, read> in_matrix: mat4x4<f32>;
+@group(0) @binding(2) var<storage, read_write> out_pos: array<vec4<f32>>;
 
-struct MatrixBuffer {
-    matrix: mat4x4<f32>;
-};
-
-[[group(0), binding(0)]] var<storage, read> in_curve: CurveBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrix: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: CurveBuffer;
-
-[[stage(compute), workgroup_size(16)]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {
+@compute @workgroup_size(16)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let index = global_id.x;
-    output.positions[index] = in_matrix.matrix * in_curve.positions[index];
+    out_pos[index] = in_matrix * in_pos[index];
 }
 "##.to_string();
 
@@ -249,22 +221,14 @@ fn t_1d_same_param(
     param: &Parameter,
     ) -> SingleDataResult {
     let wgsl_source = r##"
-struct CurveBuffer {
-    positions: array<vec4<f32>>;
-};
+@group(0) @binding(0) var<storage, read> in_pos: array<vec4<f32>>;
+@group(0) @binding(1) var<storage, read> in_matrices: array<mat4x4<f32>>;
+@group(0) @binding(2) var<storage, read_write> out_pos: array<vec4<f32>>;
 
-struct MatrixBuffer {
-    matrices: array<mat4x4<f32>>;
-};
-
-[[group(0), binding(0)]] var<storage, read> in_curve: CurveBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrices: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: CurveBuffer;
-
-[[stage(compute), workgroup_size(16)]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {
+@compute @workgroup_size(16)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let index = global_id.x;
-    output.positions[index] = in_matrices.matrices[index] * in_curve.positions[index];
+    out_pos[index] = in_matrices[index] * in_pos[index];
 }
 "##.to_string();
 
@@ -307,31 +271,19 @@ fn t_1d_up_2d(
     matrix_param: &Parameter,
     ) -> SingleDataResult {
     let wgsl_source = r##"
-struct CurveBuffer {
-    positions: array<vec4<f32>>;
-};
+@group(0) @binding(0) var<storage, read> in_pos: array<vec4<f32>>;
+@group(0) @binding(1) var<storage, read> in_matrices: array<mat4x4<f32>>;
+@group(0) @binding(2) var<storage, read_write> out_pos: array<vec4<f32>>;
 
-struct MatrixBuffer {
-    matrix: array<mat4x4<f32>>;
-};
-
-struct SurfaceBuffer {
-    positions: array<vec4<f32>>;
-};
-
-[[group(0), binding(0)]] var<storage, read> in_curve: CurveBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrices: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: SurfaceBuffer;
-
-[[stage(compute), workgroup_size(16, 16)]]
+@compute @workgroup_size(16, 16)
 fn main(
-    [[builtin(global_invocation_id)]] global_id: vec3<u32>,
-    [[builtin(num_workgroups)]] num_groups: vec3<u32>,
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(num_workgroups) num_groups: vec3<u32>,
 ) {
     let par1_idx = global_id.x;
     let par2_idx = global_id.y;
     let index = par1_idx + num_groups.x * 16u * par2_idx;
-    output.positions[index] = in_matrices.matrix[par2_idx] * in_curve.positions[par1_idx];
+    out_pos[index] = in_matrices[par2_idx] * in_pos[par1_idx];
 }
 "##.to_string();
 
@@ -375,27 +327,19 @@ fn t_2d_2d(
     matrix_buffer: &wgpu::Buffer,
     ) -> SingleDataResult {
     let wgsl_source = r##"
-struct SurfaceBuffer {
-    positions: array<vec4<f32>>;
-};
+@group(0) @binding(0) var<storage, read> in_pos: array<vec4<f32>>;
+@group(0) @binding(1) var<storage, read> in_matrix: mat4x4<f32>;
+@group(0) @binding(2) var<storage, read_write> out_pos: array<vec4<f32>>;
 
-struct MatrixBuffer {
-    matrix: mat4x4<f32>;
-};
-
-[[group(0), binding(0)]] var<storage, read> in_surface: SurfaceBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrix: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: SurfaceBuffer;
-
-[[stage(compute), workgroup_size(16, 16)]]
+@compute @workgroup_size(16, 16)
 fn main(
-    [[builtin(global_invocation_id)]] global_id: vec3<u32>,
-    [[builtin(num_workgroups)]] num_groups: vec3<u32>,
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(num_workgroups) num_groups: vec3<u32>,
 ) {
     let par1_idx = global_id.x;
     let par2_idx = global_id.y;
     let index = par1_idx + num_groups.x * 16u * par2_idx;
-    output.positions[index] = in_matrix.matrix * in_surface.positions[index];
+    out_pos[index] = in_matrix * in_pos[index];
 }
 "##.to_string();
 
@@ -446,27 +390,19 @@ fn t_2d_same_param(
         "par2_idx"
     };
     let wgsl_source = r##"
-struct SurfaceBuffer {
-    positions: array<vec4<f32>>;
-};
+@group(0) @binding(0) var<storage, read> in_pos: array<vec4<f32>>;
+@group(0) @binding(1) var<storage, read> in_matrices: array<mat4x4<f32>>;
+@group(0) @binding(2) var<storage, read_write> out_pos: array<vec4<f32>>;
 
-struct MatrixBuffer {
-    matrices: array<mat4x4<f32>>;
-};
-
-[[group(0), binding(0)]] var<storage, read> in_surface: SurfaceBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrices: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: SurfaceBuffer;
-
-[[stage(compute), workgroup_size(16, 16)]]
+@compute @workgroup_size(16, 16)
 fn main(
-    [[builtin(global_invocation_id)]] global_id: vec3<u32>,
-    [[builtin(num_workgroups)]] num_groups: vec3<u32>,
+    @builtin(global_invocation_id) global_id: vec3<u32>,
+    @builtin(num_workgroups) num_groups: vec3<u32>,
 ) {
     let par1_idx = global_id.x;
     let par2_idx = global_id.y;
     let index = par1_idx + num_groups.x * 16u * par2_idx;
-    output.positions[index] = in_matrices.matrices["##.to_string() + which_idx + r##"] * in_surface.positions[index];
+    out_pos[index] = in_matrices["##.to_string() + which_idx + r##"] * in_pos[index];
 }
 "##;
 
@@ -501,6 +437,15 @@ fn main(
     Ok((new_data, operation))
 }
 
+// TODO: DRY, this is the same in geometry_render.rs
+const WGSL_MATCAP_VERTEX: &str = "
+struct MatcapVertex {
+    position: vec4<f32>,
+    normal: vec4<f32>,
+    uv_coords: vec2<f32>,
+    padding: vec2<f32>,
+}
+";
 
 fn t_prefab (device: &wgpu::Device,
     vertex_buffer: &wgpu::Buffer,
@@ -511,28 +456,15 @@ fn t_prefab (device: &wgpu::Device,
     ) -> SingleDataResult {
 
     let wgsl_source = format!(r##"
-struct MatcapVertex {{
-    position: vec4<f32>;
-    normal: vec4<f32>;
-    uv_coords: vec2<f32>;
-    padding: vec2<f32>;
-}};
+{WGSL_MATCAP_VERTEX}
 
-struct PrefabBuffer {{
-    vertices: array<MatcapVertex>;
-}};
+@group(0) @binding(0) var<storage, read> in_verts: array<MatcapVertex>;
+@group(0) @binding(1) var<storage, read> in_matrix: mat4x4<f32>;
+@group(0) @binding(2) var<storage, read_write> out_verts: array<MatcapVertex>;
 
-struct MatrixBuffer {{
-    matrix: mat4x4<f32>;
-}};
-
-[[group(0), binding(0)]] var<storage, read> in_prefab: PrefabBuffer;
-[[group(0), binding(1)]] var<storage, read> in_matrix: MatrixBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: PrefabBuffer;
-
-[[stage(compute), workgroup_size({vertices_per_chunk})]]
+@compute @workgroup_size({vertices_per_chunk})
 fn main(
-    [[builtin(global_invocation_id)]] global_id: vec3<u32>,
+    @builtin(global_invocation_id) global_id: vec3<u32>,
 ) {{
     let index = global_id.x;
 
@@ -544,9 +476,9 @@ fn main(
     // TODO: possible optimization: precompute inverse transpose
     // directly in the matrix compute block (for 0D matrices only)
     let A = mat3x3<f32>(
-        in_matrix.matrix[0].xyz,
-        in_matrix.matrix[1].xyz,
-        in_matrix.matrix[2].xyz,
+        in_matrix[0].xyz,
+        in_matrix[1].xyz,
+        in_matrix[2].xyz,
     );
     let det: f32 = determinant(A);
     if (det > 1e-6) {{
@@ -563,15 +495,15 @@ fn main(
         inv_t[1][2] = -(A[0][0] * A[2][1] - A[2][0] * A[0][1]) * invdet;
         inv_t[2][2] =  (A[0][0] * A[1][1] - A[1][0] * A[0][1]) * invdet;
 
-        let transformed_normal: vec3<f32> = normalize(inv_t * in_prefab.vertices[index].normal.xyz);
-        output.vertices[index].normal = vec4<f32>(transformed_normal, 0.0);
+        let transformed_normal: vec3<f32> = normalize(inv_t * in_verts[index].normal.xyz);
+        out_verts[index].normal = vec4<f32>(transformed_normal, 0.0);
     }} else {{
         // this is wrong, but at least it won't produce undefined garbage results
-        output.vertices[index].normal = in_prefab.vertices[index].normal;
+        out_verts[index].normal = in_verts[index].normal;
     }}
-    output.vertices[index].position = in_matrix.matrix * in_prefab.vertices[index].position;
-    output.vertices[index].uv_coords = in_prefab.vertices[index].uv_coords;
-    output.vertices[index].padding = in_prefab.vertices[index].padding;
+    out_verts[index].position = in_matrix * in_verts[index].position;
+    out_verts[index].uv_coords = in_verts[index].uv_coords;
+    out_verts[index].padding = in_verts[index].padding;
 }}
 "##, vertices_per_chunk=MODEL_CHUNK_VERTICES,);
 

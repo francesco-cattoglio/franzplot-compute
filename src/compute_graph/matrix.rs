@@ -20,8 +20,8 @@ pub fn create_from_rotation(
     let (row_1, row_2, row_3);
 
     dbg!(&angle);
-    // Sanitize all input expressions to get any error, but do not save the result (it will have all the global vars
-    // renamed like `pi`->`globals.pi`)
+    // Sanitize all input expressions to get any error, but do not save the result
+    // (otherwise we would be renaming all global vars, e.g: `pi`->`globals.pi`)
     let _ = globals.sanitize_expression(&[], &angle)?;
     match axis {
         Axis::X => {
@@ -40,9 +40,7 @@ pub fn create_from_rotation(
             row_3 = [              "0.0".into(),                "0.0".into(), "1.0".into(), "0.0".into()];
         },
     }
-    dbg!(&row_1);
-    dbg!(&row_2);
-    dbg!(&row_3);
+
     create_from_rows(
         device,
         globals,
@@ -66,31 +64,23 @@ pub fn create_from_translation(
         .ok_or(ProcessingError::NoInputData)?;
     let vector_buffer = match found_data {
         Data::Vector { buffer } => buffer,
-        _ => return Err(ProcessingError::IncorrectInput(" Translation Matrix first input \n is not a point ".into()))
+        _ => return Err(ProcessingError::IncorrectInput(" Translation Matrix first input \n is not a vector ".into()))
     };
 
     let wgsl_source = format!(r##"
-struct VectorBuffer {{
-    direction: vec4<f32>;
-}};
+@group(0) @binding(0) var<storage, read> in_translation: vec4<f32>;
+@group(0) @binding(1) var<storage, read_write> out_matrix: mat4x4<f32>;
 
-struct OutputBuffer {{
-    matrix: mat4x4<f32>;
-}};
-
-[[group(0), binding(0)]] var<storage, read> input: VectorBuffer;
-[[group(0), binding(1)]] var<storage, read_write> output: OutputBuffer;
-
-[[stage(compute), workgroup_size(1)]]
+@compute @workgroup_size(1)
 fn main() {{
     output.matrix = mat4x4<f32>(
         vec4<f32>(1.0, 0.0, 0.0, 0.0),
         vec4<f32>(0.0, 1.0, 0.0, 0.0),
         vec4<f32>(0.0, 0.0, 1.0, 0.0),
-        vec4<f32>(input.direction.xyz, 1.0),
+        vec4<f32>(in_translation.xyz, 1.0),
     );
 }}
-    "##,);
+"##,);
 
     //println!("translation matrix wgsl shader: {}", wgsl_source);
     let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<glam::Mat4>());
@@ -164,28 +154,19 @@ pub fn create_from_rows(
         let wgsl_source = format!(r##"
 {wgsl_header}
 
-struct InputBuffer {{
-    values: array<f32>;
-}};
+@group(0) @binding(1) var<storage, read> in_values: array<f32>;
+@group(0) @binding(2) var<storage, read_write> out_matrices: array<mat4x4<f32>>;
 
-struct OutputBuffer {{
-    matrices: array<mat4x4<f32>>;
-}};
-
-[[group(0), binding(1)]] var<storage, read> input: InputBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: OutputBuffer;
-
-[[stage(compute), workgroup_size(16)]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size(16)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let index = global_id.x;
-    let {par} = input.values[index];
-    let matrix = mat4x4<f32>(
+    let {par} = in_values[index];
+    out_matrices[index] = mat4x4<f32>(
         vec4<f32>({_m11}, {_m21}, {_m31}, 0.0),
         vec4<f32>({_m12}, {_m22}, {_m32}, 0.0),
         vec4<f32>({_m13}, {_m23}, {_m33}, 0.0),
         vec4<f32>({_m14}, {_m24}, {_m34}, 1.0),
     );
-    output.matrices[index] = matrix;
 }}
         "##, wgsl_header=globals.get_wgsl_header(), par=param.name.as_ref().unwrap(),
         _m11=sanitized_m11, _m12=sanitized_m12, _m13=sanitized_m13, _m14=sanitized_m14,
@@ -222,21 +203,16 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
         let wgsl_source = format!(r##"
 {wgsl_header}
 
-struct OutputBuffer {{
-    matrix: mat4x4<f32>;
-}};
+@group(0) @binding(1) var<storage, read_write> out_matrix: mat4x4<f32>;
 
-[[group(0), binding(1)]] var<storage, read_write> output: OutputBuffer;
-
-[[stage(compute), workgroup_size(1)]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
-    let matrix = mat4x4<f32>(
+@compute @workgroup_size(1)
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
+    out_matrix = mat4x4<f32>(
         vec4<f32>({_m11}, {_m21}, {_m31}, 0.0),
         vec4<f32>({_m12}, {_m22}, {_m32}, 0.0),
         vec4<f32>({_m13}, {_m23}, {_m33}, 0.0),
         vec4<f32>({_m14}, {_m24}, {_m34}, 1.0),
     );
-    output.matrix = matrix;
 }}
         "##, wgsl_header=globals.get_wgsl_header(),
         _m11=sanitized_m11, _m12=sanitized_m12, _m13=sanitized_m13, _m14=sanitized_m14,

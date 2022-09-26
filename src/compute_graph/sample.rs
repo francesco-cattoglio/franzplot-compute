@@ -74,19 +74,11 @@ fn sample_1d_0d(
     let wgsl_source = format!(r##"
 {wgsl_header}
 
-struct CurveBuffer {{
-    positions: array<vec4<f32>>;
-}};
-
-struct PointBuffer {{
-    position: vec4<f32>;
-}};
-
 // binding 0 used by global vars, as usual
-[[group(0), binding(1)]] var<storage, read> in_curve: CurveBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: PointBuffer;
+@group(0) @binding(1) var<storage, read> in_pos: array<vec4<f32>>;
+@group(0) @binding(2) var<storage, read_write> out_pos: vec4<f32>;
 
-[[stage(compute), workgroup_size(1)]]
+@compute @workgroup_size(1)
 fn main() {{
     // parameter space is linear, so we can figure out which index we should access
     let size = f32({array_size});
@@ -102,7 +94,7 @@ fn main() {{
     // even if the provided value was outside of parameter interval
     let inf_idx = i32(clamp(inf_value, 0.0, size - 1.0));
     let sup_idx = i32(clamp(sup_value, 0.0, size - 1.0));
-    output.position = (1.0 - alpha) * in_curve.positions[inf_idx] + alpha * in_curve.positions[sup_idx];
+    out_pos = (1.0 - alpha) * in_pos[inf_idx] + alpha * in_pos[sup_idx];
 }}
 "##, wgsl_header=globals.get_wgsl_header(), begin=&geom_param.begin, end=&geom_param.end,
     sample_value=sanitized_value, array_size=geom_param.n_points());
@@ -170,20 +162,12 @@ fn sample_2d_1d(
     let wgsl_source = format!(r##"
 {wgsl_header}
 
-struct SurfaceBuffer {{
-    positions: array<vec4<f32>>;
-}};
-
-struct CurveBuffer {{
-    positions: array<vec4<f32>>;
-}};
-
 // binding 0 used by global vars, as usual
-[[group(0), binding(1)]] var<storage, read> in_surface: SurfaceBuffer;
-[[group(0), binding(2)]] var<storage, read_write> output: CurveBuffer;
+@group(0) @binding(1) var<storage, read> in_pos: array<vec4<f32>>;
+@group(0) @binding(2) var<storage, read_write> out_pos: array<vec4<f32>>;
 
-[[stage(compute), workgroup_size({CHUNK_SIZE})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({CHUNK_SIZE})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     // parameter space is linear, so we can figure out which index we should access
     let size = f32({sampled_array_size});
     let interval_begin: f32 = {begin};
@@ -211,7 +195,7 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
         inf_index = global_id.x + {first_array_size}u * inf_idx;
         sup_index = global_id.x + {first_array_size}u * sup_idx;
     }}
-    output.positions[global_id.x] = (1.0 - alpha) * in_surface.positions[inf_index] + alpha * in_surface.positions[sup_index];
+    out_pos[global_id.x] = (1.0 - alpha) * in_pos[inf_index] + alpha * in_pos[sup_index];
 }}
 "##, wgsl_header=&globals.get_wgsl_header(), sampled_array_size=sampled_param.n_points(),
 first_array_size=geom_param1.n_points(),

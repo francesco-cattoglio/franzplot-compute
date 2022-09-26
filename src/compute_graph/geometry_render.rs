@@ -93,48 +93,33 @@ fn handle_0d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, thickness: usiz
     });
 
     let wgsl_source = format!(r##"
-struct MatcapVertex {{
-    position: vec4<f32>;
-    normal: vec4<f32>;
-    uv_coords: vec2<f32>;
-    padding: vec2<f32>;
-}};
+{WGSL_MATCAP_VERTEX}
 
 // input buffer will contain a single vertex, the actual point coords
-struct InputBuffer {{
-    position: vec4<f32>;
-}};
+@group(0) @binding(0) var<storage, read> in_pos: vec4<f32>;
 
 // reference buffer will contain all the deltas needed to turn a single
 // point into an actual icosphere that can be rendered to video
 // NOTE: we use a storage buffer instead of a uniform to keep
 // the code similar to the handle_1d shader.
-struct ReferenceBuffer {{
-    delta: array<vec4<f32>>;
-}};
+@group(0) @binding(1) var<storage, read> ref_delta: array<vec4<f32>>;
 
 // output buffer contains the final Matcap mesh, as usual for rendering nodes
-struct OutputBuffer {{
-    vertices: array<MatcapVertex>;
-}};
+@group(0) @binding(2) var<storage, read_write> out_vert: array<MatcapVertex>;
 
-[[group(0), binding(0)]] var<storage, read> in: InputBuffer;
-[[group(0), binding(1)]] var<storage, read> ref: ReferenceBuffer;
-[[group(0), binding(2)]] var<storage, read_write> out: OutputBuffer;
-
-[[stage(compute), workgroup_size({vertices_per_chunk})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({vertices_per_chunk})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     // this shader prepares the data for point rendering.
     // there is very little work to do, we just set the final location
     // of the vertices and store the normals.
     let point_coords: vec4<f32> = in_pos;
-    let normal: vec4<f32> = ref.delta[global_id.x];
+    let normal: vec4<f32> = ref_delta[global_id.x];
     let idx = global_id.x;
 
-    out.vertices[idx].position = point_coords + {radius} * normal;
-    out.vertices[idx].normal = normal;
-    out.vertices[idx].uv_coords = vec2<f32>(0.0, 0.0);
-    out.vertices[idx].padding = vec2<f32>(0.123, 0.456);
+    out_vert[idx].position = point_coords + {radius} * normal;
+    out_vert[idx].normal = normal;
+    out_vert[idx].uv_coords = vec2<f32>(0.0, 0.0);
+    out_vert[idx].padding = vec2<f32>(0.123, 0.456);
 }}
 "##, vertices_per_chunk=MODEL_CHUNK_VERTICES, radius=sphere_radius);
 
@@ -390,26 +375,13 @@ fn handle_2d(device: &wgpu::Device, input_buffer: &wgpu::Buffer, param1: &Parame
     let (index_buffer, index_count) = create_grid_index_buffer(device, param1.n_points(), param2.n_points(), flag_pattern);
     let vertex_buffer = util::create_storage_buffer(device, param1.n_points() * param2.n_points() * std::mem::size_of::<StandardVertexData>());
     let wgsl_source = format!(r##"
-struct MatcapVertex {{
-    position: vec4<f32>;
-    normal: vec4<f32>;
-    uv_coords: vec2<f32>;
-    padding: vec2<f32>;
-}};
+{WGSL_MATCAP_VERTEX}
 
-struct InputBuffer {{
-    pos: array<vec4<f32>>;
-}};
+@group(0) @binding(0) var<storage, read> in_pos: array<vec4<f32>>;
+@group(0) @binding(1) var<storage, read_write> out_vert: array<MatcapVertex>;
 
-struct OutputBuffer {{
-    vertices: array<MatcapVertex>;
-}};
-
-[[group(0), binding(0)]] var<storage, read> in: InputBuffer;
-[[group(0), binding(1)]] var<storage, read_write> out: OutputBuffer;
-
-[[stage(compute), workgroup_size({pps}, {pps})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({pps}, {pps})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     // this shader prepares the data for surface rendering.
     // normal computation is done computing the tangent and cotangent of the surface via finite differences
     // and then crossing the two vectors.
@@ -421,19 +393,19 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let idx = i + j * x_size;
     var x_tangent: vec3<f32>;
     if (i == 0u) {{
-        x_tangent = (-1.5 * in.pos[idx] + 2.0 * in.pos[idx + 1u] - 0.5 * in.pos[idx + 2u]).xyz;
+        x_tangent = (-1.5 * in_pos[idx] + 2.0 * in_pos[idx + 1u] - 0.5 * in_pos[idx + 2u]).xyz;
     }} else if (i == x_size - 1u) {{
-        x_tangent = ( 1.5 * in.pos[idx] - 2.0 * in.pos[idx - 1u] + 0.5 * in.pos[idx - 2u]).xyz;
+        x_tangent = ( 1.5 * in_pos[idx] - 2.0 * in_pos[idx - 1u] + 0.5 * in_pos[idx - 2u]).xyz;
     }} else {{
-        x_tangent = (-0.5 * in.pos[idx - 1u] + 0.5 * in.pos[idx + 1u]).xyz;
+        x_tangent = (-0.5 * in_pos[idx - 1u] + 0.5 * in_pos[idx + 1u]).xyz;
     }}
     var y_tangent: vec3<f32>;
     if (j == 0u) {{
-        y_tangent = (-1.5 * in.pos[idx] + 2.0 * in.pos[idx + x_size] - 0.5 * in.pos[idx + 2u * x_size]).xyz;
+        y_tangent = (-1.5 * in_pos[idx] + 2.0 * in_pos[idx + x_size] - 0.5 * in_pos[idx + 2u * x_size]).xyz;
     }} else if (j == y_size - 1u) {{
-        y_tangent = ( 1.5 * in.pos[idx] - 2.0 * in.pos[idx - x_size] + 0.5 * in.pos[idx - 2u * x_size]).xyz;
+        y_tangent = ( 1.5 * in_pos[idx] - 2.0 * in_pos[idx - x_size] + 0.5 * in_pos[idx - 2u * x_size]).xyz;
     }} else {{
-        y_tangent = (-0.5 * in.pos[idx - x_size] + 0.5 * in.pos[idx + x_size]).xyz;
+        y_tangent = (-0.5 * in_pos[idx - x_size] + 0.5 * in_pos[idx + x_size]).xyz;
     }}
 
     //// TODO: investigate the best criterion for deciding when to zero out the normal vector.
@@ -469,10 +441,10 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let u_coord = f32(i) / f32(x_size - 1u);
     let v_coord = f32(j) / f32(y_size - 1u);
 
-    out.vertices[idx].position = in.pos[idx];
-    out.vertices[idx].normal = vec4<f32>(normal, 0.0);
-    out.vertices[idx].uv_coords = vec2<f32>(u_coord, v_coord);
-    out.vertices[idx].padding = vec2<f32>(2.123, 2.456);
+    out_vert[idx].position = in_pos[idx];
+    out_vert[idx].normal = vec4<f32>(normal, 0.0);
+    out_vert[idx].uv_coords = vec2<f32>(u_coord, v_coord);
+    out_vert[idx].padding = vec2<f32>(2.123, 2.456);
 }}
 "##, pps=Parameter::POINTS_PER_SEGMENT,
 size_x=param1.n_points(), size_y=param2.n_points());
@@ -512,24 +484,15 @@ size_x=param1.n_points(), size_y=param2.n_points());
 fn handle_prefab(device: &wgpu::Device, vertex_buffer: &wgpu::Buffer, chunks_count: usize, index_buffer: &Rc<wgpu::Buffer>, index_count: u32, mask_id: usize, material_id: usize) -> MatcapResult {
 
     let wgsl_source = format!(r##"
-struct MatcapVertex {{
-    position: vec4<f32>;
-    normal: vec4<f32>;
-    uv_coords: vec2<f32>;
-    padding: vec2<f32>;
-}};
+{WGSL_MATCAP_VERTEX}
 
-struct VertexBuffer {{
-    vertices: array<MatcapVertex>;
-}};
+@group(0) @binding(0) var<storage, read> in_vertices: array<MatcapVertex>;
+@group(0) @binding(1) var<storage, read_write> out_vertices: array<MatcapVertex>;
 
-[[group(0), binding(0)]] var<storage, read> in_buff: VertexBuffer;
-[[group(0), binding(1)]] var<storage, read_write> out_buff: VertexBuffer;
-
-[[stage(compute), workgroup_size({vertices_per_chunk})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({vertices_per_chunk})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let index = global_id.x;
-    out_buff.vertices[index]= in_buff.vertices[index];
+    out_vertices[index]= in_vertices[index];
 }}
 "##, vertices_per_chunk=MODEL_CHUNK_VERTICES,);
     // println!("3d shader source:\n {}", &wgsl_source);

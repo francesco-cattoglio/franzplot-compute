@@ -9,6 +9,16 @@ use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
 use super::{SingleDataResult, ProcessingError};
 
+// TODO: DRY, this is the same in geometry_render.rs
+const WGSL_MATCAP_VERTEX: &str = "
+struct MatcapVertex {
+    position: vec4<f32>,
+    normal: vec4<f32>,
+    uv_coords: vec2<f32>,
+    padding: vec2<f32>,
+}
+";
+
 pub fn create(
     device: &wgpu::Device,
     data_map: &BTreeMap<DataID, Data>,
@@ -62,32 +72,15 @@ pub fn create(
     let chunks_count = prefab_vertices.len() / MODEL_CHUNK_VERTICES;
     assert!(prefab_vertices.len() % MODEL_CHUNK_VERTICES == 0);
     let wgsl_source = format!(r##"
-struct MatcapVertex {{
-    position: vec4<f32>;
-    normal: vec4<f32>;
-    uv_coords: vec2<f32>;
-    padding: vec2<f32>;
-}};
+{WGSL_MATCAP_VERTEX}
 
-struct PointBuffer {{
-    position: vec4<f32>;
-}};
+@group(0) @binding(0) var<storage, read> in_point: vec4<f32>;
+@group(0) @binding(1) var<storage, read> in_normal: vec4<f32>;
+@group(0) @binding(2) var<storage, read> prefab_vert: array<MatcapVertex>;
+@group(0) @binding(3) var<storage, read_write> out_vert: array<MatcapVertex>;
 
-struct NormalBuffer {{
-    direction: vec4<f32>;
-}};
-
-struct VertexBuffer {{
-    vertices: array<MatcapVertex>;
-}};
-
-[[group(0), binding(0)]] var<storage, read> center: PointBuffer;
-[[group(0), binding(1)]] var<storage, read> normal: NormalBuffer;
-[[group(0), binding(2)]] var<storage, read> prefab: VertexBuffer;
-[[group(0), binding(3)]] var<storage, read_write> out_buff: VertexBuffer;
-
-[[stage(compute), workgroup_size({vertices_per_chunk})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({vertices_per_chunk})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let index: u32 = global_id.x;
 
     let direction = normalize(normal.direction);
@@ -111,19 +104,19 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let cos_p = cos(angle_x);
     let sin_p = sin(angle_x);
 
-    let matrix = mat4x4<f32>(
+    let rot_matrix = mat4x4<f32>(
         vec4<f32>(         cos_t,          sin_t,   0.0, 0.0), // first column
         vec4<f32>(-cos_p * sin_t,  cos_p * cos_t, sin_p, 0.0), // 2nd column
         vec4<f32>( sin_p * sin_t, -sin_p * cos_t, cos_p, 0.0), // 3rd column
-        center.position, // 4th column
+        in_point, // 4th column
     );
 
     // There is no need to compute the plane normal as rotation:
     // it is known from the input!
-    out_buff.vertices[index].position = matrix * prefab.vertices[index].position;
-    out_buff.vertices[index].normal = normal.direction;
-    out_buff.vertices[index].uv_coords = prefab.vertices[index].uv_coords;
-    out_buff.vertices[index].padding = prefab.vertices[index].padding;
+    out_vert[index].position = rot_matrix * prefab_vert[index].position;
+    out_vert[index].normal = in_normal;
+    out_vert[index].uv_coords = prefab_vert[index].uv_coords;
+    out_vert[index].padding = prefab_vert[index].padding;
 }}
 "##, vertices_per_chunk = MODEL_CHUNK_VERTICES,
 );

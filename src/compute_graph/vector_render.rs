@@ -12,6 +12,15 @@ use crate::shader_processing::{naga_compute_pipeline, BindInfo};
 
 pub type MatcapResult = Result<(MatcapData, Operation), ProcessingError>;
 
+// TODO: DRY, this is the same in geometry_render.rs
+const WGSL_MATCAP_VERTEX: &str = "
+struct MatcapVertex {
+    position: vec4<f32>,
+    normal: vec4<f32>,
+    uv_coords: vec2<f32>,
+    padding: vec2<f32>,
+}
+";
 
 pub fn create(
     device: &wgpu::Device,
@@ -50,45 +59,20 @@ pub fn create(
     let (index_buffer, index_count, prefab_buffer, chunks_count) = create_arrow_buffers(device, radius, n_circle_points);
 
     let wgsl_source = format!(r##"
-struct MatcapVertex {{
-    position: vec4<f32>;
-    normal: vec4<f32>;
-    uv_coords: vec2<f32>;
-    padding: vec2<f32>;
-}};
+{WGSL_MATCAP_VERTEX}
 
-// input buffer will contain a single vertex, the actual point coords
-struct PointBuffer {{
-    position: vec4<f32>;
-}};
+@group(0) @binding(0) var<storage, read> in_appl_point: vec4<f32>;
+@group(0) @binding(1) var<storage, read> in_vector: vec4<f32>;
+@group(0) @binding(2) var<storage, read> ref_vert: array<MatcapVertex>;
+@group(0) @binding(3) var<storage, read_write> out_vert: array<MatcapVertex>;
 
-struct VectorBuffer {{
-    direction: vec4<f32>;
-}};
-
-// reference buffer contains all the points for the actual arrow-shaped mesh
-// used to represent the vector.
-struct ReferenceBuffer {{
-    vertices: array<MatcapVertex>;
-}};
-
-// output buffer contains the final Matcap mesh, as usual for rendering nodes
-struct OutputBuffer {{
-    vertices: array<MatcapVertex>;
-}};
-
-[[group(0), binding(0)]] var<storage, read> in_appl_point: PointBuffer;
-[[group(0), binding(1)]] var<storage, read> in_vector: VectorBuffer;
-[[group(0), binding(2)]] var<storage, read> in_ref: ReferenceBuffer;
-[[group(0), binding(3)]] var<storage, read_write> out: OutputBuffer;
-
-[[stage(compute), workgroup_size({vertices_per_chunk})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({vertices_per_chunk})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let index = global_id.x;
 
-    let vertex: MatcapVertex = in_ref.vertices[index];
-    let s_z: f32 = length(in_vector.direction);
-    let direction = normalize(in_vector.direction);
+    let vertex: MatcapVertex = ref_vert[index];
+    let s_z: f32 = length(in_vector);
+    let direction = normalize(in_vector);
 
     var angle_z: f32;
     // workaround MacOS bug: atan2 seems to give the wrong result
@@ -108,21 +92,21 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
     let cos_p = cos(angle_x);
     let sin_p = sin(angle_x);
 
-    let matrix = mat4x4<f32>(
+    let rot_matrix = mat4x4<f32>(
         vec4<f32>(         cos_t,          sin_t,   0.0, 0.0), // first column
         vec4<f32>(-cos_p * sin_t,  cos_p * cos_t, sin_p, 0.0), // 2nd column
         vec4<f32>( sin_p * sin_t, -sin_p * cos_t, cos_p, 0.0), // 3rd column
-        in_appl_point.position, // 4th column
+        in_appl_point, // 4th column
     );
 
     // We can pretend that the matrix is orthogonal, and apply it to normals as well.
     // BEWARE: this is not correct because the vertex normal should be transformed when we scale
     // the arrow. But the normals were wrong to begin with! (see create_arrow_buffers function)
 
-    out.vertices[index].position = matrix * vec4<f32>(vertex.position.xy, s_z * vertex.position.z, 1.0);
-    out.vertices[index].normal = matrix * vertex.normal;
-    out.vertices[index].uv_coords = vertex.uv_coords;
-    out.vertices[index].padding = vertex.padding;
+    out_vert[index].position = rot_matrix * vec4<f32>(vertex.position.xy, s_z * vertex.position.z, 1.0);
+    out_vert[index].normal = rot_matrix * vertex.normal;
+    out_vert[index].uv_coords = vertex.uv_coords;
+    out_vert[index].padding = vertex.padding;
 }}
 "##, vertices_per_chunk=MODEL_CHUNK_VERTICES);
 

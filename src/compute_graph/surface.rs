@@ -53,34 +53,25 @@ pub fn create(
     let wgsl_source = format!(r##"
 {wgsl_header}
 
-struct InputBuffer {{
-    values: array<f32>;
-}};
+@group(0) @binding(1) var<storage, read> interval_1: array<f32>;
+@group(0) @binding(2) var<storage, read> interval_2: array<f32>;
+@group(0) @binding(3) var<storage, read_write> out_pos: array<vec4<f32>>;
 
-struct OutputBuffer {{
-    positions: array<vec4<f32>>;
-}};
-
-[[group(0), binding(1)]] var<storage, read> interval_1: InputBuffer;
-[[group(0), binding(2)]] var<storage, read> interval_2: InputBuffer;
-[[group(0), binding(3)]] var<storage, read_write> output: OutputBuffer;
-
-[[stage(compute), workgroup_size({pps}, {pps})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({pps}, {pps})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let par1_idx = global_id.x;
     let par2_idx = global_id.y;
     let index = par1_idx + {size_x}u * par2_idx;
 
-    let {par1} = interval_1.values[par1_idx];
-    let {par2} = interval_2.values[par2_idx];
-    let fx = {fx};
-    let fy = {fy};
-    let fz = {fz};
-    output.positions[index] = vec4<f32>(fx, fy, fz, 1.0);
+    let {par1} = interval_1[par1_idx];
+    let {par2} = interval_2[par2_idx];
+    let fx = {sanitized_fx};
+    let fy = {sanitized_fy};
+    let fz = {sanitized_fz};
+    out_pos[index] = vec4<f32>(fx, fy, fz, 1.0);
 }}
 "##, wgsl_header=globals.get_wgsl_header(), pps=Parameter::POINTS_PER_SEGMENT,
-par1=param_1_name, par2=param_2_name,
-fx=sanitized_fx, fy=sanitized_fy, fz=sanitized_fz, size_x=param_1.n_points()
+par1=param_1_name, par2=param_2_name, size_x=param_1.n_points()
 );
 
     //println!("surface shader source:\n {}", &wgsl_source);

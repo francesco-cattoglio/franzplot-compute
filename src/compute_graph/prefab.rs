@@ -9,6 +9,15 @@ use crate::util;
 use crate::shader_processing::{naga_compute_pipeline, BindInfo};
 use super::{SingleDataResult, ProcessingError};
 
+// TODO: DRY, this is the same in geometry_render.rs
+const WGSL_MATCAP_VERTEX: &str = "
+struct MatcapVertex {
+    position: vec4<f32>,
+    normal: vec4<f32>,
+    uv_coords: vec2<f32>,
+    padding: vec2<f32>,
+}
+";
 
 pub fn create(
     device: &wgpu::Device,
@@ -29,32 +38,23 @@ pub fn create(
     let wgsl_source = format!(r##"
 {wgsl_globals}
 
-struct MatcapVertex {{
-    position: vec4<f32>;
-    normal: vec4<f32>;
-    uv_coords: vec2<f32>;
-    padding: vec2<f32>;
-}};
+{WGSL_MATCAP_VERTEX}
 
-struct VertexBuffer {{
-    vertices: array<MatcapVertex>;
-}};
+@group(0) @binding(1) var<storage, read> in_vert: array<MatcapVertex>;
+@group(0) @binding(2) var<storage, read_write> out_vert: array<MatcapVertex>;
 
-[[group(0), binding(1)]] var<storage, read> in_buff: VertexBuffer;
-[[group(0), binding(2)]] var<storage, read_write> out_buff: VertexBuffer;
-
-[[stage(compute), workgroup_size({vertices_per_chunk})]]
-fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {{
+@compute @workgroup_size({vertices_per_chunk})
+fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let index: u32 = global_id.x;
 
     // We could use the w coordinate to just do the uniform scaling, but
     // I would rather not do that to make it easier to debug shaders via RenderDoc.
     let scale_factor: f32 = {scaling};
-    let scaled_pos: vec3<f32> = scale_factor * in_buff.vertices[index].position.xyz;
-    out_buff.vertices[index].position = vec4<f32>(scaled_pos, 1.0);
-    out_buff.vertices[index].normal = in_buff.vertices[index].normal;
-    out_buff.vertices[index].uv_coords = in_buff.vertices[index].uv_coords;
-    out_buff.vertices[index].padding = in_buff.vertices[index].padding;
+    let scaled_pos: vec3<f32> = scale_factor * in_vert[index].position.xyz;
+    out_vert[index].position = vec4<f32>(scaled_pos, 1.0);
+    out_vert[index].normal = in_vert[index].normal;
+    out_vert[index].uv_coords = in_vert[index].uv_coords;
+    out_vert[index].padding = in_vert[index].padding;
 }}
 "##, wgsl_globals=&globals.get_wgsl_header(), vertices_per_chunk = MODEL_CHUNK_VERTICES, scaling=sanitized_size
 );
