@@ -58,7 +58,7 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
 }}
 "##, wgsl_globals=&globals.get_wgsl_header(), vertices_per_chunk = MODEL_CHUNK_VERTICES, scaling=sanitized_size
 );
-    // println!("prefab shader source:\n {}", &wgsl_source);
+    //println!("prefab shader source:\n {}", &wgsl_source);
 
     let out_buffer = util::create_storage_buffer(device, std::mem::size_of::<StandardVertexData>() * model.chunks_count * MODEL_CHUNK_VERTICES);
 

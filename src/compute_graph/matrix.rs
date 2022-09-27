@@ -67,22 +67,22 @@ pub fn create_from_translation(
         _ => return Err(ProcessingError::IncorrectInput(" Translation Matrix first input \n is not a vector ".into()))
     };
 
-    let wgsl_source = format!(r##"
+    let wgsl_source = r##"
 @group(0) @binding(0) var<storage, read> in_translation: vec4<f32>;
 @group(0) @binding(1) var<storage, read_write> out_matrix: mat4x4<f32>;
 
 @compute @workgroup_size(1)
 fn main() {{
-    output.matrix = mat4x4<f32>(
+    out_matrix = mat4x4<f32>(
         vec4<f32>(1.0, 0.0, 0.0, 0.0),
         vec4<f32>(0.0, 1.0, 0.0, 0.0),
         vec4<f32>(0.0, 0.0, 1.0, 0.0),
         vec4<f32>(in_translation.xyz, 1.0),
     );
 }}
-"##,);
+"##.to_string();
 
-    //println!("translation matrix wgsl shader: {}", wgsl_source);
+    // println!("translation matrix wgsl shader: {}", wgsl_source);
     let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<glam::Mat4>());
     let bind_info = vec![
         BindInfo {
@@ -137,18 +137,18 @@ pub fn create_from_rows(
         local_params.push(param.name.as_ref().unwrap().as_str())
     }
 
-    let sanitized_m11 = globals.sanitize_expression(&local_params, &row_1[0])?;
-    let sanitized_m12 = globals.sanitize_expression(&local_params, &row_1[1])?;
-    let sanitized_m13 = globals.sanitize_expression(&local_params, &row_1[2])?;
-    let sanitized_m14 = globals.sanitize_expression(&local_params, &row_1[3])?;
-    let sanitized_m21 = globals.sanitize_expression(&local_params, &row_2[0])?;
-    let sanitized_m22 = globals.sanitize_expression(&local_params, &row_2[1])?;
-    let sanitized_m23 = globals.sanitize_expression(&local_params, &row_2[2])?;
-    let sanitized_m24 = globals.sanitize_expression(&local_params, &row_2[3])?;
-    let sanitized_m31 = globals.sanitize_expression(&local_params, &row_3[0])?;
-    let sanitized_m32 = globals.sanitize_expression(&local_params, &row_3[1])?;
-    let sanitized_m33 = globals.sanitize_expression(&local_params, &row_3[2])?;
-    let sanitized_m34 = globals.sanitize_expression(&local_params, &row_3[3])?;
+    let san_m11 = globals.sanitize_expression(&local_params, &row_1[0])?;
+    let san_m12 = globals.sanitize_expression(&local_params, &row_1[1])?;
+    let san_m13 = globals.sanitize_expression(&local_params, &row_1[2])?;
+    let san_m14 = globals.sanitize_expression(&local_params, &row_1[3])?;
+    let san_m21 = globals.sanitize_expression(&local_params, &row_2[0])?;
+    let san_m22 = globals.sanitize_expression(&local_params, &row_2[1])?;
+    let san_m23 = globals.sanitize_expression(&local_params, &row_2[2])?;
+    let san_m24 = globals.sanitize_expression(&local_params, &row_2[3])?;
+    let san_m31 = globals.sanitize_expression(&local_params, &row_3[0])?;
+    let san_m32 = globals.sanitize_expression(&local_params, &row_3[1])?;
+    let san_m33 = globals.sanitize_expression(&local_params, &row_3[2])?;
+    let san_m34 = globals.sanitize_expression(&local_params, &row_3[3])?;
 
     if let Some((input_buffer, param)) = optional_interval {
         let wgsl_source = format!(r##"
@@ -162,19 +162,16 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let index = global_id.x;
     let {par} = in_values[index];
     out_matrices[index] = mat4x4<f32>(
-        vec4<f32>({_m11}, {_m21}, {_m31}, 0.0),
-        vec4<f32>({_m12}, {_m22}, {_m32}, 0.0),
-        vec4<f32>({_m13}, {_m23}, {_m33}, 0.0),
-        vec4<f32>({_m14}, {_m24}, {_m34}, 1.0),
+        vec4<f32>({san_m11}, {san_m21}, {san_m31}, 0.0),
+        vec4<f32>({san_m12}, {san_m22}, {san_m32}, 0.0),
+        vec4<f32>({san_m13}, {san_m23}, {san_m33}, 0.0),
+        vec4<f32>({san_m14}, {san_m24}, {san_m34}, 1.0),
     );
 }}
         "##, wgsl_header=globals.get_wgsl_header(), par=param.name.as_ref().unwrap(),
-        _m11=sanitized_m11, _m12=sanitized_m12, _m13=sanitized_m13, _m14=sanitized_m14,
-        _m21=sanitized_m21, _m22=sanitized_m22, _m23=sanitized_m23, _m24=sanitized_m24,
-        _m31=sanitized_m31, _m32=sanitized_m32, _m33=sanitized_m33, _m34=sanitized_m34,
         );
 
-        //println!("parametrix matrix wgsl shader: {}", wgsl_source);
+        // println!("parametrix matrix wgsl shader: {}", wgsl_source);
         let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<glam::Mat4>() * param.n_points());
         let bind_info = vec![
             globals.get_bind_info(),
@@ -208,19 +205,16 @@ fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
 @compute @workgroup_size(1)
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     out_matrix = mat4x4<f32>(
-        vec4<f32>({_m11}, {_m21}, {_m31}, 0.0),
-        vec4<f32>({_m12}, {_m22}, {_m32}, 0.0),
-        vec4<f32>({_m13}, {_m23}, {_m33}, 0.0),
-        vec4<f32>({_m14}, {_m24}, {_m34}, 1.0),
+        vec4<f32>({san_m11}, {san_m21}, {san_m31}, 0.0),
+        vec4<f32>({san_m12}, {san_m22}, {san_m32}, 0.0),
+        vec4<f32>({san_m13}, {san_m23}, {san_m33}, 0.0),
+        vec4<f32>({san_m14}, {san_m24}, {san_m34}, 1.0),
     );
 }}
         "##, wgsl_header=globals.get_wgsl_header(),
-        _m11=sanitized_m11, _m12=sanitized_m12, _m13=sanitized_m13, _m14=sanitized_m14,
-        _m21=sanitized_m21, _m22=sanitized_m22, _m23=sanitized_m23, _m24=sanitized_m24,
-        _m31=sanitized_m31, _m32=sanitized_m32, _m33=sanitized_m33, _m34=sanitized_m34,
         );
 
-        //println!("nonparametric matrix wgsl shader: {}", wgsl_source);
+        // println!("nonparametric matrix wgsl shader: {}", wgsl_source);
         let output_buffer = util::create_storage_buffer(device, std::mem::size_of::<glam::Mat4>());
         let bind_info = vec![
             globals.get_bind_info(),

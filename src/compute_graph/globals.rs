@@ -190,7 +190,7 @@ impl Globals {
         for pair in zipped_iterator {
             // print the name to the shader header and
             // add the pair to both the 'names' and the 'values' vectors
-            wgsl_header += &format!("\t{}: f32\n", &pair.0);
+            wgsl_header += &format!("\t{}: f32,\n", &pair.0);
             names.push(pair.0.clone());
             values.push(*pair.1);
         }

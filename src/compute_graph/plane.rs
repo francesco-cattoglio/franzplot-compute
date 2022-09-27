@@ -83,7 +83,7 @@ pub fn create(
 fn main(@builtin(global_invocation_id) global_id: vec3<u32>) {{
     let index: u32 = global_id.x;
 
-    let direction = normalize(normal.direction);
+    let direction = normalize(in_normal);
 
     // TODO: DRY: the same workaround and most of the code is taken from vector_render.rs
     var angle_z: f32;
