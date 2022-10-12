@@ -2,11 +2,9 @@ use std::collections::HashMap;
 use crate::compute_graph::ProcessingError;
 use crate::compute_graph::RecoverableError;
 use crate::compute_graph::UnrecoverableError;
-use crate::cpp_gui::imnodes;
-use crate::cpp_gui::PinShape;
 use crate::rust_gui::Availables;
+use crate::rust_gui::FontId;
 use serde::{Serialize, Deserialize};
-use imgui::*;
 
 pub type AttributeID = i32;
 pub type NodeID = i32;
@@ -21,30 +19,31 @@ pub enum DataKind {
 
 pub const ZOOM_LEVELS: [f32; 6] = [1.0, 0.8, 0.64, 0.512, 0.41, 0.32];
 
-fn create_style_shim(scale: f32) -> imnodes::StyleShim {
-    imnodes::StyleShim {
-        grid_spacing: 32.0 * scale,
-        node_padding_horizontal: 8.0 * scale,
-        node_padding_vertical: 8.0 * scale,
-        pin_circle_radius: 5.0 * scale,
-        pin_quad_side_length: 8.0 * scale,
-        pin_triangle_side_length: 12.0 * scale,
-        pin_line_thickness: 1.0 * scale,
-        pin_hover_radius: 10.0 * scale,
-        link_thickness: 4.0 * scale,
-    }
-}
+//fn create_style_shim(scale: f32) -> imnodes::StyleShim {
+//    //imnodes::StyleShim {
+//    //    grid_spacing: 32.0 * scale,
+//    //    node_padding_horizontal: 8.0 * scale,
+//    //    node_padding_vertical: 8.0 * scale,
+//    //    pin_circle_radius: 5.0 * scale,
+//    //    pin_quad_side_length: 8.0 * scale,
+//    //    pin_triangle_side_length: 12.0 * scale,
+//    //    pin_line_thickness: 1.0 * scale,
+//    //    pin_hover_radius: 10.0 * scale,
+//    //    link_thickness: 4.0 * scale,
+//    //}
+//}
 
 impl DataKind {
     // we might even return a color as well!
     fn to_pin_shape(&self) -> i32 {
-        let pin_shape = match self {
-            DataKind::Interval => PinShape::QuadFilled,
-            DataKind::Geometry => PinShape::CircleFilled,
-            DataKind::Vector => PinShape::TriangleFilled,
-            DataKind::Matrix => PinShape::Quad,
-        };
-        pin_shape as i32
+        todo!()
+        //let pin_shape = match self {
+        //    DataKind::Interval => PinShape::QuadFilled,
+        //    DataKind::Geometry => PinShape::CircleFilled,
+        //    DataKind::Vector => PinShape::TriangleFilled,
+        //    DataKind::Matrix => PinShape::Quad,
+        //};
+        //pin_shape as i32
     }
 }
 
@@ -117,276 +116,277 @@ pub const AVAILABLE_SIZES: [f32; 9] = [0.04, 0.08, 0.12, 0.16, 0.20, 0.24, 0.32,
 
 impl Attribute {
     // the render function shall return bool if anything has changed.
-    pub fn render(&mut self, ui: &imgui::Ui<'_>, availables: &Availables, id: AttributeID) -> bool {
-        // TODO: maybe we can push the style var at the begin of the editor rendering,
-        // just like we push the imnodes style vars
-        let font_size = ui.current_font_size();
-        let style_token = ui.push_style_var(StyleVar::ItemSpacing([0.24 * font_size, 0.26 * font_size]));
-        let [char_w, _char_h] = ui.calc_text_size("A");
-        let value_changed = match &mut self.contents {
-            AttributeContents::InputPin {
-                label, kind,
-            } => {
-                imnodes::BeginInputAttribute(id, kind.to_pin_shape());
-                ui.text(label);
-                imnodes::EndInputAttribute();
-                false
-            },
-            AttributeContents::OutputPin {
-                label, kind,
-            } => {
-                imnodes::BeginOutputAttribute(id, kind.to_pin_shape());
-                ui.text(label);
-                imnodes::EndOutputAttribute();
-                false
-            },
-            AttributeContents::Text {
-                label, string,
-            } => {
-                let widget_width = 16.5 * char_w;
+    pub fn render(&mut self, availables: &Availables, id: AttributeID) -> bool {
+        todo!()
+        //// TODO: maybe we can push the style var at the begin of the editor rendering,
+        //// just like we push the imnodes style vars
+        //let font_size = ui.current_font_size();
+        //let style_token = ui.push_style_var(StyleVar::ItemSpacing([0.24 * font_size, 0.26 * font_size]));
+        //let [char_w, _char_h] = ui.calc_text_size("A");
+        //let value_changed = match &mut self.contents {
+        //    AttributeContents::InputPin {
+        //        label, kind,
+        //    } => {
+        //        imnodes::BeginInputAttribute(id, kind.to_pin_shape());
+        //        ui.text(label);
+        //        imnodes::EndInputAttribute();
+        //        false
+        //    },
+        //    AttributeContents::OutputPin {
+        //        label, kind,
+        //    } => {
+        //        imnodes::BeginOutputAttribute(id, kind.to_pin_shape());
+        //        ui.text(label);
+        //        imnodes::EndOutputAttribute();
+        //        false
+        //    },
+        //    AttributeContents::Text {
+        //        label, string,
+        //    } => {
+        //        let widget_width = 16.5 * char_w;
 
-                imnodes::BeginStaticAttribute(id);
-                ui.text(&label);
-                ui.same_line();
-                ui.set_next_item_width(widget_width);
-                let value_changed = InputText::new(ui, "", &mut *string)
-                    .no_undo_redo(true)
-                    .build();
-                imnodes::EndStaticAttribute();
-                value_changed
-            },
-            AttributeContents::AxisSelect {
-                axis
-            } => {
-                let widget_width = 8.5 * char_w;
+        //        imnodes::BeginStaticAttribute(id);
+        //        ui.text(&label);
+        //        ui.same_line();
+        //        ui.set_next_item_width(widget_width);
+        //        let value_changed = InputText::new(ui, "", &mut *string)
+        //            .no_undo_redo(true)
+        //            .build();
+        //        imnodes::EndStaticAttribute();
+        //        value_changed
+        //    },
+        //    AttributeContents::AxisSelect {
+        //        axis
+        //    } => {
+        //        let widget_width = 8.5 * char_w;
 
-                imnodes::BeginStaticAttribute(id);
+        //        imnodes::BeginStaticAttribute(id);
 
-                ui.text(" axis");
-                ui.same_line();
-                ui.set_next_item_width(widget_width);
-                let choices = vec!("X", "Y", "Z");
-                let mut selected = match axis {
-                    Axis::X => 0,
-                    Axis::Y => 1,
-                    Axis::Z => 2,
-                };
-                let value_changed = ui.combo_simple_string("##axis", &mut selected, &choices);
-                *axis = match selected {
-                    0 => Axis::X,
-                    1 => Axis::Y,
-                    2 => Axis::Z,
-                    _ => panic!("Something went wrong when selecting an Axis from a combo box")
-                };
-                imnodes::EndStaticAttribute();
-                value_changed
-            },
-            AttributeContents::IntSlider {
-                label, value, mode,
-            } => {
-                let widget_width = 12.0 * char_w;
+        //        ui.text(" axis");
+        //        ui.same_line();
+        //        ui.set_next_item_width(widget_width);
+        //        let choices = vec!("X", "Y", "Z");
+        //        let mut selected = match axis {
+        //            Axis::X => 0,
+        //            Axis::Y => 1,
+        //            Axis::Z => 2,
+        //        };
+        //        let value_changed = ui.combo_simple_string("##axis", &mut selected, &choices);
+        //        *axis = match selected {
+        //            0 => Axis::X,
+        //            1 => Axis::Y,
+        //            2 => Axis::Z,
+        //            _ => panic!("Something went wrong when selecting an Axis from a combo box")
+        //        };
+        //        imnodes::EndStaticAttribute();
+        //        value_changed
+        //    },
+        //    AttributeContents::IntSlider {
+        //        label, value, mode,
+        //    } => {
+        //        let widget_width = 12.0 * char_w;
 
-                imnodes::BeginStaticAttribute(id);
-                ui.text(&label);
-                ui.same_line();
-                ui.set_next_item_width(widget_width);
-                let value_changed = match mode {
-                    SliderMode::IntRange(min, max) => {
-                        Slider::new("", *min, *max)
-                            .flags(SliderFlags::NO_INPUT)
-                            .build(ui, value)
-                    },
-                    SliderMode::SizeLabels => {
-                        let max_id = AVAILABLE_SIZES.len() - 1;
-                        let string_id = max_id.min(*value as usize);
-                        let display_string: String = format!("{}", AVAILABLE_SIZES[string_id]);
-                        Slider::new("", 0, max_id as i32)
-                            .display_format(&display_string)
-                            .flags(SliderFlags::NO_INPUT)
-                            .build(ui, value)
-                    }
-                };
-                imnodes::EndStaticAttribute();
-                value_changed
-            },
-            AttributeContents::MatrixRow {
-                col_1, col_2, col_3, col_4,
-            } => {
-                let mut value_changed = false;
-                imnodes::BeginStaticAttribute(id);
+        //        imnodes::BeginStaticAttribute(id);
+        //        ui.text(&label);
+        //        ui.same_line();
+        //        ui.set_next_item_width(widget_width);
+        //        let value_changed = match mode {
+        //            SliderMode::IntRange(min, max) => {
+        //                Slider::new("", *min, *max)
+        //                    .flags(SliderFlags::NO_INPUT)
+        //                    .build(ui, value)
+        //            },
+        //            SliderMode::SizeLabels => {
+        //                let max_id = AVAILABLE_SIZES.len() - 1;
+        //                let string_id = max_id.min(*value as usize);
+        //                let display_string: String = format!("{}", AVAILABLE_SIZES[string_id]);
+        //                Slider::new("", 0, max_id as i32)
+        //                    .display_format(&display_string)
+        //                    .flags(SliderFlags::NO_INPUT)
+        //                    .build(ui, value)
+        //            }
+        //        };
+        //        imnodes::EndStaticAttribute();
+        //        value_changed
+        //    },
+        //    AttributeContents::MatrixRow {
+        //        col_1, col_2, col_3, col_4,
+        //    } => {
+        //        let mut value_changed = false;
+        //        imnodes::BeginStaticAttribute(id);
 
-                let widget_width = 8.5 * char_w;
+        //        let widget_width = 8.5 * char_w;
 
-                ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, "##1", &mut *col_1)
-                    .no_undo_redo(true)
-                    .build();
-                ui.same_line();
+        //        ui.set_next_item_width(widget_width);
+        //        value_changed |= InputText::new(ui, "##1", &mut *col_1)
+        //            .no_undo_redo(true)
+        //            .build();
+        //        ui.same_line();
 
-                ui.set_next_item_width(widget_width);
+        //        ui.set_next_item_width(widget_width);
 
-                value_changed |= InputText::new(ui, "##2", &mut *col_2)
-                    .no_undo_redo(true)
-                    .build();
+        //        value_changed |= InputText::new(ui, "##2", &mut *col_2)
+        //            .no_undo_redo(true)
+        //            .build();
 
-                ui.same_line();
+        //        ui.same_line();
 
-                ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, "##3", &mut *col_3)
-                    .no_undo_redo(true)
-                    .build();
+        //        ui.set_next_item_width(widget_width);
+        //        value_changed |= InputText::new(ui, "##3", &mut *col_3)
+        //            .no_undo_redo(true)
+        //            .build();
 
-                ui.same_line();
+        //        ui.same_line();
 
-                ui.set_next_item_width(widget_width);
-                value_changed |= InputText::new(ui, "##4", &mut *col_4)
-                    .no_undo_redo(true)
-                    .build();
+        //        ui.set_next_item_width(widget_width);
+        //        value_changed |= InputText::new(ui, "##4", &mut *col_4)
+        //            .no_undo_redo(true)
+        //            .build();
 
-                imnodes::EndStaticAttribute();
-                value_changed
-            },
-            AttributeContents::Color {
-                label, color
-            } => {
-                let widget_width = 16.5 * char_w;
+        //        imnodes::EndStaticAttribute();
+        //        value_changed
+        //    },
+        //    AttributeContents::Color {
+        //        label, color
+        //    } => {
+        //        let widget_width = 16.5 * char_w;
 
-                imnodes::BeginStaticAttribute(id);
-                ui.text(&label);
-                ui.same_line();
-                let color_picker = ColorEdit::new("", EditableColor::Float3(color))
-                    .inputs(false)
-                    .options(true);
+        //        imnodes::BeginStaticAttribute(id);
+        //        ui.text(&label);
+        //        ui.same_line();
+        //        let color_picker = ColorEdit::new("", EditableColor::Float3(color))
+        //            .inputs(false)
+        //            .options(true);
 
-                ui.set_next_item_width(widget_width);
-                let value_changed = color_picker.build(ui);
-                imnodes::EndStaticAttribute();
-                value_changed
-            },
-            AttributeContents::Mask {
-                selected
-            } => {
-                let widget_width = 2.35 * char_w;
+        //        ui.set_next_item_width(widget_width);
+        //        let value_changed = color_picker.build(ui);
+        //        imnodes::EndStaticAttribute();
+        //        value_changed
+        //    },
+        //    AttributeContents::Mask {
+        //        selected
+        //    } => {
+        //        let widget_width = 2.35 * char_w;
 
-                imnodes::BeginStaticAttribute(id);
-                ui.text("Mask:");
-                ui.same_line();
-                let mut value_changed = false;
-                // clamp the value of "selected" to the masks vector length
-                if *selected >= availables.mask_ids.len() {
-                    value_changed = true;
-                    *selected = availables.mask_ids.len() - 1;
-                }
-                let button = ImageButton::new(availables.mask_ids[*selected], [widget_width, widget_width])
-                    .uv1([0.5, 0.5]) // the pattern will be zoomed in by showing only a small part
-                    .frame_padding(0);
-                if button.build(ui) {
-                    ui.open_popup("mask selection");
-                }
+        //        imnodes::BeginStaticAttribute(id);
+        //        ui.text("Mask:");
+        //        ui.same_line();
+        //        let mut value_changed = false;
+        //        // clamp the value of "selected" to the masks vector length
+        //        if *selected >= availables.mask_ids.len() {
+        //            value_changed = true;
+        //            *selected = availables.mask_ids.len() - 1;
+        //        }
+        //        let button = ImageButton::new(availables.mask_ids[*selected], [widget_width, widget_width])
+        //            .uv1([0.5, 0.5]) // the pattern will be zoomed in by showing only a small part
+        //            .frame_padding(0);
+        //        if button.build(ui) {
+        //            ui.open_popup("mask selection");
+        //        }
 
-                let mut new_selection: Option<usize> = None;
-                let token = ui.push_style_var(StyleVar::WindowPadding([4.0, 4.0]));
-                ui.popup("mask selection", || {
-                    for (i, texture) in availables.mask_ids.iter().enumerate() {
-                        if i%4 != 0 {
-                            ui.same_line();
-                        }
-                        let button = ImageButton::new(*texture, [32.0, 32.0])
-                            .frame_padding(0);
-                        if button.build(ui) {
-                            new_selection = Some(i);
-                            dbg!(&new_selection);
-                            ui.close_current_popup();
-                        }
-                    }
-                });
-                token.pop();
-                if let Some(user_selection) = new_selection {
-                    if *selected != user_selection {
-                        *selected = user_selection;
-                        value_changed = true;
-                    }
-                }
-                imnodes::EndStaticAttribute();
-                value_changed
-            },
-            AttributeContents::Material {
-                selected
-            } => {
-                let widget_width = 2.35 * char_w;
+        //        let mut new_selection: Option<usize> = None;
+        //        let token = ui.push_style_var(StyleVar::WindowPadding([4.0, 4.0]));
+        //        ui.popup("mask selection", || {
+        //            for (i, texture) in availables.mask_ids.iter().enumerate() {
+        //                if i%4 != 0 {
+        //                    ui.same_line();
+        //                }
+        //                let button = ImageButton::new(*texture, [32.0, 32.0])
+        //                    .frame_padding(0);
+        //                if button.build(ui) {
+        //                    new_selection = Some(i);
+        //                    dbg!(&new_selection);
+        //                    ui.close_current_popup();
+        //                }
+        //            }
+        //        });
+        //        token.pop();
+        //        if let Some(user_selection) = new_selection {
+        //            if *selected != user_selection {
+        //                *selected = user_selection;
+        //                value_changed = true;
+        //            }
+        //        }
+        //        imnodes::EndStaticAttribute();
+        //        value_changed
+        //    },
+        //    AttributeContents::Material {
+        //        selected
+        //    } => {
+        //        let widget_width = 2.35 * char_w;
 
-                imnodes::BeginStaticAttribute(id);
-                ui.text("Material:");
-                ui.same_line();
-                let mut value_changed = false;
-                // clamp the value of "selected" to the materials length
-                if *selected >= availables.material_ids.len() {
-                    value_changed = true;
-                    *selected = availables.material_ids.len() - 1;
-                }
-                let button = ImageButton::new(availables.material_ids[*selected], [widget_width, widget_width])
-                    .frame_padding(0);
-                if button.build(ui) {
-                    ui.open_popup("material selection");
-                }
+        //        imnodes::BeginStaticAttribute(id);
+        //        ui.text("Material:");
+        //        ui.same_line();
+        //        let mut value_changed = false;
+        //        // clamp the value of "selected" to the materials length
+        //        if *selected >= availables.material_ids.len() {
+        //            value_changed = true;
+        //            *selected = availables.material_ids.len() - 1;
+        //        }
+        //        let button = ImageButton::new(availables.material_ids[*selected], [widget_width, widget_width])
+        //            .frame_padding(0);
+        //        if button.build(ui) {
+        //            ui.open_popup("material selection");
+        //        }
 
-                let mut new_selection: Option<usize> = None;
-                let token = ui.push_style_var(StyleVar::WindowPadding([4.0, 4.0]));
-                ui.popup("material selection", || {
-                    for (i, texture) in availables.material_ids.iter().enumerate() {
-                        if i%4 != 0 {
-                            ui.same_line();
-                        }
-                        let button = ImageButton::new(*texture, [32.0, 32.0])
-                            .frame_padding(0);
-                        if button.build(ui) {
-                            new_selection = Some(i);
-                            dbg!(&new_selection);
-                            ui.close_current_popup();
-                        }
-                    }
-                });
-                token.pop();
-                if let Some(user_selection) = new_selection {
-                    if *selected != user_selection {
-                        *selected = user_selection;
-                        value_changed = true;
-                    }
-                }
-                imnodes::EndStaticAttribute();
-                value_changed
-            },
-            AttributeContents::PrimitiveKind {
-                selected
-            } => {
-                let widget_width = 12.0 * char_w;
+        //        let mut new_selection: Option<usize> = None;
+        //        let token = ui.push_style_var(StyleVar::WindowPadding([4.0, 4.0]));
+        //        ui.popup("material selection", || {
+        //            for (i, texture) in availables.material_ids.iter().enumerate() {
+        //                if i%4 != 0 {
+        //                    ui.same_line();
+        //                }
+        //                let button = ImageButton::new(*texture, [32.0, 32.0])
+        //                    .frame_padding(0);
+        //                if button.build(ui) {
+        //                    new_selection = Some(i);
+        //                    dbg!(&new_selection);
+        //                    ui.close_current_popup();
+        //                }
+        //            }
+        //        });
+        //        token.pop();
+        //        if let Some(user_selection) = new_selection {
+        //            if *selected != user_selection {
+        //                *selected = user_selection;
+        //                value_changed = true;
+        //            }
+        //        }
+        //        imnodes::EndStaticAttribute();
+        //        value_changed
+        //    },
+        //    AttributeContents::PrimitiveKind {
+        //        selected
+        //    } => {
+        //        let widget_width = 12.0 * char_w;
 
-                imnodes::BeginStaticAttribute(id);
-                ui.text("Kind:");
-                ui.same_line();
-                ui.set_next_item_width(widget_width);
-                let list: Vec<&ImString> = availables.model_names.iter().collect();
-                let mut index = *selected;
-                let value_changed = ui.combo_simple_string("##primitive", &mut index, &list);
-                imnodes::EndStaticAttribute();
-                *selected = index;
-                value_changed
-            },
-            AttributeContents::Unknown {
-                ..
-            } => {
-                unimplemented!()
-            }
-        };
-        style_token.pop();
-        value_changed
+        //        imnodes::BeginStaticAttribute(id);
+        //        ui.text("Kind:");
+        //        ui.same_line();
+        //        ui.set_next_item_width(widget_width);
+        //        let list: Vec<&ImString> = availables.model_names.iter().collect();
+        //        let mut index = *selected;
+        //        let value_changed = ui.combo_simple_string("##primitive", &mut index, &list);
+        //        imnodes::EndStaticAttribute();
+        //        *selected = index;
+        //        value_changed
+        //    },
+        //    AttributeContents::Unknown {
+        //        ..
+        //    } => {
+        //        unimplemented!()
+        //    }
+        //};
+        //style_token.pop();
+        //value_changed
     }
 
-    pub fn render_list(ui: &imgui::Ui<'_>, availables: &Availables, attributes: &mut Vec<Option<Attribute>>, attribute_id_list: Vec<AttributeID>) -> bool {
+    pub fn render_list(availables: &Availables, attributes: &mut Vec<Option<Attribute>>, attribute_id_list: Vec<AttributeID>) -> bool {
         let mut value_changed = false;
         for id in attribute_id_list.into_iter() {
             if let Some(Some(attribute)) = attributes.get_mut(id as usize) {
-                value_changed |= attribute.render(ui, availables, id);
+                value_changed |= attribute.render(availables, id);
             }
         }
         value_changed
@@ -864,28 +864,29 @@ impl Node {
         &self.contents
     }
 
-    pub fn render(&mut self, ui: &imgui::Ui<'_>, availables: &Availables, attributes: &mut Vec<Option<Attribute>>) -> bool {
-        imnodes::BeginNodeTitleBar();
-            ui.text(&self.title);
-            // handle error reporting
-            if let Some(error) = &self.error {
-                ui.same_line();
-                match error.severity {
-                    Severity::Warning => {
-                        ui.text_colored( [1.0, 0.8, 0.0, 1.0], "⚠");
-                    },
-                    Severity::Error => {
-                        ui.text_colored( [1.0, 0.8, 0.0, 1.0], "⊗");
-                    }
-                }
-                if ui.is_item_hovered() {
-                    ui.tooltip_text(&error.message);
-                }
-            }
-        imnodes::EndNodeTitleBar();
-        // TODO: not sure if we will be able to use the get_attribute_list()
-        // when we introduce the Group kind node in the future...
-        Attribute::render_list(ui, availables, attributes, self.contents.get_attribute_list())
+    pub fn render(&mut self, availables: &Availables, attributes: &mut Vec<Option<Attribute>>) -> bool {
+        todo!()
+        //imnodes::BeginNodeTitleBar();
+        //    ui.text(&self.title);
+        //    // handle error reporting
+        //    if let Some(error) = &self.error {
+        //        ui.same_line();
+        //        match error.severity {
+        //            Severity::Warning => {
+        //                ui.text_colored( [1.0, 0.8, 0.0, 1.0], "⚠");
+        //            },
+        //            Severity::Error => {
+        //                ui.text_colored( [1.0, 0.8, 0.0, 1.0], "⊗");
+        //            }
+        //        }
+        //        if ui.is_item_hovered() {
+        //            ui.tooltip_text(&error.message);
+        //        }
+        //    }
+        //imnodes::EndNodeTitleBar();
+        //// TODO: not sure if we will be able to use the get_attribute_list()
+        //// when we introduce the Group kind node in the future...
+        //Attribute::render_list(ui, availables, attributes, self.contents.get_attribute_list())
     }
 
     pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<NodeID> {
@@ -1141,311 +1142,315 @@ impl NodeGraph {
                 let [pos_x, pos_y] = node.position;
                 let zoom = ZOOM_LEVELS[self.zoom_level];
                 let editor_pos = [pos_x*zoom, pos_y*zoom];
-                imnodes::SetNodePosition(idx as NodeID, editor_pos);
+                //imnodes::SetNodePosition(idx as NodeID, editor_pos);
             }
         }
     }
 
     pub fn read_positions_from_imnodes(&mut self) {
-        for (idx, maybe_node) in self.nodes.iter_mut().enumerate() {
-            if let Some(node) = maybe_node.as_mut() {
-                let [pos_x, pos_y] = imnodes::GetNodePosition(idx as NodeID);
-                let zoom = ZOOM_LEVELS[self.zoom_level];
-                node.position = [pos_x/zoom, pos_y/zoom];
-            }
-        }
+        todo!()
+        //for (idx, maybe_node) in self.nodes.iter_mut().enumerate() {
+        //    if let Some(node) = maybe_node.as_mut() {
+        //        let [pos_x, pos_y] = imnodes::GetNodePosition(idx as NodeID);
+        //        let zoom = ZOOM_LEVELS[self.zoom_level];
+        //        node.position = [pos_x/zoom, pos_y/zoom];
+        //    }
+        //}
     }
 
     pub fn zoom_down_graph(&mut self, mouse_pos: [f32; 2]) {
-        if self.zoom_level < ZOOM_LEVELS.len() - 1 {
-            let prev_zoom = ZOOM_LEVELS[self.zoom_level];
-            self.zoom_level += 1;
-            let new_zoom = ZOOM_LEVELS[self.zoom_level];
-            let [mouse_x, mouse_y] = mouse_pos;
-            let [pan_x, pan_y] = imnodes::GetEditorPanning();
-            let new_x = (pan_x-mouse_x)*new_zoom/prev_zoom + mouse_x;
-            let new_y = (pan_y-mouse_y)*new_zoom/prev_zoom + mouse_y;
-            imnodes::SetEditorPanning([new_x, new_y]);
-            self.push_positions_to_imnodes();
-        }
+        todo!()
+        //if self.zoom_level < ZOOM_LEVELS.len() - 1 {
+        //    let prev_zoom = ZOOM_LEVELS[self.zoom_level];
+        //    self.zoom_level += 1;
+        //    let new_zoom = ZOOM_LEVELS[self.zoom_level];
+        //    let [mouse_x, mouse_y] = mouse_pos;
+        //    let [pan_x, pan_y] = imnodes::GetEditorPanning();
+        //    let new_x = (pan_x-mouse_x)*new_zoom/prev_zoom + mouse_x;
+        //    let new_y = (pan_y-mouse_y)*new_zoom/prev_zoom + mouse_y;
+        //    imnodes::SetEditorPanning([new_x, new_y]);
+        //    self.push_positions_to_imnodes();
+        //}
     }
 
     pub fn zoom_up_graph(&mut self, mouse_pos: [f32; 2]) {
-        if self.zoom_level > 0 {
-            let prev_zoom = ZOOM_LEVELS[self.zoom_level];
-            self.zoom_level -= 1;
-            let new_zoom = ZOOM_LEVELS[self.zoom_level];
-            let [mouse_x, mouse_y] = mouse_pos;
-            let [pan_x, pan_y] = imnodes::GetEditorPanning();
-            let new_x = (pan_x-mouse_x)*new_zoom/prev_zoom + mouse_x;
-            let new_y = (pan_y-mouse_y)*new_zoom/prev_zoom + mouse_y;
-            imnodes::SetEditorPanning([new_x, new_y]);
-            self.push_positions_to_imnodes();
-        }
+        todo!()
+        //if self.zoom_level > 0 {
+        //    let prev_zoom = ZOOM_LEVELS[self.zoom_level];
+        //    self.zoom_level -= 1;
+        //    let new_zoom = ZOOM_LEVELS[self.zoom_level];
+        //    let [mouse_x, mouse_y] = mouse_pos;
+        //    let [pan_x, pan_y] = imnodes::GetEditorPanning();
+        //    let new_x = (pan_x-mouse_x)*new_zoom/prev_zoom + mouse_x;
+        //    let new_y = (pan_y-mouse_y)*new_zoom/prev_zoom + mouse_y;
+        //    imnodes::SetEditorPanning([new_x, new_y]);
+        //    self.push_positions_to_imnodes();
+        //}
     }
 
-    pub fn render(&mut self, ui: &imgui::Ui<'_>, availables: &Availables, graph_fonts: &[imgui::FontId]) -> Option<f64> {
-        let mut request_savestate: Option<f64> = None;
-        let graph_font = graph_fonts[self.zoom_level];
-        let style_shim = create_style_shim(ZOOM_LEVELS[self.zoom_level]);
-        imnodes::ApplyStyle(&style_shim);
-        let font_token = ui.push_font(graph_font);
-        let editor_ne_point = ui.cursor_pos();
-        self.push_positions_to_imnodes();
-        imnodes::BeginNodeEditor();
-        // render all links first. Remember that link ID is the same as the input attribute ID!
-        for pair in self.links.iter() {
-            let link_id = pair.0;
-            let input_attribute_id = pair.0;
-            let output_attribute_id = pair.1;
-            imnodes::Link(*link_id, *input_attribute_id, *output_attribute_id);
-        }
+    pub fn render(&mut self, availables: &Availables, graph_fonts: &[FontId]) -> Option<f64> {
+        todo!()
+        //let mut request_savestate: Option<f64> = None;
+        //let graph_font = graph_fonts[self.zoom_level];
+        //let style_shim = create_style_shim(ZOOM_LEVELS[self.zoom_level]);
+        //imnodes::ApplyStyle(&style_shim);
+        //let font_token = ui.push_font(graph_font);
+        //let editor_ne_point = ui.cursor_pos();
+        //self.push_positions_to_imnodes();
+        //imnodes::BeginNodeEditor();
+        //// render all links first. Remember that link ID is the same as the input attribute ID!
+        //for pair in self.links.iter() {
+        //    let link_id = pair.0;
+        //    let input_attribute_id = pair.0;
+        //    let output_attribute_id = pair.1;
+        //    imnodes::Link(*link_id, *input_attribute_id, *output_attribute_id);
+        //}
 
-        // render all nodes
-        for (idx, maybe_node) in self.nodes.iter_mut().enumerate() {
-            if let Some(node) = maybe_node.as_mut() {
-                imnodes::BeginNode(idx as NodeID);
-                if node.render(ui, availables, &mut self.attributes) {
-                    self.last_edit_timestamp = ui.time();
-                }
-                imnodes::EndNode();
-            }
-        }
+        //// render all nodes
+        //for (idx, maybe_node) in self.nodes.iter_mut().enumerate() {
+        //    if let Some(node) = maybe_node.as_mut() {
+        //        imnodes::BeginNode(idx as NodeID);
+        //        if node.render(ui, availables, &mut self.attributes) {
+        //            self.last_edit_timestamp = ui.time();
+        //        }
+        //        imnodes::EndNode();
+        //    }
+        //}
 
-        // we can only check if the editor is hovered before we call EndNodeEditor()
-        let editor_hovered = imnodes::IsEditorHovered();
+        //// we can only check if the editor is hovered before we call EndNodeEditor()
+        //let editor_hovered = imnodes::IsEditorHovered();
 
-        // on the contrary, we need to end the node editor before doing any interaction
-        // (e.g: right clicks, node creation)
-        imnodes::EndNodeEditor();
-        self.read_positions_from_imnodes();
-        font_token.pop();
+        //// on the contrary, we need to end the node editor before doing any interaction
+        //// (e.g: right clicks, node creation)
+        //imnodes::EndNodeEditor();
+        //self.read_positions_from_imnodes();
+        //font_token.pop();
 
-        // Process right click
-        let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Right, 4.0);
-        let right_click_popup: bool = ui.is_window_focused_with_flags(WindowFocusedFlags::ROOT_AND_CHILD_WINDOWS)
-            && editor_hovered
-            && !ui.is_any_item_hovered()
-            && ui.is_mouse_released(MouseButton::Right)
-            && mouse_delta == [0.0, 0.0]; // exact comparison is fine due to GetMouseDragDelta threshold
+        //// Process right click
+        //let mouse_delta = ui.mouse_drag_delta_with_threshold(MouseButton::Right, 4.0);
+        //let right_click_popup: bool = ui.is_window_focused_with_flags(WindowFocusedFlags::ROOT_AND_CHILD_WINDOWS)
+        //    && editor_hovered
+        //    && !ui.is_any_item_hovered()
+        //    && ui.is_mouse_released(MouseButton::Right)
+        //    && mouse_delta == [0.0, 0.0]; // exact comparison is fine due to GetMouseDragDelta threshold
 
-        let mut selected_nodes_ids = imnodes::GetSelectedNodes();
-        if right_click_popup {
-            let mut hovered_id: i32 = -1;
-            if imnodes::IsNodeHovered(&mut hovered_id) {
-                // Right-clicking on a node does not select it. This means that if a user right clicks
-                // on a node that is not selected the interaction will be very confusing.
-                // To make sure everything will be fine, we clear node selection if this is the case.
-                if !selected_nodes_ids.contains(&hovered_id) {
-                    imnodes::ClearNodeSelection();
-                    selected_nodes_ids.clear();
-                }
+        //let mut selected_nodes_ids = imnodes::GetSelectedNodes();
+        //if right_click_popup {
+        //    let mut hovered_id: i32 = -1;
+        //    if imnodes::IsNodeHovered(&mut hovered_id) {
+        //        // Right-clicking on a node does not select it. This means that if a user right clicks
+        //        // on a node that is not selected the interaction will be very confusing.
+        //        // To make sure everything will be fine, we clear node selection if this is the case.
+        //        if !selected_nodes_ids.contains(&hovered_id) {
+        //            imnodes::ClearNodeSelection();
+        //            selected_nodes_ids.clear();
+        //        }
 
-                self.right_clicked_node = Some(hovered_id);
-                ui.open_popup("Node menu");
-            } else if imnodes::IsLinkHovered(&mut hovered_id) {
-                self.right_clicked_link = Some(hovered_id);
-                ui.open_popup("Link menu");
-            } else {
-                ui.open_popup("Add menu");
-            }
-        }
+        //        self.right_clicked_node = Some(hovered_id);
+        //        ui.open_popup("Node menu");
+        //    } else if imnodes::IsLinkHovered(&mut hovered_id) {
+        //        self.right_clicked_link = Some(hovered_id);
+        //        ui.open_popup("Link menu");
+        //    } else {
+        //        ui.open_popup("Add menu");
+        //    }
+        //}
 
-        let mut workaround_open_rename = false;
-        ui.popup("Node menu", || {
-            let clicked_node = self.right_clicked_node.unwrap();
-            // The right-click menu changes contents depending on how many nodes are selected
-            if selected_nodes_ids.len() <= 1 {
-                // single node selection, using the self.right_clicked_node id
-                if MenuItem::new("delete node").build(ui) {
-                    println!("need to remove {}", clicked_node);
-                    self.remove_node(clicked_node);
-                    imnodes::ClearNodeSelection();
-                    self.right_clicked_node = None;
-                    request_savestate = Some(ui.time());
-                }
-                // TODO: decide if single node clone should still clone the links
-                if MenuItem::new("duplicate node").build(ui) {
-                    self.duplicate_node_no_links(clicked_node);
-                    self.right_clicked_node = None;
-                    request_savestate = Some(ui.time());
-                }
-                if MenuItem::new("rename node").build(ui) {
-                    workaround_open_rename = true;
-                }
-            } else {
-                // multiple node selection, operates on all selected nodes
-                if MenuItem::new("delete selected nodes").build(ui) {
-                    for node_id in selected_nodes_ids.iter() {
-                        println!("need to remove[] {}", *node_id);
-                        self.remove_node(*node_id);
-                    }
-                    imnodes::ClearNodeSelection();
-                    self.right_clicked_node = None;
-                    request_savestate = Some(ui.time());
-                }
-                if MenuItem::new("duplicate nodes and links").build(ui) {
-                    self.duplicate_nodes(&selected_nodes_ids);
-                    self.right_clicked_node = None;
-                    request_savestate = Some(ui.time());
-                }
-            }
-        });
+        //let mut workaround_open_rename = false;
+        //ui.popup("Node menu", || {
+        //    let clicked_node = self.right_clicked_node.unwrap();
+        //    // The right-click menu changes contents depending on how many nodes are selected
+        //    if selected_nodes_ids.len() <= 1 {
+        //        // single node selection, using the self.right_clicked_node id
+        //        if MenuItem::new("delete node").build(ui) {
+        //            println!("need to remove {}", clicked_node);
+        //            self.remove_node(clicked_node);
+        //            imnodes::ClearNodeSelection();
+        //            self.right_clicked_node = None;
+        //            request_savestate = Some(ui.time());
+        //        }
+        //        // TODO: decide if single node clone should still clone the links
+        //        if MenuItem::new("duplicate node").build(ui) {
+        //            self.duplicate_node_no_links(clicked_node);
+        //            self.right_clicked_node = None;
+        //            request_savestate = Some(ui.time());
+        //        }
+        //        if MenuItem::new("rename node").build(ui) {
+        //            workaround_open_rename = true;
+        //        }
+        //    } else {
+        //        // multiple node selection, operates on all selected nodes
+        //        if MenuItem::new("delete selected nodes").build(ui) {
+        //            for node_id in selected_nodes_ids.iter() {
+        //                println!("need to remove[] {}", *node_id);
+        //                self.remove_node(*node_id);
+        //            }
+        //            imnodes::ClearNodeSelection();
+        //            self.right_clicked_node = None;
+        //            request_savestate = Some(ui.time());
+        //        }
+        //        if MenuItem::new("duplicate nodes and links").build(ui) {
+        //            self.duplicate_nodes(&selected_nodes_ids);
+        //            self.right_clicked_node = None;
+        //            request_savestate = Some(ui.time());
+        //        }
+        //    }
+        //});
 
-        if workaround_open_rename {
-            ui.open_popup("Edit node name");
-        }
-        ui.popup("Edit node name", || {
-            let mut string = String::new();
-            let value_changed = InputText::new(ui, "", &mut string)
-                .no_undo_redo(true)
-                .enter_returns_true(true)
-                .build();
-            if value_changed {
-                let node_id = self.right_clicked_node.unwrap();
-                self.right_clicked_node = None;
-                self.get_node_mut(node_id).unwrap().title = string.to_string();
-                ui.close_current_popup();
-            }
-        });
+        //if workaround_open_rename {
+        //    ui.open_popup("Edit node name");
+        //}
+        //ui.popup("Edit node name", || {
+        //    let mut string = String::new();
+        //    let value_changed = InputText::new(ui, "", &mut string)
+        //        .no_undo_redo(true)
+        //        .enter_returns_true(true)
+        //        .build();
+        //    if value_changed {
+        //        let node_id = self.right_clicked_node.unwrap();
+        //        self.right_clicked_node = None;
+        //        self.get_node_mut(node_id).unwrap().title = string.to_string();
+        //        ui.close_current_popup();
+        //    }
+        //});
 
-        ui.popup("Link menu", || {
-            let clicked_link = self.right_clicked_link.unwrap();
-            if MenuItem::new("delete link").build(ui) {
-                println!("need to remove {}", clicked_link);
-                self.links.remove(&clicked_link);
-                imnodes::ClearLinkSelection();
-                self.right_clicked_link = None;
-                request_savestate = Some(ui.time());
-            }
-        });
+        //ui.popup("Link menu", || {
+        //    let clicked_link = self.right_clicked_link.unwrap();
+        //    if MenuItem::new("delete link").build(ui) {
+        //        println!("need to remove {}", clicked_link);
+        //        self.links.remove(&clicked_link);
+        //        imnodes::ClearLinkSelection();
+        //        self.right_clicked_link = None;
+        //        request_savestate = Some(ui.time());
+        //    }
+        //});
 
-        let style_token = ui.push_style_var(StyleVar::WindowPadding([8.0, 8.0]));
-        ui.popup("Add menu", || {
-            let [click_pos_x, click_pos_y] = ui.mouse_pos_on_opening_current_popup();
-            let [pan_x, pan_y] = imnodes::GetEditorPanning();
-            let editor_pos_x = click_pos_x - editor_ne_point[0] - pan_x;
-            let editor_pos_y = click_pos_y - editor_ne_point[1] - pan_y;
-            let zoom = ZOOM_LEVELS[self.zoom_level];
-            let node_pos = [editor_pos_x/zoom, editor_pos_y/zoom];
+        //let style_token = ui.push_style_var(StyleVar::WindowPadding([8.0, 8.0]));
+        //ui.popup("Add menu", || {
+        //    let [click_pos_x, click_pos_y] = ui.mouse_pos_on_opening_current_popup();
+        //    let [pan_x, pan_y] = imnodes::GetEditorPanning();
+        //    let editor_pos_x = click_pos_x - editor_ne_point[0] - pan_x;
+        //    let editor_pos_y = click_pos_y - editor_ne_point[1] - pan_y;
+        //    let zoom = ZOOM_LEVELS[self.zoom_level];
+        //    let node_pos = [editor_pos_x/zoom, editor_pos_y/zoom];
 
-            ui.menu("Geometries", || {
-                if MenuItem::new("Curve").build(ui) {
-                    self.add_curve_node(node_pos);
-                    request_savestate = Some(ui.time());
-                }
-                if MenuItem::new("Bezier Curve").build(ui) {
-                    self.add_bezier_node(node_pos);
-                    request_savestate = Some(ui.time());
-                }
-                if MenuItem::new("Surface").build(ui) {
-                    self.add_surface_node(node_pos);
-                    request_savestate = Some(ui.time());
-                }
-                if MenuItem::new("Plane").build(ui) {
-                    self.add_plane_node(node_pos);
-                    request_savestate = Some(ui.time());
-                }
-                if MenuItem::new("Primitive").build(ui) {
-                    self.add_primitive_node(node_pos);
-                    request_savestate = Some(ui.time());
-                }
-            }); // Geometries menu ends here
+        //    ui.menu("Geometries", || {
+        //        if MenuItem::new("Curve").build(ui) {
+        //            self.add_curve_node(node_pos);
+        //            request_savestate = Some(ui.time());
+        //        }
+        //        if MenuItem::new("Bezier Curve").build(ui) {
+        //            self.add_bezier_node(node_pos);
+        //            request_savestate = Some(ui.time());
+        //        }
+        //        if MenuItem::new("Surface").build(ui) {
+        //            self.add_surface_node(node_pos);
+        //            request_savestate = Some(ui.time());
+        //        }
+        //        if MenuItem::new("Plane").build(ui) {
+        //            self.add_plane_node(node_pos);
+        //            request_savestate = Some(ui.time());
+        //        }
+        //        if MenuItem::new("Primitive").build(ui) {
+        //            self.add_primitive_node(node_pos);
+        //            request_savestate = Some(ui.time());
+        //        }
+        //    }); // Geometries menu ends here
 
-            ui.menu("Parameters", || {
-                if MenuItem::new("Interval").build(ui) {
-                    self.add_interval_node(node_pos);
-                    request_savestate = Some(ui.time());
-                }
-                if MenuItem::new("Sample parameter").build(ui) {
-                    self.add_parameter_node(node_pos);
-                    request_savestate = Some(ui.time());
-                }
-            }); // Geometries menu ends here
+        //    ui.menu("Parameters", || {
+        //        if MenuItem::new("Interval").build(ui) {
+        //            self.add_interval_node(node_pos);
+        //            request_savestate = Some(ui.time());
+        //        }
+        //        if MenuItem::new("Sample parameter").build(ui) {
+        //            self.add_parameter_node(node_pos);
+        //            request_savestate = Some(ui.time());
+        //        }
+        //    }); // Geometries menu ends here
 
-            ui.menu("Transformations", || {
-                if MenuItem::new("Generic Matrix").build(ui) {
-                    self.add_matrix_node(node_pos);
-                    request_savestate = Some(ui.time());
-                }
-                if MenuItem::new("Rotation Matrix").build(ui) {
-                    self.add_rotation_matrix_node(node_pos);
-                    request_savestate = Some(ui.time());
-                }
-                if MenuItem::new("Translation Matrix").build(ui) {
-                    self.add_translation_matrix_node(node_pos);
-                    request_savestate = Some(ui.time());
-                }
-                if MenuItem::new("Transform").build(ui) {
-                    self.add_transform_node(node_pos);
-                    request_savestate = Some(ui.time());
-                }
-            }); // Transformations menu ends here
+        //    ui.menu("Transformations", || {
+        //        if MenuItem::new("Generic Matrix").build(ui) {
+        //            self.add_matrix_node(node_pos);
+        //            request_savestate = Some(ui.time());
+        //        }
+        //        if MenuItem::new("Rotation Matrix").build(ui) {
+        //            self.add_rotation_matrix_node(node_pos);
+        //            request_savestate = Some(ui.time());
+        //        }
+        //        if MenuItem::new("Translation Matrix").build(ui) {
+        //            self.add_translation_matrix_node(node_pos);
+        //            request_savestate = Some(ui.time());
+        //        }
+        //        if MenuItem::new("Transform").build(ui) {
+        //            self.add_transform_node(node_pos);
+        //            request_savestate = Some(ui.time());
+        //        }
+        //    }); // Transformations menu ends here
 
-            if MenuItem::new("Point").build(ui) {
-                self.add_point_node(node_pos);
-                request_savestate = Some(ui.time());
-            }
-            if MenuItem::new("Vector").build(ui) {
-                self.add_vector_node(node_pos);
-                request_savestate = Some(ui.time());
-            }
-            if MenuItem::new("Geometry Rendering").build(ui) {
-                self.add_rendering_node(node_pos);
-                request_savestate = Some(ui.time());
-            }
-            if MenuItem::new("Vector Rendering").build(ui) {
-                self.add_vector_rendering_node(node_pos);
-                request_savestate = Some(ui.time());
-            }
-        }); // "Add" closure ends here
-        style_token.pop();
+        //    if MenuItem::new("Point").build(ui) {
+        //        self.add_point_node(node_pos);
+        //        request_savestate = Some(ui.time());
+        //    }
+        //    if MenuItem::new("Vector").build(ui) {
+        //        self.add_vector_node(node_pos);
+        //        request_savestate = Some(ui.time());
+        //    }
+        //    if MenuItem::new("Geometry Rendering").build(ui) {
+        //        self.add_rendering_node(node_pos);
+        //        request_savestate = Some(ui.time());
+        //    }
+        //    if MenuItem::new("Vector Rendering").build(ui) {
+        //        self.add_vector_rendering_node(node_pos);
+        //        request_savestate = Some(ui.time());
+        //    }
+        //}); // "Add" closure ends here
+        //style_token.pop();
 
-        // check if a link was created
-        let mut start_attribute_id: AttributeID = -1;
-        let mut end_attribute_id: AttributeID = -1;
-        if imnodes::IsLinkCreated(&mut start_attribute_id, &mut end_attribute_id) {
-            let maybe_link = Self::check_link_creation(&self.attributes, start_attribute_id, end_attribute_id);
-            // check which one of the two attributes is the input attribute and which is the output
-            if let Some((input_id, output_id)) = maybe_link {
-                self.links.insert(input_id, output_id);
-                request_savestate = Some(ui.time());
-            }
-        }
+        //// check if a link was created
+        //let mut start_attribute_id: AttributeID = -1;
+        //let mut end_attribute_id: AttributeID = -1;
+        //if imnodes::IsLinkCreated(&mut start_attribute_id, &mut end_attribute_id) {
+        //    let maybe_link = Self::check_link_creation(&self.attributes, start_attribute_id, end_attribute_id);
+        //    // check which one of the two attributes is the input attribute and which is the output
+        //    if let Some((input_id, output_id)) = maybe_link {
+        //        self.links.insert(input_id, output_id);
+        //        request_savestate = Some(ui.time());
+        //    }
+        //}
 
-        // check if we are actively editing a node or not.
-        let mut active_attribute = 0;
-        if imnodes::IsAnyAttributeActive(&mut active_attribute) {
-            let attribute_slot = self.attributes.get(active_attribute as usize).unwrap();
-            let editing_node_id = attribute_slot.as_ref().unwrap().node_id;
-            match self.editing_node {
-                None => {
-                    // started editing a new node
-                    self.editing_node = Some(editing_node_id);
-                }
-                Some(old_id) if old_id != editing_node_id => {
-                    // stopped editing a node, started editing a new one
-                    self.editing_node = Some(editing_node_id);
-                    request_savestate = Some(self.last_edit_timestamp);
-                }
-                Some(_old_id) => { // if old_id == editing_node_id
-                    // we are still editing the same node, do nothing
-                }
-            }
-        } else {
-            match self.editing_node {
-                None => {
-                    // we are still not editing any node, do nothing
-                }
-                Some(_old_id) => {
-                    // stopped editing a node
-                    self.editing_node = None;
-                    request_savestate = Some(self.last_edit_timestamp);
-                }
-            }
-        }
+        //// check if we are actively editing a node or not.
+        //let mut active_attribute = 0;
+        //if imnodes::IsAnyAttributeActive(&mut active_attribute) {
+        //    let attribute_slot = self.attributes.get(active_attribute as usize).unwrap();
+        //    let editing_node_id = attribute_slot.as_ref().unwrap().node_id;
+        //    match self.editing_node {
+        //        None => {
+        //            // started editing a new node
+        //            self.editing_node = Some(editing_node_id);
+        //        }
+        //        Some(old_id) if old_id != editing_node_id => {
+        //            // stopped editing a node, started editing a new one
+        //            self.editing_node = Some(editing_node_id);
+        //            request_savestate = Some(self.last_edit_timestamp);
+        //        }
+        //        Some(_old_id) => { // if old_id == editing_node_id
+        //            // we are still editing the same node, do nothing
+        //        }
+        //    }
+        //} else {
+        //    match self.editing_node {
+        //        None => {
+        //            // we are still not editing any node, do nothing
+        //        }
+        //        Some(_old_id) => {
+        //            // stopped editing a node
+        //            self.editing_node = None;
+        //            request_savestate = Some(self.last_edit_timestamp);
+        //        }
+        //    }
+        //}
 
-        request_savestate
+        //request_savestate
     }
 
     pub fn get_nodes(&self) -> impl Iterator<Item = (NodeID, &Node)> {

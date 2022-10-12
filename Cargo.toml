@@ -14,9 +14,17 @@ dev-tools = []
 all = ["teachers-edition", "dev-tools"]
 
 [dependencies]
-chrono = { version = "0.4", features = ["serde"] }
-bytemuck = { version = "1.4", features = ["derive"] }
+egui_winit_platform = "0.16"
 wgpu = { version = "0.13.1", features = ["trace", "spirv"] }
+winit = { version="0.27.3", features = ["x11"]}
+egui_demo_lib = "0.19"
+chrono = { version = "0.4", features = ["serde"] }
+pollster = "0.2"
+egui = "0.19"
+epi = "0.17"
+egui-wgpu = "0.19.0"
+
+bytemuck = { version = "1.4", features = ["derive"] }
 num-iter = "0.1"
 anyhow = "1.0"
 futures = { version = "0.3.10", features = ["thread-pool"] }
@@ -24,7 +32,6 @@ env_logger = "0.9"
 glam = { version = "0.20", features = ["bytemuck"] }
 maplit = "1.0"
 futures-intrusive = "0.4.0"
-winit = { version = "0.26" }
 tobj = "2.0"
 image = "0.23"
 png = "0.16.8"
@@ -34,11 +41,11 @@ serde_json = "1"
 ron = "0.6.4"
 clap = "2.33"
 obj = "0.10"
-imgui = "0.8"
-imgui-winit-support = { version = "0.8.2", default-features = false, features = ["winit-26"] }
-imgui-wgpu = { version = "0.20" } #git = "https://github.com/Yatekii/imgui-wgpu-rs", rev = "5637d24e52426ff456e514a6191271605e4f7313" }
+#imgui = "0.8"
+#imgui-winit-support = { version = "0.8.2", default-features = false, features = ["winit-26"] }
+#imgui-wgpu = { version = "0.20" } #git = "https://github.com/Yatekii/imgui-wgpu-rs", rev = "5637d24e52426ff456e514a6191271605e4f7313" }
 wgpu-subscriber = "0.1"
-cxx = "1.0.56"
+#cxx = "1.0.56"
 pathfinding = "2.0"
 indexmap = "1.6"
 rand = "0.8"

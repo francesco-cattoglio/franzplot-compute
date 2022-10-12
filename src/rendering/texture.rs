@@ -394,9 +394,3 @@ impl Texture {
 
 }
 
-
-impl Into<imgui_wgpu::Texture> for Texture {
-    fn into(self) -> imgui_wgpu::Texture {
-        imgui_wgpu::Texture::from_raw_parts(self.texture, self.view, self.bind_group, self.size)
-    }
-}

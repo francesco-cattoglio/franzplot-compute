@@ -2,12 +2,14 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
+use egui_wgpu::renderer::{RenderPass, ScreenDescriptor};
+use epi::egui::FontId;
 use winit::{
     event::*,
-    event_loop::{ControlFlow, EventLoop},
+    event_loop::{ControlFlow, EventLoop, EventLoopBuilder},
 };
 
-use imgui::{FontSource, FontGlyphRanges};
+//use imgui::{FontSource, FontGlyphRanges};
 
 mod util;
 mod rendering;
@@ -16,16 +18,17 @@ mod device_manager;
 mod shader_processing;
 mod node_graph;
 mod rust_gui;
-mod cpp_gui;
+//mod cpp_gui;
 mod file_io;
 mod parser;
 mod compute_graph;
 #[cfg(test)]
 mod tests;
 
-use std::env;
+use std::{env, time::Instant};
 
-use crate::state::Action;
+use crate::{state::Action};
+use egui_winit_platform::{Platform, PlatformDescriptor};
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -37,10 +40,21 @@ pub enum CustomEvent {
     ExportGraphPng(std::path::PathBuf),
     ExportScenePng(std::path::PathBuf),
     RequestExit,
+    RequestRedraw,
     MouseFreeze,
     MouseThaw,
 }
 
+///// This is the repaint signal type that egui needs for requesting a repaint from another thread.
+///// It sends the custom RequestRedraw event to the winit event loop.
+//struct ExampleRepaintSignal(std::sync::Mutex<winit::event_loop::EventLoopProxy<CustomEvent>>);
+//
+//impl epi::backend::RepaintSignal for ExampleRepaintSignal {
+//    fn request_repaint(&self) {
+//        self.0.lock().unwrap().send_event(CustomEvent::RequestRedraw).ok();
+//    }
+//}
+//
 pub struct PhysicalRectangle {
     position: winit::dpi::PhysicalPosition::<i32>,
     size: winit::dpi::PhysicalSize::<u32>,
@@ -58,25 +72,28 @@ impl PhysicalRectangle {
     }
 }
 
-fn add_custom_font(imgui_context: &mut imgui::Context, font_size: f32) -> imgui::FontId {
-    let glyph_range = FontGlyphRanges::from_slice(&[
-        0x0020, 0x00FF, // Basic Latin + Latin Supplement
-        0x2200, 0x22FF, // this range contains the miscellaneous symbols and arrows
-        0x2600, 0x26FF, // miscelaneous symbols
-        0]);
-    imgui_context.fonts().add_font(&[FontSource::TtfData {
-        data: include_bytes!("../compile_resources/DejaVuSansCustom.ttf"),
-        size_pixels: font_size,
-        config: Some(imgui::FontConfig {
-            oversample_h: 2,
-            oversample_v: 2,
-            pixel_snap_h: false,
-            glyph_ranges: glyph_range,
-            size_pixels: font_size,
-            ..Default::default()
-        }),
-    }])
+fn add_custom_font(imgui_context: &mut u32, font_size: f32) -> rust_gui::FontId {
+    unimplemented!()
 }
+//fn add_custom_font(imgui_context: &mut imgui::Context, font_size: f32) -> imgui::FontId {
+//    let glyph_range = FontGlyphRanges::from_slice(&[
+//        0x0020, 0x00FF, // Basic Latin + Latin Supplement
+//        0x2200, 0x22FF, // this range contains the miscellaneous symbols and arrows
+//        0x2600, 0x26FF, // miscelaneous symbols
+//        0]);
+//    imgui_context.fonts().add_font(&[FontSource::TtfData {
+//        data: include_bytes!("../compile_resources/DejaVuSansCustom.ttf"),
+//        size_pixels: font_size,
+//        config: Some(imgui::FontConfig {
+//            oversample_h: 2,
+//            oversample_v: 2,
+//            pixel_snap_h: false,
+//            glyph_ranges: glyph_range,
+//            size_pixels: font_size,
+//            ..Default::default()
+//        }),
+//    }])
+//}
 
 fn main() -> Result<(), &'static str>{
     let matches = clap::App::new("Franzplot")
@@ -139,7 +156,8 @@ fn main() -> Result<(), &'static str>{
         }
     });
 
-    let event_loop = EventLoop::<CustomEvent>::with_user_event();
+    let event_loop = EventLoopBuilder::<CustomEvent>::with_user_event().build();
+
 
     let window_size = if let Some(monitor) = event_loop.primary_monitor() {
         // web winit always reports a size of zero
@@ -174,42 +192,45 @@ fn main() -> Result<(), &'static str>{
     window.set_min_inner_size(Some(winit::dpi::LogicalSize::new(200.0, 100.0)));
     let device_manager = device_manager::Manager::new(&window, tracing_path_option, maybe_backend);
 
-    // Set up dear imgui
-    let mut imgui = imgui::Context::create();
-    imgui.style_mut().window_rounding = 0.0;
-    let mut platform = imgui_winit_support::WinitPlatform::init(&mut imgui);
-    // TODO: decide what to do about the hidpi. This requires a bit of investigation, especially
-    // when we want to support both retina and small screen displays
-    platform.attach_window(
-        imgui.io_mut(),
-        &window,
-        imgui_winit_support::HiDpiMode::Default,
-    );
-    imgui.set_ini_filename(None);
+    // We use the egui_winit_platform crate as the platform.
+    let mut platform = Platform::new(PlatformDescriptor {
+        physical_width: window_size.width as u32,
+        physical_height: window_size.height as u32,
+        scale_factor: window.scale_factor(),
+        font_definitions: egui::FontDefinitions::default(),
+        style: Default::default(),
+    });
+
+    // We use the egui_wgpu_backend crate as the render backend.
+    let mut egui_rpass = RenderPass::new(&device_manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1);
+
+    // Display the demo application that ships with egui.
+    let mut demo_app = egui_demo_lib::DemoWindows::default();
 
     let mut camera_inputs = rendering::camera::InputState::default();
     let mut cursor_position = winit::dpi::PhysicalPosition::<i32>::new(0, 0);
     let mut mouse_frozen = false;
 
-    let font_size = (12.0 * hidpi_factor) as f32;
-    imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
-    add_custom_font(&mut imgui, font_size);
+    //let font_size = (12.0 * hidpi_factor) as f32;
+    //imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+    //add_custom_font(&mut imgui, font_size);
 
-    let graph_fonts: Vec<imgui::FontId> = node_graph::ZOOM_LEVELS.iter()
-        .map(|scale| add_custom_font(&mut imgui, 12.0 * hidpi_factor as f32 * scale))
+    let graph_fonts: Vec<u32> = node_graph::ZOOM_LEVELS.iter()
+        .map(|scale| 12 * hidpi_factor as u32 * *scale as u32)
         .collect();
-    cpp_gui::imnodes::Initialize();
-    cpp_gui::imnodes::EnableCtrlScroll(true, &imgui.io().key_ctrl);
+    //cpp_gui::imnodes::Initialize();
+    //cpp_gui::imnodes::EnableCtrlScroll(true, &imgui.io().key_ctrl);
 
-    let renderer_config = imgui_wgpu::RendererConfig {
-        texture_format: rendering::SWAPCHAIN_FORMAT,
-        .. Default::default()
-    };
-    let mut renderer = imgui_wgpu::Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, renderer_config);
+    //let renderer_config = imgui_wgpu::RendererConfig {
+    //    texture_format: rendering::SWAPCHAIN_FORMAT,
+    //    .. Default::default()
+    //};
+    //let mut renderer = imgui_wgpu::Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, renderer_config);
 
     // first, create a texture that will be used to render the scene and display it inside of imgui
     let scene_texture = rendering::texture::Texture::create_output_texture(&device_manager.device, wgpu::Extent3d::default(), 1);
-    let scene_texture_id = renderer.textures.insert(scene_texture.into());
+    let scene_view = scene_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
+    let scene_texture_id = egui_rpass.register_native_texture(&device_manager.device, &scene_view, egui_wgpu::wgpu::FilterMode::Linear);
 
     let resources_path = {
         // Check if the resources folder can be find as a subfolder of current work directory
@@ -282,8 +303,8 @@ fn main() -> Result<(), &'static str>{
 
     material_files.sort();
 
-    let imgui_masks = util::load_imgui_masks(&device_manager, &mut renderer, &mask_files);
-    let imgui_materials = util::load_imgui_materials(&device_manager, &mut renderer, &material_files);
+    //let imgui_masks = util::load_imgui_masks(&device_manager, &mut renderer, &mask_files);
+    //let imgui_materials = util::load_imgui_materials(&device_manager, &mut renderer, &material_files);
 
     let masks = util::load_masks(&device_manager, &mask_files);
     let materials = util::load_materials(&device_manager, &material_files);
@@ -314,7 +335,7 @@ fn main() -> Result<(), &'static str>{
 
     model_files.sort();
     let models = util::load_models(&device_manager.device, &model_files);
-    let model_names = util::imgui_model_names(&model_files);
+    let model_names: Vec<String> = ["empty".to_string()].to_vec();//util::imgui_model_names(&model_files);
     assert!(!models.is_empty(), "Error while loading resources: could not load any model.");
 
     let assets = state::Assets {
@@ -325,13 +346,13 @@ fn main() -> Result<(), &'static str>{
 
     // last, initialize the rust_gui and the state with the available assets.
     let availables = rust_gui::Availables {
-        mask_ids: imgui_masks,
-        material_ids: imgui_materials,
+        mask_ids: [1, 2, 3, 4, 5],
+        material_ids: [].to_vec(),
         model_names,
     };
     let executor = util::Executor::new();
     let event_loop_proxy = event_loop.create_proxy();
-    let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, availables, graph_fonts);
+    //let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, availables, graph_fonts);
     let mut state = state::State::new(device_manager, assets);
 
     if let Some(file) = maybe_input_file {
@@ -346,9 +367,9 @@ fn main() -> Result<(), &'static str>{
         let scene_file_name = String::new() + path + ".scene.png";
         let scene_file_path = std::path::PathBuf::from(&scene_file_name);
         let graph_file_name = String::new() + path + ".graph.png";
-        let graph_file_path = std::path::PathBuf::from(&graph_file_name);
+        let _graph_file_path = std::path::PathBuf::from(&graph_file_name);
         state.app.camera.set_x1_y1_z1_wide();
-        event_loop_proxy.send_event(CustomEvent::ExportGraphPng(graph_file_path)).unwrap();
+        //event_loop_proxy.send_event(CustomEvent::ExportGraphPng(graph_file_path)).unwrap();
         event_loop_proxy.send_event(CustomEvent::ExportScenePng(scene_file_path)).unwrap();
         event_loop_proxy.send_event(CustomEvent::RequestExit).unwrap();
     }
@@ -356,7 +377,10 @@ fn main() -> Result<(), &'static str>{
     let mut old_instant = std::time::Instant::now();
     let mut modifiers_state = winit::event::ModifiersState::default();
 
+    let start_time = Instant::now();
     event_loop.run(move |event, _, control_flow| {
+        dbg!(&event);
+        platform.handle_event(&event);
         // BEWARE: keep in mind that if you go multi-window
         // you need to redo the whole handling of the events!
         // Please note: if you want to know in which order events
@@ -368,20 +392,17 @@ fn main() -> Result<(), &'static str>{
                 let now = std::time::Instant::now();
                 let frame_duration = now.duration_since(old_instant);
                 //println!("frame time: {} ms", frame_duration.as_millis());
-                imgui.io_mut().update_delta_time(frame_duration); // this function only computes imgui internal time delta
+                //imgui.io_mut().update_delta_time(frame_duration); // this function only computes imgui internal time delta
                 old_instant = now;
             }
             // Emitted when all of the event loop's input events have been processed and redraw processing is about to begin.
             Event::MainEventsCleared => {
-                // prepare gui rendering
-                platform
-                    .prepare_frame(imgui.io_mut(), &window)
-                    .expect("Failed to prepare frame");
-                window.request_redraw();
+                        window.request_redraw();
             }
             // Begin rendering. During each iteration of the event loop, Winit will aggregate duplicate redraw requests
             // into a single event, to help avoid duplicating rendering work.
             Event::RedrawRequested(_window_id) => {
+                platform.update_time(start_time.elapsed().as_secs_f64());
                 // acquire next frame, or update the swapchain if a resize occurred
                 let frame = if let Some(frame) = state.app.manager.get_frame() {
                     frame
@@ -394,66 +415,97 @@ fn main() -> Result<(), &'static str>{
                 let mut encoder: wgpu::CommandEncoder =
                     state.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
+                // Begin to draw the UI frame.
+                platform.begin_frame();
+
+                // Draw the demo application.
+//                demo_app.ui(&platform.context());
+
+egui::Window::new("My Window2")
+                .drag_bounds(egui::Rect::EVERYTHING)
+                .show(&platform.context(), |ui| {
+   ui.label("Hello World!");
+   let stringed = format!("{}", start_time.elapsed().as_secs_f64());
+   ui.label(stringed);
+});
+
+                // End the UI frame. We could now handle the output and draw the UI with the backend.
+                let full_output = platform.end_frame(Some(&window));
+                let paint_jobs = platform.context().tessellate(full_output.shapes);
+
+                                // Upload all resources for the GPU.
+                let screen_descriptor = ScreenDescriptor {
+                    size_in_pixels: [state.app.manager.config.width, state.app.manager.config.height],
+                    pixels_per_point: window.scale_factor() as f32,
+                };
+                for (id, image_delta) in full_output.textures_delta.set {
+                    egui_rpass.update_texture(&state.app.manager.device, &state.app.manager.queue, id, &image_delta);
+                }
+                egui_rpass.update_buffers(&state.app.manager.device, &state.app.manager.queue, &paint_jobs, &screen_descriptor);
+
+                // Record all render passes.
                 let frame_view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
-                let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: None,
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &frame_view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                            store: true,
-                        },
-                    })],
-                    depth_stencil_attachment: None,
-                });
+                egui_rpass
+                    .execute(
+                        &mut encoder,
+                        &frame_view,
+                        &paint_jobs,
+                        &screen_descriptor,
+                        Some(wgpu::Color::BLACK),
+                    );
+                // Submit the commands.
+                state.app.manager.queue.submit(std::iter::once(encoder.finish()));
+
+                // Redraw egui
+                frame.present();
+
 
                 // actual imgui rendering
-                let ui = imgui.frame();
-                let size = window.inner_size().to_logical(hidpi_factor);
-                let requested_logical_rectangle = rust_gui.render(&ui, [size.width, size.height], &mut state, &executor);
-                // after calling the gui render function we know if we need to render the scene or not
-                if let Some(logical_rectangle) = requested_logical_rectangle {
-                    // the GUI told us that we have to create a scene in the given logical
-                    // rectangle. Convert it to physical to make sure that we have the actual size
-                    let physical_rectangle = PhysicalRectangle::from_imgui_rectangle(&logical_rectangle, hidpi_factor);
-                    let texture_size = wgpu::Extent3d {
-                        height: physical_rectangle.size.height,
-                        width: physical_rectangle.size.width,
-                        depth_or_array_layers: 1,
-                    };
-                    let scene_texture = renderer.textures.get(scene_texture_id).unwrap();
-                    // first, check if the scene size has changed. If so, re-create the texture
-                    // that is used by imgui to render the scene to.
-                    if (physical_rectangle.size.width != scene_texture.width() || physical_rectangle.size.height != scene_texture.height())
-                            && (physical_rectangle.size.width > 8 && physical_rectangle.size.height > 8) {
-                        let new_scene_texture = rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
-                        renderer.textures.replace(scene_texture_id, new_scene_texture.into()).unwrap();
-                    }
-                    // after that, load the texture that will be used as output
-                    let scene_view = renderer.textures.get(scene_texture_id).unwrap().view();
+                //let ui = imgui.frame();
+                //let size = window.inner_size().to_logical(hidpi_factor);
+                //let requested_logical_rectangle = rust_gui.render(&ui, [size.width, size.height], &mut state, &executor);
+                //// after calling the gui render function we know if we need to render the scene or not
+                //if let Some(logical_rectangle) = requested_logical_rectangle {
+                //    // the GUI told us that we have to create a scene in the given logical
+                //    // rectangle. Convert it to physical to make sure that we have the actual size
+                //    let physical_rectangle = PhysicalRectangle::from_imgui_rectangle(&logical_rectangle, hidpi_factor);
+                //    let texture_size = wgpu::Extent3d {
+                //        height: physical_rectangle.size.height,
+                //        width: physical_rectangle.size.width,
+                //        depth_or_array_layers: 1,
+                //    };
+                //    let scene_texture = renderer.textures.get(scene_texture_id).unwrap();
+                //    // first, check if the scene size has changed. If so, re-create the texture
+                //    // that is used by imgui to render the scene to.
+                //    if (physical_rectangle.size.width != scene_texture.width() || physical_rectangle.size.height != scene_texture.height())
+                //            && (physical_rectangle.size.width > 8 && physical_rectangle.size.height > 8) {
+                //        let new_scene_texture = rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
+                //        renderer.textures.replace(scene_texture_id, new_scene_texture.into()).unwrap();
+                //    }
+                //    // after that, load the texture that will be used as output
+                //    let scene_view = renderer.textures.get(scene_texture_id).unwrap().view();
 
-                    let relative_pos = [
-                        cursor_position.x - physical_rectangle.position.x,
-                        cursor_position.y - physical_rectangle.position.y,
-                    ];
-                    state.app.renderer.update_mouse_pos(&relative_pos); // TODO: this should be done with actions as well
-                    state.app.update_camera(&camera_inputs); // TODO: this should be done with actions as well
-                    // and then ask the state to render the scene
-                    let render_request = Action::RenderScene(texture_size, scene_view);
-                    state.process(render_request);
-                }
+                //    let relative_pos = [
+                //        cursor_position.x - physical_rectangle.position.x,
+                //        cursor_position.y - physical_rectangle.position.y,
+                //    ];
+                //    state.app.renderer.update_mouse_pos(&relative_pos); // TODO: this should be done with actions as well
+                //    state.app.update_camera(&camera_inputs); // TODO: this should be done with actions as well
+                //    // and then ask the state to render the scene
+                //    let render_request = Action::RenderScene(texture_size, scene_view);
+                //    state.process(render_request);
+                //}
 
-                platform.prepare_render(&ui, &window);
-                renderer
-                    .render(ui.render(), &state.app.manager.queue, &state.app.manager.device, &mut rpass)
-                    .expect("Imgui rendering failed");
+                //platform.prepare_render(&ui, &window);
+                //renderer
+                //    .render(ui.render(), &state.app.manager.queue, &state.app.manager.device, &mut rpass)
+                //    .expect("Imgui rendering failed");
 
-                drop(rpass); // dropping the render pass is required for the encoder.finish() command
+                //drop(rpass); // dropping the render pass is required for the encoder.finish() command
 
-                // submit the framebuffer rendering pass
-                state.app.manager.queue.submit(Some(encoder.finish()));
-                frame.present();
+                //// submit the framebuffer rendering pass
+                //state.app.manager.queue.submit(Some(encoder.finish()));
+                //frame.present();
             }
             // Emitted after all RedrawRequested events have been processed and control flow is about to be taken away from the program.
             // If there are no RedrawRequested events, it is emitted immediately after MainEventsCleared.
@@ -479,6 +531,9 @@ fn main() -> Result<(), &'static str>{
             // Emitted when an event is sent from EventLoopProxy::send_event
             Event::UserEvent(user_event) => {
                 match user_event {
+                    CustomEvent::RequestRedraw => {
+                        window.request_redraw();
+                    },
                     CustomEvent::ShowOpenDialog => {
                         file_io::async_pick_open(event_loop_proxy.clone(), &executor);
                     },
@@ -489,8 +544,8 @@ fn main() -> Result<(), &'static str>{
                         let action = Action::NewFile();
                         state.process(action).expect("failed to create a new file");
                         // and after that we can tell the GUI to also reset some of its parts
-                        rust_gui.reset_undo_history(&state);
-                        rust_gui.reset_nongraph_data();
+                        //rust_gui.reset_undo_history(&state);
+                        //rust_gui.reset_nongraph_data();
                     },
                     CustomEvent::RequestExit => {
                         *control_flow = ControlFlow::Exit;
@@ -507,15 +562,15 @@ fn main() -> Result<(), &'static str>{
                                 file_io::async_dialog_failure(&executor, error);
                             }
                         }
-                        rust_gui.graph_edited = false;
+                        //rust_gui.graph_edited = false;
                     },
                     CustomEvent::OpenFile(path_buf) => {
                         let action = Action::OpenFile(path_buf);
                         match state.process(action) {
                             Ok(()) => {
-                                rust_gui.reset_undo_history(&state);
-                                rust_gui.reset_nongraph_data();
-                                rust_gui.opened_tab[0] = true;
+                                //rust_gui.reset_undo_history(&state);
+                                //rust_gui.reset_nongraph_data();
+                                //rust_gui.opened_tab[0] = true;
                             },
                             Err(error) => {
                                 file_io::async_dialog_failure(&executor, error);
@@ -523,13 +578,13 @@ fn main() -> Result<(), &'static str>{
                         }
                     },
                     CustomEvent::ExportGraphPng(path_buf) => {
-                        println!("Exporting graph: {:?}", &path_buf);
-                        // zoom out once or twice
-                        state.user.node_graph.zoom_down_graph([0.0, 0.0]);
-                        //state.user.graph.zoom_down_graph([0.0, 0.0]);
-                        state.user.node_graph.push_all_to_corner();
-                        state.user.node_graph.push_positions_to_imnodes();
-                        util::create_graph_png(&mut state, &path_buf,&window,&mut platform,&mut renderer,&mut rust_gui,&mut imgui, window_size.to_logical(hidpi_factor));
+                        //println!("Exporting graph: {:?}", &path_buf);
+                        //// zoom out once or twice
+                        //state.user.node_graph.zoom_down_graph([0.0, 0.0]);
+                        ////state.user.graph.zoom_down_graph([0.0, 0.0]);
+                        //state.user.node_graph.push_all_to_corner();
+                        //state.user.node_graph.push_positions_to_imnodes();
+                        //util::create_graph_png(&mut state, &path_buf,&window,&mut platform,&mut renderer,&mut rust_gui,&mut imgui, window_size.to_logical(hidpi_factor));
                     },
                     CustomEvent::ExportScenePng(path_buf) => {
                         println!("Exporting scene: {:?}", &path_buf);
@@ -569,29 +624,27 @@ fn main() -> Result<(), &'static str>{
             }
             // Emitted when the event loop is being shut down.
             Event::LoopDestroyed => {
-                cpp_gui::imnodes::Shutdown();
             }
             // match a very specific WindowEvent: user-requested closing of the application
             Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
-                if rust_gui.graph_edited {
-                    file_io::async_confirm_exit(event_loop_proxy.clone(), &executor)
-                } else {
-                    *control_flow = ControlFlow::Exit;
-                }
+                //if rust_gui.graph_edited {
+                //    file_io::async_confirm_exit(event_loop_proxy.clone(), &executor)
+                //} else {
+                //    *control_flow = ControlFlow::Exit;
+                //}
             }
             Event::WindowEvent { event: WindowEvent::DroppedFile(file_path), .. } => {
-                if rust_gui.graph_edited {
-                    file_io::async_confirm_load(event_loop_proxy.clone(), &executor, file_path);
-                } else {
-                    event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
-                }
+                //if rust_gui.graph_edited {
+                //    file_io::async_confirm_load(event_loop_proxy.clone(), &executor, file_path);
+                //} else {
+                //    event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
+                //}
             },
             // catch-all for remaining events (WindowEvent and DeviceEvent). We do this because
             // we want imgui to handle it first, and then do any kind of "post-processing"
             // that we might be thinking of.
             other_event => {
                 // in here, imgui will process keyboard and mouse status!
-                platform.handle_event(imgui.io_mut(), &window, &other_event);
 
                 // additional processing of input
                 match other_event {
@@ -610,11 +663,11 @@ fn main() -> Result<(), &'static str>{
                     // shortcuts and other keyboard processing goes here
                     Event::WindowEvent{ event: WindowEvent::KeyboardInput { input, .. }, .. } => {
                         if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Z) {
-                            if modifiers_state.ctrl() && modifiers_state.shift() {
-                                rust_gui.issue_redo(&mut state);
-                            } else if modifiers_state.ctrl() {
-                                rust_gui.issue_undo(&mut state, imgui.time());
-                            }
+                            //if modifiers_state.ctrl() && modifiers_state.shift() {
+                            //    rust_gui.issue_redo(&mut state);
+                            //} else if modifiers_state.ctrl() {
+                            //    rust_gui.issue_undo(&mut state, start_time.elapsed().as_secs_f64());
+                            //}
                         }
                         if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key1) {
                             camera_inputs.reset_to_xz = true;
@@ -647,7 +700,7 @@ fn main() -> Result<(), &'static str>{
                     Event::WindowEvent{ event: WindowEvent::MouseWheel { delta, .. }, ..} => {
                         let sensitivity = &state.app.sensitivity;
                         camera_inputs.mouse_wheel = util::compute_scene_zoom(delta, sensitivity.scene_zoom);
-                        rust_gui.added_zoom = util::compute_graph_zoom(delta, sensitivity.graph_zoom);
+                        //rust_gui.added_zoom = util::compute_graph_zoom(delta, sensitivity.graph_zoom);
                     }
                     Event::WindowEvent{ event: WindowEvent::MouseInput { state, button, .. }, ..} => {
                         // BEWARE: the `state` variable in this scope shadows the "application state" variable
