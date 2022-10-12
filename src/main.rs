@@ -28,7 +28,7 @@ mod tests;
 use std::{env, time::Instant};
 
 use crate::{state::Action};
-use egui_winit_platform::{Platform, PlatformDescriptor};
+use egui_winit::{State};
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -192,20 +192,8 @@ fn main() -> Result<(), &'static str>{
     window.set_min_inner_size(Some(winit::dpi::LogicalSize::new(200.0, 100.0)));
     let device_manager = device_manager::Manager::new(&window, tracing_path_option, maybe_backend);
 
-    // We use the egui_winit_platform crate as the platform.
-    let mut platform = Platform::new(PlatformDescriptor {
-        physical_width: window_size.width as u32,
-        physical_height: window_size.height as u32,
-        scale_factor: window.scale_factor(),
-        font_definitions: egui::FontDefinitions::default(),
-        style: Default::default(),
-    });
-
     // We use the egui_wgpu_backend crate as the render backend.
     let mut egui_rpass = RenderPass::new(&device_manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1);
-
-    // Display the demo application that ships with egui.
-    let mut demo_app = egui_demo_lib::DemoWindows::default();
 
     let mut camera_inputs = rendering::camera::InputState::default();
     let mut cursor_position = winit::dpi::PhysicalPosition::<i32>::new(0, 0);
@@ -353,7 +341,7 @@ fn main() -> Result<(), &'static str>{
     let executor = util::Executor::new();
     let event_loop_proxy = event_loop.create_proxy();
     //let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, availables, graph_fonts);
-    let mut state = state::State::new(device_manager, assets);
+    let mut state = state::State::new(device_manager, assets, &event_loop, window.scale_factor() as f32);
 
     if let Some(file) = maybe_input_file {
         let file_path = std::path::PathBuf::from(file);
@@ -379,8 +367,6 @@ fn main() -> Result<(), &'static str>{
 
     let start_time = Instant::now();
     event_loop.run(move |event, _, control_flow| {
-        dbg!(&event);
-        platform.handle_event(&event);
         // BEWARE: keep in mind that if you go multi-window
         // you need to redo the whole handling of the events!
         // Please note: if you want to know in which order events
@@ -402,7 +388,22 @@ fn main() -> Result<(), &'static str>{
             // Begin rendering. During each iteration of the event loop, Winit will aggregate duplicate redraw requests
             // into a single event, to help avoid duplicating rendering work.
             Event::RedrawRequested(_window_id) => {
-                platform.update_time(start_time.elapsed().as_secs_f64());
+                let raw_input = state.egui_state.take_egui_input(&window);
+                state.egui_ctx.begin_frame(raw_input);
+
+egui::Window::new("My Window2")
+                .drag_bounds(egui::Rect::EVERYTHING)
+                .show(&state.egui_ctx, |ui| {
+   ui.label("Hello World!");
+   let stringed = format!("{}", start_time.elapsed().as_secs_f64());
+   ui.label(stringed);
+});
+
+                // End the UI frame. We could now handle the output and draw the UI with the backend.
+                let full_output = state.egui_ctx.end_frame();
+                state.egui_state.handle_platform_output(&window, &state.egui_ctx, full_output.platform_output);
+
+                let paint_jobs = state.egui_ctx.tessellate(full_output.shapes);
                 // acquire next frame, or update the swapchain if a resize occurred
                 let frame = if let Some(frame) = state.app.manager.get_frame() {
                     frame
@@ -415,25 +416,7 @@ fn main() -> Result<(), &'static str>{
                 let mut encoder: wgpu::CommandEncoder =
                     state.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-                // Begin to draw the UI frame.
-                platform.begin_frame();
-
-                // Draw the demo application.
-//                demo_app.ui(&platform.context());
-
-egui::Window::new("My Window2")
-                .drag_bounds(egui::Rect::EVERYTHING)
-                .show(&platform.context(), |ui| {
-   ui.label("Hello World!");
-   let stringed = format!("{}", start_time.elapsed().as_secs_f64());
-   ui.label(stringed);
-});
-
-                // End the UI frame. We could now handle the output and draw the UI with the backend.
-                let full_output = platform.end_frame(Some(&window));
-                let paint_jobs = platform.context().tessellate(full_output.shapes);
-
-                                // Upload all resources for the GPU.
+                // Upload all resources for the GPU.
                 let screen_descriptor = ScreenDescriptor {
                     size_in_pixels: [state.app.manager.config.width, state.app.manager.config.height],
                     pixels_per_point: window.scale_factor() as f32,
@@ -630,7 +613,7 @@ egui::Window::new("My Window2")
                 //if rust_gui.graph_edited {
                 //    file_io::async_confirm_exit(event_loop_proxy.clone(), &executor)
                 //} else {
-                //    *control_flow = ControlFlow::Exit;
+                    *control_flow = ControlFlow::Exit;
                 //}
             }
             Event::WindowEvent { event: WindowEvent::DroppedFile(file_path), .. } => {
@@ -640,93 +623,110 @@ egui::Window::new("My Window2")
                 //    event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
                 //}
             },
+            Event::WindowEvent { event, .. } => {
+                let exclusive_event = state.egui_state.on_event(&state.egui_ctx, &event);
+                if exclusive_event {
+                    return;
+                }
+                //if rust_gui.graph_edited {
+                //    file_io::async_confirm_load(event_loop_proxy.clone(), &executor, file_path);
+                //} else {
+                //    event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
+                //}
+            },
+            Event::DeviceEvent { .. } => {
+            }
+            Event::Suspended => {
+            }
+            Event::Resumed => {
+            }
             // catch-all for remaining events (WindowEvent and DeviceEvent). We do this because
             // we want imgui to handle it first, and then do any kind of "post-processing"
             // that we might be thinking of.
-            other_event => {
-                // in here, imgui will process keyboard and mouse status!
+            //other_event => {
+            //    // in here, imgui will process keyboard and mouse status!
 
-                // additional processing of input
-                match other_event {
-                    // if the window was resized, we need to resize the swapchain as well!
-                    Event::WindowEvent{ event: WindowEvent::Resized(physical_size), .. } => {
-                        state.app.manager.resize(physical_size);
-                    }
-                    Event::WindowEvent{ event: WindowEvent::CursorMoved { position, .. }, ..} => {
-                        if !mouse_frozen {
-                            cursor_position = position.cast();
-                        }
-                    }
-                    Event::WindowEvent{ event: WindowEvent::ModifiersChanged(modifiers), ..} => {
-                        modifiers_state = modifiers;
-                    }
-                    // shortcuts and other keyboard processing goes here
-                    Event::WindowEvent{ event: WindowEvent::KeyboardInput { input, .. }, .. } => {
-                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Z) {
-                            //if modifiers_state.ctrl() && modifiers_state.shift() {
-                            //    rust_gui.issue_redo(&mut state);
-                            //} else if modifiers_state.ctrl() {
-                            //    rust_gui.issue_undo(&mut state, start_time.elapsed().as_secs_f64());
-                            //}
-                        }
-                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key1) {
-                            camera_inputs.reset_to_xz = true;
-                        }
-                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key2) {
-                            camera_inputs.reset_to_yz = true;
-                        }
-                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key3) {
-                            camera_inputs.reset_to_xy = true;
-                        }
-                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key4) {
-                            camera_inputs.reset_to_xyz = true;
-                        }
-                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key5) {
-                            camera_inputs.reset_to_minus_xz = true;
-                        }
-                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key6) {
-                            camera_inputs.reset_to_minus_yz = true;
-                        }
-                        if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key7) {
-                            camera_inputs.reset_to_minus_xy = true;
-                        }
-                    }
-                    Event::DeviceEvent{ event: DeviceEvent::MouseMotion { delta }, ..} => {
-                        // Since we might receive many different mouse motion events in
-                        // the same frame, the correct thing to do is to accumulate them
-                        camera_inputs.mouse_motion.0 += delta.0;
-                        camera_inputs.mouse_motion.1 += delta.1;
-                    }
-                    Event::WindowEvent{ event: WindowEvent::MouseWheel { delta, .. }, ..} => {
-                        let sensitivity = &state.app.sensitivity;
-                        camera_inputs.mouse_wheel = util::compute_scene_zoom(delta, sensitivity.scene_zoom);
-                        //rust_gui.added_zoom = util::compute_graph_zoom(delta, sensitivity.graph_zoom);
-                    }
-                    Event::WindowEvent{ event: WindowEvent::MouseInput { state, button, .. }, ..} => {
-                        // BEWARE: the `state` variable in this scope shadows the "application state" variable
-                        match state {
-                            ElementState::Pressed => match button {
-                                MouseButton::Left if modifiers_state.ctrl() => camera_inputs.mouse_middle_click = true,
-                                MouseButton::Left => camera_inputs.mouse_left_click = true,
-                                MouseButton::Middle => camera_inputs.mouse_middle_click = true,
-                                _ => {}
-                            },
-                            ElementState::Released => match button {
-                                // we don't know if we started with the ctrl button enabled,
-                                // which means we don't know if we are rotating or dragging.
-                                // therefore just disable both of them.
-                                MouseButton::Left => {
-                                    camera_inputs.mouse_left_click = false;
-                                    camera_inputs.mouse_middle_click = false;
-                                },
-                                MouseButton::Middle => camera_inputs.mouse_middle_click = false,
-                                _ => {}
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-            }
+            //    // additional processing of input
+            //    match other_event {
+            //        // if the window was resized, we need to resize the swapchain as well!
+            //        Event::WindowEvent{ event: WindowEvent::Resized(physical_size), .. } => {
+            //            state.app.manager.resize(physical_size);
+            //        }
+            //        Event::WindowEvent{ event: WindowEvent::CursorMoved { position, .. }, ..} => {
+            //            if !mouse_frozen {
+            //                cursor_position = position.cast();
+            //            }
+            //        }
+            //        Event::WindowEvent{ event: WindowEvent::ModifiersChanged(modifiers), ..} => {
+            //            modifiers_state = modifiers;
+            //        }
+            //        // shortcuts and other keyboard processing goes here
+            //        Event::WindowEvent{ event: WindowEvent::KeyboardInput { input, .. }, .. } => {
+            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Z) {
+            //                //if modifiers_state.ctrl() && modifiers_state.shift() {
+            //                //    rust_gui.issue_redo(&mut state);
+            //                //} else if modifiers_state.ctrl() {
+            //                //    rust_gui.issue_undo(&mut state, start_time.elapsed().as_secs_f64());
+            //                //}
+            //            }
+            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key1) {
+            //                camera_inputs.reset_to_xz = true;
+            //            }
+            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key2) {
+            //                camera_inputs.reset_to_yz = true;
+            //            }
+            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key3) {
+            //                camera_inputs.reset_to_xy = true;
+            //            }
+            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key4) {
+            //                camera_inputs.reset_to_xyz = true;
+            //            }
+            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key5) {
+            //                camera_inputs.reset_to_minus_xz = true;
+            //            }
+            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key6) {
+            //                camera_inputs.reset_to_minus_yz = true;
+            //            }
+            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key7) {
+            //                camera_inputs.reset_to_minus_xy = true;
+            //            }
+            //        }
+            //        Event::DeviceEvent{ event: DeviceEvent::MouseMotion { delta }, ..} => {
+            //            // Since we might receive many different mouse motion events in
+            //            // the same frame, the correct thing to do is to accumulate them
+            //            camera_inputs.mouse_motion.0 += delta.0;
+            //            camera_inputs.mouse_motion.1 += delta.1;
+            //        }
+            //        Event::WindowEvent{ event: WindowEvent::MouseWheel { delta, .. }, ..} => {
+            //            let sensitivity = &state.app.sensitivity;
+            //            camera_inputs.mouse_wheel = util::compute_scene_zoom(delta, sensitivity.scene_zoom);
+            //            //rust_gui.added_zoom = util::compute_graph_zoom(delta, sensitivity.graph_zoom);
+            //        }
+            //        Event::WindowEvent{ event: WindowEvent::MouseInput { state, button, .. }, ..} => {
+            //            // BEWARE: the `state` variable in this scope shadows the "application state" variable
+            //            match state {
+            //                ElementState::Pressed => match button {
+            //                    MouseButton::Left if modifiers_state.ctrl() => camera_inputs.mouse_middle_click = true,
+            //                    MouseButton::Left => camera_inputs.mouse_left_click = true,
+            //                    MouseButton::Middle => camera_inputs.mouse_middle_click = true,
+            //                    _ => {}
+            //                },
+            //                ElementState::Released => match button {
+            //                    // we don't know if we started with the ctrl button enabled,
+            //                    // which means we don't know if we are rotating or dragging.
+            //                    // therefore just disable both of them.
+            //                    MouseButton::Left => {
+            //                        camera_inputs.mouse_left_click = false;
+            //                        camera_inputs.mouse_middle_click = false;
+            //                    },
+            //                    MouseButton::Middle => camera_inputs.mouse_middle_click = false,
+            //                    _ => {}
+            //                }
+            //            }
+            //        }
+            //        _ => {}
+            //    }
+            //}
         }
     });
 }

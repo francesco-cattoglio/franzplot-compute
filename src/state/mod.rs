@@ -133,16 +133,22 @@ pub struct State {
     pub app: AppState,
     pub time_stamps: TSs,
     pub user: UserState,
+    pub egui_state: egui_winit::State,
+    pub egui_ctx: egui::Context,
 }
 
 impl State {
     // this function will likely be called only once, at program start
-    pub fn new(manager: Manager, assets: Assets) -> Self {
+    pub fn new<T>(manager: Manager, assets: Assets, event_loop: &winit::event_loop::EventLoop<T>, scale_factor: f32) -> Self {
         // at program start, we can just set the user data to its default value
         let user: UserState = Default::default();
 
         let camera = camera::Camera::default();
         let camera_controller = Box::new(camera::VTKController::new());
+
+        let mut egui_state = egui_winit::State::new(event_loop);
+        egui_state.set_pixels_per_point(scale_factor);
+        let egui_ctx = egui::Context::default();
 
         let app = AppState {
             //computable_scene,
@@ -163,6 +169,8 @@ impl State {
             app,
             time_stamps: TSs::new_now(),
             user,
+            egui_state,
+            egui_ctx,
         }
     }
 
