@@ -322,11 +322,11 @@ fn main() -> Result<(), &'static str>{
         let input_file = opt_input_file.expect("An input file is required when exporting a scene or a graph!");
         let mut user_state = UserState::read_from_frzp(input_file).expect("Error opening the input file");
         if let Some(scene_path) = opt_export_scene {
-            app_state.camera.set_x1_y1_z1_wide();
+            app_state.camera.set_x1_y1_z1_wide(); // export scene with dafault wide angle view
             util::create_scene_png(&mut app_state, &mut user_state, &scene_path);
-        ////event_loop_proxy.send_event(CustomEvent::ExportGraphPng(graph_file_path)).unwrap();
-        //event_loop_proxy.send_event(CustomEvent::ExportScenePng(scene_file_path)).unwrap();
-
+        }
+        if let Some(graph_path) = opt_export_graph {
+            util::create_graph_png(&mut app_state, &mut user_state, &graph_path);
         }
         // after exporting, just exit
         return Ok(());
