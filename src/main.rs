@@ -2,8 +2,8 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
-use egui_wgpu::renderer::{RenderPass, ScreenDescriptor};
-use epi::egui::FontId;
+use egui_wgpu::renderer::{ScreenDescriptor, Renderer};
+use egui::FontId;
 use winit::{
     event::*,
     event_loop::{ControlFlow, EventLoop, EventLoopBuilder},
@@ -193,7 +193,7 @@ fn main() -> Result<(), &'static str>{
     let device_manager = device_manager::Manager::new(&window, tracing_path_option, maybe_backend);
 
     // We use the egui_wgpu_backend crate as the render backend.
-    let mut egui_rpass = RenderPass::new(&device_manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1);
+    let mut egui_rpass = Renderer::new(&device_manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1, 0); // TODO: investigate more how to properly set this
 
     let mut camera_inputs = rendering::camera::InputState::default();
     let mut cursor_position = winit::dpi::PhysicalPosition::<i32>::new(0, 0);
@@ -216,7 +216,7 @@ fn main() -> Result<(), &'static str>{
     //let mut renderer = imgui_wgpu::Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, renderer_config);
 
     // first, create a texture that will be used to render the scene and display it inside of imgui
-    let scene_texture = rendering::texture::Texture::create_output_texture(&device_manager.device, wgpu::Extent3d::default(), 1);
+    let scene_texture = rendering::texture::Texture::create_output_texture(&device_manager.device, wgpu::Extent3d{width: 320, height:320, ..Default::default()}, 1);
     let scene_view = scene_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
     let scene_texture_id = egui_rpass.register_native_texture(&device_manager.device, &scene_view, egui_wgpu::wgpu::FilterMode::Linear);
 
@@ -389,12 +389,20 @@ fn main() -> Result<(), &'static str>{
             // into a single event, to help avoid duplicating rendering work.
             Event::RedrawRequested(_window_id) => {
                 let raw_input = state.egui_state.take_egui_input(&window);
+let texture_size = wgpu::Extent3d {
+    width: 320,
+    height: 320,
+    ..Default::default()
+};
+let render_request = Action::RenderScene(texture_size, &scene_view);
+state.process(render_request).expect("failed to render the scene due to an unknown error");
                 state.egui_ctx.begin_frame(raw_input);
 
 egui::Window::new("My Window2")
                 .drag_bounds(egui::Rect::EVERYTHING)
                 .show(&state.egui_ctx, |ui| {
    ui.label("Hello World!");
+   ui.image(scene_texture_id, egui::Vec2::new(200.0, 200.0));
    let stringed = format!("{}", start_time.elapsed().as_secs_f64());
    ui.label(stringed);
 });
@@ -429,7 +437,7 @@ egui::Window::new("My Window2")
                 // Record all render passes.
                 let frame_view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
                 egui_rpass
-                    .execute(
+                    .render(
                         &mut encoder,
                         &frame_view,
                         &paint_jobs,
@@ -624,8 +632,8 @@ egui::Window::new("My Window2")
                 //}
             },
             Event::WindowEvent { event, .. } => {
-                let exclusive_event = state.egui_state.on_event(&state.egui_ctx, &event);
-                if exclusive_event {
+                let event_response = state.egui_state.on_event(&state.egui_ctx, &event);
+                if event_response.consumed {
                     return;
                 }
                 //if rust_gui.graph_edited {

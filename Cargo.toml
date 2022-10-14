@@ -14,15 +14,13 @@ dev-tools = []
 all = ["teachers-edition", "dev-tools"]
 
 [dependencies]
-wgpu = { version = "0.13.1", features = ["trace", "spirv"] }
+wgpu = { version = "0.14", features = ["trace", "spirv"] }
 winit = { version="0.27.3", features = ["x11"]}
-egui_demo_lib = "0.19"
 chrono = { version = "0.4", features = ["serde"] }
 pollster = "0.2"
-egui = "0.19"
-epi = "0.17"
-egui-winit = "0.19"
-egui-wgpu = { version = "0.19", features = ["winit"] }
+egui = { git = "https://github.com/emilk/egui", version = "0.19", rev = "7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b" }
+egui-winit = { git = "https://github.com/emilk/egui", version = "0.19", rev = "7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b" }
+egui-wgpu = { git = "https://github.com/emilk/egui", version = "0.19", rev = "7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b", features = ["winit"] }
 
 bytemuck = { version = "1.4", features = ["derive"] }
 num-iter = "0.1"

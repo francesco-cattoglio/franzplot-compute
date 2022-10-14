@@ -481,20 +481,20 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
             mapped_at_creation: false,
             label: None,
             size: (length * std::mem::size_of::<i32>()) as wgpu::BufferAddress,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
         });
         let picking_bind_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    count: None,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Storage { read_only: false },
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                },
+                //wgpu::BindGroupLayoutEntry {
+                //    binding: 0,
+                //    count: None,
+                //    visibility: wgpu::ShaderStages::FRAGMENT,
+                //    ty: wgpu::BindingType::Buffer {
+                //        ty: wgpu::BufferBindingType::Storage { read_only: false },
+                //        has_dynamic_offset: false,
+                //        min_binding_size: None,
+                //    },
+                //},
             ],
             label: Some("object picking bind group layout"),
         });
@@ -502,10 +502,10 @@ fn create_picking_buffer(device: &wgpu::Device, length: usize) -> (wgpu::Buffer,
         let picking_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor{
             layout: &picking_bind_layout,
             entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: picking_buffer.as_entire_binding(),
-                },
+                //wgpu::BindGroupEntry {
+                //    binding: 0,
+                //    resource: picking_buffer.as_entire_binding(),
+                //},
             ],
             label: Some("Camera bind group"),
         });
