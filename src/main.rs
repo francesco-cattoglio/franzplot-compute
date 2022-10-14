@@ -1,6 +1,7 @@
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
+use clap::Parser;
 
 use egui_wgpu::renderer::{ScreenDescriptor, Renderer};
 use egui::FontId;
@@ -25,9 +26,9 @@ mod compute_graph;
 #[cfg(test)]
 mod tests;
 
-use std::{env, time::Instant};
+use std::{env, time::Instant, path::PathBuf};
 
-use crate::{state::Action};
+use crate::{state::{Action, AppState, UserState}};
 use egui_winit::{State};
 
 #[allow(unused)]
@@ -95,56 +96,83 @@ fn add_custom_font(imgui_context: &mut u32, font_size: f32) -> rust_gui::FontId 
 //    }])
 //}
 
+#[derive(Parser)]
+#[command(name = "FranzPlot")]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    /// Optional file to open at launch
+    filename: Option<PathBuf>,
+
+    /// Do not open the UI, export PNG of the rendered scene to this file
+    #[arg(long, value_name = "EXPORT_SCENE")]
+    export_scene: Option<PathBuf>,
+
+    /// Do not open the UI, export PNG of the node graph to this file
+    #[arg(long, value_name = "EXPORT_GRAPH")]
+    export_graph: Option<PathBuf>,
+
+    /// Choose a different wgpu backend from the default one
+    #[arg(short, long, value_name = "WGPU_BACKEND")]
+    backend: Option<String>,
+
+    /// Sets a tracing folder for debug purposes
+    #[arg(short, long, value_name = "TRACING")]
+    tracing: Option<PathBuf>,
+
+    /// Pauses execution before backend initialization; each 'p' adds 5 seconds
+    #[arg(short, action = clap::ArgAction::Count)]
+    pause: u8,
+}
+
+
 fn main() -> Result<(), &'static str>{
-    let matches = clap::App::new("Franzplot")
-        .version(clap::crate_version!())
-        .author("Francesco Cattoglio")
-        .about("a tool to create and visualize parametric curves and surfaces")
-        .arg(clap::Arg::with_name("INPUT")
-            .help("Open an existing file instead of starting from a new one")
-            .required(false)
-            .index(1))
-        .arg(clap::Arg::with_name("export")
-             .help("Instead of running the program normally, FranzPlot will only export pictures of the graph and the scene.
-                   The name of the output files will be <export_value>.graph.png and <export_value.scene.png>")
-             .short("e")
-             .long("export")
-             .value_name("EXPORT")
-             .takes_value(true))
-        .arg(clap::Arg::with_name("tracing")
-            .short("t")
-            .long("tracing")
-            .value_name("TRACE_PATH")
-            .help("Sets a path for tracing output")
-            .takes_value(true))
-        .arg(clap::Arg::with_name("backend")
-            .short("b")
-            .long("backend")
-            .value_name("WGPU_BACKEND")
-            .help("Chose a different backend from the standard one")
-            .takes_value(true))
-        .arg(clap::Arg::with_name("p")
-            .short("p")
-            .multiple(true)
-            .help("Pause the execution before creating a device. Useful for attaching a debugger to a process. Each p is 5 secs"))
-        .get_matches();
+    let cli = Cli::parse();
+    //let matches = clap::App::new("Franzplot")
+    //    .version(clap::crate_version!())
+    //    .author("Francesco Cattoglio")
+    //    .about("a tool to create and visualize parametric curves and surfaces")
+    //    .arg(clap::Arg::with_name("INPUT")
+    //        .help("Open an existing file instead of starting from a new one")
+    //        .required(false)
+    //        .index(1))
+    //    .arg(clap::Arg::with_name("export")
+    //         .help("Instead of running the program normally, FranzPlot will only export pictures of the graph and the scene.
+    //               The name of the output files will be <export_value>.graph.png and <export_value.scene.png>")
+    //         .short('e')
+    //         .long("export")
+    //         .value_name("EXPORT")
+    //         .takes_value(true))
+    //    .arg(clap::Arg::with_name("tracing")
+    //        .short('t')
+    //        .long("tracing")
+    //        .value_name("TRACE_PATH")
+    //        .help("Sets a path for tracing output")
+    //        .takes_value(true))
+    //    .arg(clap::Arg::with_name("backend")
+    //        .short('b')
+    //        .long("backend")
+    //        .value_name("WGPU_BACKEND")
+    //        .help("Chose a different backend from the standard one")
+    //        .takes_value(true))
+    //    .arg(clap::Arg::with_name("p")
+    //        .short('p')
+    //        .multiple(true)
+    //        .help("Pause the execution before creating a device. Useful for attaching a debugger to a process. Each p is 5 secs"))
+    //    .get_matches();
 
     //wgpu_subscriber::initialize_default_subscriber(None);
 
     use std::{thread, time};
-    let seconds_to_wait = 5 * matches.occurrences_of("p");
+    let seconds_to_wait = 5 * cli.pause as u64;
     thread::sleep(time::Duration::from_secs(seconds_to_wait));
 
     env_logger::init();
-    let maybe_tracing_path = matches.value_of("tracing");
-    let tracing_path_option = maybe_tracing_path.map(|x| std::path::Path::new(x));
+    let opt_input_file = cli.filename.as_deref();
 
-    let maybe_input_file = matches.value_of("INPUT");
+    let opt_export_scene = cli.export_scene.as_deref();
+    let opt_export_graph = cli.export_graph.as_deref();
 
-    let maybe_export_path = matches.value_of("export");
-    let exporting_hang_workaround = maybe_export_path.is_some();
-
-    let maybe_backend = matches.value_of("backend").map(|name| {
+    let opt_backend = cli.backend.as_deref().map(|name| {
         match name.to_lowercase().as_str()  {
             "vulkan" => wgpu::Backends::VULKAN,
             "metal" => wgpu::Backends::METAL,
@@ -156,64 +184,9 @@ fn main() -> Result<(), &'static str>{
         }
     });
 
-    let event_loop = EventLoopBuilder::<CustomEvent>::with_user_event().build();
-
-
-    let window_size = if let Some(monitor) = event_loop.primary_monitor() {
-        // web winit always reports a size of zero
-        #[cfg(not(target_arch = "wasm32"))]
-        let screen_size = monitor.size();
-        winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
-    } else {
-        winit::dpi::PhysicalSize::new(1280, 800)
-    };
-
-    let icon_png = include_bytes!("../compile_resources/icon_128.png");
-    let icon_image = image::load_from_memory(icon_png).expect("Bad icon png file");
-    let (icon_rgba, icon_width, icon_height) = {
-        let image = icon_image.into_rgba8();
-        let (width, height) = image.dimensions();
-        let rgba = image.into_raw();
-        (rgba, width, height)
-    };
-    let icon = winit::window::Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Bad icon format");
-
-    let mut builder = winit::window::WindowBuilder::new();
-    builder = builder
-        .with_title("Franzplot")
-        .with_window_icon(Some(icon))
-        .with_inner_size(window_size);
-    if maybe_export_path.is_some() {
-        builder = builder.with_visible(false);
-    }
-    let window = builder.build(&event_loop).unwrap();
-
-    let hidpi_factor = window.scale_factor();
-    window.set_min_inner_size(Some(winit::dpi::LogicalSize::new(200.0, 100.0)));
-    let device_manager = device_manager::Manager::new(&window, tracing_path_option, maybe_backend);
-
+    let device_manager = device_manager::Manager::new(cli.tracing.as_deref(), opt_backend);
     // We use the egui_wgpu_backend crate as the render backend.
     let mut egui_rpass = Renderer::new(&device_manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1, 0); // TODO: investigate more how to properly set this
-
-    let mut camera_inputs = rendering::camera::InputState::default();
-    let mut cursor_position = winit::dpi::PhysicalPosition::<i32>::new(0, 0);
-    let mut mouse_frozen = false;
-
-    //let font_size = (12.0 * hidpi_factor) as f32;
-    //imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
-    //add_custom_font(&mut imgui, font_size);
-
-    let graph_fonts: Vec<u32> = node_graph::ZOOM_LEVELS.iter()
-        .map(|scale| 12 * hidpi_factor as u32 * *scale as u32)
-        .collect();
-    //cpp_gui::imnodes::Initialize();
-    //cpp_gui::imnodes::EnableCtrlScroll(true, &imgui.io().key_ctrl);
-
-    //let renderer_config = imgui_wgpu::RendererConfig {
-    //    texture_format: rendering::SWAPCHAIN_FORMAT,
-    //    .. Default::default()
-    //};
-    //let mut renderer = imgui_wgpu::Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, renderer_config);
 
     // first, create a texture that will be used to render the scene and display it inside of imgui
     let scene_texture = rendering::texture::Texture::create_output_texture(&device_manager.device, wgpu::Extent3d{width: 320, height:320, ..Default::default()}, 1);
@@ -338,32 +311,102 @@ fn main() -> Result<(), &'static str>{
         material_ids: [].to_vec(),
         model_names,
     };
+    // UP TO THIS POINT, initialization is exactly the same.
+    // now, we need to do something different if we are running headless
+    // or we are running with a GUI
+    let export_only = opt_export_graph.is_some() || opt_export_scene.is_some();
+    if export_only {
+        // headless mode!
+        // First, create an AppState + UserState (not the full State, which implies a running GUI)
+        let mut app_state = AppState::new(device_manager, assets);
+        let input_file = opt_input_file.expect("An input file is required when exporting a scene or a graph!");
+        let mut user_state = UserState::read_from_frzp(input_file).expect("Error opening the input file");
+        if let Some(scene_path) = opt_export_scene {
+            app_state.camera.set_x1_y1_z1_wide();
+            util::create_scene_png(&mut app_state, &mut user_state, &scene_path);
+        ////event_loop_proxy.send_event(CustomEvent::ExportGraphPng(graph_file_path)).unwrap();
+        //event_loop_proxy.send_event(CustomEvent::ExportScenePng(scene_file_path)).unwrap();
+
+        }
+        // after exporting, just exit
+        return Ok(());
+    }
+        //let scene_file_name = String::new() + path.into_os_string().into_string() + ".scene.png";
+        //let scene_file_path = std::path::PathBuf::from(&scene_file_name);
+        //let graph_file_name = String::new() + path.into_os_string().into_string() + ".graph.png";
+        //let _graph_file_path = std::path::PathBuf::from(&graph_file_name);
+        //state.app.camera.set_x1_y1_z1_wide();
+        ////event_loop_proxy.send_event(CustomEvent::ExportGraphPng(graph_file_path)).unwrap();
+        //event_loop_proxy.send_event(CustomEvent::ExportScenePng(scene_file_path)).unwrap();
+        //event_loop_proxy.send_event(CustomEvent::RequestExit).unwrap();
+
+    let mut old_instant = std::time::Instant::now();
+    let mut modifiers_state = winit::event::ModifiersState::default();
+
+    // >>>>>>>>>>>>>>>>>>>>>>>>>>> UI CODE STARTS HERE
+
+    //let font_size = (12.0 * hidpi_factor) as f32;
+    //imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
+    //add_custom_font(&mut imgui, font_size);
+
+    //let graph_fonts: Vec<u32> = node_graph::ZOOM_LEVELS.iter()
+    //    .map(|scale| 12 * hidpi_factor as u32 * *scale as u32)
+    //    .collect();
+    //cpp_gui::imnodes::Initialize();
+    //cpp_gui::imnodes::EnableCtrlScroll(true, &imgui.io().key_ctrl);
+
+    //let renderer_config = imgui_wgpu::RendererConfig {
+    //    texture_format: rendering::SWAPCHAIN_FORMAT,
+    //    .. Default::default()
+    //};
+    //let mut renderer = imgui_wgpu::Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, renderer_config);
+
+    let event_loop = EventLoopBuilder::<CustomEvent>::with_user_event().build();
+
     let executor = util::Executor::new();
     let event_loop_proxy = event_loop.create_proxy();
     //let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, availables, graph_fonts);
-    let mut state = state::State::new(device_manager, assets, &event_loop, window.scale_factor() as f32);
+    let window_size = if let Some(monitor) = event_loop.primary_monitor() {
+        // web winit always reports a size of zero
+        #[cfg(not(target_arch = "wasm32"))]
+        let screen_size = monitor.size();
+        winit::dpi::PhysicalSize::new(screen_size.width * 3 / 4, screen_size.height * 3 / 4)
+    } else {
+        winit::dpi::PhysicalSize::new(1280, 800)
+    };
 
-    if let Some(file) = maybe_input_file {
-        let file_path = std::path::PathBuf::from(file);
-        println!("FranzPlot starting. Opening file: {}", file);
-        event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
+    let icon_png = include_bytes!("../compile_resources/icon_128.png");
+    let icon_image = image::load_from_memory(icon_png).expect("Bad icon png file");
+    let (icon_rgba, icon_width, icon_height) = {
+        let image = icon_image.into_rgba8();
+        let (width, height) = image.dimensions();
+        let rgba = image.into_raw();
+        (rgba, width, height)
+    };
+    let icon = winit::window::Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Bad icon format");
+
+    let mut builder = winit::window::WindowBuilder::new();
+    builder = builder
+        .with_title("Franzplot")
+        .with_window_icon(Some(icon))
+        .with_inner_size(window_size);
+    let window = builder.build(&event_loop).unwrap();
+
+    let mut state = state::State::new(device_manager, assets, &window, &event_loop);
+
+    let hidpi_factor = window.scale_factor();
+    window.set_min_inner_size(Some(winit::dpi::LogicalSize::new(200.0, 100.0)));
+
+    let mut camera_inputs = rendering::camera::InputState::default();
+    let mut cursor_position = winit::dpi::PhysicalPosition::<i32>::new(0, 0);
+    let mut mouse_frozen = false;
+
+    if let Some(file) = opt_input_file {
+        event_loop_proxy.send_event(CustomEvent::OpenFile(file.into())).unwrap();
     } else {
         println!("FranzPlot starting, no file selected.");
     }
 
-    if let Some(path) = maybe_export_path {
-        let scene_file_name = String::new() + path + ".scene.png";
-        let scene_file_path = std::path::PathBuf::from(&scene_file_name);
-        let graph_file_name = String::new() + path + ".graph.png";
-        let _graph_file_path = std::path::PathBuf::from(&graph_file_name);
-        state.app.camera.set_x1_y1_z1_wide();
-        //event_loop_proxy.send_event(CustomEvent::ExportGraphPng(graph_file_path)).unwrap();
-        event_loop_proxy.send_event(CustomEvent::ExportScenePng(scene_file_path)).unwrap();
-        event_loop_proxy.send_event(CustomEvent::RequestExit).unwrap();
-    }
-
-    let mut old_instant = std::time::Instant::now();
-    let mut modifiers_state = winit::event::ModifiersState::default();
 
     let start_time = Instant::now();
     event_loop.run(move |event, _, control_flow| {
@@ -396,11 +439,11 @@ let texture_size = wgpu::Extent3d {
 };
 let render_request = Action::RenderScene(texture_size, &scene_view);
 state.process(render_request).expect("failed to render the scene due to an unknown error");
-                state.egui_ctx.begin_frame(raw_input);
+                state.app.egui_ctx.begin_frame(raw_input);
 
 egui::Window::new("My Window2")
                 .drag_bounds(egui::Rect::EVERYTHING)
-                .show(&state.egui_ctx, |ui| {
+                .show(&state.app.egui_ctx, |ui| {
    ui.label("Hello World!");
    ui.image(scene_texture_id, egui::Vec2::new(200.0, 200.0));
    let stringed = format!("{}", start_time.elapsed().as_secs_f64());
@@ -408,12 +451,12 @@ egui::Window::new("My Window2")
 });
 
                 // End the UI frame. We could now handle the output and draw the UI with the backend.
-                let full_output = state.egui_ctx.end_frame();
-                state.egui_state.handle_platform_output(&window, &state.egui_ctx, full_output.platform_output);
+                let full_output = state.app.egui_ctx.end_frame();
+                state.egui_state.handle_platform_output(&window, &state.app.egui_ctx, full_output.platform_output);
 
-                let paint_jobs = state.egui_ctx.tessellate(full_output.shapes);
+                let paint_jobs = state.app.egui_ctx.tessellate(full_output.shapes);
                 // acquire next frame, or update the swapchain if a resize occurred
-                let frame = if let Some(frame) = state.app.manager.get_frame() {
+                let frame = if let Some(frame) = state.get_frame() {
                     frame
                 } else {
                     // if we are unable to get a frame, skip rendering altogether
@@ -426,7 +469,7 @@ egui::Window::new("My Window2")
 
                 // Upload all resources for the GPU.
                 let screen_descriptor = ScreenDescriptor {
-                    size_in_pixels: [state.app.manager.config.width, state.app.manager.config.height],
+                    size_in_pixels: [window.inner_size().width, window.inner_size().height],
                     pixels_per_point: window.scale_factor() as f32,
                 };
                 for (id, image_delta) in full_output.textures_delta.set {
@@ -540,12 +583,9 @@ egui::Window::new("My Window2")
                     },
                     CustomEvent::RequestExit => {
                         *control_flow = ControlFlow::Exit;
-                        if exporting_hang_workaround {
-                            std::process::exit(0);
-                        }
                     },
                     CustomEvent::SaveFile(path_buf) => {
-                        let action = Action::WriteToFile(path_buf);
+                        let action = Action::WriteToFile(&path_buf);
                         match state.process(action) {
                             Ok(()) => {
                             },
@@ -556,7 +596,7 @@ egui::Window::new("My Window2")
                         //rust_gui.graph_edited = false;
                     },
                     CustomEvent::OpenFile(path_buf) => {
-                        let action = Action::OpenFile(path_buf);
+                        let action = Action::OpenFile(&path_buf);
                         match state.process(action) {
                             Ok(()) => {
                                 //rust_gui.reset_undo_history(&state);
@@ -579,7 +619,7 @@ egui::Window::new("My Window2")
                     },
                     CustomEvent::ExportScenePng(path_buf) => {
                         println!("Exporting scene: {:?}", &path_buf);
-                        util::create_scene_png(&mut state, &path_buf);
+                        util::create_scene_png(&mut state.app, &mut state.user, &path_buf);
                     },
                     CustomEvent::MouseFreeze => {
                         // set mouse as frozen
@@ -632,7 +672,7 @@ egui::Window::new("My Window2")
                 //}
             },
             Event::WindowEvent { event, .. } => {
-                let event_response = state.egui_state.on_event(&state.egui_ctx, &event);
+                let event_response = state.egui_state.on_event(&state.app.egui_ctx, &event);
                 if event_response.consumed {
                     return;
                 }

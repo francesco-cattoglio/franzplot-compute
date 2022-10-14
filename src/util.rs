@@ -3,7 +3,8 @@ use crate::device_manager;
 use crate::rendering::texture;
 use crate::rendering::model;
 use crate::state::Action;
-use crate::state::State;
+use crate::state::AppState;
+use crate::state::UserState;
 
 use std::future::Future;
 pub struct Executor {
@@ -375,7 +376,7 @@ impl BufferDimensions {
 //    }
 //}
 
-pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_path: &P) {
+pub fn create_scene_png<P: AsRef<std::path::Path>>(app: &mut AppState, user: &mut UserState, output_path: &P) {
     let height = 1080;
     let width = 1920;
     let texture_size = wgpu::Extent3d {
@@ -383,18 +384,17 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
         width,
         depth_or_array_layers: 1,
     };
-    let output_texture = super::rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
-    let processing_result = state.process(Action::ProcessUserState());
+    let output_texture = super::rendering::texture::Texture::create_output_texture(&app.manager.device, texture_size, 1);
+    let processing_result = crate::state::user_to_app_state(app, user);
     if let Err(error) = processing_result {
             println!("Warning: errors detected in the scene: {}", error);
     }
 
-    let render_request = Action::RenderScene(texture_size, &output_texture.view);
-    state.process(render_request).expect("failed to render the scene due to an unknown error");
+    app.render_scene(texture_size, &output_texture.view).expect("failed to render the scene due to an unknown error");
 
     let buffer_dimensions = BufferDimensions::new(width as usize, height as usize);
     // The output buffer lets us retrieve the data as an array
-    let png_buffer = state.app.manager.device.create_buffer(&wgpu::BufferDescriptor {
+    let png_buffer = app.manager.device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
         size: (buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height) as u64,
         usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
@@ -404,7 +404,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     let command_buffer = {
         use std::num::NonZeroU32;
 
-        let mut encoder = state.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        let mut encoder = app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
         // Copy the data from the texture to the buffer
         encoder.copy_texture_to_buffer(
@@ -428,7 +428,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
         encoder.finish()
     };
 
-    state.app.manager.queue.submit(Some(command_buffer));
+    app.manager.queue.submit(Some(command_buffer));
 
     let buffer_slice = png_buffer.slice(..);
     use futures::executor::block_on;
@@ -440,7 +440,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(state: &mut State, output_pat
     // Poll the device in a blocking manner so that our future resolves.
     // In an actual application, `device.poll(...)` should
     // be called in an event loop or on another thread.
-    state.app.manager.device.poll(wgpu::Maintain::Wait);
+    app.manager.device.poll(wgpu::Maintain::Wait);
 
     // If a file system is available, write the buffer as a PNG
     let has_file_system_available = cfg!(not(target_arch = "wasm32"));

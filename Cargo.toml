@@ -1,7 +1,8 @@
 [package]
 name = "franzplot-compute"
-version = "21.4.0"
+version = "22.10.0"
 authors = ["francesco.cattoglio <francesco.cattoglio@gmail.com>"]
+about = ["Curve e Superfici"]
 edition = "2021"
 
 [[bin]]
@@ -15,7 +16,7 @@ all = ["teachers-edition", "dev-tools"]
 
 [dependencies]
 wgpu = { version = "0.14", features = ["trace", "spirv"] }
-winit = { version="0.27.3", features = ["x11"]}
+winit = { version="0.27.3", features = ["x11"] }
 chrono = { version = "0.4", features = ["serde"] }
 pollster = "0.2"
 egui = { git = "https://github.com/emilk/egui", version = "0.19", rev = "7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b" }
@@ -37,7 +38,7 @@ smol_str = { version = "0.1", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ron = "0.6.4"
-clap = "2.33"
+clap = { version = "4.0", features = ["cargo", "derive"] }
 obj = "0.10"
 #imgui = "0.8"
 #imgui-winit-support = { version = "0.8.2", default-features = false, features = ["winit-26"] }
