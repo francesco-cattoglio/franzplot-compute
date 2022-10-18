@@ -2,6 +2,8 @@ use std::path::Path;
 
 use crate::compute_graph::ComputeGraph;
 use crate::device_manager::Manager;
+use crate::node_graph::NodeGraph;
+use crate::rendering::SWAPCHAIN_FORMAT;
 use crate::rendering::camera;
 use crate::rendering::SceneRenderer;
 use crate::rendering::texture::{Texture, Masks};
@@ -33,8 +35,10 @@ pub struct UserState {
 impl Default for UserState {
     fn default() -> Self {
         UserState {
+            node_graph: NodeGraph::default(),
+            globals_names: Vec::new(),
+            globals_init_values: Vec::new(),
             tss: TSs::new_now(),
-            ..Default::default()
         }
     }
 }
@@ -282,6 +286,15 @@ impl State {
             let surface = manager.instance.create_surface(window);
             (size, surface)
         };
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: SWAPCHAIN_FORMAT,
+            width: size.width,
+            height: size.height,
+            present_mode: wgpu::PresentMode::Fifo,
+            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+        };
+        screen_surface.configure(&manager.device, &config);
 
         Self {
             app: AppState::new(manager, assets),

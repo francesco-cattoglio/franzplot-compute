@@ -19,6 +19,7 @@ mod device_manager;
 mod shader_processing;
 mod node_graph;
 mod rust_gui;
+mod gui;
 //mod cpp_gui;
 mod file_io;
 mod parser;
@@ -127,39 +128,6 @@ struct Cli {
 
 fn main() -> Result<(), &'static str>{
     let cli = Cli::parse();
-    //let matches = clap::App::new("Franzplot")
-    //    .version(clap::crate_version!())
-    //    .author("Francesco Cattoglio")
-    //    .about("a tool to create and visualize parametric curves and surfaces")
-    //    .arg(clap::Arg::with_name("INPUT")
-    //        .help("Open an existing file instead of starting from a new one")
-    //        .required(false)
-    //        .index(1))
-    //    .arg(clap::Arg::with_name("export")
-    //         .help("Instead of running the program normally, FranzPlot will only export pictures of the graph and the scene.
-    //               The name of the output files will be <export_value>.graph.png and <export_value.scene.png>")
-    //         .short('e')
-    //         .long("export")
-    //         .value_name("EXPORT")
-    //         .takes_value(true))
-    //    .arg(clap::Arg::with_name("tracing")
-    //        .short('t')
-    //        .long("tracing")
-    //        .value_name("TRACE_PATH")
-    //        .help("Sets a path for tracing output")
-    //        .takes_value(true))
-    //    .arg(clap::Arg::with_name("backend")
-    //        .short('b')
-    //        .long("backend")
-    //        .value_name("WGPU_BACKEND")
-    //        .help("Chose a different backend from the standard one")
-    //        .takes_value(true))
-    //    .arg(clap::Arg::with_name("p")
-    //        .short('p')
-    //        .multiple(true)
-    //        .help("Pause the execution before creating a device. Useful for attaching a debugger to a process. Each p is 5 secs"))
-    //    .get_matches();
-
     //wgpu_subscriber::initialize_default_subscriber(None);
 
     use std::{thread, time};
@@ -311,13 +279,14 @@ fn main() -> Result<(), &'static str>{
         material_ids: [].to_vec(),
         model_names,
     };
+
     // UP TO THIS POINT, initialization is exactly the same.
     // now, we need to do something different if we are running headless
     // or we are running with a GUI
     let export_only = opt_export_graph.is_some() || opt_export_scene.is_some();
     if export_only {
         // headless mode!
-        // First, create an AppState + UserState (not the full State, which implies a running GUI)
+        // First, create an AppState + UserState (not the full State, which implies a running winit GUI)
         let mut app_state = AppState::new(device_manager, assets);
         let input_file = opt_input_file.expect("An input file is required when exporting a scene or a graph!");
         let mut user_state = UserState::read_from_frzp(input_file).expect("Error opening the input file");
@@ -326,19 +295,14 @@ fn main() -> Result<(), &'static str>{
             util::create_scene_png(&mut app_state, &mut user_state, &scene_path);
         }
         if let Some(graph_path) = opt_export_graph {
-            util::create_graph_png(&mut app_state, &mut user_state, &graph_path);
+            util::create_graph_png(&mut app_state, &user_state, &graph_path);
         }
         // after exporting, just exit
         return Ok(());
     }
-        //let scene_file_name = String::new() + path.into_os_string().into_string() + ".scene.png";
-        //let scene_file_path = std::path::PathBuf::from(&scene_file_name);
-        //let graph_file_name = String::new() + path.into_os_string().into_string() + ".graph.png";
-        //let _graph_file_path = std::path::PathBuf::from(&graph_file_name);
-        //state.app.camera.set_x1_y1_z1_wide();
-        ////event_loop_proxy.send_event(CustomEvent::ExportGraphPng(graph_file_path)).unwrap();
-        //event_loop_proxy.send_event(CustomEvent::ExportScenePng(scene_file_path)).unwrap();
-        //event_loop_proxy.send_event(CustomEvent::RequestExit).unwrap();
+
+    // if we are NOT running in headless mode, then we need to create the event loop and initialize
+    // the window
 
     let mut old_instant = std::time::Instant::now();
     let mut modifiers_state = winit::event::ModifiersState::default();
@@ -374,7 +338,6 @@ fn main() -> Result<(), &'static str>{
     } else {
         winit::dpi::PhysicalSize::new(1280, 800)
     };
-
     let icon_png = include_bytes!("../compile_resources/icon_128.png");
     let icon_image = image::load_from_memory(icon_png).expect("Bad icon png file");
     let (icon_rgba, icon_width, icon_height) = {
