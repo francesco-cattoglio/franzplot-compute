@@ -280,6 +280,10 @@ pub struct State {
     pub egui_state: egui_winit::State,
     pub egui_rpass: egui_wgpu::Renderer,
     pub screen_surface: wgpu::Surface,
+    // BEWARE: we NEED to store the surface_config, because after a resize the window.inner_size()
+    // does not reflect the correct value to be used by WGPU scissor rect, so we need to use
+    // the width and height stored in the surface_config and use those at redering time
+    pub surface_config: wgpu::SurfaceConfiguration,
     pub scene_texture_id: egui::TextureId,
 }
 
@@ -295,15 +299,15 @@ impl State {
             let surface = manager.instance.create_surface(window);
             (size, surface)
         };
-        let config = wgpu::SurfaceConfiguration {
+        let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
             format: SWAPCHAIN_FORMAT,
             width: size.width,
             height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode: wgpu::PresentMode::AutoNoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
         };
-        screen_surface.configure(&manager.device, &config);
+        screen_surface.configure(&manager.device, &surface_config);
 
         // We use the egui_wgpu_backend crate as the render backend.
         let mut egui_rpass = egui_wgpu::Renderer::new(&manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1, 0); // TODO: investigate more how to properly set this
@@ -322,27 +326,18 @@ impl State {
             event_loop: event_loop.create_proxy(),
             scene_texture_id,
             screen_surface,
+            surface_config,
         }
     }
 
     pub fn resize_frame(&mut self, size: PhysicalSize<u32>) {
-    //    let height = size.height as u32;
-    //    let width = size.width as u32;
-    //    if height >= 8 && width >= 8 {
-    //        self.config.width = width;
-    //        self.config.height = height;
-    //        self.surface.configure(&self.device, &self.config);
-    //    }
-        println!("resized frame to {size:?}");
-        let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: SWAPCHAIN_FORMAT,
-            width: size.width,
-            height: size.height,
-            present_mode: wgpu::PresentMode::Fifo,
-            alpha_mode: wgpu::CompositeAlphaMode::Auto,
-        };
-        self.screen_surface.configure(&self.app.manager.device, &config);
+        let width = size.width as u32;
+        let height = size.height as u32;
+        if width >= 8 && height >= 8 {
+            self.surface_config.width = width;
+            self.surface_config.height = height;
+            self.screen_surface.configure(&self.app.manager.device, &self.surface_config);
+        }
     }
 
     pub fn get_frame(&mut self) -> Option<wgpu::SurfaceTexture> {
@@ -362,6 +357,7 @@ impl State {
                     // validation layer will panic. The best course of action is doing nothing at
                     // all, the problem will fix itself on the next frame, when the Resized event
                     // fires.
+                    dbg!("outdated");
                     None
                 }
                 Err(wgpu::SurfaceError::OutOfMemory) => {
@@ -379,8 +375,6 @@ impl State {
     }
 
     pub fn render_frame(&mut self, window: &winit::window::Window) -> Result<(), String> {
-        let inner = window.inner_size();
-        println!("rendering frame with inner size {inner:?}");
         let raw_input = self.egui_state.take_egui_input(window);
         let full_output = self.gui.show(&self.app.egui_ctx, raw_input, &mut self.user);
         self.egui_state.handle_platform_output(window, &self.app.egui_ctx, full_output.platform_output);
@@ -402,7 +396,7 @@ impl State {
 
         // Upload all resources for the GPU.
         let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
-            size_in_pixels: [window.inner_size().width, window.inner_size().height],
+            size_in_pixels: [self.surface_config.width, self.surface_config.height],
             pixels_per_point: window.scale_factor() as f32,
         };
         for (id, image_delta) in full_output.textures_delta.set {

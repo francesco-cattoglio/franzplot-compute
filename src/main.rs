@@ -585,9 +585,9 @@ fn main() -> Result<(), &'static str>{
                 if event_response.consumed {
                     return;
                 }
-                match event {
-                    _ => {}
-                };
+                //match event {
+                //    _ => {}
+                //};
             //// if the window was resized, we need to resize the swapchain as well!
                 //if rust_gui.graph_edited {
                 //    file_io::async_confirm_load(event_loop_proxy.clone(), &executor, file_path);
