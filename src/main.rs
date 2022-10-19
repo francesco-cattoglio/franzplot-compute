@@ -112,7 +112,9 @@ struct Cli {
     #[arg(long, value_name = "EXPORT_GRAPH")]
     export_graph: Option<PathBuf>,
 
-    /// Choose a different wgpu backend from the default one
+    /// Choose a different wgpu backend from the default one. Options are:
+    /// "vulkan", "metal", "dx12", "dx11", "gl"
+
     #[arg(short, long, value_name = "WGPU_BACKEND")]
     backend: Option<String>,
 
@@ -153,14 +155,6 @@ fn main() -> Result<(), &'static str>{
     });
 
     let device_manager = device_manager::Manager::new(cli.tracing.as_deref(), opt_backend);
-    // We use the egui_wgpu_backend crate as the render backend.
-    let mut egui_rpass = Renderer::new(&device_manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1, 0); // TODO: investigate more how to properly set this
-
-    // first, create a texture that will be used to render the scene and display it inside of imgui
-    let scene_texture = rendering::texture::Texture::create_output_texture(&device_manager.device, wgpu::Extent3d{width: 320, height:320, ..Default::default()}, 1);
-    let scene_view = scene_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
-    let scene_texture_id = egui_rpass.register_native_texture(&device_manager.device, &scene_view, egui_wgpu::wgpu::FilterMode::Linear);
-
     let resources_path = {
         // Check if the resources folder can be find as a subfolder of current work directory
         let mut dir_path = env::current_dir().unwrap();
@@ -355,7 +349,13 @@ fn main() -> Result<(), &'static str>{
         .with_inner_size(window_size);
     let window = builder.build(&event_loop).unwrap();
 
-    let mut state = state::State::new(device_manager, assets, &window, &event_loop);
+    let ferre_gui = Box::new(gui::FerreGui::new());
+    let mut state = state::State::new(device_manager, assets, ferre_gui, &window, &event_loop);
+    if let Some(file) = opt_input_file {
+        state.user = UserState::read_from_frzp(file).unwrap();
+    } else {
+        println!("FranzPlot starting, no file selected.");
+    }
 
     let hidpi_factor = window.scale_factor();
     window.set_min_inner_size(Some(winit::dpi::LogicalSize::new(200.0, 100.0)));
@@ -363,12 +363,6 @@ fn main() -> Result<(), &'static str>{
     let mut camera_inputs = rendering::camera::InputState::default();
     let mut cursor_position = winit::dpi::PhysicalPosition::<i32>::new(0, 0);
     let mut mouse_frozen = false;
-
-    if let Some(file) = opt_input_file {
-        event_loop_proxy.send_event(CustomEvent::OpenFile(file.into())).unwrap();
-    } else {
-        println!("FranzPlot starting, no file selected.");
-    }
 
 
     let start_time = Instant::now();
@@ -387,76 +381,28 @@ fn main() -> Result<(), &'static str>{
                 //imgui.io_mut().update_delta_time(frame_duration); // this function only computes imgui internal time delta
                 old_instant = now;
             }
+            Event::Suspended => {
+            }
+            Event::Resumed => {
+            }
+            Event::DeviceEvent { .. } => {
+            }
             // Emitted when all of the event loop's input events have been processed and redraw processing is about to begin.
             Event::MainEventsCleared => {
-                        window.request_redraw();
+                window.request_redraw();
             }
+            Event::WindowEvent { event: WindowEvent::Resized(physical_size), .. } => {
+                state.resize_frame(physical_size);
+            }
+            // TODO: this might be useful for the web or mobile version
+            //Event::WindowEvent { event: WindowEvent::ScaleFactorChanged { new_inner_size, .. }, ..} => {
+            //    // new_inner_size is &&mut so we have to dereference it twice
+            //    state.resize_frame(*new_inner_size);
+            //}
             // Begin rendering. During each iteration of the event loop, Winit will aggregate duplicate redraw requests
             // into a single event, to help avoid duplicating rendering work.
             Event::RedrawRequested(_window_id) => {
-                let raw_input = state.egui_state.take_egui_input(&window);
-let texture_size = wgpu::Extent3d {
-    width: 320,
-    height: 320,
-    ..Default::default()
-};
-let render_request = Action::RenderScene(texture_size, &scene_view);
-state.process(render_request).expect("failed to render the scene due to an unknown error");
-                state.app.egui_ctx.begin_frame(raw_input);
-
-egui::Window::new("My Window2")
-                .drag_bounds(egui::Rect::EVERYTHING)
-                .show(&state.app.egui_ctx, |ui| {
-   ui.label("Hello World!");
-   ui.image(scene_texture_id, egui::Vec2::new(200.0, 200.0));
-   let stringed = format!("{}", start_time.elapsed().as_secs_f64());
-   ui.label(stringed);
-});
-
-                // End the UI frame. We could now handle the output and draw the UI with the backend.
-                let full_output = state.app.egui_ctx.end_frame();
-                state.egui_state.handle_platform_output(&window, &state.app.egui_ctx, full_output.platform_output);
-
-                let paint_jobs = state.app.egui_ctx.tessellate(full_output.shapes);
-                // acquire next frame, or update the swapchain if a resize occurred
-                let frame = if let Some(frame) = state.get_frame() {
-                    frame
-                } else {
-                    // if we are unable to get a frame, skip rendering altogether
-                    return;
-                };
-
-                // use the acquired frame for a rendering pass, which will clear the screen and render the gui
-                let mut encoder: wgpu::CommandEncoder =
-                    state.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-
-                // Upload all resources for the GPU.
-                let screen_descriptor = ScreenDescriptor {
-                    size_in_pixels: [window.inner_size().width, window.inner_size().height],
-                    pixels_per_point: window.scale_factor() as f32,
-                };
-                for (id, image_delta) in full_output.textures_delta.set {
-                    egui_rpass.update_texture(&state.app.manager.device, &state.app.manager.queue, id, &image_delta);
-                }
-                egui_rpass.update_buffers(&state.app.manager.device, &state.app.manager.queue, &paint_jobs, &screen_descriptor);
-
-                // Record all render passes.
-                let frame_view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
-                egui_rpass
-                    .render(
-                        &mut encoder,
-                        &frame_view,
-                        &paint_jobs,
-                        &screen_descriptor,
-                        Some(wgpu::Color::BLACK),
-                    );
-                // Submit the commands.
-                state.app.manager.queue.submit(std::iter::once(encoder.finish()));
-
-                // Redraw egui
-                frame.present();
-
-
+                state.render_frame(&window).expect("rendering of the main UI failed");
                 // actual imgui rendering
                 //let ui = imgui.frame();
                 //let size = window.inner_size().to_logical(hidpi_factor);
@@ -639,18 +585,16 @@ egui::Window::new("My Window2")
                 if event_response.consumed {
                     return;
                 }
+                match event {
+                    _ => {}
+                };
+            //// if the window was resized, we need to resize the swapchain as well!
                 //if rust_gui.graph_edited {
                 //    file_io::async_confirm_load(event_loop_proxy.clone(), &executor, file_path);
                 //} else {
                 //    event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
                 //}
             },
-            Event::DeviceEvent { .. } => {
-            }
-            Event::Suspended => {
-            }
-            Event::Resumed => {
-            }
             // catch-all for remaining events (WindowEvent and DeviceEvent). We do this because
             // we want imgui to handle it first, and then do any kind of "post-processing"
             // that we might be thinking of.
@@ -659,10 +603,6 @@ egui::Window::new("My Window2")
 
             //    // additional processing of input
             //    match other_event {
-            //        // if the window was resized, we need to resize the swapchain as well!
-            //        Event::WindowEvent{ event: WindowEvent::Resized(physical_size), .. } => {
-            //            state.app.manager.resize(physical_size);
-            //        }
             //        Event::WindowEvent{ event: WindowEvent::CursorMoved { position, .. }, ..} => {
             //            if !mouse_frozen {
             //                cursor_position = position.cast();

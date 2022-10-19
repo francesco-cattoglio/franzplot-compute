@@ -63,14 +63,4 @@ impl Manager {
         }
     }
 
-    pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
-    //    let height = size.height as u32;
-    //    let width = size.width as u32;
-    //    if height >= 8 && width >= 8 {
-    //        self.config.width = width;
-    //        self.config.height = height;
-    //        self.surface.configure(&self.device, &self.config);
-    //    }
-    }
-
 }

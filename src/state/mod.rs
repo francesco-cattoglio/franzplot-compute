@@ -1,7 +1,9 @@
 use std::path::Path;
 
+use crate::CustomEvent;
 use crate::compute_graph::ComputeGraph;
 use crate::device_manager::Manager;
+use crate::gui::Gui;
 use crate::node_graph::NodeGraph;
 use crate::rendering::SWAPCHAIN_FORMAT;
 use crate::rendering::camera;
@@ -9,10 +11,12 @@ use crate::rendering::SceneRenderer;
 use crate::rendering::texture::{Texture, Masks};
 use crate::rendering::model::Model;
 use crate::node_graph;
+use egui_wgpu::Renderer;
 use serde::{Serialize, Deserialize};
 
 pub mod action;
 pub use action::Action;
+use winit::dpi::PhysicalSize;
 
 // The State struct encapsulates the whole application state,
 // the GUI takes a mutable reference to the state and modifies it
@@ -43,6 +47,7 @@ impl Default for UserState {
     }
 }
 impl UserState {
+    // TODO: proper error handling
     pub fn write_to_frzp(&mut self, path: &Path) {
         let mut file = std::fs::File::create(path).unwrap();
         let ser_config = ron::ser::PrettyConfig::new()
@@ -270,14 +275,18 @@ pub fn user_to_app_state(app: &mut AppState, user: &mut UserState) -> Result<(),
 pub struct State {
     pub app: AppState,
     pub user: UserState,
+    pub gui: Box<dyn Gui>,
+    pub event_loop: winit::event_loop::EventLoopProxy<CustomEvent>,
     pub egui_state: egui_winit::State,
+    pub egui_rpass: egui_wgpu::Renderer,
     pub screen_surface: wgpu::Surface,
+    pub scene_texture_id: egui::TextureId,
 }
 
 impl State {
     // this function will likely be called only once, at program start
     // at program start, we can just set the user and app data to its default value
-    pub fn new<T>(manager: Manager, assets: Assets, window: &winit::window::Window, event_loop: &winit::event_loop::EventLoop<T>) -> Self {
+    pub fn new(manager: Manager, assets: Assets, gui: Box<dyn Gui>, window: &winit::window::Window, event_loop: &winit::event_loop::EventLoop<CustomEvent>) -> Self {
         let mut egui_state = egui_winit::State::new(event_loop);
         egui_state.set_pixels_per_point(window.scale_factor() as f32);
 
@@ -296,12 +305,44 @@ impl State {
         };
         screen_surface.configure(&manager.device, &config);
 
+        // We use the egui_wgpu_backend crate as the render backend.
+        let mut egui_rpass = egui_wgpu::Renderer::new(&manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1, 0); // TODO: investigate more how to properly set this
+
+        // first, create a texture that will be used to render the scene and display it inside of imgui
+        let scene_texture = Texture::create_output_texture(&manager.device, wgpu::Extent3d{width: 320, height:320, ..Default::default()}, 1);
+        let scene_view = scene_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let scene_texture_id = egui_rpass.register_native_texture(&manager.device, &scene_view, egui_wgpu::wgpu::FilterMode::Linear);
+
         Self {
             app: AppState::new(manager, assets),
             user: UserState::default(),
+            gui,
+            egui_rpass,
             egui_state,
+            event_loop: event_loop.create_proxy(),
+            scene_texture_id,
             screen_surface,
         }
+    }
+
+    pub fn resize_frame(&mut self, size: PhysicalSize<u32>) {
+    //    let height = size.height as u32;
+    //    let width = size.width as u32;
+    //    if height >= 8 && width >= 8 {
+    //        self.config.width = width;
+    //        self.config.height = height;
+    //        self.surface.configure(&self.device, &self.config);
+    //    }
+        println!("resized frame to {size:?}");
+        let config = wgpu::SurfaceConfiguration {
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            format: SWAPCHAIN_FORMAT,
+            width: size.width,
+            height: size.height,
+            present_mode: wgpu::PresentMode::Fifo,
+            alpha_mode: wgpu::CompositeAlphaMode::Auto,
+        };
+        self.screen_surface.configure(&self.app.manager.device, &config);
     }
 
     pub fn get_frame(&mut self) -> Option<wgpu::SurfaceTexture> {
@@ -337,14 +378,65 @@ impl State {
         }
     }
 
-    pub fn process(&mut self, action: Action) -> Result<(), String>{
+    pub fn render_frame(&mut self, window: &winit::window::Window) -> Result<(), String> {
+        let inner = window.inner_size();
+        println!("rendering frame with inner size {inner:?}");
+        let raw_input = self.egui_state.take_egui_input(window);
+        let full_output = self.gui.show(&self.app.egui_ctx, raw_input, &mut self.user);
+        self.egui_state.handle_platform_output(window, &self.app.egui_ctx, full_output.platform_output);
+
+        let paint_jobs = self.app.egui_ctx.tessellate(full_output.shapes);
+        // acquire next frame, or update the swapchain if a resize occurred
+        let frame = if let Some(frame) = self.get_frame() {
+            frame
+        } else {
+            // if we are unable to get a frame, skip rendering altogether
+            return Ok(());
+        };
+
+        // declare an alias to make the rest of the code readable
+        let manager = &self.app.manager;
+        // use the acquired frame for a rendering pass, which will clear the screen and render the gui
+        let mut encoder: wgpu::CommandEncoder =
+            self.app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+
+        // Upload all resources for the GPU.
+        let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
+            size_in_pixels: [window.inner_size().width, window.inner_size().height],
+            pixels_per_point: window.scale_factor() as f32,
+        };
+        for (id, image_delta) in full_output.textures_delta.set {
+            self.egui_rpass.update_texture(&manager.device, &manager.queue, id, &image_delta);
+        }
+        self.egui_rpass.update_buffers(&manager.device, &manager.queue, &paint_jobs, &screen_descriptor);
+
+        // Record all render passes.
+        let frame_view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        self.egui_rpass
+            .render(
+                &mut encoder,
+                &frame_view,
+                &paint_jobs,
+                &screen_descriptor,
+                Some(wgpu::Color::BLACK),
+            );
+        // Submit the commands.
+        manager.queue.submit(std::iter::once(encoder.finish()));
+
+        // Redraw egui
+        frame.present();
+
+        Ok(())
+    }
+
+    pub fn process(&mut self, action: Action) -> Result<(), String> {
         match action {
             Action::WriteToFile(path) => {
-                self.user.write_to_frzp(&path);
+                self.user.write_to_frzp(path);
                 Ok(())
             } ,
             Action::OpenFile(path) => {
-                self.user = UserState::read_from_frzp(&path)?;
+                self.user = UserState::read_from_frzp(path)?;
                 Ok(())
             },
             Action::NewFile() => {
@@ -372,6 +464,9 @@ impl State {
                     dbg!("tried to update globals, but there is no graph!"); // TODO: better handling
                     Ok(())
                 }
+            }
+            Action::RenderUI(window) => {
+                self.render_frame(window)
             }
         }
     }
