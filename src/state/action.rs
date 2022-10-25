@@ -1,6 +1,8 @@
 use std::path::Path;
 use crate::compute_graph::globals::NameValuePair;
 
+// TODO: is it really worth having BOTH a CustomEvent and an Action type?
+#[derive(Debug)]
 pub enum Action<'a> {
     ProcessUserState(),
     RenderScene(wgpu::Extent3d, &'a wgpu::TextureView),

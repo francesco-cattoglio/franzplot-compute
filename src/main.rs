@@ -43,6 +43,7 @@ pub enum CustomEvent {
     ExportScenePng(std::path::PathBuf),
     RequestExit,
     RequestRedraw,
+    ProcessUserState,
     MouseFreeze,
     MouseThaw,
 }
@@ -320,9 +321,9 @@ fn main() -> Result<(), &'static str>{
     //let mut renderer = imgui_wgpu::Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, renderer_config);
 
     let event_loop = EventLoopBuilder::<CustomEvent>::with_user_event().build();
+    let event_loop_proxy = event_loop.create_proxy();
 
     let executor = util::Executor::new();
-    let event_loop_proxy = event_loop.create_proxy();
     //let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, availables, graph_fonts);
     let window_size = if let Some(monitor) = event_loop.primary_monitor() {
         // web winit always reports a size of zero
@@ -349,7 +350,7 @@ fn main() -> Result<(), &'static str>{
         .with_inner_size(window_size);
     let window = builder.build(&event_loop).unwrap();
 
-    let ferre_gui = Box::new(gui::FerreGui::new());
+    let ferre_gui = Box::new(gui::FerreGui::new(event_loop_proxy.clone()));
     let mut state = state::State::new(device_manager, assets, ferre_gui, &window, &event_loop);
     if let Some(file) = opt_input_file {
         state.user = UserState::read_from_frzp(file).unwrap();
@@ -476,6 +477,9 @@ fn main() -> Result<(), &'static str>{
                 match user_event {
                     CustomEvent::RequestRedraw => {
                         window.request_redraw();
+                    },
+                    CustomEvent::ProcessUserState => {
+                        state.user_to_app_state();
                     },
                     CustomEvent::ShowOpenDialog => {
                         file_io::async_pick_open(event_loop_proxy.clone(), &executor);

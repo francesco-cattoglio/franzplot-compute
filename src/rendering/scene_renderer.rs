@@ -53,7 +53,7 @@ pub struct SceneRenderer {
     uniforms_buffer: wgpu::Buffer,
     texture_extent: wgpu::Extent3d,
     depth_texture: Texture,
-    output_texture: Texture,
+    output_texture: Texture, // this is an internal texture used when sample_count > 1
 }
 
 struct Pipelines {
@@ -123,6 +123,7 @@ impl SceneRenderer {
         if new_size.ne(&self.texture_extent) {
             let device = &manager.device;
             self.texture_extent = new_size;
+            // TODO: optimization: the output texture is never used if MSAA is disabled, therefore we could skip this
             self.output_texture = Texture::create_output_texture(device, new_size, manager.sample_count);
             self.depth_texture = Texture::create_depth_texture(device, new_size, manager.sample_count);
         }
@@ -418,14 +419,12 @@ impl SceneRenderer {
         });
 
         {
-            let (view, resolve_target);
-            if manager.sample_count > 1 {
-                view = &self.output_texture.view;
-                resolve_target = Some(target_view);
-            } else {
-                view = target_view;
-                resolve_target = None;
-            };
+            let (view, resolve_target) =
+                if manager.sample_count > 1 {
+                    (&self.output_texture.view, Some(target_view))
+                } else {
+                    (target_view, None)
+                };
 
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("scene render pass"),

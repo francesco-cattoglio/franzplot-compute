@@ -285,6 +285,8 @@ pub struct State {
     // the width and height stored in the surface_config and use those at redering time
     pub surface_config: wgpu::SurfaceConfiguration,
     pub scene_texture_id: egui::TextureId,
+    pub scene_extent: wgpu::Extent3d,
+    pub scene_view: wgpu::TextureView,
 }
 
 impl State {
@@ -313,7 +315,12 @@ impl State {
         let mut egui_rpass = egui_wgpu::Renderer::new(&manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1, 0); // TODO: investigate more how to properly set this
 
         // first, create a texture that will be used to render the scene and display it inside of imgui
-        let scene_texture = Texture::create_output_texture(&manager.device, wgpu::Extent3d{width: 320, height:320, ..Default::default()}, 1);
+        let scene_extent = wgpu::Extent3d {
+            width: 320,
+            height:320,
+            depth_or_array_layers: 1,
+        };
+        let scene_texture = Texture::create_output_texture(&manager.device, scene_extent, 1);
         let scene_view = scene_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let scene_texture_id = egui_rpass.register_native_texture(&manager.device, &scene_view, egui_wgpu::wgpu::FilterMode::Linear);
 
@@ -326,13 +333,15 @@ impl State {
             event_loop: event_loop.create_proxy(),
             scene_texture_id,
             screen_surface,
+            scene_view,
+            scene_extent,
             surface_config,
         }
     }
 
     pub fn resize_frame(&mut self, size: PhysicalSize<u32>) {
-        let width = size.width as u32;
-        let height = size.height as u32;
+        let width = size.width;
+        let height = size.height;
         if width >= 8 && height >= 8 {
             self.surface_config.width = width;
             self.surface_config.height = height;
@@ -375,10 +384,31 @@ impl State {
     }
 
     pub fn render_frame(&mut self, window: &winit::window::Window) -> Result<(), String> {
+        let maybe_extent = self.gui.compute_scene_size();
+        if let Some(extent) = maybe_extent {
+            // on the previous frame, the UI asked us to show the scene.
+            // Compare the stored extent and decide if we need to re-create and register a wgpu
+            // texture to accomodate for it.
+            if self.scene_extent.ne(&extent)
+                && extent.width >= 8 && extent.height >= 8 {
+                    self.scene_extent = extent;
+                    //let old_texture
+                    let scene_texture = Texture::create_output_texture(&self.app.manager.device, self.scene_extent, 1);
+                    self.scene_view = scene_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
+                    self.scene_texture_id = self.egui_rpass.register_native_texture(&self.app.manager.device, &self.scene_view, egui_wgpu::wgpu::FilterMode::Linear);
+            }
+        }
         let raw_input = self.egui_state.take_egui_input(window);
-        let full_output = self.gui.show(&self.app.egui_ctx, raw_input, &mut self.user);
-        self.egui_state.handle_platform_output(window, &self.app.egui_ctx, full_output.platform_output);
+        let full_output = self.gui.show(raw_input, &mut self.app, &mut self.user, self.scene_texture_id);
 
+        // The actual rendering of the scene is done AFTER the UI code run, so any kind of change
+        // to the global vars or the camera shows immediately
+        if maybe_extent.is_some() {
+            self.app.render_scene(self.scene_extent, &self.scene_view);
+        };
+
+        // back to egui rendering: register all the changes, tessellate the shapes, etc
+        self.egui_state.handle_platform_output(window, &self.app.egui_ctx, full_output.platform_output);
         let paint_jobs = self.app.egui_ctx.tessellate(full_output.shapes);
         // acquire next frame, or update the swapchain if a resize occurred
         let frame = if let Some(frame) = self.get_frame() {
@@ -421,6 +451,10 @@ impl State {
         frame.present();
 
         Ok(())
+    }
+
+    pub fn user_to_app_state(&mut self) -> Result<(), String> {
+        user_to_app_state(&mut self.app, &mut self.user)
     }
 
     pub fn process(&mut self, action: Action) -> Result<(), String> {

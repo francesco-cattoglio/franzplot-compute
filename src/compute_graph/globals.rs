@@ -13,6 +13,7 @@ pub struct Globals {
     wgsl_header: String,
 }
 
+#[derive(Debug)]
 pub struct NameValuePair {
     pub name: String,
     pub value: f32,
