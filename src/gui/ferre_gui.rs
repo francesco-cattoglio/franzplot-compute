@@ -43,7 +43,8 @@ dbg!("bad!");
                 }); // Scrollable area.
         }); // left panel
         egui::TopBottomPanel::bottom("variables panel").show(ctx, |ui| {
-            for variable_name in &user_state.globals_names {
+            let globals = &user_state.globals;
+            for variable_name in &globals.names {
                 ui.label(variable_name);
             }
         }); // bottom panel

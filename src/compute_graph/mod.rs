@@ -168,7 +168,7 @@ pub fn create_compute_graph(device: &wgpu::Device, assets: &Assets, user_state: 
         // a map from BlockId to all the inputs that a block has
         let mut node_inputs = BTreeMap::<NodeID, Vec<NodeID>>::new();
         let graph = &user_state.node_graph;
-        let globals = Globals::new(device, &user_state.globals_names, &user_state.globals_init_values);
+        let globals = Globals::new(device, &user_state.globals.names, &user_state.globals.init_values);
         for (node_id, node) in graph.get_nodes() {
             let existing_inputs: Vec<NodeID> = node.get_input_nodes(graph);
             node_inputs.insert(node_id, existing_inputs);
