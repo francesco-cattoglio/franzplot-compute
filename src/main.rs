@@ -581,7 +581,7 @@ fn main() -> Result<(), &'static str>{
                 //if rust_gui.graph_edited {
                 //    file_io::async_confirm_load(event_loop_proxy.clone(), &executor, file_path);
                 //} else {
-                //    event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
+                event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
                 //}
             },
             Event::WindowEvent { event, .. } => {

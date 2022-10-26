@@ -911,7 +911,7 @@ dependencies = [
  "pollster",
  "rand",
  "rfd",
- "ron 0.6.6",
+ "ron",
  "serde",
  "serde_json",
  "smol_str",
@@ -2279,17 +2279,6 @@ dependencies = [
 
 [[package]]
 name = "ron"
-version = "0.6.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86018df177b1beef6c7c8ef949969c4f7cb9a9344181b92486b23c79995bdaa4"
-dependencies = [
- "base64",
- "bitflags",
- "serde",
-]
-
-[[package]]
-name = "ron"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "300a51053b1cb55c80b7a9fde4120726ddf25ca241a1cbb926626f62fb136bff"
@@ -3080,7 +3069,7 @@ dependencies = [
  "parking_lot 0.12.1",
  "profiling",
  "raw-window-handle 0.5.0",
- "ron 0.8.0",
+ "ron",
  "serde",
  "smallvec",
  "thiserror",
