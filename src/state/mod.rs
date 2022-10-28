@@ -1,6 +1,8 @@
 use crate::CustomEvent;
 use crate::compute_graph::ComputeGraph;
 use crate::device_manager::Manager;
+use crate::file_io::File;
+use crate::file_io::VersionV2;
 use crate::gui::Gui;
 use crate::rendering::SWAPCHAIN_FORMAT;
 use crate::rendering::camera;
@@ -341,11 +343,17 @@ impl State {
     pub fn process(&mut self, action: Action) -> Result<(), String> {
         match action {
             Action::WriteToFile(path) => {
-                self.user.write_to_frzp(path);
-                Ok(())
+                File::V2(VersionV2::V20 {
+                    user_state: self.user.clone(),
+                    ferre_data: None,
+                }).write_to_frzp(path)
             } ,
             Action::OpenFile(path) => {
-                self.user = UserState::read_from_frzp(path)?;
+                let VersionV2::V20 { user_state, ferre_data } = File::read_from_frzp(path)?.convert_to_v2()?;
+                self.user = user_state;
+                if let Some(ferre) = ferre_data {
+                    self.gui.load_ferre_data(ferre);
+                }
                 Ok(())
             },
             Action::NewFile() => {

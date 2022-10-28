@@ -129,7 +129,7 @@ struct Cli {
 }
 
 
-fn main() -> Result<(), &'static str>{
+fn main() -> Result<(), String>{
     let cli = Cli::parse();
     //wgpu_subscriber::initialize_default_subscriber(None);
 
@@ -177,7 +177,7 @@ fn main() -> Result<(), &'static str>{
                 .set_buttons(rfd::MessageButtons::Ok)
                 .show();
 
-            return Err(error_message);
+            return Err(error_message.to_string());
         }
     };
     let mut masks_dir = resources_path.clone();
@@ -284,7 +284,9 @@ fn main() -> Result<(), &'static str>{
         // First, create an AppState + UserState (not the full State, which implies a running winit GUI)
         let mut app_state = AppState::new(device_manager, assets);
         let input_file = opt_input_file.expect("An input file is required when exporting a scene or a graph!");
-        let mut user_state = UserState::read_from_frzp(input_file).expect("Error opening the input file");
+        let file_contents = file_io::File::read_from_frzp(input_file)?;//.expect("Error opening the input file");
+        // load the user_state but ignore ferre_data
+        let file_io::VersionV2::V20{ mut user_state, .. } = file_contents.convert_to_v2()?;
         if let Some(scene_path) = opt_export_scene {
             app_state.camera.set_x1_y1_z1_wide(); // export scene with dafault wide angle view
             util::create_scene_png(&mut app_state, &mut user_state, &scene_path);
@@ -353,7 +355,8 @@ fn main() -> Result<(), &'static str>{
     let ferre_gui = Box::new(gui::FerreGui::new(event_loop_proxy.clone()));
     let mut state = state::State::new(device_manager, assets, ferre_gui, &window, &event_loop);
     if let Some(file) = opt_input_file {
-        state.user = UserState::read_from_frzp(file).unwrap();
+        let action = Action::OpenFile(file);
+        state.process(action)?;
     } else {
         println!("FranzPlot starting, no file selected.");
     }

@@ -1,16 +1,25 @@
 use egui::TextureId;
+use serde::{Serialize, Deserialize};
 
 use crate::CustomEvent;
 use crate::state::{UserState, AppState};
 
+#[derive(Deserialize, Serialize)]
+#[derive(Default)]
+pub struct FerreData {
+
+}
+
 pub struct FerreGui {
     scene_extent: wgpu::Extent3d,
     winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>,
+    ferre_data: FerreData,
 }
 
 impl FerreGui {
     pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>) -> Self {
         FerreGui {
+            ferre_data: Default::default(),
             scene_extent: wgpu::Extent3d::default(),
             winit_proxy,
         }
@@ -23,6 +32,9 @@ impl super::Gui for FerreGui {
         ctx.begin_frame(raw_input);
 
         egui::SidePanel::left("procedure panel").show(ctx, |ui| {
+            if ui.button("Save file").clicked() {
+//                file_io::async_pick_save(self.winit_proxy.clone(), executor);
+            }
             egui::ScrollArea::vertical()
                 .show(ui, |ui| {
                     for (id, node) in user_state.node_graph.get_nodes() {
@@ -75,5 +87,10 @@ dbg!("bad!");
     /// before the actual rendering happens.
     fn compute_scene_size(&self) -> Option<wgpu::Extent3d> {
         Some(self.scene_extent)
+    }
+
+    /// handle loading of the ferre data
+    fn load_ferre_data(&mut self, ferre_data: FerreData) {
+        self.ferre_data = ferre_data;
     }
 }
