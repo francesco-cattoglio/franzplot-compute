@@ -64,7 +64,6 @@ pub enum ProcessingError {
 }
 pub type SingleDataResult = Result<(Data, Operation), ProcessingError>;
 pub type MatcapIter<'a> = Iter<'a, NodeID, MatcapData>;
-
 // a parameter can be anonymous, e.g. when created by a Bezier node
 #[derive(Debug, Clone)]
 pub struct Parameter {
@@ -216,11 +215,22 @@ pub fn create_compute_graph(device: &wgpu::Device, assets: &Assets, user_state: 
         Ok((compute_graph, recoverable_errors))
 }
 
-impl ComputeGraph {
-    pub fn matcaps(&self) -> MatcapIter {
+// the functions that return iterators require an explicit lifetime
+impl<'a> ComputeGraph {
+    pub fn all_matcaps(&'a self)  -> impl Iterator<Item = (&'a NodeID, &'a MatcapData)> + Clone {
         self.renderables.iter()
     }
 
+    pub fn matcaps_filtered(&'a self, nodes: Vec<NodeID>) -> impl Iterator<Item = (&'a NodeID, &'a MatcapData)> + Clone {
+        self.renderables
+            .iter()
+            .filter(move |entry| {
+                nodes.contains(entry.0)
+            })
+    }
+}
+
+impl ComputeGraph {
     pub fn run_compute(&self, device: &wgpu::Device, queue: &wgpu::Queue) {
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor {

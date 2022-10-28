@@ -136,7 +136,10 @@ pub fn user_to_app_state(app: &mut AppState, user: &mut UserState) -> Result<(),
         Ok((compute_graph, recoverable_errors)) => {
             // run the first compute, and create the matcaps in the SceneRenderer
             compute_graph.run_compute(&app.manager.device, &app.manager.queue);
-            app.renderer.recreate_matcaps(&app.manager, &app.assets, compute_graph.matcaps());
+            let wanted_nodes = vec![2, 4];
+            let filtered_iter = compute_graph.matcaps_filtered(wanted_nodes);
+            //let filtered_iter = compute_graph.all_matcaps();
+            app.renderer.recreate_matcaps(&app.manager, &app.assets, filtered_iter);
             app.comp_graph = Some(compute_graph);
             if recoverable_errors.is_empty() {
                 Ok(())

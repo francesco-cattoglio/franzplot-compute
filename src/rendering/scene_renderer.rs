@@ -62,6 +62,31 @@ struct Pipelines {
     wireframe: wgpu::RenderPipeline,
 }
 
+// a scene renderer works on references of matcaps contained somewhere else.
+// therefore we need an explicit lifetime for this function
+impl<'a> SceneRenderer {
+    pub fn recreate_matcaps(&mut self, manager: &device_manager::Manager, assets: &Assets, matcaps: impl Iterator<Item = (&'a NodeID, &'a MatcapData)> + Clone) {
+        self.clear_matcaps();
+        // go through all blocks,
+        // chose the "Rendering" ones,
+        // turn their data into a renderable
+
+        // if the buffer used for object picking is not big enough, resize it (i.e create a new one)
+        let matcaps_len = matcaps.clone().count();
+        if matcaps_len > self.picking_buffer_length {
+            let (picking_buffer, _picking_bind_layout, picking_bind_group) = create_picking_buffer(&manager.device, matcaps_len);
+            self.picking_buffer_length = matcaps_len;
+            self.picking_buffer = picking_buffer;
+            self.picking_bind_group = picking_bind_group;
+        }
+
+        for (idx, (data_id, matcap)) in matcaps.enumerate() {
+            self.renderable_ids.push(*data_id);
+            self.add_matcap(manager, assets, matcap, idx as u32);
+        }
+    }
+}
+
 impl SceneRenderer {
     pub fn new_with_axes(manager: &device_manager::Manager) -> Self {
         let mut renderer = Self::new(manager);
@@ -325,26 +350,6 @@ impl SceneRenderer {
     pub fn clear_matcaps(&mut self) {
         self.renderables.clear();
         self.renderable_ids.clear();
-    }
-
-    pub fn recreate_matcaps(&mut self, manager: &device_manager::Manager, assets: &Assets, matcaps: MatcapIter<'_>) {
-        self.clear_matcaps();
-        // go through all blocks,
-        // chose the "Rendering" ones,
-        // turn their data into a renderable
-
-        // if the buffer used for object picking is not big enough, resize it (i.e create a new one)
-        if matcaps.len() > self.picking_buffer_length {
-            let (picking_buffer, _picking_bind_layout, picking_bind_group) = create_picking_buffer(&manager.device, matcaps.len());
-            self.picking_buffer_length = matcaps.len();
-            self.picking_buffer = picking_buffer;
-            self.picking_bind_group = picking_bind_group;
-        }
-
-        for (idx, (data_id, matcap)) in matcaps.enumerate() {
-            self.renderable_ids.push(*data_id);
-            self.add_matcap(manager, assets, matcap, idx as u32);
-        }
     }
 
     fn add_matcap(&mut self, manager: &device_manager::Manager, assets: &Assets, matcap_data: &MatcapData, object_id: u32) {

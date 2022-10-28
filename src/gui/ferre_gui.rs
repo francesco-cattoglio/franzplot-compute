@@ -35,9 +35,15 @@ impl super::Gui for FerreGui {
         ctx.begin_frame(raw_input);
 
         egui::SidePanel::left("procedure panel").show(ctx, |ui| {
-            if ui.button("Save file").clicked() {
-                file_io::async_pick_save(self.winit_proxy.clone(), &self.executor);
-            }
+            ui.horizontal(|ui| {
+                if ui.button("Open file").clicked() {
+                    file_io::async_pick_open(self.winit_proxy.clone(), &self.executor);
+                }
+                if ui.button("Save file").clicked() {
+                    file_io::async_pick_save(self.winit_proxy.clone(), &self.executor);
+                }
+            });
+            ui.separator();
             egui::ScrollArea::vertical()
                 .show(ui, |ui| {
                     for (id, node) in user_state.node_graph.get_nodes() {
