@@ -21,8 +21,8 @@ pub enum VersionV1 {
 #[non_exhaustive]
 pub enum VersionV2 {
     V20 {
-        user_state: UserState,
         ferre_data: Option<FerreData>,
+        user_state: UserState,
     },
 }
 

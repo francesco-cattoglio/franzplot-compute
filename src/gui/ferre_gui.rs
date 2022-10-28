@@ -2,6 +2,7 @@ use egui::TextureId;
 use serde::{Serialize, Deserialize};
 
 use crate::CustomEvent;
+use crate::{util, file_io};
 use crate::state::{UserState, AppState};
 
 #[derive(Deserialize, Serialize)]
@@ -14,6 +15,7 @@ pub struct FerreGui {
     scene_extent: wgpu::Extent3d,
     winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>,
     ferre_data: FerreData,
+    executor: util::Executor,
 }
 
 impl FerreGui {
@@ -22,6 +24,7 @@ impl FerreGui {
             ferre_data: Default::default(),
             scene_extent: wgpu::Extent3d::default(),
             winit_proxy,
+            executor: util::Executor::new(),
         }
     }
 }
@@ -33,7 +36,7 @@ impl super::Gui for FerreGui {
 
         egui::SidePanel::left("procedure panel").show(ctx, |ui| {
             if ui.button("Save file").clicked() {
-//                file_io::async_pick_save(self.winit_proxy.clone(), executor);
+                file_io::async_pick_save(self.winit_proxy.clone(), &self.executor);
             }
             egui::ScrollArea::vertical()
                 .show(ui, |ui| {
