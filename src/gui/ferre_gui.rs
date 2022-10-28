@@ -1,14 +1,22 @@
+use std::collections::BTreeMap;
+
 use egui::TextureId;
 use serde::{Serialize, Deserialize};
 
 use crate::CustomEvent;
+use crate::compute_graph::globals::NameValuePair;
+use crate::node_graph::NodeID;
 use crate::{util, file_io};
-use crate::state::{UserState, AppState};
+use crate::state::{UserState, AppState, user_to_app_state};
 
 #[derive(Deserialize, Serialize)]
-#[derive(Default)]
-pub struct FerreData {
+pub struct Explanation {
+}
 
+#[derive(Deserialize, Serialize)]
+#[derive(Clone, Default)]
+pub struct FerreData {
+    steps: BTreeMap<NodeID, (bool, String)>,
 }
 
 pub struct FerreGui {
@@ -30,9 +38,7 @@ impl FerreGui {
 }
 
 impl super::Gui for FerreGui {
-    fn show(&mut self, raw_input: egui::RawInput, app_state: &mut AppState, user_state: &mut UserState, texture_id: TextureId) -> egui::FullOutput {
-        let ctx = &app_state.egui_ctx;
-        ctx.begin_frame(raw_input);
+    fn show(&mut self, ctx: &egui::Context, app_state: &mut AppState, user_state: &mut UserState, texture_id: TextureId) {
 
         egui::SidePanel::left("procedure panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -42,22 +48,41 @@ impl super::Gui for FerreGui {
                 if ui.button("Save file").clicked() {
                     file_io::async_pick_save(self.winit_proxy.clone(), &self.executor);
                 }
+                if ui.button("Add test entry").clicked() {
+       //             self.ferre_data.steps.insert(2, "questo è un segmento".to_string());
+                }
             });
             ui.separator();
             egui::ScrollArea::vertical()
                 .show(ui, |ui| {
-                    for (id, node) in user_state.node_graph.get_nodes() {
+                    for (id, comment) in self.ferre_data.steps.iter_mut() {
                         ui.horizontal(|ui| {
-                            let node_label = format!("Node {}: {}", id, node.title);
-                            ui.label(node_label);
-                            if ui.button("test").clicked() {
-                                let result = self.winit_proxy.send_event(CustomEvent::ProcessUserState);
-                                if let Ok(()) = result {
-dbg!("good!");
-                                } else {
-dbg!("bad!");
+                            let maybe_node_title = user_state.node_graph.get_node(*id);
+                            let title = if let Some(node) = maybe_node_title {
+                                node.title.clone()
+                            } else {
+                                "unknown node".to_string()
+                            };
+                            ui.vertical(|ui| {
+                                let node_label = format!("Node {}: {}", id, title);
+                                ui.label(node_label);
+                                ui.small(&comment.1);
+                            });
+
+                            let widget_id = egui::Id::new(id);
+                            if ui.button("show").clicked() {
+                                if !comment.0 {
+                                    user_to_app_state(app_state, user_state, Some(vec![*id]));
                                 }
+                                comment.0 = !comment.0;
                             }
+                            let animation_status = ctx.animate_bool_with_time(widget_id, comment.0, 2.0);
+                            app_state.update_globals(vec![
+                                NameValuePair {
+                                    name: "a".into(),
+                                    value: animation_status,
+                                }
+                            ]);
                         }); // horizontal
 
                     }
@@ -88,8 +113,6 @@ dbg!("bad!");
 //};
 //let render_request = Action::RenderScene(texture_size, &scene_view);
 //state.process(render_request).expect("failed to render the scene due to an unknown error");
-        // End the UI frame. Returning the output that will be used to draw the UI on the backend.
-        ctx.end_frame()
     }
 
     /// Ask the UI what size the 3D scene should be. This function gets called after show(), but
@@ -101,5 +124,9 @@ dbg!("bad!");
     /// handle loading of the ferre data
     fn load_ferre_data(&mut self, ferre_data: FerreData) {
         self.ferre_data = ferre_data;
+    }
+
+    fn export_ferre_data(&self) -> Option<FerreData> {
+        Some(self.ferre_data.clone())
     }
 }

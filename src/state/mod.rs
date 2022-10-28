@@ -1,9 +1,11 @@
 use crate::CustomEvent;
 use crate::compute_graph::ComputeGraph;
+use crate::compute_graph::globals::NameValuePair;
 use crate::device_manager::Manager;
 use crate::file_io::File;
 use crate::file_io::VersionV2;
 use crate::gui::Gui;
+use crate::node_graph::NodeID;
 use crate::rendering::SWAPCHAIN_FORMAT;
 use crate::rendering::camera;
 use crate::rendering::SceneRenderer;
@@ -60,7 +62,6 @@ pub struct AppState {
     pub comp_graph: Option<ComputeGraph>,
     pub renderer: SceneRenderer,
     pub sensitivity: Sensitivity,
-    pub egui_ctx: egui::Context,
 }
 
 impl AppState {
@@ -76,7 +77,6 @@ impl AppState {
             camera_lock_up: true,
             camera_ortho: false,
             camera_controller,
-            egui_ctx: egui::Context::default(),
             renderer: SceneRenderer::new_with_axes(&manager),
             manager,
             comp_graph: None,
@@ -105,6 +105,12 @@ impl AppState {
         }
     }
 
+    pub fn update_globals(&mut self, pairs: Vec<NameValuePair>) {
+        if let Some(graph) = &mut self.comp_graph {
+            graph.update_globals(&self.manager.device, &self.manager.queue, pairs);
+        }
+    }
+
     pub fn render_scene(&mut self, extent: wgpu::Extent3d, view: &wgpu::TextureView) -> Result<(), String> {
         // create aliases
         let renderer = &mut self.renderer;
@@ -126,7 +132,7 @@ impl AppState {
 
 
 // TODO: RENAME THIS, maybe even move it somewhere else
-pub fn user_to_app_state(app: &mut AppState, user: &mut UserState) -> Result<(), String> {
+pub fn user_to_app_state(app: &mut AppState, user: &mut UserState, select_nodes: Option<Vec<NodeID>>) -> Result<(), String> {
     // - clear previous node graph errors
     // - try to create a new compute graph
     // - if successful, update the scene rendering and report recoverable errors
@@ -136,10 +142,13 @@ pub fn user_to_app_state(app: &mut AppState, user: &mut UserState) -> Result<(),
         Ok((compute_graph, recoverable_errors)) => {
             // run the first compute, and create the matcaps in the SceneRenderer
             compute_graph.run_compute(&app.manager.device, &app.manager.queue);
-            let wanted_nodes = vec![2, 4];
-            let filtered_iter = compute_graph.matcaps_filtered(wanted_nodes);
-            //let filtered_iter = compute_graph.all_matcaps();
-            app.renderer.recreate_matcaps(&app.manager, &app.assets, filtered_iter);
+            if let Some(wanted_nodes) = select_nodes {
+                let filtered_iter = compute_graph.matcaps_filtered(wanted_nodes);
+                app.renderer.recreate_matcaps(&app.manager, &app.assets, filtered_iter);
+            } else {
+                let all_matcaps = compute_graph.all_matcaps();
+                app.renderer.recreate_matcaps(&app.manager, &app.assets, all_matcaps);
+            };
             app.comp_graph = Some(compute_graph);
             if recoverable_errors.is_empty() {
                 Ok(())
@@ -164,6 +173,7 @@ pub struct State {
     pub gui: Box<dyn Gui>,
     pub event_loop: winit::event_loop::EventLoopProxy<CustomEvent>,
     pub egui_state: egui_winit::State,
+    pub egui_ctx: egui::Context,
     pub egui_rpass: egui_wgpu::Renderer,
     pub screen_surface: wgpu::Surface,
     // BEWARE: we NEED to store the surface_config, because after a resize the window.inner_size()
@@ -215,6 +225,7 @@ impl State {
             user: UserState::default(),
             gui,
             egui_rpass,
+            egui_ctx: egui::Context::default(),
             egui_state,
             event_loop: event_loop.create_proxy(),
             scene_texture_id,
@@ -285,7 +296,12 @@ impl State {
             }
         }
         let raw_input = self.egui_state.take_egui_input(window);
-        let full_output = self.gui.show(raw_input, &mut self.app, &mut self.user, self.scene_texture_id);
+        // begin frame
+        self.egui_ctx.begin_frame(raw_input);
+        // internally this will show all the UI elements
+        self.gui.show(&self.egui_ctx, &mut self.app, &mut self.user, self.scene_texture_id);
+        // End the UI frame. Returning the output that will be used to draw the UI on the backend.
+        let full_output = self.egui_ctx.end_frame();
 
         // The actual rendering of the scene is done AFTER the UI code run, so any kind of change
         // to the global vars or the camera shows immediately
@@ -294,8 +310,8 @@ impl State {
         };
 
         // back to egui rendering: register all the changes, tessellate the shapes, etc
-        self.egui_state.handle_platform_output(window, &self.app.egui_ctx, full_output.platform_output);
-        let paint_jobs = self.app.egui_ctx.tessellate(full_output.shapes);
+        self.egui_state.handle_platform_output(window, &self.egui_ctx, full_output.platform_output);
+        let paint_jobs = self.egui_ctx.tessellate(full_output.shapes);
         // acquire next frame, or update the swapchain if a resize occurred
         let frame = if let Some(frame) = self.get_frame() {
             frame
@@ -340,7 +356,7 @@ impl State {
     }
 
     pub fn user_to_app_state(&mut self) -> Result<(), String> {
-        user_to_app_state(&mut self.app, &mut self.user)
+        user_to_app_state(&mut self.app, &mut self.user, None)
     }
 
     pub fn process(&mut self, action: Action) -> Result<(), String> {
@@ -348,7 +364,7 @@ impl State {
             Action::WriteToFile(path) => {
                 File::V2(VersionV2::V20 {
                     user_state: self.user.clone(),
-                    ferre_data: None,
+                    ferre_data: self.gui.export_ferre_data(),
                 }).write_to_frzp(path)
             } ,
             Action::OpenFile(path) => {
@@ -373,7 +389,7 @@ impl State {
                 self.app.render_scene(extent, view)
             },
             Action::ProcessUserState() => {
-                user_to_app_state(&mut self.app, &mut self.user)
+                user_to_app_state(&mut self.app, &mut self.user, None)
             }
             Action::UpdateGlobals(pairs) => {
                 // if the compute graph exists, tell it to update the globals

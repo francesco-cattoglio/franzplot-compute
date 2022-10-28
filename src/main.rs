@@ -588,7 +588,7 @@ fn main() -> Result<(), String>{
                 //}
             },
             Event::WindowEvent { event, .. } => {
-                let event_response = state.egui_state.on_event(&state.app.egui_ctx, &event);
+                let event_response = state.egui_state.on_event(&state.egui_ctx, &event);
                 if event_response.consumed {
                     return;
                 }

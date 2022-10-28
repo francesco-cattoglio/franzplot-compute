@@ -233,147 +233,148 @@ impl BufferDimensions {
 }
 
 pub fn create_graph_png<P: AsRef<std::path::Path>>(app: &mut AppState, user: &UserState, output_path: &P) {
-    let height = 640;
-    let width = 640;
-    let texture_size = wgpu::Extent3d {
-        width,
-        height,
-        ..Default::default()
-    };
-    let output_texture = super::rendering::texture::Texture::create_screenshot_texture(&app.manager.device, texture_size, 1);
-    app.egui_ctx.begin_frame(egui::RawInput::default());
-
-egui::Window::new("My Window2")
-                .drag_bounds(egui::Rect::EVERYTHING)
-                .show(&app.egui_ctx, |ui| {
-   ui.label("Hello World!");
-   let stringed = format!("{}", 14.0);
-   ui.label(stringed);
-});
-
-                let full_output = app.egui_ctx.end_frame();
-
-                let paint_jobs = app.egui_ctx.tessellate(full_output.shapes);
-
-                // use the acquired frame for a rendering pass, which will clear the screen and render the gui
-                let mut encoder: wgpu::CommandEncoder =
-                    app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-
-                // Upload all resources for the GPU.
-                let screen_descriptor = ScreenDescriptor {
-                    size_in_pixels: [width, height],
-                    pixels_per_point: 1.0,
-                };
-                let mut egui_rpass = Renderer::new(&app.manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1, 0); // TODO: investigate more how to properly set this
-                for (id, image_delta) in full_output.textures_delta.set {
-                    egui_rpass.update_texture(&app.manager.device, &app.manager.queue, id, &image_delta);
-                }
-                egui_rpass.update_buffers(&app.manager.device, &app.manager.queue, &paint_jobs, &screen_descriptor);
-
-                // Record all render passes.
-                let frame_view = output_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
-                egui_rpass
-                    .render(
-                        &mut encoder,
-                        &frame_view,
-                        &paint_jobs,
-                        &screen_descriptor,
-                        Some(wgpu::Color::BLACK),
-                    );
-                // Submit the commands.
-                app.manager.queue.submit(std::iter::once(encoder.finish()));
-
-
-                //TODO: DRY! this is exactly the same code from create_scene_png
-    let buffer_dimensions = BufferDimensions::new(width as usize, height as usize);
-    // The output buffer lets us retrieve the data as an array
-    let png_buffer = app.manager.device.create_buffer(&wgpu::BufferDescriptor {
-        label: None,
-        size: (buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height) as u64,
-        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-    });
-
-    let command_buffer = {
-        use std::num::NonZeroU32;
-
-        let mut encoder = app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
-
-        // Copy the data from the texture to the buffer
-        encoder.copy_texture_to_buffer(
-            wgpu::ImageCopyTexture {
-                texture: &output_texture.texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            wgpu::ImageCopyBuffer {
-                buffer: &png_buffer,
-                layout: wgpu::ImageDataLayout {
-                    offset: 0,
-                    bytes_per_row: Some(NonZeroU32::new(buffer_dimensions.padded_bytes_per_row as u32).unwrap()),
-                    rows_per_image: None,
-                },
-            },
-            texture_size,
-        );
-
-        encoder.finish()
-    };
-
-    app.manager.queue.submit(Some(command_buffer));
-
-    let buffer_slice = png_buffer.slice(..);
-    use futures::executor::block_on;
-    // copied from the hello-compute example
-    // Sets the buffer up for mapping, sending over the result of the mapping back to us when it is finished.
-    let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-
-    // Poll the device in a blocking manner so that our future resolves.
-    // In an actual application, `device.poll(...)` should
-    // be called in an event loop or on another thread.
-    app.manager.device.poll(wgpu::Maintain::Wait);
-
-    // If a file system is available, write the buffer as a PNG
-    let has_file_system_available = cfg!(not(target_arch = "wasm32"));
-    if !has_file_system_available {
-        return;
-    }
-
-    let mapping_result = block_on(receiver.receive());
-    if let Some(Ok(())) = mapping_result {
-        let padded_buffer = buffer_slice.get_mapped_range();
-
-        let mut png_encoder = png::Encoder::new(
-            std::fs::File::create(output_path).unwrap(),
-            buffer_dimensions.width as u32,
-            buffer_dimensions.height as u32,
-        );
-        png_encoder.set_depth(png::BitDepth::Eight);
-        png_encoder.set_color(png::ColorType::RGBA);
-        let mut png_writer = png_encoder
-            .write_header()
-            .unwrap()
-            .into_stream_writer_with_size(buffer_dimensions.unpadded_bytes_per_row);
-
-        // from the padded_buffer we write just the unpadded bytes into the image
-        use std::io::Write;
-        for chunk in padded_buffer.chunks(buffer_dimensions.padded_bytes_per_row) {
-            png_writer
-                .write_all(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
-                .unwrap();
-        }
-        png_writer.finish().unwrap();
-
-        // With the current interface, we have to make sure all mapped views are
-        // dropped before we unmap the buffer.
-        drop(padded_buffer);
-
-        png_buffer.unmap();
-    } else {
-        panic!("failed to run generate graph png!")
-    }
+    todo!();
+//    let height = 640;
+//    let width = 640;
+//    let texture_size = wgpu::Extent3d {
+//        width,
+//        height,
+//        ..Default::default()
+//    };
+//    let output_texture = super::rendering::texture::Texture::create_screenshot_texture(&app.manager.device, texture_size, 1);
+//    app.egui_ctx.begin_frame(egui::RawInput::default());
+//
+//egui::Window::new("My Window2")
+//                .drag_bounds(egui::Rect::EVERYTHING)
+//                .show(&app.egui_ctx, |ui| {
+//   ui.label("Hello World!");
+//   let stringed = format!("{}", 14.0);
+//   ui.label(stringed);
+//});
+//
+//                let full_output = app.egui_ctx.end_frame();
+//
+//                let paint_jobs = app.egui_ctx.tessellate(full_output.shapes);
+//
+//                // use the acquired frame for a rendering pass, which will clear the screen and render the gui
+//                let mut encoder: wgpu::CommandEncoder =
+//                    app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+//
+//                // Upload all resources for the GPU.
+//                let screen_descriptor = ScreenDescriptor {
+//                    size_in_pixels: [width, height],
+//                    pixels_per_point: 1.0,
+//                };
+//                let mut egui_rpass = Renderer::new(&app.manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1, 0); // TODO: investigate more how to properly set this
+//                for (id, image_delta) in full_output.textures_delta.set {
+//                    egui_rpass.update_texture(&app.manager.device, &app.manager.queue, id, &image_delta);
+//                }
+//                egui_rpass.update_buffers(&app.manager.device, &app.manager.queue, &paint_jobs, &screen_descriptor);
+//
+//                // Record all render passes.
+//                let frame_view = output_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
+//                egui_rpass
+//                    .render(
+//                        &mut encoder,
+//                        &frame_view,
+//                        &paint_jobs,
+//                        &screen_descriptor,
+//                        Some(wgpu::Color::BLACK),
+//                    );
+//                // Submit the commands.
+//                app.manager.queue.submit(std::iter::once(encoder.finish()));
+//
+//
+//                //TODO: DRY! this is exactly the same code from create_scene_png
+//    let buffer_dimensions = BufferDimensions::new(width as usize, height as usize);
+//    // The output buffer lets us retrieve the data as an array
+//    let png_buffer = app.manager.device.create_buffer(&wgpu::BufferDescriptor {
+//        label: None,
+//        size: (buffer_dimensions.padded_bytes_per_row * buffer_dimensions.height) as u64,
+//        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
+//        mapped_at_creation: false,
+//    });
+//
+//    let command_buffer = {
+//        use std::num::NonZeroU32;
+//
+//        let mut encoder = app.manager.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+//
+//        // Copy the data from the texture to the buffer
+//        encoder.copy_texture_to_buffer(
+//            wgpu::ImageCopyTexture {
+//                texture: &output_texture.texture,
+//                mip_level: 0,
+//                origin: wgpu::Origin3d::ZERO,
+//                aspect: wgpu::TextureAspect::All,
+//            },
+//            wgpu::ImageCopyBuffer {
+//                buffer: &png_buffer,
+//                layout: wgpu::ImageDataLayout {
+//                    offset: 0,
+//                    bytes_per_row: Some(NonZeroU32::new(buffer_dimensions.padded_bytes_per_row as u32).unwrap()),
+//                    rows_per_image: None,
+//                },
+//            },
+//            texture_size,
+//        );
+//
+//        encoder.finish()
+//    };
+//
+//    app.manager.queue.submit(Some(command_buffer));
+//
+//    let buffer_slice = png_buffer.slice(..);
+//    use futures::executor::block_on;
+//    // copied from the hello-compute example
+//    // Sets the buffer up for mapping, sending over the result of the mapping back to us when it is finished.
+//    let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
+//    buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
+//
+//    // Poll the device in a blocking manner so that our future resolves.
+//    // In an actual application, `device.poll(...)` should
+//    // be called in an event loop or on another thread.
+//    app.manager.device.poll(wgpu::Maintain::Wait);
+//
+//    // If a file system is available, write the buffer as a PNG
+//    let has_file_system_available = cfg!(not(target_arch = "wasm32"));
+//    if !has_file_system_available {
+//        return;
+//    }
+//
+//    let mapping_result = block_on(receiver.receive());
+//    if let Some(Ok(())) = mapping_result {
+//        let padded_buffer = buffer_slice.get_mapped_range();
+//
+//        let mut png_encoder = png::Encoder::new(
+//            std::fs::File::create(output_path).unwrap(),
+//            buffer_dimensions.width as u32,
+//            buffer_dimensions.height as u32,
+//        );
+//        png_encoder.set_depth(png::BitDepth::Eight);
+//        png_encoder.set_color(png::ColorType::RGBA);
+//        let mut png_writer = png_encoder
+//            .write_header()
+//            .unwrap()
+//            .into_stream_writer_with_size(buffer_dimensions.unpadded_bytes_per_row);
+//
+//        // from the padded_buffer we write just the unpadded bytes into the image
+//        use std::io::Write;
+//        for chunk in padded_buffer.chunks(buffer_dimensions.padded_bytes_per_row) {
+//            png_writer
+//                .write_all(&chunk[..buffer_dimensions.unpadded_bytes_per_row])
+//                .unwrap();
+//        }
+//        png_writer.finish().unwrap();
+//
+//        // With the current interface, we have to make sure all mapped views are
+//        // dropped before we unmap the buffer.
+//        drop(padded_buffer);
+//
+//        png_buffer.unmap();
+//    } else {
+//        panic!("failed to run generate graph png!")
+//    }
 }
 //pub fn create_graph_png<P: AsRef<std::path::Path>>(state: &mut State, output_path: &P,
 //                                                   window: &winit::window::Window, platform: &mut imgui_winit_support::WinitPlatform, renderer: &mut imgui_wgpu::Renderer,
@@ -530,7 +531,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(app: &mut AppState, user: &mu
         depth_or_array_layers: 1,
     };
     let output_texture = super::rendering::texture::Texture::create_output_texture(&app.manager.device, texture_size, 1);
-    let processing_result = crate::state::user_to_app_state(app, user);
+    let processing_result = crate::state::user_to_app_state(app, user, None);
     if let Err(error) = processing_result {
             println!("Warning: errors detected in the scene: {}", error);
     }
