@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 use egui::TextureId;
 use serde::{Serialize, Deserialize};
@@ -10,16 +10,34 @@ use crate::{util, file_io};
 use crate::state::{UserState, AppState, user_to_app_state};
 
 #[derive(Deserialize, Serialize)]
-pub struct Explanation {
+#[derive(Clone)]
+pub enum GlobalVarUsage {
+    Still(f32),
+    Animated(f32, f32),
+}
+
+impl Default for GlobalVarUsage {
+    fn default() -> Self {
+        Self::Still(0.0)
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+#[derive(Clone, Default)]
+pub struct Step {
+    comment: String,
+    is_on: bool,
+    global_vars_usage: HashMap<String, GlobalVarUsage>,
 }
 
 #[derive(Deserialize, Serialize)]
 #[derive(Clone, Default)]
 pub struct FerreData {
-    steps: BTreeMap<NodeID, (bool, String)>,
+    steps: BTreeMap<NodeID, Step>,
 }
 
 pub struct FerreGui {
+    selected_step: NodeID,
     scene_extent: wgpu::Extent3d,
     winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>,
     ferre_data: FerreData,
@@ -29,10 +47,86 @@ pub struct FerreGui {
 impl FerreGui {
     pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>) -> Self {
         FerreGui {
+            selected_step: Default::default(),
             ferre_data: Default::default(),
             scene_extent: wgpu::Extent3d::default(),
             winit_proxy,
             executor: util::Executor::new(),
+        }
+    }
+
+    pub fn show_steps(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, app_state: &mut AppState, user_state: &mut UserState) {
+        // reminder: we (likely) are inside a VerticalScroll Ui
+        for (id, (is_on, comment)) in self.ferre_data.steps.iter_mut() {
+            // for each node id, we can show a UI to handle all the interactions:
+            // - we want the animation of the variable to start when we click on the
+            //   step label
+            // - we do not want the animation to play backward
+            ui.horizontal(|ui| {
+                let maybe_node_title = user_state.node_graph.get_node(*id);
+                let title = if let Some(node) = maybe_node_title {
+                    node.title.clone()
+                } else {
+                    "unknown node, check the frzp file".to_string()
+                };
+                ui.vertical(|ui| {
+                    let node_label = format!("Node {}: {}", id, title);
+                    ui.label(node_label);
+                    ui.small(comment);
+                });
+
+                // the button was clicked in this frame. This means either:
+                if ui.button("show").clicked() {
+                    // the toggle was on, and we need to toggle it off,
+                    if *is_on {
+                        *is_on = false;
+                        app_state.update_globals(vec![
+                            NameValuePair {
+                                name: "a".into(),
+                                value: 0.0f32,
+                            }
+                        ]);
+                    } else {
+                        // we just need to flip the boolean, render the scene, store
+                        // which id is the selected one.
+                        // we should also set all the other "is_on" to false, but this
+                        // cannot be done inside this loop, because we are using an
+                        // iterator!
+                        user_to_app_state(app_state, user_state, Some(vec![*id])).expect("issue rendering");
+                        self.selected_step = *id;
+                        *is_on = true;
+                    }
+                }
+
+                // to store the animation, we need a egui::Id object that persists
+                // between many frames. The node id is perfect to generate it.
+                let animation_id = egui::Id::new(id);
+                // OUTSIDE OF CLICKED EVENT: if this is on, we use the time to animate
+                // this thing. We only run the animation if this is the step that the
+                // user selected, and do something different based on its on/off status
+                if self.selected_step == *id {
+                    // skipping the animation alltogether (animate_bool_with_time with
+                    // 0.0 as time to accomplish the animation)
+                    if *is_on {
+                        let animated_value = ctx.animate_bool_with_time(animation_id, true, 2.5);
+                        app_state.update_globals(vec![
+                            NameValuePair {
+                                name: "a".into(),
+                                value: animated_value,
+                            }
+                        ]);
+                    } else {
+                        ctx.animate_bool_with_time(animation_id, false, 0.0);
+                    }
+
+                } else { // this is not the selected step: it might have changed since
+                         // last frame! We should reset this animation as well.
+                    *is_on = false;
+                    ctx.animate_bool_with_time(animation_id, false, 0.0);
+                }
+
+            }); // horizontal
+
         }
     }
 }
@@ -55,37 +149,7 @@ impl super::Gui for FerreGui {
             ui.separator();
             egui::ScrollArea::vertical()
                 .show(ui, |ui| {
-                    for (id, comment) in self.ferre_data.steps.iter_mut() {
-                        ui.horizontal(|ui| {
-                            let maybe_node_title = user_state.node_graph.get_node(*id);
-                            let title = if let Some(node) = maybe_node_title {
-                                node.title.clone()
-                            } else {
-                                "unknown node".to_string()
-                            };
-                            ui.vertical(|ui| {
-                                let node_label = format!("Node {}: {}", id, title);
-                                ui.label(node_label);
-                                ui.small(&comment.1);
-                            });
-
-                            let widget_id = egui::Id::new(id);
-                            if ui.button("show").clicked() {
-                                if !comment.0 {
-                                    user_to_app_state(app_state, user_state, Some(vec![*id]));
-                                }
-                                comment.0 = !comment.0;
-                            }
-                            let animation_status = ctx.animate_bool_with_time(widget_id, comment.0, 2.0);
-                            app_state.update_globals(vec![
-                                NameValuePair {
-                                    name: "a".into(),
-                                    value: animation_status,
-                                }
-                            ]);
-                        }); // horizontal
-
-                    }
+                    self.show_steps(ctx, ui, app_state, user_state);
                 }); // Scrollable area.
         }); // left panel
         egui::TopBottomPanel::bottom("variables panel").show(ctx, |ui| {
