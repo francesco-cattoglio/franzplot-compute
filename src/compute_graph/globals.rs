@@ -3,20 +3,19 @@ use crate::shader_processing::BindInfo;
 use crate::parser::{parse_expression, AstNode, AstError};
 
 #[derive(Debug)]
+pub struct NameValuePair {
+    pub name: String,
+    pub value: f32,
+}
+
+#[derive(Debug)]
 pub struct Globals {
-    names: Vec<String>,
-    values: Vec<f32>,
+    pairs: Vec<NameValuePair>,
     buffer_size: wgpu::BufferAddress,
     buffer: wgpu::Buffer,
     pub bind_layout: wgpu::BindGroupLayout,
     pub bind_group: wgpu::BindGroup,
     wgsl_header: String,
-}
-
-#[derive(Debug)]
-pub struct NameValuePair {
-    pub name: String,
-    pub value: f32,
 }
 
 pub const GLOBAL_CONSTANTS: &[(&str, f32)] = &[
@@ -26,16 +25,6 @@ pub const GLOBAL_CONSTANTS: &[(&str, f32)] = &[
 const MAX_NUM_VARIABLES: usize = 31;
 
 impl Globals {
-    pub fn clone_names_values(&self) -> Vec<NameValuePair> {
-        self.names.iter()
-            .zip(self.values.iter())
-            .map(|(name, value)| NameValuePair {
-                name: name.clone(),
-                value: *value,
-            })
-            .collect()
-    }
-
     pub fn get_wgsl_header(&self) -> &str {
         self.wgsl_header.as_str()
     }
@@ -79,7 +68,7 @@ impl Globals {
                 let all_idents = ast_tree.find_all_idents();
                 'validate: for ident in all_idents.into_iter() {
                     // if the ident is inside the variable names, we are good.
-                    if self.names.contains(&ident) {
+                    if self.pairs.iter().find(|pair| { pair.name == ident} ).is_some() {
                         continue 'validate;
                     }
                     // if the ident is inside the global constants, we are good
@@ -99,7 +88,11 @@ impl Globals {
                     let err = format!("Unknown variable or parameter used: '{}'", ident);
                     return Err(ProcessingError::IncorrectExpression(err));
                 }
-                Ok(ast_tree.to_string(&self.names))
+                // TODO: this is not the first time I need a vec of some sort out of my
+                // NameValuePairs, consider using a btreemap so that you can
+                // "into_values.collect()", or doing something similar
+                let temp_names: Vec<String> = self.pairs.iter().map(|pair| pair.name.clone() ).collect();
+                Ok(ast_tree.to_string(&temp_names))
             },
             Err(ast_error) => Err(Self::ast_to_block_error(ast_error)),
         }
@@ -188,12 +181,17 @@ impl Globals {
 
         // process all variables
         let zipped_iterator = variables_names.iter().zip(init_values.iter());
+        let mut pairs = Vec::new();
         for pair in zipped_iterator {
             // print the name to the shader header and
             // add the pair to both the 'names' and the 'values' vectors
             wgsl_header += &format!("\t{}: f32,\n", &pair.0);
-            names.push(pair.0.clone());
-            values.push(*pair.1);
+            pairs.push(NameValuePair{
+                name: pair.0.clone(),
+                value: *pair.1,
+            });
+            //names.push(pair.0.clone());
+            //values.push(*pair.1);
         }
         // when we close the wgsl struct, we also need to write the binding to the group 1
         wgsl_header += "}\n";
@@ -203,8 +201,7 @@ impl Globals {
         Self {
             bind_layout,
             bind_group,
-            names,
-            values,
+            pairs,
             buffer,
             buffer_size,
             wgsl_header,
@@ -215,21 +212,17 @@ impl Globals {
     /// If none of the globals changed, then this function does nothing and returns false.
     /// Otherwise, if at least one global var changed, then the wgpu buffers is updated
     /// and the function returns true
-    pub fn update_buffer(&mut self, queue: &wgpu::Queue, pairs: Vec<NameValuePair>) -> bool {
-        // quick check to make sure nobody changed the size of the values vector
-        // which would spell disaster because then we would overwrite some random GPU memory
-        assert!(self.names.len() == self.values.len());
+    pub fn update_buffer(&mut self, queue: &wgpu::Queue, new_pairs: Vec<NameValuePair>) -> bool {
 
         let mut values_changed = false;
-        let zipped = self.names.iter().zip(self.values.iter_mut());
-        for (name, old_value) in zipped {
+        for existing_pair in self.pairs.iter_mut() {
             // search for the pair that has the same name of the value that we want to update
-            if let Some(pair) = pairs.iter().find(|e| &e.name == name) {
+            if let Some(pair) = new_pairs.iter().find(|e| e.name == existing_pair.name) {
                 // direct comparison of floats is ok in this case: those are not results of
                 // random computations, those are values taken from imgui interface.
                 #[allow(clippy::float_cmp)]
-                if *old_value != pair.value {
-                    *old_value = pair.value;
+                if existing_pair.value != pair.value {
+                    existing_pair.value = pair.value;
                     values_changed = true;
                 }
             }
@@ -240,7 +233,11 @@ impl Globals {
             // When updating the mapped values in our buffer, do not forget that this buffer
             // also contains all the global constants. Start copying from the computed offset!
             let offset = (GLOBAL_CONSTANTS.len() * std::mem::size_of::<f32>()) as wgpu::BufferAddress;
-            queue.write_buffer(&self.buffer, offset, bytemuck::cast_slice(&self.values));
+            let temp_vec: Vec<f32> =
+                self.pairs.iter()
+                    .map(|pair| { pair.value })
+                    .collect();
+            queue.write_buffer(&self.buffer, offset, bytemuck::cast_slice(&temp_vec));
         }
 
         values_changed
