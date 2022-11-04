@@ -236,6 +236,10 @@ impl ComputeGraph {
         queue.submit(std::iter::once(compute_queue));
     }
 
+    pub fn get_globals(&self) -> &Vec<NameValuePair> {
+        self.globals.get_globals()
+    }
+
     pub fn update_globals(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, pairs: Vec<NameValuePair>) {
         let values_changed = self.globals.update_buffer(queue, pairs);
         if values_changed {

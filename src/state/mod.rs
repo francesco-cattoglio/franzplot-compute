@@ -111,6 +111,14 @@ impl AppState {
         }
     }
 
+    pub fn read_globals(&self) -> Vec<NameValuePair> {
+        if let Some(graph) = &self.comp_graph {
+            graph.get_globals().clone()
+        } else {
+            Vec::new()
+        }
+    }
+
     pub fn render_scene(&mut self, extent: wgpu::Extent3d, view: &wgpu::TextureView) -> Result<(), String> {
         // create aliases
         let renderer = &mut self.renderer;

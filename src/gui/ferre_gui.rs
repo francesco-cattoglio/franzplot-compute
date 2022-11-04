@@ -1,4 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
+use egui::epaint::{Color32, text::{LayoutJob, TextFormat}, FontFamily, FontId};
 
 use egui::TextureId;
 use serde::{Serialize, Deserialize};
@@ -67,9 +68,48 @@ impl FerreGui {
         }
     }
 
-    //fn step_edit(&mut self, ui: &mut egui::Ui, step: &mut Step) {
-
-    //}
+    fn show_test_formula(&self, ui: &mut egui::Ui, height: f32) {
+        let mut job = LayoutJob::default();
+        job.append(
+            "f",
+            0.0,
+            TextFormat {
+                font_id: FontId::new(14.0, FontFamily::Proportional),
+                color: Color32::WHITE,
+                ..Default::default()
+            },
+        );
+        job.append(
+            "z",
+            0.0,
+            TextFormat {
+                font_id: FontId::new(10.0, FontFamily::Proportional),
+                color: Color32::WHITE,
+                valign: egui::Align::BOTTOM,
+                ..Default::default()
+            },
+        );
+        job.append(
+            " = ",
+            0.0,
+            TextFormat {
+                font_id: FontId::new(14.0, FontFamily::Proportional),
+                color: Color32::WHITE,
+                ..Default::default()
+            },
+        );
+        job.append(
+            &format!("{height}"),
+            0.0,
+            TextFormat {
+                font_id: FontId::new(14.0, FontFamily::Proportional),
+                color: Color32::RED,
+                ..Default::default()
+            },
+        );
+        let galley = ui.fonts().layout_job(job);
+        ui.label(galley);
+    }
 
     pub fn show_steps(&mut self, ctx: &egui::Context, ui: &mut egui::Ui, app_state: &mut AppState, user_state: &mut UserState) {
         // reminder: we (likely) are inside a VerticalScroll Ui
@@ -287,10 +327,20 @@ impl super::Gui for FerreGui {
                 }); // Scrollable area.
         }); // left panel
         egui::TopBottomPanel::bottom("variables panel").show(ctx, |ui| {
-            let globals = &user_state.globals;
-            for variable_name in &globals.names {
-                ui.label(variable_name);
+            let mut name_value_pairs = app_state.read_globals();
+
+            let mut formula_height: f32 = 0.0;
+            for pair in name_value_pairs.iter_mut() {
+                ui.horizontal(|ui| {
+                    ui.label(&pair.name);
+                    ui.add(egui::Slider::new(&mut pair.value, -5.0..=5.0));
+                });
+                if pair.name.contains('b') {
+                    formula_height = pair.value;
+                }
             }
+            app_state.update_globals(name_value_pairs);
+            self.show_test_formula(ui, formula_height);
         }); // bottom panel
         egui::CentralPanel::default().show(ctx, |ui| {
             // compute avail size
@@ -303,14 +353,6 @@ impl super::Gui for FerreGui {
             };
             ui.image(texture_id, avail);
         }); // central panel
-
-//let texture_size = wgpu::Extent3d {
-//    width: 320,
-//    height: 320,
-//    ..Default::default()
-//};
-//let render_request = Action::RenderScene(texture_size, &scene_view);
-//state.process(render_request).expect("failed to render the scene due to an unknown error");
     }
 
     /// Ask the UI what size the 3D scene should be. This function gets called after show(), but

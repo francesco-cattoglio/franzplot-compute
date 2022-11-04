@@ -2,7 +2,7 @@ use crate::compute_graph::ProcessingError;
 use crate::shader_processing::BindInfo;
 use crate::parser::{parse_expression, AstNode, AstError};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct NameValuePair {
     pub name: String,
     pub value: f32,
@@ -25,6 +25,10 @@ pub const GLOBAL_CONSTANTS: &[(&str, f32)] = &[
 const MAX_NUM_VARIABLES: usize = 31;
 
 impl Globals {
+    pub fn get_globals(&self) -> &Vec<NameValuePair> {
+        &self.pairs
+    }
+
     pub fn get_wgsl_header(&self) -> &str {
         self.wgsl_header.as_str()
     }
