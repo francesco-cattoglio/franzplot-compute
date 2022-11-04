@@ -215,18 +215,11 @@ pub fn create_compute_graph(device: &wgpu::Device, assets: &Assets, user_state: 
         Ok((compute_graph, recoverable_errors))
 }
 
-// the functions that return iterators require an explicit lifetime
-impl<'a> ComputeGraph {
-    pub fn all_matcaps(&'a self)  -> impl Iterator<Item = (&'a NodeID, &'a MatcapData)> + Clone {
+// the functions that return iterators might require an explicit lifetime
+// so we keep it in a different impl block
+impl ComputeGraph {
+    pub fn all_matcaps(&self) -> MatcapIter {
         self.renderables.iter()
-    }
-
-    pub fn matcaps_filtered(&'a self, nodes: Vec<NodeID>) -> impl Iterator<Item = (&'a NodeID, &'a MatcapData)> + Clone {
-        self.renderables
-            .iter()
-            .filter(move |entry| {
-                nodes.contains(entry.0)
-            })
     }
 }
 

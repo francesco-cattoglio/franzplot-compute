@@ -132,7 +132,7 @@ impl AppState {
 
 
 // TODO: RENAME THIS, maybe even move it somewhere else
-pub fn user_to_app_state(app: &mut AppState, user: &mut UserState, select_nodes: Option<Vec<NodeID>>) -> Result<(), String> {
+pub fn user_to_app_state(app: &mut AppState, user: &mut UserState) -> Result<(), String> {
     // - clear previous node graph errors
     // - try to create a new compute graph
     // - if successful, update the scene rendering and report recoverable errors
@@ -142,13 +142,7 @@ pub fn user_to_app_state(app: &mut AppState, user: &mut UserState, select_nodes:
         Ok((compute_graph, recoverable_errors)) => {
             // run the first compute, and create the matcaps in the SceneRenderer
             compute_graph.run_compute(&app.manager.device, &app.manager.queue);
-            if let Some(wanted_nodes) = select_nodes {
-                let filtered_iter = compute_graph.matcaps_filtered(wanted_nodes);
-                app.renderer.recreate_matcaps(&app.manager, &app.assets, filtered_iter);
-            } else {
-                let all_matcaps = compute_graph.all_matcaps();
-                app.renderer.recreate_matcaps(&app.manager, &app.assets, all_matcaps);
-            };
+            app.renderer.recreate_matcaps(&app.manager, &app.assets, compute_graph.all_matcaps());
             app.comp_graph = Some(compute_graph);
             if recoverable_errors.is_empty() {
                 Ok(())
@@ -356,7 +350,7 @@ impl State {
     }
 
     pub fn user_to_app_state(&mut self) -> Result<(), String> {
-        user_to_app_state(&mut self.app, &mut self.user, None)
+        user_to_app_state(&mut self.app, &mut self.user)
     }
 
     pub fn process(&mut self, action: Action) -> Result<(), String> {
@@ -372,6 +366,9 @@ impl State {
                 self.user = user_state;
                 if let Some(ferre) = ferre_data {
                     self.gui.load_ferre_data(ferre);
+                    // Quick hack: by default, always process the scene when we open
+                    // something that could be used by the Ferre GUI
+                    user_to_app_state(&mut self.app, &mut self.user);
                 }
                 Ok(())
             },
@@ -389,7 +386,7 @@ impl State {
                 self.app.render_scene(extent, view)
             },
             Action::ProcessUserState() => {
-                user_to_app_state(&mut self.app, &mut self.user, None)
+                user_to_app_state(&mut self.app, &mut self.user)
             }
             Action::UpdateGlobals(pairs) => {
                 // if the compute graph exists, tell it to update the globals

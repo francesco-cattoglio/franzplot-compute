@@ -531,7 +531,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(app: &mut AppState, user: &mu
         depth_or_array_layers: 1,
     };
     let output_texture = super::rendering::texture::Texture::create_output_texture(&app.manager.device, texture_size, 1);
-    let processing_result = crate::state::user_to_app_state(app, user, None);
+    let processing_result = crate::state::user_to_app_state(app, user);
     if let Err(error) = processing_result {
             println!("Warning: errors detected in the scene: {}", error);
     }

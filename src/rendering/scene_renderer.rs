@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::node_graph::NodeID;
 use crate::state::Assets;
 use crate::rendering::texture::Texture;
@@ -47,8 +49,8 @@ pub struct SceneRenderer {
     picking_bind_group: wgpu::BindGroup,
     billboards: Vec<wgpu::RenderBundle>,
     wireframe_axes: Option<wgpu::RenderBundle>,
-    renderables: Vec<wgpu::RenderBundle>,
-    renderable_ids: Vec<NodeID>,
+    renderables: HashMap<NodeID, wgpu::RenderBundle>,
+    renderable_filter: Option<Vec<NodeID>>,
     uniforms: Uniforms,
     uniforms_buffer: wgpu::Buffer,
     texture_extent: wgpu::Extent3d,
@@ -63,16 +65,17 @@ struct Pipelines {
 }
 
 // a scene renderer works on references of matcaps contained somewhere else.
-// therefore we need an explicit lifetime for this function
-impl<'a> SceneRenderer {
-    pub fn recreate_matcaps(&mut self, manager: &device_manager::Manager, assets: &Assets, matcaps: impl Iterator<Item = (&'a NodeID, &'a MatcapData)> + Clone) {
+// therefore we might need an explicit lifetime for this function
+// keep it in a different impl block!
+impl SceneRenderer {
+    pub fn recreate_matcaps(&mut self, manager: &device_manager::Manager, assets: &Assets, matcaps: MatcapIter) {
         self.clear_matcaps();
         // go through all blocks,
         // chose the "Rendering" ones,
         // turn their data into a renderable
 
         // if the buffer used for object picking is not big enough, resize it (i.e create a new one)
-        let matcaps_len = matcaps.clone().count();
+        let matcaps_len = matcaps.len();
         if matcaps_len > self.picking_buffer_length {
             let (picking_buffer, _picking_bind_layout, picking_bind_group) = create_picking_buffer(&manager.device, matcaps_len);
             self.picking_buffer_length = matcaps_len;
@@ -81,8 +84,8 @@ impl<'a> SceneRenderer {
         }
 
         for (idx, (data_id, matcap)) in matcaps.enumerate() {
-            self.renderable_ids.push(*data_id);
-            self.add_matcap(manager, assets, matcap, idx as u32);
+            let render_bundle = self.create_matcap(manager, assets, matcap, idx as u32);
+            self.renderables.insert(*data_id, render_bundle);
         }
     }
 }
@@ -123,8 +126,9 @@ impl SceneRenderer {
             picking_bind_group,
             wireframe_axes: None,
             billboards: Vec::new(),
-            renderables: Vec::new(),
-            renderable_ids: Vec::new(),
+            renderables: HashMap::new(), //TODO: check if this is safe to use when highlighting
+                                         //objects, or if a BTreeMap is better due to stability
+            renderable_filter: None,
             texture_extent,
             depth_texture,
             output_texture,
@@ -134,9 +138,13 @@ impl SceneRenderer {
         }
     }
 
+    pub fn set_renderable_filter(&mut self, filter: Option<Vec<NodeID>>) {
+        self.renderable_filter = filter;
+    }
+
     pub fn highlight_object(&mut self, object: Option<NodeID>) {
         if let Some(id) = object {
-            if let Some(idx) = self.renderable_ids.iter().position(|elem| *elem == id) {
+            if let Some(idx) = self.renderables.iter().position(|elem| *elem.0 == id) {
                 self.uniforms.highlight_idx = idx as i32;
             }
         } else {
@@ -349,10 +357,10 @@ impl SceneRenderer {
 
     pub fn clear_matcaps(&mut self) {
         self.renderables.clear();
-        self.renderable_ids.clear();
+        self.renderable_filter = None;
     }
 
-    fn add_matcap(&mut self, manager: &device_manager::Manager, assets: &Assets, matcap_data: &MatcapData, object_id: u32) {
+    fn create_matcap(&mut self, manager: &device_manager::Manager, assets: &Assets, matcap_data: &MatcapData, object_id: u32) -> wgpu::RenderBundle {
         let device = &manager.device;
         let mut render_bundle_encoder = device.create_render_bundle_encoder(
             &wgpu::RenderBundleEncoderDescriptor{
@@ -390,10 +398,9 @@ impl SceneRenderer {
         let instance_id = object_id;
         //render_bundle_encoder.draw_indexed(0..rendering_data.index_count, 0, instance_id..instance_id+1);
         render_bundle_encoder.draw_indexed(0..matcap_data.index_count, 0, 0..1);
-        let render_bundle = render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
+        render_bundle_encoder.finish(&wgpu::RenderBundleDescriptor {
             label: Some("Render bundle for a single scene object"),
-        });
-        self.renderables.push(render_bundle);
+        })
     }
 
     pub fn update_view(&mut self, view: Mat4) {
@@ -456,7 +463,14 @@ impl SceneRenderer {
             // actual render calls
             render_pass.execute_bundles(self.wireframe_axes.iter());
             render_pass.execute_bundles(self.billboards.iter());
-            render_pass.execute_bundles(self.renderables.iter());
+            if let Some(filter) = &self.renderable_filter {
+                let filtered_iter = self.renderables.iter()
+                    .filter(|element| filter.contains(element.0))
+                    .map(|e| e.1);
+                render_pass.execute_bundles(filtered_iter);
+            } else {
+                render_pass.execute_bundles(self.renderables.values());
+            }
         }
         let render_queue = encoder.finish();
         manager.queue.submit(std::iter::once(render_queue));
@@ -472,11 +486,12 @@ impl SceneRenderer {
             .min_by_key(|(_idx, value)| *value)?;
         // if the value is different from the initialization value, we can use this
         // idx to recover the NodeID of the renderable that is closer to the camera
-        if min_value != std::i32::MAX {
-            Some(self.renderable_ids[min_idx])
-        } else {
-            None
-        }
+        //if min_value != std::i32::MAX {
+        //    Some(self.renderables[min_idx].0)
+        //} else {
+        //    None
+        //}
+        None
     }
 }
 
