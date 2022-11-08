@@ -1,7 +1,7 @@
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 
 use egui_wgpu::renderer::{ScreenDescriptor, Renderer};
 use egui::FontId;
@@ -32,7 +32,6 @@ use std::{env, time::Instant, path::PathBuf};
 use crate::{state::{Action, AppState, UserState}};
 use egui_winit::{State};
 
-#[allow(unused)]
 #[derive(Debug)]
 pub enum CustomEvent {
     NewFile,
@@ -97,6 +96,11 @@ fn add_custom_font(imgui_context: &mut u32, font_size: f32) -> rust_gui::FontId 
 //        }),
 //    }])
 //}
+#[derive(ValueEnum, Clone, Debug)]
+enum GuiSelect {
+    Ferre,
+    Nodes,
+}
 
 #[derive(Parser)]
 #[command(name = "FranzPlot")]
@@ -115,9 +119,12 @@ struct Cli {
 
     /// Choose a different wgpu backend from the default one. Options are:
     /// "vulkan", "metal", "dx12", "dx11", "gl"
-
     #[arg(short, long, value_name = "WGPU_BACKEND")]
     backend: Option<String>,
+
+    /// Choose the GUI you want to use
+    #[arg(short, long, value_enum, value_name = "GUI")]
+    gui: Option<GuiSelect>,
 
     /// Sets a tracing folder for debug purposes
     #[arg(short, long, value_name = "TRACING")]
@@ -154,6 +161,8 @@ fn main() -> Result<(), String>{
             other => panic!("Unknown backend: {}", other),
         }
     });
+
+    let selected_gui = cli.gui.unwrap_or(GuiSelect::Ferre);
 
     let device_manager = device_manager::Manager::new(cli.tracing.as_deref(), opt_backend);
     let resources_path = {
@@ -352,8 +361,12 @@ fn main() -> Result<(), String>{
         .with_inner_size(window_size);
     let window = builder.build(&event_loop).unwrap();
 
-    let ferre_gui = Box::new(gui::FerreGui::new(event_loop_proxy.clone()));
-    let mut state = state::State::new(device_manager, assets, ferre_gui, &window, &event_loop);
+    let gui: Box<dyn gui::Gui> = match selected_gui {
+        GuiSelect::Ferre => Box::new(gui::FerreGui::new(event_loop_proxy.clone())),
+        GuiSelect::Nodes => Box::new(gui::NodeGui::new(event_loop_proxy.clone())),
+    };
+
+    let mut state = state::State::new(device_manager, assets, gui, &window, &event_loop);
     if let Some(file) = opt_input_file {
         let action = Action::OpenFile(file);
         state.process(action)?;

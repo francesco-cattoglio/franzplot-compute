@@ -1,8 +1,10 @@
 use egui::TextureId;
 pub use ferre_gui::{FerreGui, FerreData};
+pub use node_gui::NodeGui;
 
 use crate::state::{UserState, AppState};
 mod ferre_gui;
+mod node_gui;
 
 pub trait Gui {
     fn show(&mut self, ctx: &egui::Context, app_state: &mut AppState, user_state: &mut UserState, id:TextureId);

@@ -305,7 +305,6 @@ impl FerreGui {
 
 impl super::Gui for FerreGui {
     fn show(&mut self, ctx: &egui::Context, app_state: &mut AppState, user_state: &mut UserState, texture_id: TextureId) {
-
         egui::SidePanel::left("procedure panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 if ui.button("Open file").clicked() {
