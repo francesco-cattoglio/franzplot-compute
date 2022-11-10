@@ -854,9 +854,9 @@ impl NodeContents {
 #[derive(Clone, Deserialize, Serialize, Debug,)]
 pub struct Node {
     pub title: String,
-    position: [f32; 2],
-    error: Option<GraphError>,
-    contents: NodeContents,
+    pub position: [f32; 2],
+    pub error: Option<GraphError>,
+    pub contents: NodeContents,
 }
 
 impl Node {
