@@ -49,8 +49,8 @@ impl DataKind {
 
 #[derive(Clone, Deserialize, Serialize, Debug,)]
 pub struct Attribute {
-    node_id: NodeID,
-    contents: AttributeContents,
+    pub node_id: NodeID,
+    pub contents: AttributeContents,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug,)]
@@ -1453,6 +1453,20 @@ impl NodeGraph {
         //request_savestate
     }
 
+    pub fn get_node_ids(&self) -> Vec<NodeID> {
+        self.nodes
+            .iter()
+            .enumerate()
+            .filter_map(|pair| {
+                if pair.1.is_some() {
+                    Some(pair.0 as i32)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     pub fn get_nodes(&self) -> impl Iterator<Item = (NodeID, &Node)> {
         self.nodes
             .iter()
@@ -1462,6 +1476,13 @@ impl NodeGraph {
                     .as_ref()
                     .map(|node| {(pair.0 as NodeID, node)})
             })
+    }
+
+    pub fn get_attribute(&self, id: AttributeID) -> Option<&Attribute> {
+        match self.attributes.get(id as usize) {
+            Some(attribute) => { attribute.as_ref() }
+            None => { None }
+        }
     }
 
     pub fn get_nodes_mut(&mut self) -> impl Iterator<Item = (NodeID, &mut Node)> {

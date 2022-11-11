@@ -1,7 +1,8 @@
 use egui::TextureId;
+use pest::unicode::UPPERCASE_LETTER;
 
 use crate::CustomEvent;
-use crate::node_graph::{Node, NodeContents};
+use crate::node_graph::{Node, NodeContents, AttributeID, NodeGraph, Attribute};
 use crate::state::{UserState, AppState, user_to_app_state};
 
 use super::FerreData;
@@ -72,6 +73,12 @@ impl NodeGui {
                         ui.set_min_height(avail_rect.height());
                         ui.set_max_width(128.0);
                         ui.vertical(|ui| {
+                            if ui.button("Render scene").clicked() {
+                                let result = user_to_app_state(app_state, user_state);
+                                if result.is_ok() {
+                                    self.current_tab = GuiTab::Scene;
+                                }
+                            }
                             ui.label("Global vars will go here");
                             ui.separator();
                             ui.label("Global vars will go here");
@@ -86,28 +93,55 @@ impl NodeGui {
                 });
         let used_x = inner.response.rect.width();
 
-        for (node_id, node) in user_state.node_graph.get_nodes_mut() {
-            let Node {
-                title,
-                position,
-                error,
-                contents
-            } = node;
-            let window_response = egui::Window::new(title.clone())
+        for node_id in user_state.node_graph.get_node_ids() {
+            // get all the useful information for our node
+            struct Helper {
+                pos: egui::Pos2,
+                window_header: egui::WidgetText,
+                attributes: Vec<AttributeID>,
+            }
+            let Helper {
+                window_header,
+                mut pos,
+                attributes
+            } = {
+                let Node {
+                    title,
+                    position,
+                    error,
+                    contents
+                } = user_state.node_graph.get_node_mut(node_id).unwrap();
+                let window_header: egui::WidgetText = if let Some(_err) = error {
+                    title.clone() + " ⚠"
+                } else {
+                    title.clone()
+                }.into();
+                let attributes = contents.get_attribute_list();
+                Helper {
+                    pos: egui::Pos2::from(*position),
+                    window_header,
+                    attributes
+                }
+            };
+
+            let maybe_response = egui::Window::new(window_header)
                 .id(egui::Id::new(node_id))
-                .current_pos(egui::pos2(position[0] + self.editor_offset.x, position[1] + self.editor_offset.y))
+                .current_pos(pos + self.editor_offset)
                 .drag_bounds(egui::Rect::EVERYTHING)
                 .show(ctx, |ui| {
-                    self.add_node_contents(ui, contents);
+                    self.add_node_contents(ui, &mut user_state.node_graph, &attributes);
                     ui.label("This will contain the node attributes");
                 });
+            if let Some(response) = maybe_response {
+                let up_left = response.response.rect.min - self.editor_offset;
+                (pos[0], pos[1]) = (up_left.x, up_left.y);
+
+
+            }
+
         }
         //egui::SidePanel::left("globals edit").show(ctx, |ui| {
         //    if ui.button("render scene from graph").clicked() {
-        //        let result = user_to_app_state(app_state, user_state);
-        //        if result.is_ok() {
-        //            self.current_tab = GuiTab::Scene;
-        //        }
         //    }
         //});
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -119,8 +153,13 @@ impl NodeGui {
         }); // central panel
     }
 
-    fn add_node_contents(&mut self, ui: &mut egui::Ui, contents: &mut NodeContents) {
-        ui.label("will add");
+    fn add_node_contents(&mut self, ui: &mut egui::Ui, graph: &mut NodeGraph, attributes: &[AttributeID]) {
+        for id in attributes {
+            let attribute = graph.get_attribute(*id).unwrap();
+            ui.vertical(|ui| {
+                ui.label(format!("attribute {} belongs to node {}", id, attribute.node_id));
+            });
+        }
     }
 
     fn show_scene(&mut self, ctx: &egui::Context, app_state: &mut AppState, texture_id: TextureId) {
