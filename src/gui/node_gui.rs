@@ -1,8 +1,10 @@
+use std::collections::HashMap;
+
 use egui::TextureId;
 use pest::unicode::UPPERCASE_LETTER;
 
 use crate::CustomEvent;
-use crate::node_graph::{Node, NodeContents, AttributeID, NodeGraph, Attribute};
+use crate::node_graph::{Node, NodeContents, AttributeID, NodeGraph, Attribute, AttributeContents, DataKind};
 use crate::state::{UserState, AppState, user_to_app_state};
 
 use super::FerreData;
@@ -14,11 +16,21 @@ enum GuiTab {
     Settings,
 }
 
+struct PinLayout {
+
+
+}
+
 pub struct NodeGui {
+    input_pins: HashMap<AttributeID, egui::Rect>,
+    dragged_pin: Option<AttributeID>,
+    drag_delta: egui::Vec2,
+    link_candidate: Option<AttributeID>,
     ferre_data: Option<FerreData>,
     current_tab: GuiTab,
     style: egui::style::Style,
     editor_offset: egui::Vec2,
+    font_size: f32,
     top_area_h: f32,
     left_area_w: f32,
     scene_extent: wgpu::Extent3d,
@@ -28,7 +40,12 @@ pub struct NodeGui {
 impl NodeGui {
     pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>) -> Self {
         NodeGui {
+            dragged_pin: None,
+            drag_delta: egui::vec2(0.0, 0.0),
+            link_candidate: None,
+            input_pins: Default::default(),
             current_tab: GuiTab::Graph,
+            font_size: 14.0,
             top_area_h: 0.0,
             style: Default::default(),
             editor_offset: egui::vec2(0.0, 0.0),
@@ -37,6 +54,47 @@ impl NodeGui {
             scene_extent: wgpu::Extent3d::default(),
             winit_proxy,
         }
+    }
+
+    fn add_textbox(&self, ui: &mut egui::Ui, label: &str, string: &mut String) -> egui::Response {
+        let size = egui::vec2(self.font_size * 8.0, self.font_size);
+        ui.horizontal(|ui| {
+            ui.label(label);
+            ui.add_sized(size, egui::TextEdit::singleline(string))
+        }).inner
+    }
+
+    fn add_input(&mut self, ui: &mut egui::Ui, id: AttributeID, label: &str, kind: &DataKind) {
+        ui.horizontal(|ui| {
+            let radius = ui.spacing().interact_size.y * 0.5;
+            let desired_size =  radius * egui::vec2(1.0, 1.0);
+            let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::drag());
+            self.input_pins.insert(id, rect);
+
+            // any pin can be a link candidate. We cannot use "response.hovered()"
+            // because it does not register correctly if the pin is on another egui::Window.
+            if ui.rect_contains_pointer(rect) {
+                self.link_candidate = Some(id);
+            }
+            // if we are dragging
+            if response.dragged_by(egui::PointerButton::Primary) {
+                if response.drag_started() {
+                    self.dragged_pin = Some(id);
+                }
+                self.drag_delta = response.drag_delta();
+            }
+            if response.drag_released() {
+                if let Some(link_id) = self.link_candidate {
+                    println!("linked to {}", link_id);
+                    dbg!(link_id);
+                } else {
+                    println!("did not create a link!");
+                }
+                self.dragged_pin = None;
+            }
+            ui.painter().circle_filled(rect.center(), radius, egui::Color32::RED);
+            ui.label(label);
+        });
     }
 
     fn show_top_bar(&mut self, ctx: &egui::Context) -> egui::Rect {
@@ -57,7 +115,7 @@ impl NodeGui {
                             ui.selectable_value(&mut self.current_tab, GuiTab::Settings, "Settings");
                         });
                     });
-                });
+            });
         inner.response.rect
     }
 
@@ -90,8 +148,11 @@ impl NodeGui {
                             ui.label("Global vars will go here");
                         });
                     });
-                });
+            });
         let used_x = inner.response.rect.width();
+
+        // before looping over all nodes, reset a few variables
+        self.link_candidate = None;
 
         for node_id in user_state.node_graph.get_node_ids() {
             // get all the useful information for our node
@@ -102,7 +163,7 @@ impl NodeGui {
             }
             let Helper {
                 window_header,
-                mut pos,
+                pos,
                 attributes
             } = {
                 let Node {
@@ -127,18 +188,42 @@ impl NodeGui {
             let maybe_response = egui::Window::new(window_header)
                 .id(egui::Id::new(node_id))
                 .current_pos(pos + self.editor_offset)
+                .auto_sized()
                 .drag_bounds(egui::Rect::EVERYTHING)
                 .show(ctx, |ui| {
                     self.add_node_contents(ui, &mut user_state.node_graph, &attributes);
-                    ui.label("This will contain the node attributes");
                 });
             if let Some(response) = maybe_response {
                 let up_left = response.response.rect.min - self.editor_offset;
+                let Node { position: pos, .. } = user_state.node_graph.get_node_mut(node_id).unwrap();
                 (pos[0], pos[1]) = (up_left.x, up_left.y);
-
 
             }
 
+        }
+        // After rendering all the nodes, decide if we need to display a floating Bezier curve
+        if let Some(start_id) = self.dragged_pin {
+            match self.link_candidate {
+                // draw between the two!
+                Some(end_id) => {
+                let painter = egui::Painter::new(ctx.clone(), egui::LayerId { order: egui::Order::PanelResizeLine, id: egui::Id::new("42") }, egui::Rect::EVERYTHING);
+                painter.line_segment([self.input_pins.get(&start_id).unwrap().center(),
+                                     self.input_pins.get(&end_id).unwrap().center()], egui::Stroke::new(1.0f32, egui::Color32::RED));
+                },
+                // draw between the first and the last known mouse position!
+                None => {
+                let pos =
+                if let Some(pos) = ctx.input().pointer.hover_pos() {
+                    pos
+                } else {
+                    egui::pos2(0.0, 0.0)
+                };
+                let painter = egui::Painter::new(ctx.clone(), egui::LayerId { order: egui::Order::Tooltip, id: egui::Id::new("42") }, egui::Rect::EVERYTHING);
+                painter.line_segment([self.input_pins.get(&start_id).unwrap().center(),
+                                     pos], egui::Stroke::new(1.0f32, egui::Color32::RED));
+
+                }
+            }
         }
         //egui::SidePanel::left("globals edit").show(ctx, |ui| {
         //    if ui.button("render scene from graph").clicked() {
@@ -154,12 +239,26 @@ impl NodeGui {
     }
 
     fn add_node_contents(&mut self, ui: &mut egui::Ui, graph: &mut NodeGraph, attributes: &[AttributeID]) {
-        for id in attributes {
-            let attribute = graph.get_attribute(*id).unwrap();
-            ui.vertical(|ui| {
-                ui.label(format!("attribute {} belongs to node {}", id, attribute.node_id));
-            });
-        }
+        ui.vertical(|ui| {
+            for id in attributes {
+                let Attribute { node_id, contents } = graph.get_attribute_mut(*id).unwrap();
+                match contents {
+                    AttributeContents::Text { label, string } => {
+                        self.add_textbox(ui, label.as_str(), string);
+                    },
+                    AttributeContents::InputPin { label, kind } => {
+                        self.add_input(ui, *id, label, kind);
+                    },
+                    AttributeContents::OutputPin { label, kind } => {
+                        ui.shrink_width_to_current();
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                            ui.label(label.as_str());
+                        });
+                    },
+                    _ => {ui.label(format!("attribute {} not yet supported", id));}
+                }
+            }
+        });
     }
 
     fn show_scene(&mut self, ctx: &egui::Context, app_state: &mut AppState, texture_id: TextureId) {

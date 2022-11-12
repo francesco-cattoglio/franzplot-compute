@@ -1485,6 +1485,13 @@ impl NodeGraph {
         }
     }
 
+    pub fn get_attribute_mut(&mut self, id: AttributeID) -> Option<&mut Attribute> {
+        match self.attributes.get_mut(id as usize) {
+            Some(attribute) => { attribute.as_mut() }
+            None => { None }
+        }
+    }
+
     pub fn get_nodes_mut(&mut self) -> impl Iterator<Item = (NodeID, &mut Node)> {
         self.nodes
             .iter_mut()
