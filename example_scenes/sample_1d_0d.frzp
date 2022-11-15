@@ -21,7 +21,7 @@ V1(
           contents: Interval(variable:5,begin:6,end:7,quality:8,output:9),
         )),// [1]
         Some((
-          title: "Sample Parameter",
+          title: "Sample Parameter 1",
           position: (321,195),
           error: None,
           contents: Sample(geometry:10,parameter:11,value:12,output:13),

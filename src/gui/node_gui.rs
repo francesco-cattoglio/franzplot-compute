@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use egui::TextureId;
+use egui::collapsing_header::CollapsingState;
 use pest::unicode::UPPERCASE_LETTER;
 
 use crate::CustomEvent;
@@ -183,8 +184,9 @@ impl super::Gui for NodeGui {
     }
 }
 
-fn add_node_contents(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, graph: &mut NodeGraph, attributes: &[AttributeID]) {
+fn add_node_contents(ui: &mut egui::Ui, max_width: f32, status: &mut GraphStatus, style: &GraphStyle, graph: &mut NodeGraph, attributes: &[AttributeID]) {
     ui.vertical(|ui| {
+        ui.set_max_width(max_width);
         for id in attributes {
             let Attribute { node_id, contents } = graph.get_attribute_mut(*id).unwrap();
             match contents {
@@ -222,7 +224,6 @@ fn add_input(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, id
 }
 
 fn add_output(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, id: AttributeID, label: &str, kind: DataKind) {
-    ui.shrink_width_to_current();
     let layout = egui::Layout::right_to_left(egui::Align::TOP);
     add_pin(ui, status, style, layout, id, label, kind);
 }
@@ -235,7 +236,7 @@ fn show_node_editor(ctx: &egui::Context, status: &mut GraphStatus, style: &Graph
         // get all the useful information for our node
         struct Helper {
             pos: egui::Pos2,
-            window_header: egui::WidgetText,
+            window_header: egui::RichText,
             attributes: Vec<AttributeID>,
         }
         let Helper {
@@ -249,7 +250,7 @@ fn show_node_editor(ctx: &egui::Context, status: &mut GraphStatus, style: &Graph
                 error,
                 contents
             } = user_graph.get_node_mut(node_id).unwrap();
-            let window_header: egui::WidgetText = if let Some(_err) = error {
+            let window_header: egui::RichText = if let Some(_err) = error {
                 title.clone() + " ⚠"
             } else {
                 title.clone()
@@ -264,13 +265,23 @@ fn show_node_editor(ctx: &egui::Context, status: &mut GraphStatus, style: &Graph
 
         // Show the window... Maybe! This is because the window might actually be closed, even if
         // in our case each window represents a Node, and shall NOT be closed.
-        let maybe_response = egui::Window::new(window_header)
+
+        let maybe_response = egui::Window::new(window_header.clone())
             .id(egui::Id::new(node_id))
             .current_pos(pos + status.editor_offset)
             .auto_sized()
+            .title_bar(false)
             .drag_bounds(egui::Rect::EVERYTHING)
             .show(ctx, |ui| {
-                add_node_contents(ui, status, style, user_graph, &attributes)
+                let header_builder = CollapsingState::load_with_default_open(ctx, ui.make_persistent_id(node_id), true);
+                let mut max_width = 0.0;
+                let first_response = header_builder.show_header(ui, |ui| {
+                    ui.heading(window_header);
+                    max_width = ui.min_size().x
+                });
+                first_response.body_unindented(|ui| {
+                    add_node_contents(ui, max_width, status, style, user_graph, &attributes)
+                })
             });
 
         if let Some(result) = maybe_response {
