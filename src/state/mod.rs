@@ -221,14 +221,18 @@ impl State {
         let scene_texture = Texture::create_output_texture(&manager.device, scene_extent, 1);
         let scene_view = scene_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
         let scene_texture_id = egui_rpass.register_native_texture(&manager.device, &scene_view, egui_wgpu::wgpu::FilterMode::Linear);
+        let mut egui_ctx = egui::Context::default();
+        let mut style = (*egui_ctx.style()).clone();
+        style.animation_time = 0.0;
+        egui_ctx.set_style(style);
 
         Self {
             app: AppState::new(manager, assets),
             user: UserState::default(),
             gui,
             egui_rpass,
-            egui_ctx: egui::Context::default(),
             egui_state,
+            egui_ctx,
             event_loop: event_loop.create_proxy(),
             scene_texture_id,
             screen_surface,

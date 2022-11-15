@@ -9,7 +9,7 @@ use serde::{Serialize, Deserialize};
 pub type AttributeID = i32;
 pub type NodeID = i32;
 
-#[derive(Clone, PartialEq, Deserialize, Serialize, Debug,)]
+#[derive(Clone, Copy, PartialEq, Deserialize, Serialize, Debug,)]
 pub enum DataKind {
     Interval,
     Geometry,
@@ -1453,6 +1453,14 @@ impl NodeGraph {
         //request_savestate
     }
 
+    pub fn insert_link(&mut self, input_id: AttributeID, output_id: AttributeID) {
+        self.links.insert(input_id, output_id);
+    }
+
+    pub fn get_links(&self) -> impl Iterator<Item = (&AttributeID, &AttributeID)> {
+        self.links.iter()
+    }
+
     pub fn get_node_ids(&self) -> Vec<NodeID> {
         self.nodes
             .iter()
@@ -1482,6 +1490,20 @@ impl NodeGraph {
         match self.attributes.get(id as usize) {
             Some(attribute) => { attribute.as_ref() }
             None => { None }
+        }
+    }
+
+    pub fn is_attribute_input(&self, id: AttributeID) -> bool {
+        match self.attributes.get(id as usize) {
+            Some(Some(attribute)) => matches!(attribute.contents, AttributeContents::InputPin { .. }),
+            _ => false
+        }
+    }
+
+    pub fn is_attribute_output(&self, id: AttributeID) -> bool {
+        match self.attributes.get(id as usize) {
+            Some(Some(attribute)) => matches!(attribute.contents, AttributeContents::OutputPin { .. }),
+            _ => false,
         }
     }
 
