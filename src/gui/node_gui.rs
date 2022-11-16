@@ -5,7 +5,7 @@ use egui::collapsing_header::CollapsingState;
 use pest::unicode::UPPERCASE_LETTER;
 
 use crate::CustomEvent;
-use crate::node_graph::{Node, NodeContents, AttributeID, NodeGraph, Attribute, AttributeContents, DataKind};
+use crate::node_graph::{Node, NodeContents, AttributeID, NodeGraph, Attribute, AttributeContents, DataKind, SliderMode, AVAILABLE_SIZES, Axis};
 use crate::state::{UserState, AppState, user_to_app_state, user_state};
 
 use super::FerreData;
@@ -192,13 +192,25 @@ fn add_node_contents(ui: &mut egui::Ui, max_width: f32, status: &mut GraphStatus
             match contents {
                 AttributeContents::Text { label, string } => {
                     add_textbox(ui, status, style, label.as_str(), string);
-                },
+                }
                 AttributeContents::InputPin { label, kind } => {
                     add_input(ui, status, style, *id, label, *kind);
-                },
+                }
                 AttributeContents::OutputPin { label, kind } => {
                     add_output(ui, status, style, *id, label, *kind);
-                },
+                }
+                AttributeContents::IntSlider { label, value, mode } => {
+                    add_slider(ui, status, style, label, value, mode);
+                }
+                AttributeContents::Color { label, color } => {
+                    add_color_picker(ui, status, style, label, color);
+                }
+                AttributeContents::AxisSelect { axis } => {
+                    add_axis_select(ui, status, style, *id, axis);
+                }
+                AttributeContents::MatrixRow { col_1, col_2, col_3, col_4 } => {
+                    add_matrix_row(ui, status, style, [col_1, col_2, col_3, col_4]);
+                }
                 _ => {
                     ui.label(format!("attribute {} not yet supported", id));
                 }
@@ -207,11 +219,76 @@ fn add_node_contents(ui: &mut egui::Ui, max_width: f32, status: &mut GraphStatus
     });
 }
 
+fn add_matrix_row(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, cols: [&mut String; 4]) {
+    ui.horizontal(|ui| {
+        let text_edit_width = style.font_size * 5.0;
+        let col_1_edit = egui::TextEdit::singleline(cols[0]);
+        ui.add_sized(egui::vec2(text_edit_width, style.font_size), col_1_edit);
+
+        let col_2_edit = egui::TextEdit::singleline(cols[1]);
+        ui.add_sized(egui::vec2(text_edit_width, style.font_size), col_2_edit);
+
+        let col_3_edit = egui::TextEdit::singleline(cols[2]);
+        ui.add_sized(egui::vec2(text_edit_width, style.font_size), col_3_edit);
+
+        let col_4_edit = egui::TextEdit::singleline(cols[3]);
+        ui.add_sized(egui::vec2(text_edit_width, style.font_size), col_4_edit);
+    });
+}
+
+fn add_axis_select(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, id: AttributeID, axis: &mut Axis) {
+    ui.horizontal(|ui| {
+        ui.label("axis");
+        egui::ComboBox::from_id_source(id)
+            .selected_text(format!("{:?}", axis))
+            .show_ui(ui, |ui| {
+                ui.selectable_value(axis, Axis::X, "X");
+                ui.selectable_value(axis, Axis::Y, "Y");
+                ui.selectable_value(axis, Axis::Z, "Z");
+            }
+        );
+    });
+}
+
+fn add_color_picker(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, label: &str, color: &mut [f32; 3]) {
+    ui.horizontal(|ui| {
+        ui.label(label);
+        ui.color_edit_button_rgb(color);
+    });
+}
+
 fn add_textbox(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, label: &str, string: &mut String) {
     let size = egui::vec2(style.font_size * 8.0, style.font_size);
     ui.horizontal(|ui| {
         ui.label(label);
         ui.add_sized(size, egui::TextEdit::singleline(string))
+    });
+}
+
+fn add_slider(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, label: &str, value: &mut i32, mode: &mut SliderMode) {
+    ui.horizontal(|ui| {
+        ui.label(label);
+        let slider = match mode {
+            SliderMode::IntRange(min, max) => {
+                egui::Slider::new(value, *min ..= *max)
+                    .show_value(false)
+            },
+            SliderMode::SizeLabels => {
+                egui::Slider::new(value, 0 ..= AVAILABLE_SIZES.len() as i32 - 1)
+                    .show_value(false)
+                    // We could use this custom formatter, however since egui uses an extra box to
+                    // show the value, this would take way too much screen space
+                    //.custom_formatter(|n, _| {
+                    //    let idx = n as usize;
+                    //    if let Some(thickness) = AVAILABLE_SIZES.get(idx) {
+                    //        format!("{thickness}")
+                    //    } else {
+                    //        "0".to_string()
+                    //    }
+                    //})
+            }
+        };
+        ui.add(slider);
     });
 }
 

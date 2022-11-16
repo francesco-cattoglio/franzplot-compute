@@ -59,7 +59,7 @@ pub enum SliderMode {
     SizeLabels,
 }
 
-#[derive(Copy, Clone, Deserialize, Serialize, Debug,)]
+#[derive(Copy, Clone, Deserialize, Serialize, PartialEq, Eq, Debug,)]
 pub enum Axis {
     X,
     Y,
@@ -94,7 +94,7 @@ pub enum AttributeContents {
     AxisSelect {
         axis: Axis,
     },
-    Color {
+    Color {         // TODO: remove? We now have the material select widget
         label: String,
         color: [f32; 3],
     },
