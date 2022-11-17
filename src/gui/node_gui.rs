@@ -6,6 +6,7 @@ use pest::unicode::UPPERCASE_LETTER;
 
 use crate::CustomEvent;
 use crate::node_graph::{Node, NodeContents, AttributeID, NodeGraph, Attribute, AttributeContents, DataKind, SliderMode, AVAILABLE_SIZES, Axis};
+use crate::node_graph::EguiId;
 use crate::state::{UserState, AppState, user_to_app_state, user_state};
 
 use super::FerreData;
@@ -221,6 +222,8 @@ fn add_node_contents(ui: &mut egui::Ui, max_width: f32, status: &mut GraphStatus
 
 fn add_matrix_row(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, cols: [&mut String; 4]) {
     ui.horizontal(|ui| {
+        // BEWARE: since we are inside a ui that was given a "max_width()" setting, in order to properly
+        // show all the text edits of the same length we need to force their size with add_sized()
         let text_edit_width = style.font_size * 5.0;
         let col_1_edit = egui::TextEdit::singleline(cols[0]);
         ui.add_sized(egui::vec2(text_edit_width, style.font_size), col_1_edit);
@@ -309,6 +312,14 @@ fn show_node_editor(ctx: &egui::Context, status: &mut GraphStatus, style: &Graph
     // before looping over all nodes, reset a few variables
     status.link_candidate = None;
 
+    // This is how each node will be rendered:
+    // - we want a Window so that we have an area that can be easily moved around.
+    // - we put a Collapsing state inside the window, because we want a more complete control of
+    //   the header and the contents of the node.
+    // - All the node attributes get rendered one after the other, in the same order as they are
+    //   specified in the node_graph
+    // Some specific gymnastics is needed to make the borrow checked happy, like the destructuring
+    // and copying of the node contents into a helper structure.
     for node_id in user_graph.get_node_ids() {
         // get all the useful information for our node
         struct Helper {
@@ -340,11 +351,11 @@ fn show_node_editor(ctx: &egui::Context, status: &mut GraphStatus, style: &Graph
             }
         };
 
-        // Show the window... Maybe! This is because the window might actually be closed, even if
-        // in our case each window represents a Node, and shall NOT be closed.
-
-        let maybe_response = egui::Window::new(window_header.clone())
-            .id(egui::Id::new(node_id))
+        // When you show the window, it might actually return None if the window itself was closed.
+        // In our case each window represents a Node, and should NOT be closed.
+        // We might want to change this in the future, if we create a way to group windows.
+        let window_return = egui::Window::new("") // NO window title, since we set a unique ID
+            .id(node_id.new_egui_id())
             .current_pos(pos + status.editor_offset)
             .auto_sized()
             .title_bar(false)
@@ -356,30 +367,18 @@ fn show_node_editor(ctx: &egui::Context, status: &mut GraphStatus, style: &Graph
                     ui.heading(window_header);
                     max_width = ui.min_size().x
                 });
-                first_response.body_unindented(|ui| {
+                let body_return = first_response.body_unindented(|ui| {
                     add_node_contents(ui, max_width, status, style, user_graph, &attributes)
-                })
-            });
+                });
+                // We can now check if the header was collapsed. If it was, then no data was
+                // writtend for the pin locations, and we need to manually set them
+                let maybe_inner_response = body_return.2;
 
-        if let Some(result) = maybe_response {
-            // Window was open: store the new position.
-            let up_left = result.response.rect.min - status.editor_offset;
-            let Node { position: pos, .. } = user_graph.get_node_mut(node_id).unwrap();
-            (pos[0], pos[1]) = (up_left.x, up_left.y);
-            // now we need to check if the window was minimized or not!
-            match result.inner {
-                // We have an inner return, therefore was not minimized
-                Some(inner_link_candidate) => {
-                    // we might want to do something else here
-                },
-                // No inner return: window was minimized!
-                None => {
-                    // We need to manually write to the rect positions!
-                    // We want the same Y position for all, but a different X depending on it being
-                    // an input or an output.
+                if maybe_inner_response.is_none() {
+                    // We want the same Y position for all, but a different X for inputs and outputs.
                     for id in attributes {
                         if user_graph.is_attribute_input(id) {
-                            let resp_rect = result.response.rect;
+                            let resp_rect = body_return.0.rect; // Use the collapse button response
                             let rect = egui::Rect {
                                 min: resp_rect.min,
                                 max: [resp_rect.left(), resp_rect.bottom()].into(),
@@ -387,7 +386,7 @@ fn show_node_editor(ctx: &egui::Context, status: &mut GraphStatus, style: &Graph
                             status.pin_positions.insert(id, rect);
                         }
                         if user_graph.is_attribute_output(id) {
-                            let resp_rect = result.response.rect;
+                            let resp_rect = body_return.1.response.rect; // Use the header response
                             let rect = egui::Rect {
                                 min: [resp_rect.right(), resp_rect.top()].into(),
                                 max: resp_rect.max,
@@ -395,10 +394,17 @@ fn show_node_editor(ctx: &egui::Context, status: &mut GraphStatus, style: &Graph
                             status.pin_positions.insert(id, rect);
                         }
                     }
-                }
-            };
-        }
 
+                }
+            }).expect("no egui::Window should ever be closed inside the node editor"); // Assume egui::Window is open
+
+        // After we have the window response, we can assume that the window was not collapsed
+        // (in fact, the user cannot collapse it because the window itself has no title bar)
+        // We can store its position!
+        let window_response = window_return.response;
+        let up_left = window_response.rect.min - status.editor_offset;
+        let Node { position: pos, .. } = user_graph.get_node_mut(node_id).unwrap();
+        (pos[0], pos[1]) = (up_left.x, up_left.y);
     }
     // After rendering all the nodes, decide if we need to display a floating Bezier curve
     status.prev_link_candidate = status.link_candidate;

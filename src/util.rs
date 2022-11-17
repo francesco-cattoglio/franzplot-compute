@@ -7,6 +7,7 @@ use crate::state::AppState;
 use crate::state::UserState;
 
 use std::future::Future;
+
 pub struct Executor {
     #[cfg(not(target_arch = "wasm32"))]
     pool: futures::executor::ThreadPool,

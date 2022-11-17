@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::collections::btree_map::Iter;
 use std::rc::Rc;
 use indexmap::IndexMap;
+use crate::node_graph::AttributeID;
 pub use crate::node_graph::{NodeGraph, NodeID, NodeContents};
 use crate::compute_graph::globals::{Globals, NameValuePair};
 use crate::state::UserState;
@@ -318,7 +319,7 @@ impl ComputeGraph {
             NodeContents::Bezier {
                 p0, p1, p2, p3, quality, output
             } => {
-                let mut points = Vec::<NodeID>::new();
+                let mut points = Vec::<AttributeID>::new();
                 if let Some(id) = graph.get_attribute_as_linked_output(p0) {
                     points.push(id);
                 }

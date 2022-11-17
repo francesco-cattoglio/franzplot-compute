@@ -6,8 +6,25 @@ use crate::rust_gui::Availables;
 use crate::rust_gui::FontId;
 use serde::{Serialize, Deserialize};
 
+// I want the types to be different so that their hash differs
 pub type AttributeID = i32;
-pub type NodeID = i32;
+pub type NodeID = i16;
+
+pub trait EguiId {
+    fn new_egui_id(self) -> egui::Id;
+}
+
+impl EguiId for AttributeID {
+    fn new_egui_id(self) -> egui::Id {
+        egui::Id::new(self)
+    }
+}
+
+impl EguiId for NodeID {
+    fn new_egui_id(self) -> egui::Id {
+        egui::Id::new(self as i32 + 0xFF00)
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Deserialize, Serialize, Debug,)]
 pub enum DataKind {
@@ -599,6 +616,8 @@ impl NodeContents {
 
     // NOTE: it is very important that we keep the order in which we return the attributes
     // with the order of attributes returned in the NodeContents::default_*() functions!
+    // TODO: as an optimization, we might want to return a smallvec, to avoid allocations,
+    // especially since this list gets copied when rendering the UI
     pub fn get_attribute_list(&self) -> Vec<AttributeID> {
         match *self {
             NodeContents::Interval {
@@ -1067,7 +1086,7 @@ impl NodeGraph {
             id
         } else {
             // otherwise, push a new, empty slot onto the nodes vec and use that one
-            let id = self.attributes.len() as NodeID;
+            let id = self.attributes.len() as AttributeID;
             self.attributes.push(None);
             id
         }
@@ -1467,7 +1486,7 @@ impl NodeGraph {
             .enumerate()
             .filter_map(|pair| {
                 if pair.1.is_some() {
-                    Some(pair.0 as i32)
+                    Some(pair.0 as NodeID)
                 } else {
                     None
                 }
