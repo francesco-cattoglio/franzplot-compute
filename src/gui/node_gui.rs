@@ -18,20 +18,8 @@ enum GuiTab {
     Settings,
 }
 
-struct GraphStyle {
-    font_size: f32,
-}
-
-impl Default for GraphStyle {
-    fn default() -> Self {
-        GraphStyle {
-            font_size: 14.0
-        }
-    }
-}
-
-#[derive(Default)]
 struct GraphStatus {
+    curr_interact_height: f32,
     prev_link_candidate: Option<AttributeID>,
     new_link: Option<(AttributeID, AttributeID)>,
     link_candidate: Option<AttributeID>,
@@ -39,6 +27,378 @@ struct GraphStatus {
     dragged_pin: Option<AttributeID>,
     drag_delta: egui::Vec2,
     editor_offset: egui::Vec2,
+    style: std::sync::Arc<egui::Style>,
+}
+
+// This is the default ratio between default font size and interaction size
+const FONT_RATIO: f32 = 14.0/18.0;
+// This is the default ratio between widget interaction width height
+const WIDGET_RATIO: f32 = 40.0/18.0;
+impl GraphStatus {
+    fn new(interact_height: f32) -> Self {
+        let mut ret = Self {
+            prev_link_candidate: None,
+            curr_interact_height: interact_height,
+            new_link: None,
+            link_candidate: None,
+            pin_positions: HashMap::new(),
+            dragged_pin: None,
+            drag_delta: egui::vec2(0.0, 0.0),
+            editor_offset: egui::vec2(0.0, 0.0),
+            style: std::sync::Arc::new(egui::Style::default()),
+        };
+        ret.change_style_sizes(interact_height);
+        ret
+    }
+
+    fn change_style_sizes(&mut self, interact_height: f32) {
+        // NOTE: make_mut will clone the style if it is currently in use
+        // (for example, by the context!)
+        // If this is the case, then this new_style will be used from the
+            // NEXT frame onwards, which is what we want
+        let new_style = std::sync::Arc::make_mut(&mut self.style);
+        new_style.override_font_id = Some(egui::FontId {
+            size: FONT_RATIO * interact_height,
+            family: egui::FontFamily::Monospace,
+        });
+        new_style.spacing.interact_size = egui::vec2(WIDGET_RATIO * interact_height, interact_height);
+        new_style.animation_time = 0.0;
+        self.curr_interact_height = interact_height;
+    }
+
+    fn add_node_contents(&mut self, ui: &mut egui::Ui, max_width: f32, graph: &mut NodeGraph, attributes: &[AttributeID]) {
+        ui.vertical(|ui| {
+            ui.set_max_width(max_width);
+            for id in attributes {
+                let Attribute { contents, node_id: _ } = graph.get_attribute_mut(*id).unwrap();
+                match contents {
+                    AttributeContents::Text { label, string } => {
+                        self.add_textbox(ui, label.as_str(), string);
+                    }
+                    AttributeContents::InputPin { label, kind } => {
+                        self.add_input(ui, *id, label, *kind);
+                    }
+                    AttributeContents::OutputPin { label, kind } => {
+                        self.add_output(ui, *id, label, *kind);
+                    }
+                    AttributeContents::IntSlider { label, value, mode } => {
+                        self.add_slider(ui, label, value, mode);
+                    }
+                    AttributeContents::Color { label, color } => {
+                        self.add_color_picker(ui, label, color);
+                    }
+                    AttributeContents::AxisSelect { axis } => {
+                        self.add_axis_select(ui, *id, axis);
+                    }
+                    AttributeContents::MatrixRow { col_1, col_2, col_3, col_4 } => {
+                        self.add_matrix_row(ui, [col_1, col_2, col_3, col_4]);
+                    }
+                    AttributeContents::Material { selected: _ } => { ui.label("material: t.b.a."); },
+                    AttributeContents::Mask { selected: _ } => { ui.label("mask: t.b.a."); },
+                    AttributeContents::PrimitiveKind { selected: _ } => { ui.label("primitive: t.b.a."); },
+                    AttributeContents::Unknown { label }=> { ui.label(format!("unknown: {label}")); },
+                };
+            }
+        });
+    }
+
+    fn add_matrix_row(&mut self, ui: &mut egui::Ui, cols: [&mut String; 4]) {
+        ui.horizontal(|ui| {
+            // BEWARE: since we are inside a ui that was given a "max_width()" setting, in order to properly
+            // show all the text edits of the same length we need to force their size with add_sized()
+            let mut widget_size = ui.spacing().interact_size;
+            widget_size.x = widget_size.y * 5.0;
+            let col_1_edit = egui::TextEdit::singleline(cols[0]);
+            ui.add_sized(widget_size, col_1_edit);
+
+            let col_2_edit = egui::TextEdit::singleline(cols[1]);
+            ui.add_sized(widget_size, col_2_edit);
+
+            let col_3_edit = egui::TextEdit::singleline(cols[2]);
+            ui.add_sized(widget_size, col_3_edit);
+
+            let col_4_edit = egui::TextEdit::singleline(cols[3]);
+            ui.add_sized(widget_size, col_4_edit);
+        });
+    }
+
+    fn add_axis_select(&mut self, ui: &mut egui::Ui, id: AttributeID, axis: &mut Axis) {
+        ui.horizontal(|ui| {
+            ui.label("axis");
+            egui::ComboBox::from_id_source(id)
+                .selected_text(format!("{:?}", axis))
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(axis, Axis::X, "X");
+                    ui.selectable_value(axis, Axis::Y, "Y");
+                    ui.selectable_value(axis, Axis::Z, "Z");
+                }
+            );
+        });
+    }
+
+    fn add_color_picker(&mut self, ui: &mut egui::Ui, label: &str, color: &mut [f32; 3]) {
+        ui.horizontal(|ui| {
+            ui.label(label);
+            ui.color_edit_button_rgb(color);
+        });
+    }
+
+    fn add_textbox(&mut self, ui: &mut egui::Ui, label: &str, string: &mut String) {
+        let mut widget_size = ui.spacing().interact_size;
+        widget_size.x = widget_size.y * 7.0;
+        ui.horizontal(|ui| {
+            ui.label(label);
+            ui.add_sized(widget_size, egui::TextEdit::singleline(string))
+        });
+    }
+
+    fn add_slider(&mut self, ui: &mut egui::Ui, label: &str, value: &mut i32, mode: &mut SliderMode) {
+        ui.horizontal(|ui| {
+            ui.label(label);
+            let slider = match mode {
+                SliderMode::IntRange(min, max) => {
+                    egui::Slider::new(value, *min ..= *max)
+                        .show_value(false)
+                },
+                SliderMode::SizeLabels => {
+                    egui::Slider::new(value, 0 ..= AVAILABLE_SIZES.len() as i32 - 1)
+                        .show_value(false)
+                        // We could use this custom formatter, however since egui uses an extra box to
+                        // show the value, this would take way too much screen space
+                        //.custom_formatter(|n, _| {
+                        //    let idx = n as usize;
+                        //    if let Some(thickness) = AVAILABLE_SIZES.get(idx) {
+                        //        format!("{thickness}")
+                        //    } else {
+                        //        "0".to_string()
+                        //    }
+                        //})
+                }
+            };
+            ui.add(slider);
+        });
+    }
+
+    // Adding an output or an input pin are basically the same thing, only thing that changes is the
+    // "early shrink width to current" for output and the right-to-left or left-to-right layout.
+    // How the link is created also changes, but that needs to be done later on anyway.
+    fn add_input(&mut self, ui: &mut egui::Ui, id: AttributeID, label: &str, kind: DataKind) {
+        let layout = egui::Layout::left_to_right(egui::Align::TOP);
+        self.add_pin(ui, layout, id, label, kind);
+    }
+
+    fn add_output(&mut self, ui: &mut egui::Ui, id: AttributeID, label: &str, kind: DataKind) {
+        let layout = egui::Layout::right_to_left(egui::Align::TOP);
+        self.add_pin(ui, layout, id, label, kind);
+    }
+
+    pub fn show_node_editor(&mut self, ctx: &egui::Context, user_graph: &mut NodeGraph) {
+        // First: override the style
+        let prev_style = ctx.style();
+        ctx.set_style(self.style.clone());
+        // before looping over all nodes, reset a few variables
+        self.link_candidate = None;
+
+        // This is how each node will be rendered:
+        // - we want a Window so that we have an area that can be easily moved around.
+        // - we put a Collapsing state inside the window, because we want a more complete control of
+        //   the header and the contents of the node.
+        // - All the node attributes get rendered one after the other, in the same order as they are
+        //   specified in the node_graph
+        // Some specific gymnastics is needed to make the borrow checked happy, like the destructuring
+        // and copying of the node contents into a helper structure.
+        for node_id in user_graph.get_node_ids() {
+            // get all the useful information for our node
+            struct Helper {
+                pos: egui::Pos2,
+                window_header: egui::RichText,
+                attributes: Vec<AttributeID>,
+            }
+            let Helper {
+                window_header,
+                pos,
+                attributes
+            } = {
+                let Node {
+                    title,
+                    position,
+                    error,
+                    contents
+                } = user_graph.get_node_mut(node_id).unwrap();
+                let window_header: egui::RichText = if let Some(_err) = error {
+                    title.clone() + " ⚠"
+                } else {
+                    title.clone()
+                }.into();
+                let attributes = contents.get_attribute_list();
+                Helper {
+                    pos: egui::Pos2::from(*position),
+                    window_header,
+                    attributes
+                }
+            };
+
+            // When you show the window, it might actually return None if the window itself was closed.
+            // In our case each window represents a Node, and should NOT be closed.
+            // We might want to change this in the future, if we create a way to group windows.
+            let window_return = egui::Window::new("") // NO window title, since we set a unique ID
+                .id(node_id.new_egui_id())
+                .current_pos(pos + self.editor_offset)
+                .auto_sized()
+                .title_bar(false)
+                .drag_bounds(egui::Rect::EVERYTHING)
+                .show(ctx, |ui| {
+                    let header_builder = CollapsingState::load_with_default_open(ctx, ui.make_persistent_id(node_id), true);
+                    let mut max_width = 0.0;
+                    let first_response = header_builder.show_header(ui, |ui| {
+                        ui.heading(window_header);
+                        max_width = ui.min_size().x
+                    });
+                    let body_return = first_response.body_unindented(|ui| {
+                        self.add_node_contents(ui, max_width, user_graph, &attributes)
+                    });
+                    // We can now check if the header was collapsed. If it was, then no data was
+                    // writtend for the pin locations, and we need to manually set them
+                    let maybe_inner_response = body_return.2;
+
+                    if maybe_inner_response.is_none() {
+                        // We want the same Y position for all, but a different X for inputs and outputs.
+                        for id in attributes {
+                            if user_graph.is_attribute_input(id) {
+                                let resp_rect = body_return.0.rect; // Use the collapse button response
+                                let rect = egui::Rect {
+                                    min: resp_rect.min,
+                                    max: [resp_rect.left(), resp_rect.bottom()].into(),
+                                };
+                                self.pin_positions.insert(id, rect);
+                            }
+                            if user_graph.is_attribute_output(id) {
+                                let resp_rect = body_return.1.response.rect; // Use the header response
+                                let rect = egui::Rect {
+                                    min: [resp_rect.right(), resp_rect.top()].into(),
+                                    max: resp_rect.max,
+                                };
+                                self.pin_positions.insert(id, rect);
+                            }
+                        }
+
+                    }
+                }).expect("no egui::Window should ever be closed inside the node editor"); // Assume egui::Window is open
+
+            // After we have the window response, we can assume that the window was not collapsed
+            // (in fact, the user cannot collapse it because the window itself has no title bar)
+            // We can store its position!
+            let window_response = window_return.response;
+            let up_left = window_response.rect.min - self.editor_offset;
+            let Node { position: pos, .. } = user_graph.get_node_mut(node_id).unwrap();
+            (pos[0], pos[1]) = (up_left.x, up_left.y);
+        }
+        // After rendering all the nodes, decide if we need to display a floating Bezier curve
+        self.prev_link_candidate = self.link_candidate;
+        let top_painter = egui::Painter::new(ctx.clone(), egui::LayerId { order: egui::Order::Tooltip, id: egui::Id::new("painter") }, egui::Rect::EVERYTHING);
+        if let Some(start_id) = self.dragged_pin {
+            match self.prev_link_candidate {
+                // draw between the two!
+                Some(end_id) => {
+                top_painter.line_segment([self.pin_positions.get(&start_id).unwrap().center(),
+                                     self.pin_positions.get(&end_id).unwrap().center()], egui::Stroke::new(1.0f32, egui::Color32::RED));
+                },
+                // draw between the first and the last known mouse position!
+                None => {
+                let pos =
+                if let Some(pos) = ctx.input().pointer.hover_pos() {
+                    pos
+                } else {
+                    egui::pos2(0.0, 0.0)
+                };
+                top_painter.line_segment([self.pin_positions.get(&start_id).unwrap().center(),
+                                     pos], egui::Stroke::new(1.0f32, egui::Color32::RED));
+                }
+            }
+        }
+
+        match self.new_link {
+            Some(pair) if user_graph.is_attribute_input(pair.0) => user_graph.insert_link(pair.0, pair.1),
+            Some(pair) /*         the pair is reversed       */ => user_graph.insert_link(pair.1, pair.0),
+            _ => {}
+        }
+
+        let mid_painter = egui::Painter::new(ctx.clone(), egui::LayerId { order: egui::Order::PanelResizeLine, id: egui::Id::new("painter") }, egui::Rect::EVERYTHING);
+        // After the floating bezier, we need to show all the existing connections!
+        for link in user_graph.get_links() {
+            let in_pos = match self.pin_positions.get(link.0) {
+                Some(rect) => rect.center(),
+                _ => unreachable!(),
+            };
+            let out_pos = match self.pin_positions.get(link.1) {
+                Some(rect) => rect.center(),
+                _ => unreachable!(),
+            };
+            let pos_diff = in_pos.distance(out_pos);
+            let delta = self.style.spacing.interact_size.y * (0.375 + 0.375 * pos_diff.sqrt());
+            let points = [out_pos, out_pos + (delta, 0.0).into(), in_pos + (-delta, 0.0).into(), in_pos];
+            let shape = egui::epaint::CubicBezierShape::from_points_stroke(points, false, egui::Color32::default(), egui::Stroke::new(2.0f32, egui::Color32::RED));
+            mid_painter.add(shape);
+        }
+        //egui::SidePanel::left("globals edit").show(ctx, |ui| {
+        //    if ui.button("render scene from graph").clicked() {
+        //    }
+        //});
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let (id, rect) = ui.allocate_space(ui.available_size());
+            let response = ui.interact(rect, id, egui::Sense::click_and_drag());
+            if response.dragged_by(egui::PointerButton::Middle) {
+                self.editor_offset += response.drag_delta();
+            }
+        }); // central panel
+
+        // Finally: reset the style to the standard one
+        ctx.set_style(prev_style);
+    }
+
+    fn add_pin(&mut self, ui: &mut egui::Ui, layout: egui::Layout, id: AttributeID, label: &str, kind: DataKind) {
+        ui.with_layout(layout, |ui| {
+            let size = egui::Vec2::splat(ui.spacing().interact_size.y);
+            let (response, painter) = ui.allocate_painter(size, egui::Sense::drag());
+            let rect = response.rect;
+            let c = rect.center();
+            let r = rect.width() / 3.0;
+            let color = egui::Color32::RED;
+            painter.circle_filled(c, r, color);
+            self.pin_positions.insert(id, rect);
+
+            // any pin can be a link candidate. However we cannot use "response.hovered()"
+            // because it does not register correctly if the pin is on another egui::Window.
+            if ui.rect_contains_pointer(rect) {
+                painter.circle_stroke(c, r, egui::Stroke::new(1.0, egui::Color32::GOLD));
+                self.link_candidate = Some(id);
+            }
+            // if we are dragging
+            if response.dragged_by(egui::PointerButton::Primary) {
+                if response.drag_started() {
+                    self.dragged_pin = Some(id);
+                }
+                self.drag_delta = response.drag_delta();
+            }
+            // BEWARE: we need to use the link candidate from the PREVIOUS frame because while
+            // looping widgets in the current frame, and we might not have gone through
+            // the widget that is being hovered just yet!
+            if response.drag_released() {
+                if let Some(link_id) = self.prev_link_candidate {
+                    println!("linked to {}", link_id);
+                    self.new_link = Some((id, link_id));
+                    dbg!(link_id);
+                } else {
+                    println!("did not create a link!");
+                }
+                self.dragged_pin = None;
+            }
+            ui.shrink_height_to_current();
+            ui.horizontal_centered(|ui| ui.label(label));
+        });
+    }
+
+
 }
 
 pub struct NodeGui {
@@ -48,7 +408,6 @@ pub struct NodeGui {
     current_tab: GuiTab,
     style: egui::style::Style,
     graph_status: GraphStatus,
-    graph_style: GraphStyle,
     top_area_h: f32,
     left_area_w: f32,
     scene_extent: wgpu::Extent3d,
@@ -59,10 +418,9 @@ impl NodeGui {
     pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>) -> Self {
         NodeGui {
             dragged_pin: None,
-            graph_status: Default::default(),
+            graph_status: GraphStatus::new(12.0),
             drag_delta: egui::vec2(0.0, 0.0),
             current_tab: GuiTab::Graph,
-            graph_style: Default::default(),
             top_area_h: 0.0,
             style: Default::default(),
             left_area_w: 0.0,
@@ -112,6 +470,14 @@ impl NodeGui {
                                     self.current_tab = GuiTab::Scene;
                                 }
                             }
+                            if ui.button("increase graph size").clicked() {
+                                let interact_height = self.graph_status.curr_interact_height + 1.0;
+                                self.graph_status.change_style_sizes(interact_height);
+                            }
+                            if ui.button("Decrease graph size").clicked() {
+                                let interact_height = 1.0_f32.max(self.graph_status.curr_interact_height - 1.0);
+                                self.graph_status.change_style_sizes(interact_height);
+                            }
                             ui.label("Global vars will go here");
                             ui.separator();
                             ui.label("Global vars will go here");
@@ -126,7 +492,7 @@ impl NodeGui {
             });
         let used_x = inner.response.rect.width();
 
-        show_node_editor(ctx, &mut self.graph_status, &self.graph_style, &mut user_state.node_graph);
+        self.graph_status.show_node_editor(ctx, &mut user_state.node_graph);
     }
 
     fn show_scene(&mut self, ctx: &egui::Context, app_state: &mut AppState, texture_id: TextureId) {
@@ -183,329 +549,5 @@ impl super::Gui for NodeGui {
             None
         }
     }
-}
-
-fn add_node_contents(ui: &mut egui::Ui, max_width: f32, status: &mut GraphStatus, style: &GraphStyle, graph: &mut NodeGraph, attributes: &[AttributeID]) {
-    ui.vertical(|ui| {
-        ui.set_max_width(max_width);
-        for id in attributes {
-            let Attribute { node_id, contents } = graph.get_attribute_mut(*id).unwrap();
-            match contents {
-                AttributeContents::Text { label, string } => {
-                    add_textbox(ui, status, style, label.as_str(), string);
-                }
-                AttributeContents::InputPin { label, kind } => {
-                    add_input(ui, status, style, *id, label, *kind);
-                }
-                AttributeContents::OutputPin { label, kind } => {
-                    add_output(ui, status, style, *id, label, *kind);
-                }
-                AttributeContents::IntSlider { label, value, mode } => {
-                    add_slider(ui, status, style, label, value, mode);
-                }
-                AttributeContents::Color { label, color } => {
-                    add_color_picker(ui, status, style, label, color);
-                }
-                AttributeContents::AxisSelect { axis } => {
-                    add_axis_select(ui, status, style, *id, axis);
-                }
-                AttributeContents::MatrixRow { col_1, col_2, col_3, col_4 } => {
-                    add_matrix_row(ui, status, style, [col_1, col_2, col_3, col_4]);
-                }
-                _ => {
-                    ui.label(format!("attribute {} not yet supported", id));
-                }
-            };
-        }
-    });
-}
-
-fn add_matrix_row(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, cols: [&mut String; 4]) {
-    ui.horizontal(|ui| {
-        // BEWARE: since we are inside a ui that was given a "max_width()" setting, in order to properly
-        // show all the text edits of the same length we need to force their size with add_sized()
-        let text_edit_width = style.font_size * 5.0;
-        let col_1_edit = egui::TextEdit::singleline(cols[0]);
-        ui.add_sized(egui::vec2(text_edit_width, style.font_size), col_1_edit);
-
-        let col_2_edit = egui::TextEdit::singleline(cols[1]);
-        ui.add_sized(egui::vec2(text_edit_width, style.font_size), col_2_edit);
-
-        let col_3_edit = egui::TextEdit::singleline(cols[2]);
-        ui.add_sized(egui::vec2(text_edit_width, style.font_size), col_3_edit);
-
-        let col_4_edit = egui::TextEdit::singleline(cols[3]);
-        ui.add_sized(egui::vec2(text_edit_width, style.font_size), col_4_edit);
-    });
-}
-
-fn add_axis_select(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, id: AttributeID, axis: &mut Axis) {
-    ui.horizontal(|ui| {
-        ui.label("axis");
-        egui::ComboBox::from_id_source(id)
-            .selected_text(format!("{:?}", axis))
-            .show_ui(ui, |ui| {
-                ui.selectable_value(axis, Axis::X, "X");
-                ui.selectable_value(axis, Axis::Y, "Y");
-                ui.selectable_value(axis, Axis::Z, "Z");
-            }
-        );
-    });
-}
-
-fn add_color_picker(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, label: &str, color: &mut [f32; 3]) {
-    ui.horizontal(|ui| {
-        ui.label(label);
-        ui.color_edit_button_rgb(color);
-    });
-}
-
-fn add_textbox(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, label: &str, string: &mut String) {
-    let size = egui::vec2(style.font_size * 8.0, style.font_size);
-    ui.horizontal(|ui| {
-        ui.label(label);
-        ui.add_sized(size, egui::TextEdit::singleline(string))
-    });
-}
-
-fn add_slider(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, label: &str, value: &mut i32, mode: &mut SliderMode) {
-    ui.horizontal(|ui| {
-        ui.label(label);
-        let slider = match mode {
-            SliderMode::IntRange(min, max) => {
-                egui::Slider::new(value, *min ..= *max)
-                    .show_value(false)
-            },
-            SliderMode::SizeLabels => {
-                egui::Slider::new(value, 0 ..= AVAILABLE_SIZES.len() as i32 - 1)
-                    .show_value(false)
-                    // We could use this custom formatter, however since egui uses an extra box to
-                    // show the value, this would take way too much screen space
-                    //.custom_formatter(|n, _| {
-                    //    let idx = n as usize;
-                    //    if let Some(thickness) = AVAILABLE_SIZES.get(idx) {
-                    //        format!("{thickness}")
-                    //    } else {
-                    //        "0".to_string()
-                    //    }
-                    //})
-            }
-        };
-        ui.add(slider);
-    });
-}
-
-// Adding an output or an input pin are basically the same thing, only thing that changes is the
-// "early shrink width to current" for output and the right-to-left or left-to-right layout.
-// How the link is created also changes, but that needs to be done later on anyway.
-fn add_input(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, id: AttributeID, label: &str, kind: DataKind) {
-    let layout = egui::Layout::left_to_right(egui::Align::TOP);
-    add_pin(ui, status, style, layout, id, label, kind);
-}
-
-fn add_output(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, id: AttributeID, label: &str, kind: DataKind) {
-    let layout = egui::Layout::right_to_left(egui::Align::TOP);
-    add_pin(ui, status, style, layout, id, label, kind);
-}
-
-fn show_node_editor(ctx: &egui::Context, status: &mut GraphStatus, style: &GraphStyle, user_graph: &mut NodeGraph) {
-    // before looping over all nodes, reset a few variables
-    status.link_candidate = None;
-
-    // This is how each node will be rendered:
-    // - we want a Window so that we have an area that can be easily moved around.
-    // - we put a Collapsing state inside the window, because we want a more complete control of
-    //   the header and the contents of the node.
-    // - All the node attributes get rendered one after the other, in the same order as they are
-    //   specified in the node_graph
-    // Some specific gymnastics is needed to make the borrow checked happy, like the destructuring
-    // and copying of the node contents into a helper structure.
-    for node_id in user_graph.get_node_ids() {
-        // get all the useful information for our node
-        struct Helper {
-            pos: egui::Pos2,
-            window_header: egui::RichText,
-            attributes: Vec<AttributeID>,
-        }
-        let Helper {
-            window_header,
-            pos,
-            attributes
-        } = {
-            let Node {
-                title,
-                position,
-                error,
-                contents
-            } = user_graph.get_node_mut(node_id).unwrap();
-            let window_header: egui::RichText = if let Some(_err) = error {
-                title.clone() + " ⚠"
-            } else {
-                title.clone()
-            }.into();
-            let attributes = contents.get_attribute_list();
-            Helper {
-                pos: egui::Pos2::from(*position),
-                window_header,
-                attributes
-            }
-        };
-
-        // When you show the window, it might actually return None if the window itself was closed.
-        // In our case each window represents a Node, and should NOT be closed.
-        // We might want to change this in the future, if we create a way to group windows.
-        let window_return = egui::Window::new("") // NO window title, since we set a unique ID
-            .id(node_id.new_egui_id())
-            .current_pos(pos + status.editor_offset)
-            .auto_sized()
-            .title_bar(false)
-            .drag_bounds(egui::Rect::EVERYTHING)
-            .show(ctx, |ui| {
-                let header_builder = CollapsingState::load_with_default_open(ctx, ui.make_persistent_id(node_id), true);
-                let mut max_width = 0.0;
-                let first_response = header_builder.show_header(ui, |ui| {
-                    ui.heading(window_header);
-                    max_width = ui.min_size().x
-                });
-                let body_return = first_response.body_unindented(|ui| {
-                    add_node_contents(ui, max_width, status, style, user_graph, &attributes)
-                });
-                // We can now check if the header was collapsed. If it was, then no data was
-                // writtend for the pin locations, and we need to manually set them
-                let maybe_inner_response = body_return.2;
-
-                if maybe_inner_response.is_none() {
-                    // We want the same Y position for all, but a different X for inputs and outputs.
-                    for id in attributes {
-                        if user_graph.is_attribute_input(id) {
-                            let resp_rect = body_return.0.rect; // Use the collapse button response
-                            let rect = egui::Rect {
-                                min: resp_rect.min,
-                                max: [resp_rect.left(), resp_rect.bottom()].into(),
-                            };
-                            status.pin_positions.insert(id, rect);
-                        }
-                        if user_graph.is_attribute_output(id) {
-                            let resp_rect = body_return.1.response.rect; // Use the header response
-                            let rect = egui::Rect {
-                                min: [resp_rect.right(), resp_rect.top()].into(),
-                                max: resp_rect.max,
-                            };
-                            status.pin_positions.insert(id, rect);
-                        }
-                    }
-
-                }
-            }).expect("no egui::Window should ever be closed inside the node editor"); // Assume egui::Window is open
-
-        // After we have the window response, we can assume that the window was not collapsed
-        // (in fact, the user cannot collapse it because the window itself has no title bar)
-        // We can store its position!
-        let window_response = window_return.response;
-        let up_left = window_response.rect.min - status.editor_offset;
-        let Node { position: pos, .. } = user_graph.get_node_mut(node_id).unwrap();
-        (pos[0], pos[1]) = (up_left.x, up_left.y);
-    }
-    // After rendering all the nodes, decide if we need to display a floating Bezier curve
-    status.prev_link_candidate = status.link_candidate;
-    let top_painter = egui::Painter::new(ctx.clone(), egui::LayerId { order: egui::Order::Tooltip, id: egui::Id::new("painter") }, egui::Rect::EVERYTHING);
-    if let Some(start_id) = status.dragged_pin {
-        match status.prev_link_candidate {
-            // draw between the two!
-            Some(end_id) => {
-            top_painter.line_segment([status.pin_positions.get(&start_id).unwrap().center(),
-                                 status.pin_positions.get(&end_id).unwrap().center()], egui::Stroke::new(1.0f32, egui::Color32::RED));
-            },
-            // draw between the first and the last known mouse position!
-            None => {
-            let pos =
-            if let Some(pos) = ctx.input().pointer.hover_pos() {
-                pos
-            } else {
-                egui::pos2(0.0, 0.0)
-            };
-            top_painter.line_segment([status.pin_positions.get(&start_id).unwrap().center(),
-                                 pos], egui::Stroke::new(1.0f32, egui::Color32::RED));
-            }
-        }
-    }
-
-    match status.new_link {
-        Some(pair) if user_graph.is_attribute_input(pair.0) => user_graph.insert_link(pair.0, pair.1),
-        Some(pair) /*         the pair is reversed       */ => user_graph.insert_link(pair.1, pair.0),
-        _ => {}
-    }
-
-    let mid_painter = egui::Painter::new(ctx.clone(), egui::LayerId { order: egui::Order::PanelResizeLine, id: egui::Id::new("painter") }, egui::Rect::EVERYTHING);
-    // After the floating bezier, we need to show all the existing connections!
-    for link in user_graph.get_links() {
-        let in_pos = match status.pin_positions.get(link.0) {
-            Some(rect) => rect.center(),
-            _ => unreachable!(),
-        };
-        let out_pos = match status.pin_positions.get(link.1) {
-            Some(rect) => rect.center(),
-            _ => unreachable!(),
-        };
-        let pos_diff = in_pos.distance(out_pos);
-        let delta = style.font_size * (0.375 + 0.375 * pos_diff.sqrt());
-        let points = [out_pos, out_pos + (delta, 0.0).into(), in_pos + (-delta, 0.0).into(), in_pos];
-        let shape = egui::epaint::CubicBezierShape::from_points_stroke(points, false, egui::Color32::default(), egui::Stroke::new(2.0f32, egui::Color32::RED));
-        mid_painter.add(shape);
-    }
-    //egui::SidePanel::left("globals edit").show(ctx, |ui| {
-    //    if ui.button("render scene from graph").clicked() {
-    //    }
-    //});
-    egui::CentralPanel::default().show(ctx, |ui| {
-        let (id, rect) = ui.allocate_space(ui.available_size());
-        let response = ui.interact(rect, id, egui::Sense::click_and_drag());
-        if response.dragged_by(egui::PointerButton::Middle) {
-            status.editor_offset += response.drag_delta();
-        }
-    }); // central panel
-
-}
-
-fn add_pin(ui: &mut egui::Ui, status: &mut GraphStatus, style: &GraphStyle, layout: egui::Layout, id: AttributeID, label: &str, kind: DataKind) {
-    ui.with_layout(layout, |ui| {
-        let size = egui::Vec2::splat(style.font_size);
-        let (response, painter) = ui.allocate_painter(size, egui::Sense::drag());
-        let rect = response.rect;
-        let c = rect.center();
-        let r = rect.width() / 3.0;
-        let color = egui::Color32::RED;
-        painter.circle_filled(c, r, color);
-        status.pin_positions.insert(id, rect);
-
-        // any pin can be a link candidate. However we cannot use "response.hovered()"
-        // because it does not register correctly if the pin is on another egui::Window.
-        if ui.rect_contains_pointer(rect) {
-            painter.circle_stroke(c, r, egui::Stroke::new(1.0, egui::Color32::GOLD));
-            status.link_candidate = Some(id);
-        }
-        // if we are dragging
-        if response.dragged_by(egui::PointerButton::Primary) {
-            if response.drag_started() {
-                status.dragged_pin = Some(id);
-            }
-            status.drag_delta = response.drag_delta();
-        }
-        // BEWARE: we need to use the link candidate from the PREVIOUS frame because while
-        // looping widgets in the current frame, and we might not have gone through
-        // the widget that is being hovered just yet!
-        if response.drag_released() {
-            if let Some(link_id) = status.prev_link_candidate {
-                println!("linked to {}", link_id);
-                status.new_link = Some((id, link_id));
-                dbg!(link_id);
-            } else {
-                println!("did not create a link!");
-            }
-            status.dragged_pin = None;
-        }
-        ui.shrink_height_to_current();
-        ui.horizontal_centered(|ui| ui.label(label));
-    });
 }
 
