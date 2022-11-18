@@ -1,4 +1,4 @@
-use image::GenericImageView;
+use image::{GenericImageView, Pixel};
 
 use std::num::NonZeroU32;
 
@@ -315,7 +315,14 @@ impl Texture {
             },
             image::ColorType::Rgb8 | image::ColorType::Rgba8 => {
                 // TODO: Srgb or not?
-                let color_img = image.to_rgba8();
+                let mut color_img = image.to_rgba8();
+                for pixel in color_img.pixels_mut() {
+                    // Premultiply color by alpha, as is required by egui
+                    let factor = pixel[3] as f32 / 255.0;
+                    pixel[0] = (pixel[0] as f32 * factor) as u8;
+                    pixel[1] = (pixel[1] as f32 * factor) as u8;
+                    pixel[2] = (pixel[2] as f32 * factor) as u8;
+                }
                 let texture = device.create_texture(&wgpu::TextureDescriptor{
                     size,
                     mip_level_count: 1,

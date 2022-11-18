@@ -41,7 +41,7 @@ void main() {
     // to use it, we discard fragments based on mask alpha and a threshold
     float flatness = 0.001/fwidth(v_uv_coords.x) + 0.001/fwidth(v_uv_coords.y);
     float distance = 1/3 * approx_z;
-    float threshold = distance + clamp(flatness, 0.0, 0.75);
+    float threshold = distance + clamp(flatness, 0.0, 0.70);
     if (mask_color.a != 1.0 && mask_color.a <= threshold)
         discard;
 

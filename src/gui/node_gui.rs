@@ -9,7 +9,7 @@ use crate::node_graph::{Node, NodeContents, AttributeID, NodeGraph, Attribute, A
 use crate::node_graph::EguiId;
 use crate::state::{UserState, AppState, user_to_app_state, user_state};
 
-use super::FerreData;
+use super::{FerreData, Availables};
 
 #[derive(PartialEq)]
 enum GuiTab {
@@ -66,7 +66,7 @@ impl GraphStatus {
         self.curr_interact_height = interact_height;
     }
 
-    fn add_node_contents(&mut self, ui: &mut egui::Ui, max_width: f32, graph: &mut NodeGraph, attributes: &[AttributeID]) {
+    fn add_node_contents(&mut self, ui: &mut egui::Ui, max_width: f32, availables: &Availables, graph: &mut NodeGraph, attributes: &[AttributeID]) {
         ui.vertical(|ui| {
             ui.set_max_width(max_width);
             for id in attributes {
@@ -93,12 +93,64 @@ impl GraphStatus {
                     AttributeContents::MatrixRow { col_1, col_2, col_3, col_4 } => {
                         self.add_matrix_row(ui, [col_1, col_2, col_3, col_4]);
                     }
-                    AttributeContents::Material { selected: _ } => { ui.label("material: t.b.a."); },
-                    AttributeContents::Mask { selected: _ } => { ui.label("mask: t.b.a."); },
+                    AttributeContents::Material { selected } => {
+                        let uv_rect = egui::Rect {
+                            min: (0.0, 0.0).into(),
+                            max: (1.0, 1.0).into(),
+                        };
+                        self.add_texture_select(ui, *id, &availables.material_ids, selected, uv_rect);
+                    },
+                    AttributeContents::Mask { selected } => {
+                        let uv_rect = egui::Rect {
+                            min: (0.0, 0.0).into(),
+                            max: (0.375, 0.375).into(),
+                        };
+                        self.add_texture_select(ui, *id, &availables.mask_ids, selected, uv_rect);
+                    },
                     AttributeContents::PrimitiveKind { selected: _ } => { ui.label("primitive: t.b.a."); },
                     AttributeContents::Unknown { label }=> { ui.label(format!("unknown: {label}")); },
                 };
             }
+        });
+    }
+
+    fn def_h(&self) -> f32 {
+        self.style.spacing.interact_size.y
+    }
+
+    fn add_texture_select(&self, ui: &mut egui::Ui, attribute_id: AttributeID, material_ids: &[egui::TextureId], selected: &mut usize, uv_rect: egui::Rect) {
+        let def_h = self.def_h();
+        ui.horizontal(|ui| {
+            ui.set_min_height(1.5 * def_h);
+            ui.label("material");
+            let popup_id = attribute_id.new_egui_id();
+            let size = egui::Vec2::splat(1.5 * def_h);
+            let img_button = egui::ImageButton::new(material_ids[*selected], size)
+                .sense(egui::Sense::click_and_drag()) // Prevent node being moved by drag on the img
+                .uv(uv_rect)
+                .frame(false);
+            let response = ui.add(img_button);
+            if response.clicked() {
+                ui.memory().open_popup(popup_id);
+            }
+            egui::popup::popup_below_widget(ui, popup_id, &response, |ui| {
+                egui::Grid::new(popup_id.with(popup_id))
+                    .min_col_width(0.0)
+                    .spacing(egui::Vec2::splat(0.25 * def_h))
+                    .show(ui, |ui| {
+                    for (idx, texture) in material_ids.iter().enumerate() {
+                        let button = egui::ImageButton::new(*texture, 2.0*size)
+                            .uv(uv_rect)
+                            .frame(false);
+                        if ui.add(button).clicked() {
+                            *selected = idx;
+                        }
+                        if idx % 4 == 3 {
+                            ui.end_row();
+                        }
+                    }
+                });
+            });
         });
     }
 
@@ -192,7 +244,7 @@ impl GraphStatus {
         self.add_pin(ui, layout, id, label, kind);
     }
 
-    pub fn show_node_editor(&mut self, ctx: &egui::Context, user_graph: &mut NodeGraph) {
+    pub fn show_node_editor(&mut self, ctx: &egui::Context, availables: &Availables, user_graph: &mut NodeGraph) {
         // First: override the style
         let prev_style = ctx.style();
         ctx.set_style(self.style.clone());
@@ -255,7 +307,7 @@ impl GraphStatus {
                         max_width = ui.min_size().x
                     });
                     let body_return = first_response.body_unindented(|ui| {
-                        self.add_node_contents(ui, max_width, user_graph, &attributes)
+                        self.add_node_contents(ui, max_width, availables, user_graph, &attributes)
                     });
                     // We can now check if the header was collapsed. If it was, then no data was
                     // writtend for the pin locations, and we need to manually set them
@@ -402,6 +454,7 @@ impl GraphStatus {
 }
 
 pub struct NodeGui {
+    availables: Availables,
     dragged_pin: Option<AttributeID>,
     drag_delta: egui::Vec2,
     ferre_data: Option<FerreData>,
@@ -415,10 +468,11 @@ pub struct NodeGui {
 }
 
 impl NodeGui {
-    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>, availables: super::Availables) -> Self {
+    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>, availables: Availables) -> Self {
         NodeGui {
             dragged_pin: None,
-            graph_status: GraphStatus::new(12.0),
+            graph_status: GraphStatus::new(14.0),
+            availables,
             drag_delta: egui::vec2(0.0, 0.0),
             current_tab: GuiTab::Graph,
             top_area_h: 0.0,
@@ -492,7 +546,7 @@ impl NodeGui {
             });
         let used_x = inner.response.rect.width();
 
-        self.graph_status.show_node_editor(ctx, &mut user_state.node_graph);
+        self.graph_status.show_node_editor(ctx, &self.availables, &mut user_state.node_graph);
     }
 
     fn show_scene(&mut self, ctx: &egui::Context, app_state: &mut AppState, texture_id: TextureId) {
