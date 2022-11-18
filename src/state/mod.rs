@@ -5,12 +5,11 @@ use crate::device_manager::Manager;
 use crate::file_io::File;
 use crate::file_io::VersionV2;
 use crate::gui::Gui;
-use crate::node_graph::NodeID;
 use crate::rendering::SWAPCHAIN_FORMAT;
 use crate::rendering::camera;
 use crate::rendering::SceneRenderer;
-use crate::rendering::texture::{Texture, Masks};
 use crate::rendering::model::Model;
+use crate::rendering::texture::Texture;
 
 pub mod action;
 pub use action::Action;
@@ -28,7 +27,7 @@ use winit::dpi::PhysicalSize;
 
 pub struct Assets {
     pub materials: Vec<Texture>,
-    pub masks: Masks,
+    pub masks: Vec<Texture>,
     pub models: Vec<Model>,
 }
 
@@ -190,13 +189,13 @@ pub struct State {
 impl State {
     // this function will likely be called only once, at program start
     // at program start, we can just set the user and app data to its default value
-    pub fn new(manager: Manager, assets: Assets, gui: Box<dyn Gui>, window: &winit::window::Window, event_loop: &winit::event_loop::EventLoop<CustomEvent>) -> Self {
+    pub fn new(app: AppState, mut egui_rpass: egui_wgpu::Renderer, gui: Box<dyn Gui>, window: &winit::window::Window, event_loop: &winit::event_loop::EventLoop<CustomEvent>) -> Self {
         let mut egui_state = egui_winit::State::new(event_loop);
         egui_state.set_pixels_per_point(window.scale_factor() as f32);
 
         let (size, screen_surface) = unsafe {
             let size = window.inner_size();
-            let surface = manager.instance.create_surface(window);
+            let surface = app.manager.instance.create_surface(window);
             (size, surface)
         };
         let surface_config = wgpu::SurfaceConfiguration {
@@ -207,10 +206,7 @@ impl State {
             present_mode: wgpu::PresentMode::AutoNoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
         };
-        screen_surface.configure(&manager.device, &surface_config);
-
-        // We use the egui_wgpu_backend crate as the render backend.
-        let mut egui_rpass = egui_wgpu::Renderer::new(&manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1, 0); // TODO: investigate more how to properly set this
+        screen_surface.configure(&app.manager.device, &surface_config);
 
         // first, create a texture that will be used to render the scene and display it inside of imgui
         let scene_extent = wgpu::Extent3d {
@@ -218,12 +214,12 @@ impl State {
             height:320,
             depth_or_array_layers: 1,
         };
-        let scene_texture = Texture::create_output_texture(&manager.device, scene_extent, 1);
+        let scene_texture = Texture::create_output_texture(&app.manager.device, scene_extent, 1);
         let scene_view = scene_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let scene_texture_id = egui_rpass.register_native_texture(&manager.device, &scene_view, egui_wgpu::wgpu::FilterMode::Linear);
+        let scene_texture_id = egui_rpass.register_native_texture(&app.manager.device, &scene_view, egui_wgpu::wgpu::FilterMode::Linear);
 
         Self {
-            app: AppState::new(manager, assets),
+            app,
             user: UserState::default(),
             gui,
             egui_rpass,

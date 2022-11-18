@@ -29,7 +29,7 @@ mod tests;
 
 use std::{env, time::Instant, path::PathBuf};
 
-use crate::{state::{Action, AppState, UserState}};
+use crate::{state::{Action, AppState, UserState}, util::files_from_names};
 use egui_winit::{State};
 
 #[derive(Debug)]
@@ -189,14 +189,11 @@ fn main() -> Result<(), String>{
             return Err(error_message.to_string());
         }
     };
-    let mut masks_dir = resources_path.clone();
-    masks_dir.push("masks");
     let mut materials_dir = resources_path.clone();
     materials_dir.push("materials");
 
-    // then, load all masks that will be available in the rendering node and push them to imgui
-    // BEWARE: if you change the number of masks, you also need to modify the MaskIds in
-    // rust_gui.rs and the Masks in texture.rs!
+    // load all masks that will be available in the rendering node and make them avail in egui
+    let masks_dir = resources_path.join("masks");
     let mask_names: [&str; 5] = [
         "checker_8.png",
         "h_stripes_16.png",
@@ -204,85 +201,48 @@ fn main() -> Result<(), String>{
         "blank.png",
         "alpha_grid.png",
     ];
-    let mask_files: [std::path::PathBuf; 5] = mask_names
-        .iter()
-        .map(|name| {
-            let mut mask_path = masks_dir.clone();
-            mask_path.push(name);
-            mask_path
-        })
-        .collect::<Vec<_>>() // make it into a vector
-        .try_into() // and then turn it into an array
-        .unwrap(); // panic if dimensions don't match
+    let mask_files = util::files_from_names(&masks_dir, mask_names);
+    let masks = util::load_textures_to_wgpu(&device_manager, &mask_files);
 
-    // process the materials_dir files, returning only valid filenames that end in "png"
-    let materials_dir_files = std::fs::read_dir(materials_dir)
-        .unwrap(); // unwraps the dir reading, giving an iterator over its files
-    let mut material_files: Vec<std::path::PathBuf> = materials_dir_files
-        .filter_map(|dir_result| {
-            let dir_entry = dir_result.ok()?;
-            let path = dir_entry.path();
-            if !path.is_file() {
-                return None;
-            }
-            let extension = path.extension()?.to_str()?.to_lowercase();
-            if extension == *"png" {
-                Some(path)
-            } else {
-                None
-            }
-        })
-        .collect();
+    // do the same for materials.
+    let materials_dir = resources_path.join("materials");
+    let material_names: [&str; 8] = [
+        "00_blue.png",
+        "01_green.png",
+        "02_yellow.png",
+        "03_orange.png",
+        "04_purple.png",
+        "05_pink.png",
+        "06_cyan.png",
+        "07_white.png",
+    ];
+    let material_files = util::files_from_names(&materials_dir, material_names);
+    let materials = util::load_textures_to_wgpu(&device_manager, &material_files);
 
-    material_files.sort();
+    // load all the models
+    let models_dir = resources_path.join("models");
+    let model_names: [&str; 6] = [
+        "cone.obj",
+        "cube.obj",
+        "cylinder.obj",
+        "dice.obj",
+        "pyramid.obj",
+        "sphere.obj",
+    ];
+    let model_files = util::files_from_names(&models_dir, model_names);
+    let models = util::load_models_to_wgpu(&device_manager.device, &model_files);
+    // the model_labels is an extra that might be used by the GUI to show names for the models
+    let model_labels = model_names.map(|name| {
+        name.trim_end_matches(".obj")
+    });
 
-    //let imgui_masks = util::load_imgui_masks(&device_manager, &mut renderer, &mask_files);
-    //let imgui_materials = util::load_imgui_materials(&device_manager, &mut renderer, &material_files);
-
-    let masks = util::load_masks(&device_manager, &mask_files);
-    let materials = util::load_materials(&device_manager, &material_files);
-    assert!(!materials.is_empty(), "Error while loading resources: could not load any material.");
-
-    // do the same for models
-    let mut models_dir = resources_path;
-    models_dir.push("models");
-    let models_dir_files = std::fs::read_dir(models_dir)
-        .unwrap(); // unwraps the dir reading, giving an iterator over its files
-
-    // process the dir files, returning only valid filenames that end in "obj"
-    let mut model_files: Vec<std::path::PathBuf> = models_dir_files
-        .filter_map(|dir_result| {
-            let dir_entry = dir_result.ok()?;
-            let path = dir_entry.path();
-            if !path.is_file() {
-                return None;
-            }
-            let extension = path.extension()?.to_str()?.to_lowercase();
-            if extension == *"obj" {
-                Some(path)
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    model_files.sort();
-    let models = util::load_models(&device_manager.device, &model_files);
-    let model_names: Vec<String> = ["empty".to_string()].to_vec();//util::imgui_model_names(&model_files);
-    assert!(!models.is_empty(), "Error while loading resources: could not load any model.");
-
+    // We can finally put all the materials, models and masks inside an Asset struct
     let assets = state::Assets {
         materials,
         models,
         masks,
     };
 
-    // last, initialize the rust_gui and the state with the available assets.
-    let availables = rust_gui::Availables {
-        mask_ids: [1, 2, 3, 4, 5],
-        material_ids: [].to_vec(),
-        model_names,
-    };
 
     // UP TO THIS POINT, initialization is exactly the same.
     // now, we need to do something different if we are running headless
@@ -361,12 +321,29 @@ fn main() -> Result<(), String>{
         .with_inner_size(window_size);
     let window = builder.build(&event_loop).unwrap();
 
+    // We use the egui_wgpu_backend crate as the render backend.
+    let mut egui_rpass = egui_wgpu::Renderer::new(&device_manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1, 0); // TODO: investigate more how to properly set this
+
+    // last, initialize the gui and the state with the available assets.
+    let mask_ids: Vec<egui::TextureId> = assets.masks.iter()
+        .map(|elem| egui_rpass.register_native_texture(&device_manager.device, &elem.view, egui_wgpu::wgpu::FilterMode::Linear))
+        .collect();
+
+    let material_ids: Vec<egui::TextureId> = assets.materials.iter()
+        .map(|elem| egui_rpass.register_native_texture(&device_manager.device, &elem.view, egui_wgpu::wgpu::FilterMode::Linear))
+        .collect();
+
+    let availables = gui::Availables {
+        mask_ids,
+        material_ids,
+        model_names: model_labels.to_vec(),
+    };
     let gui: Box<dyn gui::Gui> = match selected_gui {
         GuiSelect::Ferre => Box::new(gui::FerreGui::new(event_loop_proxy.clone())),
-        GuiSelect::Nodes => Box::new(gui::NodeGui::new(event_loop_proxy.clone())),
+        GuiSelect::Nodes => Box::new(gui::NodeGui::new(event_loop_proxy.clone(), availables)),
     };
 
-    let mut state = state::State::new(device_manager, assets, gui, &window, &event_loop);
+    let mut state = state::State::new(AppState::new(device_manager, assets), egui_rpass, gui, &window, &event_loop);
     if let Some(file) = opt_input_file {
         let action = Action::OpenFile(file);
         state.process(action)?;

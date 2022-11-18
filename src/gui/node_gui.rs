@@ -415,7 +415,7 @@ pub struct NodeGui {
 }
 
 impl NodeGui {
-    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>) -> Self {
+    pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>, availables: super::Availables) -> Self {
         NodeGui {
             dragged_pin: None,
             graph_status: GraphStatus::new(12.0),

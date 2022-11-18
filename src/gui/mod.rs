@@ -12,3 +12,10 @@ pub trait Gui {
     fn export_ferre_data(&self) -> Option<FerreData>;
     fn compute_scene_size(&self) -> Option<wgpu::Extent3d>;
 }
+
+pub struct Availables {
+    pub mask_ids: Vec<egui::TextureId>,
+    pub material_ids: Vec<egui::TextureId>,
+    pub model_names: Vec<&'static str>,
+
+}

@@ -72,17 +72,7 @@ pub fn load_imgui_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Man
 //        .collect()
 //}
 
-pub fn load_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, files: &[P]) -> texture::Masks {
-    files.iter()
-        .map(|path| {
-            texture::Texture::load(&manager.device, &manager.queue, path, None).unwrap()
-        })
-        .collect::<Vec<_>>() // make it into a vector
-        .try_into() // and then turn it into an array
-        .unwrap() // panic if dimensions don't match
-}
-
-pub fn load_materials<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, files: &[P]) -> texture::Materials {
+pub fn load_textures_to_wgpu<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, files: &[P]) -> Vec<texture::Texture> {
     files.iter()
         .map(|path| {
             texture::Texture::load(&manager.device, &manager.queue, path, None).unwrap()
@@ -90,7 +80,7 @@ pub fn load_materials<P: AsRef<std::path::Path>>(manager: &device_manager::Manag
         .collect()
 }
 
-pub fn load_models<P: AsRef<std::path::Path>>(device: &wgpu::Device, files: &[P]) -> Vec<model::Model> {
+pub fn load_models_to_wgpu<P: AsRef<std::path::Path>>(device: &wgpu::Device, files: &[P]) -> Vec<model::Model> {
     files.iter()
         .map(|path| {
             let obj_contents = obj::Obj::load(path).unwrap();
@@ -630,3 +620,10 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(app: &mut AppState, user: &mu
     }
 }
 
+pub fn files_from_names<const N: usize>(base_dir: &std::path::Path, names: [&str; N]) -> [std::path::PathBuf; N] {
+    names.map(|name| {
+        let mut file_path = std::path::PathBuf::from(base_dir);
+        file_path.push(name);
+        file_path
+    })
+}

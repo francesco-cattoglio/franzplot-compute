@@ -10,9 +10,6 @@ pub struct Texture {
     pub size: wgpu::Extent3d,
 }
 
-pub type Masks = [Texture; 5];
-pub type Materials = Vec<Texture>;
-
 impl Texture {
     pub fn load<P: AsRef<std::path::Path>>(device: &wgpu::Device, queue: &wgpu::Queue, path: P, label: Option<&str>) -> anyhow::Result<Self> {
         let img = image::open(path)?;
