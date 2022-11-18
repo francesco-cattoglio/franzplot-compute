@@ -47,28 +47,35 @@ impl GraphStatus {
             editor_offset: egui::vec2(0.0, 0.0),
             style: std::sync::Arc::new(egui::Style::default()),
         };
-        ret.change_style_sizes(interact_height);
+        ret.change_style_from_height(interact_height);
         ret
     }
 
-    fn change_style_sizes(&mut self, interact_height: f32) {
+    fn change_style_from_height(&mut self, interact_height: f32) {
         // NOTE: make_mut will clone the style if it is currently in use
         // (for example, by the context!)
         // If this is the case, then this new_style will be used from the
             // NEXT frame onwards, which is what we want
         let new_style = std::sync::Arc::make_mut(&mut self.style);
-        new_style.override_font_id = Some(egui::FontId {
+        let monospace_font_id = egui::FontId {
             size: FONT_RATIO * interact_height,
             family: egui::FontFamily::Monospace,
-        });
+        };
+        new_style.text_styles.insert(egui::TextStyle::Button, monospace_font_id.clone());
+        new_style.override_font_id = Some(monospace_font_id);
         new_style.spacing.interact_size = egui::vec2(WIDGET_RATIO * interact_height, interact_height);
+        new_style.spacing.slider_width = 5.0 * interact_height;
+        new_style.spacing.combo_height = interact_height;
+        new_style.spacing.icon_width = interact_height * 0.75;
         new_style.animation_time = 0.0;
+        new_style.visuals.collapsing_header_frame = true;
         self.curr_interact_height = interact_height;
     }
 
     fn add_node_contents(&mut self, ui: &mut egui::Ui, max_width: f32, availables: &Availables, graph: &mut NodeGraph, attributes: &[AttributeID]) {
         ui.vertical(|ui| {
             ui.set_max_width(max_width);
+            ui.add_space(self.def_h() * 0.25);
             for id in attributes {
                 let Attribute { contents, node_id: _ } = graph.get_attribute_mut(*id).unwrap();
                 match contents {
@@ -99,15 +106,17 @@ impl GraphStatus {
                             max: (1.0, 1.0).into(),
                         };
                         self.add_texture_select(ui, *id, &availables.material_ids, selected, uv_rect);
-                    },
+                    }
                     AttributeContents::Mask { selected } => {
                         let uv_rect = egui::Rect {
                             min: (0.0, 0.0).into(),
                             max: (0.375, 0.375).into(),
                         };
                         self.add_texture_select(ui, *id, &availables.mask_ids, selected, uv_rect);
-                    },
-                    AttributeContents::PrimitiveKind { selected: _ } => { ui.label("primitive: t.b.a."); },
+                    }
+                    AttributeContents::PrimitiveKind { selected } => {
+                        self.add_primitive_select(ui, *id, &availables.model_names, selected);
+                    }
                     AttributeContents::Unknown { label }=> { ui.label(format!("unknown: {label}")); },
                 };
             }
@@ -118,13 +127,27 @@ impl GraphStatus {
         self.style.spacing.interact_size.y
     }
 
+    fn add_primitive_select(&self, ui: &mut egui::Ui, attribute_id: AttributeID, model_names: &[&str], selected: &mut usize) {
+        ui.horizontal(|ui| {
+            ui.label("shape:");
+            egui::ComboBox::from_id_source(attribute_id.new_egui_id())
+                //.width(self.def_h() * 5.0)
+                .selected_text(model_names[*selected])
+                .show_ui(ui, |ui| {
+                    for (idx, name) in model_names.iter().enumerate() {
+                        ui.selectable_value(selected, idx, name.to_owned());
+                    }
+                });
+        });
+    }
+
     fn add_texture_select(&self, ui: &mut egui::Ui, attribute_id: AttributeID, material_ids: &[egui::TextureId], selected: &mut usize, uv_rect: egui::Rect) {
         let def_h = self.def_h();
         ui.horizontal(|ui| {
-            ui.set_min_height(1.5 * def_h);
+            ui.set_min_height(1.25 * def_h);
             ui.label("material");
             let popup_id = attribute_id.new_egui_id();
-            let size = egui::Vec2::splat(1.5 * def_h);
+            let size = egui::Vec2::splat(1.25 * def_h);
             let img_button = egui::ImageButton::new(material_ids[*selected], size)
                 .sense(egui::Sense::click_and_drag()) // Prevent node being moved by drag on the img
                 .uv(uv_rect)
@@ -263,11 +286,11 @@ impl GraphStatus {
             // get all the useful information for our node
             struct Helper {
                 pos: egui::Pos2,
-                window_header: egui::RichText,
+                window_title: egui::RichText,
                 attributes: Vec<AttributeID>,
             }
             let Helper {
-                window_header,
+                window_title,
                 pos,
                 attributes
             } = {
@@ -277,7 +300,7 @@ impl GraphStatus {
                     error,
                     contents
                 } = user_graph.get_node_mut(node_id).unwrap();
-                let window_header: egui::RichText = if let Some(_err) = error {
+                let window_title: egui::RichText = if let Some(_err) = error {
                     title.clone() + " ⚠"
                 } else {
                     title.clone()
@@ -285,7 +308,7 @@ impl GraphStatus {
                 let attributes = contents.get_attribute_list();
                 Helper {
                     pos: egui::Pos2::from(*position),
-                    window_header,
+                    window_title,
                     attributes
                 }
             };
@@ -303,11 +326,19 @@ impl GraphStatus {
                     let header_builder = CollapsingState::load_with_default_open(ctx, ui.make_persistent_id(node_id), true);
                     let mut max_width = 0.0;
                     let first_response = header_builder.show_header(ui, |ui| {
-                        ui.heading(window_header);
+                        ui.strong(window_title);
                         max_width = ui.min_size().x
                     });
                     let body_return = first_response.body_unindented(|ui| {
-                        self.add_node_contents(ui, max_width, availables, user_graph, &attributes)
+                        // TODO: is this little change of visuals worth it?
+                        //egui::Frame::none()
+                        //    .fill(self.style.visuals.faint_bg_color)
+                        //    .inner_margin(egui::style::Margin::from(2.0))
+                        //    .outer_margin(egui::style::Margin::from(-2.0))
+                        //    .rounding(self.style.visuals.window_rounding)
+                        //    .show(ui, |ui| {
+                                self.add_node_contents(ui, max_width, availables, user_graph, &attributes)
+                        //});
                     });
                     // We can now check if the header was collapsed. If it was, then no data was
                     // writtend for the pin locations, and we need to manually set them
@@ -526,11 +557,11 @@ impl NodeGui {
                             }
                             if ui.button("increase graph size").clicked() {
                                 let interact_height = self.graph_status.curr_interact_height + 1.0;
-                                self.graph_status.change_style_sizes(interact_height);
+                                self.graph_status.change_style_from_height(interact_height);
                             }
                             if ui.button("Decrease graph size").clicked() {
                                 let interact_height = 1.0_f32.max(self.graph_status.curr_interact_height - 1.0);
-                                self.graph_status.change_style_sizes(interact_height);
+                                self.graph_status.change_style_from_height(interact_height);
                             }
                             ui.label("Global vars will go here");
                             ui.separator();
