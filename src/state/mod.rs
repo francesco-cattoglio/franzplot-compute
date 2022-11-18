@@ -181,9 +181,9 @@ pub struct State {
     // does not reflect the correct value to be used by WGPU scissor rect, so we need to use
     // the width and height stored in the surface_config and use those at redering time
     pub surface_config: wgpu::SurfaceConfiguration,
+    pub scene_texture: crate::rendering::texture::Texture,
     pub scene_texture_id: egui::TextureId,
     pub scene_extent: wgpu::Extent3d,
-    pub scene_view: wgpu::TextureView,
 }
 
 impl State {
@@ -215,8 +215,7 @@ impl State {
             depth_or_array_layers: 1,
         };
         let scene_texture = Texture::create_output_texture(&app.manager.device, scene_extent, 1);
-        let scene_view = scene_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let scene_texture_id = egui_rpass.register_native_texture(&app.manager.device, &scene_view, egui_wgpu::wgpu::FilterMode::Linear);
+        let scene_texture_id = egui_rpass.register_native_texture(&app.manager.device, &scene_texture.view, egui_wgpu::wgpu::FilterMode::Linear);
 
         Self {
             app,
@@ -228,7 +227,7 @@ impl State {
             event_loop: event_loop.create_proxy(),
             scene_texture_id,
             screen_surface,
-            scene_view,
+            scene_texture,
             scene_extent,
             surface_config,
         }
@@ -288,9 +287,8 @@ impl State {
                 && extent.width >= 8 && extent.height >= 8 {
                     self.scene_extent = extent;
                     //let old_texture
-                    let scene_texture = Texture::create_output_texture(&self.app.manager.device, self.scene_extent, 1);
-                    self.scene_view = scene_texture.texture.create_view(&wgpu::TextureViewDescriptor::default());
-                    self.scene_texture_id = self.egui_rpass.register_native_texture(&self.app.manager.device, &self.scene_view, egui_wgpu::wgpu::FilterMode::Linear);
+                    self.scene_texture = Texture::create_output_texture(&self.app.manager.device, self.scene_extent, 1);
+                    self.scene_texture_id = self.egui_rpass.register_native_texture(&self.app.manager.device, &self.scene_texture.view, egui_wgpu::wgpu::FilterMode::Linear);
             }
         }
         let raw_input = self.egui_state.take_egui_input(window);
@@ -304,7 +302,7 @@ impl State {
         // The actual rendering of the scene is done AFTER the UI code run, so any kind of change
         // to the global vars or the camera shows immediately
         if maybe_extent.is_some() {
-            self.app.render_scene(self.scene_extent, &self.scene_view);
+            self.app.render_scene(self.scene_extent, &self.scene_texture.view);
         };
 
         // back to egui rendering: register all the changes, tessellate the shapes, etc
