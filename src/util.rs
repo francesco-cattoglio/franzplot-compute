@@ -1,4 +1,3 @@
-use crate::rust_gui;
 use crate::device_manager;
 use crate::rendering::texture;
 use crate::rendering::model;
@@ -40,37 +39,6 @@ pub fn create_storage_buffer(device: &wgpu::Device, buffer_size: usize) -> wgpu:
         usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
     })
 }
-
-
-pub fn load_imgui_masks<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, files: &[P]) -> rust_gui::MaskIds {
-    todo!()
-    //files.iter()
-    //    .map(|path| {
-    //        let texture = texture::Texture::thumbnail(&manager.device, &manager.queue, path, None).unwrap();
-    //        renderer.textures.insert(texture.into())
-    //    })
-    //    .collect::<Vec<_>>() // make it into a vector
-    //    .try_into() // and then turn it into an array
-    //    .unwrap() // panic if dimensions don't match
-}
-
-//pub fn load_imgui_materials<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, renderer: &mut imgui_wgpu::Renderer, files: &[P]) -> rust_gui::MaterialIds {
-//    files.iter()
-//        .map(|path| {
-//            let texture = texture::Texture::thumbnail(&manager.device, &manager.queue, path, None).unwrap();
-//            renderer.textures.insert(texture.into())
-//        })
-//        .collect()
-//}
-//
-//pub fn imgui_model_names<P: AsRef<std::path::Path>>(files: &[P]) -> Vec<imgui::ImString> {
-//    files.iter()
-//        .map(|path| {
-//            let file_stem = path.as_ref().file_stem().unwrap().to_str().unwrap();
-//            imgui::ImString::new(file_stem)
-//        })
-//        .collect()
-//}
 
 pub fn load_textures_to_wgpu<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, files: &[P]) -> Vec<texture::Texture> {
     files.iter()

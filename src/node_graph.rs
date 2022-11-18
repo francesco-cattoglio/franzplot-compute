@@ -2,8 +2,6 @@ use std::collections::HashMap;
 use crate::compute_graph::ProcessingError;
 use crate::compute_graph::RecoverableError;
 use crate::compute_graph::UnrecoverableError;
-use crate::rust_gui::Availables;
-use crate::rust_gui::FontId;
 use serde::{Serialize, Deserialize};
 
 // I want the types to be different so that their hash differs
@@ -133,8 +131,8 @@ pub const AVAILABLE_SIZES: [f32; 9] = [0.04, 0.08, 0.12, 0.16, 0.20, 0.24, 0.32,
 
 impl Attribute {
     // the render function shall return bool if anything has changed.
-    pub fn render(&mut self, availables: &Availables, id: AttributeID) -> bool {
-        todo!()
+    //pub fn render(&mut self, availables: &Availables, id: AttributeID) -> bool {
+      //  todo!()
         //// TODO: maybe we can push the style var at the begin of the editor rendering,
         //// just like we push the imnodes style vars
         //let font_size = ui.current_font_size();
@@ -397,17 +395,17 @@ impl Attribute {
         //};
         //style_token.pop();
         //value_changed
-    }
+    //}
 
-    pub fn render_list(availables: &Availables, attributes: &mut Vec<Option<Attribute>>, attribute_id_list: Vec<AttributeID>) -> bool {
-        let mut value_changed = false;
-        for id in attribute_id_list.into_iter() {
-            if let Some(Some(attribute)) = attributes.get_mut(id as usize) {
-                value_changed |= attribute.render(availables, id);
-            }
-        }
-        value_changed
-    }
+    //pub fn render_list(availables: &Availables, attributes: &mut Vec<Option<Attribute>>, attribute_id_list: Vec<AttributeID>) -> bool {
+    //    let mut value_changed = false;
+    //    for id in attribute_id_list.into_iter() {
+    //        if let Some(Some(attribute)) = attributes.get_mut(id as usize) {
+    //            value_changed |= attribute.render(availables, id);
+    //        }
+    //    }
+    //    value_changed
+    //}
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug,)]
@@ -883,8 +881,8 @@ impl Node {
         &self.contents
     }
 
-    pub fn render(&mut self, availables: &Availables, attributes: &mut Vec<Option<Attribute>>) -> bool {
-        todo!()
+    //pub fn render(&mut self, availables: &Availables, attributes: &mut Vec<Option<Attribute>>) -> bool {
+    //    todo!()
         //imnodes::BeginNodeTitleBar();
         //    ui.text(&self.title);
         //    // handle error reporting
@@ -906,7 +904,7 @@ impl Node {
         //// TODO: not sure if we will be able to use the get_attribute_list()
         //// when we introduce the Group kind node in the future...
         //Attribute::render_list(ui, availables, attributes, self.contents.get_attribute_list())
-    }
+    //}
 
     pub fn get_input_nodes(&self, graph: &NodeGraph) -> Vec::<NodeID> {
         self.contents.get_attribute_list()
@@ -1207,8 +1205,8 @@ impl NodeGraph {
         //}
     }
 
-    pub fn render(&mut self, availables: &Availables, graph_fonts: &[FontId]) -> Option<f64> {
-        todo!()
+    //pub fn render(&mut self, availables: &Availables, graph_fonts: &[FontId]) -> Option<f64> {
+    //    todo!()
         //let mut request_savestate: Option<f64> = None;
         //let graph_font = graph_fonts[self.zoom_level];
         //let style_shim = create_style_shim(ZOOM_LEVELS[self.zoom_level]);
@@ -1470,7 +1468,7 @@ impl NodeGraph {
         //}
 
         //request_savestate
-    }
+    //}
 
     pub fn insert_link(&mut self, input_id: AttributeID, output_id: AttributeID) {
         self.links.insert(input_id, output_id);

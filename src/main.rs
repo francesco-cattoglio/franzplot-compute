@@ -18,7 +18,7 @@ mod state;
 mod device_manager;
 mod shader_processing;
 mod node_graph;
-mod rust_gui;
+//mod rust_gui;
 mod gui;
 //mod cpp_gui;
 mod file_io;
@@ -62,21 +62,21 @@ pub struct PhysicalRectangle {
     size: winit::dpi::PhysicalSize::<u32>,
 }
 
-impl PhysicalRectangle {
-    fn from_imgui_rectangle(rectangle: &rust_gui::SceneRectangle, hidpi_factor: f64) -> Self {
-        let logical_pos = winit::dpi::LogicalPosition::new(rectangle.position[0], rectangle.position[1]);
-        let logical_size = winit::dpi::LogicalSize::new(rectangle.size[0], rectangle.size[1]);
-
-        PhysicalRectangle {
-            position: logical_pos.to_physical(hidpi_factor),
-            size: logical_size.to_physical(hidpi_factor),
-        }
-    }
-}
-
-fn add_custom_font(imgui_context: &mut u32, font_size: f32) -> rust_gui::FontId {
-    unimplemented!()
-}
+//impl PhysicalRectangle {
+//    fn from_imgui_rectangle(rectangle: &rust_gui::SceneRectangle, hidpi_factor: f64) -> Self {
+//        let logical_pos = winit::dpi::LogicalPosition::new(rectangle.position[0], rectangle.position[1]);
+//        let logical_size = winit::dpi::LogicalSize::new(rectangle.size[0], rectangle.size[1]);
+//
+//        PhysicalRectangle {
+//            position: logical_pos.to_physical(hidpi_factor),
+//            size: logical_size.to_physical(hidpi_factor),
+//        }
+//    }
+//}
+//
+//fn add_custom_font(imgui_context: &mut u32, font_size: f32) -> rust_gui::FontId {
+//    unimplemented!()
+//}
 //fn add_custom_font(imgui_context: &mut imgui::Context, font_size: f32) -> imgui::FontId {
 //    let glyph_range = FontGlyphRanges::from_slice(&[
 //        0x0020, 0x00FF, // Basic Latin + Latin Supplement
