@@ -18,8 +18,12 @@ enum GuiTab {
     Settings,
 }
 
+// BEWARE: DEFAULT_ZOOM controls how much "zoomed in" are the values that we read from
+// the GraphNode data structure! It does not effect GUI directly.
+const DEFAULT_ZOOM: f32 = ZOOM_SIZES[2];
+const ZOOM_SIZES: [f32; 9] = [8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0, 22.0, 24.0];
+
 struct GraphStatus {
-    curr_interact_height: f32,
     prev_link_candidate: Option<AttributeID>,
     new_link: Option<(AttributeID, AttributeID)>,
     link_candidate: Option<AttributeID>,
@@ -27,6 +31,8 @@ struct GraphStatus {
     dragged_pin: Option<AttributeID>,
     drag_delta: egui::Vec2,
     editor_offset: egui::Vec2,
+    zoom_level: usize,
+    zoom_scrolling: f32,
     style: std::sync::Arc<egui::Style>,
 }
 
@@ -35,10 +41,11 @@ const FONT_RATIO: f32 = 14.0/18.0;
 // This is the default ratio between widget interaction width height
 const WIDGET_RATIO: f32 = 40.0/18.0;
 impl GraphStatus {
-    fn new(interact_height: f32) -> Self {
+    fn new(zoom_level: usize) -> Self {
         let mut ret = Self {
+            zoom_level,
+            zoom_scrolling: 0.0,
             prev_link_candidate: None,
-            curr_interact_height: interact_height,
             new_link: None,
             link_candidate: None,
             pin_positions: HashMap::new(),
@@ -47,8 +54,43 @@ impl GraphStatus {
             editor_offset: egui::vec2(0.0, 0.0),
             style: std::sync::Arc::new(egui::Style::default()),
         };
-        ret.change_style_from_height(interact_height);
+        ret.change_style_from_height(ZOOM_SIZES[ret.zoom_level]);
         ret
+    }
+
+    fn add_scrolling(&mut self, y: f32, cursor_pos: egui::Pos2) {
+        self.zoom_scrolling += y;
+        if self.zoom_scrolling > 49.0 {
+            self.zoom_scrolling = 0.0;
+            self.increment_zoom(cursor_pos);
+        }
+        if self.zoom_scrolling < -49.0 {
+            self.zoom_scrolling = 0.0;
+            self.decrement_zoom(cursor_pos);
+        }
+    }
+
+    fn increment_zoom(&mut self, cursor_pos: egui::Pos2) {
+        if self.zoom_level < ZOOM_SIZES.len() - 1 {
+            // we want to change the editor offset to make sure that whatever was under the cursor
+            // stays under the cursor. Compute the graph coordinates under the cursor
+            let point_coords = self.rel_to_abs(cursor_pos);
+            // z_ratio is defined as old_zoom / new_zoom
+            let z_ratio = ZOOM_SIZES[self.zoom_level] / ZOOM_SIZES[self.zoom_level + 1];
+            self.editor_offset = self.editor_offset * z_ratio + point_coords.to_vec2() * (z_ratio - 1.0);
+            self.zoom_level += 1;
+            self.change_style_from_height(ZOOM_SIZES[self.zoom_level]);
+        }
+    }
+
+    fn decrement_zoom(&mut self, cursor_pos: egui::Pos2) {
+        if self.zoom_level > 0 {
+            let point_coords = self.rel_to_abs(cursor_pos);
+            let z_ratio = ZOOM_SIZES[self.zoom_level] / ZOOM_SIZES[self.zoom_level - 1];
+            self.editor_offset = self.editor_offset * z_ratio + point_coords.to_vec2() * (z_ratio - 1.0);
+            self.zoom_level -= 1;
+            self.change_style_from_height(ZOOM_SIZES[self.zoom_level]);
+        }
     }
 
     fn change_style_from_height(&mut self, interact_height: f32) {
@@ -62,14 +104,23 @@ impl GraphStatus {
             family: egui::FontFamily::Monospace,
         };
         new_style.text_styles.insert(egui::TextStyle::Button, monospace_font_id.clone());
+        new_style.text_styles.insert(egui::TextStyle::Body, monospace_font_id.clone());
         new_style.override_font_id = Some(monospace_font_id);
         new_style.spacing.interact_size = egui::vec2(WIDGET_RATIO * interact_height, interact_height);
-        new_style.spacing.slider_width = 5.0 * interact_height;
+        new_style.spacing.slider_width = interact_height * 5.0;
         new_style.spacing.combo_height = interact_height;
-        new_style.spacing.icon_width = interact_height * 0.75;
+        new_style.spacing.icon_width = interact_height * 1.0;
+        new_style.spacing.icon_width_inner = interact_height * 0.75;
+        new_style.spacing.indent = interact_height * 1.25;
+        new_style.spacing.window_margin = egui::style::Margin {
+            left: interact_height * 0.5,
+            right: interact_height * 0.5,
+            top: interact_height * 0.5,
+            bottom: interact_height * 0.5,
+        };
+        new_style.spacing.item_spacing = egui::vec2(interact_height * 0.5, interact_height * 0.25);
         new_style.animation_time = 0.0;
         new_style.visuals.collapsing_header_frame = true;
-        self.curr_interact_height = interact_height;
     }
 
     fn add_node_contents(&mut self, ui: &mut egui::Ui, max_width: f32, availables: &Availables, graph: &mut NodeGraph, attributes: &[AttributeID]) {
@@ -254,6 +305,20 @@ impl GraphStatus {
         });
     }
 
+    // Turn the absolute position to the relative one (i.e: the display one!)
+    fn abs_to_rel(&self, pos: egui::Pos2) -> egui::Pos2 {
+        let z_ratio = ZOOM_SIZES[self.zoom_level] / DEFAULT_ZOOM;
+        let v = z_ratio * (pos.to_vec2() + self.editor_offset);
+        v.to_pos2()
+    }
+
+    // Turn a relative position (the displayed one) to the absolute one (i.e: the one in graph_node data)
+    fn rel_to_abs(&self, pos: egui::Pos2) -> egui::Pos2 {
+        let z_ratio = ZOOM_SIZES[self.zoom_level] / DEFAULT_ZOOM;
+        let v = pos.to_vec2() / z_ratio - self.editor_offset;
+        v.to_pos2()
+    }
+
     // Adding an output or an input pin are basically the same thing, only thing that changes is the
     // "early shrink width to current" for output and the right-to-left or left-to-right layout.
     // How the link is created also changes, but that needs to be done later on anyway.
@@ -267,7 +332,7 @@ impl GraphStatus {
         self.add_pin(ui, layout, id, label, kind);
     }
 
-    pub fn show_node_editor(&mut self, ctx: &egui::Context, availables: &Availables, user_graph: &mut NodeGraph) {
+    pub fn show_node_editor(&mut self, ctx: &egui::Context, avail_rect: egui::Rect, availables: &Availables, user_graph: &mut NodeGraph) {
         // First: override the style
         let prev_style = ctx.style();
         ctx.set_style(self.style.clone());
@@ -316,9 +381,10 @@ impl GraphStatus {
             // When you show the window, it might actually return None if the window itself was closed.
             // In our case each window represents a Node, and should NOT be closed.
             // We might want to change this in the future, if we create a way to group windows.
+            let position = self.abs_to_rel(pos);
             let window_return = egui::Window::new("") // NO window title, since we set a unique ID
                 .id(node_id.new_egui_id())
-                .current_pos(pos + self.editor_offset)
+                .current_pos(position)
                 .auto_sized()
                 .title_bar(false)
                 .drag_bounds(egui::Rect::EVERYTHING)
@@ -372,7 +438,7 @@ impl GraphStatus {
             // (in fact, the user cannot collapse it because the window itself has no title bar)
             // We can store its position!
             let window_response = window_return.response;
-            let up_left = window_response.rect.min - self.editor_offset;
+            let up_left = self.rel_to_abs(window_response.rect.min);
             let Node { position: pos, .. } = user_graph.get_node_mut(node_id).unwrap();
             (pos[0], pos[1]) = (up_left.x, up_left.y);
         }
@@ -402,7 +468,7 @@ impl GraphStatus {
 
         match self.new_link {
             Some(pair) if user_graph.is_attribute_input(pair.0) => user_graph.insert_link(pair.0, pair.1),
-            Some(pair) /*         the pair is reversed       */ => user_graph.insert_link(pair.1, pair.0),
+            Some(pair) /*        the pair is reversed        */ => user_graph.insert_link(pair.1, pair.0),
             _ => {}
         }
 
@@ -417,21 +483,37 @@ impl GraphStatus {
                 Some(rect) => rect.center(),
                 _ => unreachable!(),
             };
-            let pos_diff = in_pos.distance(out_pos);
-            let delta = self.style.spacing.interact_size.y * (0.375 + 0.375 * pos_diff.sqrt());
+            let real_distance = in_pos.distance(out_pos) * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
+            let delta = self.def_h() * (0.25 + 0.5 * real_distance.sqrt());
             let points = [out_pos, out_pos + (delta, 0.0).into(), in_pos + (-delta, 0.0).into(), in_pos];
             let shape = egui::epaint::CubicBezierShape::from_points_stroke(points, false, egui::Color32::default(), egui::Stroke::new(2.0f32, egui::Color32::RED));
             mid_painter.add(shape);
         }
-        //egui::SidePanel::left("globals edit").show(ctx, |ui| {
-        //    if ui.button("render scene from graph").clicked() {
-        //    }
-        //});
+
         egui::CentralPanel::default().show(ctx, |ui| {
             let (id, rect) = ui.allocate_space(ui.available_size());
             let response = ui.interact(rect, id, egui::Sense::click_and_drag());
             if response.dragged_by(egui::PointerButton::Middle) {
-                self.editor_offset += response.drag_delta();
+                self.editor_offset += response.drag_delta() * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
+            }
+
+            let ctrl_down = ctx.input().modifiers.ctrl;
+            if response.dragged_by(egui::PointerButton::Primary) && ctrl_down {
+                self.editor_offset += response.drag_delta() * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
+            }
+
+            let maybe_hover = ctx.input().pointer.hover_pos();
+            if let Some(hover_pos) = maybe_hover {
+                if avail_rect.contains(hover_pos) {
+                    for event in ctx.input().events.iter() {
+                        match event {
+                            // We want to respond both to mouse wheel scrolling and pinch zoom
+                            egui::Event::Scroll(v) => self.add_scrolling(v.y, hover_pos),
+                            egui::Event::Zoom(z) => self.add_scrolling((*z - 1.0) * 20.0, hover_pos),
+                            _ => {},
+                        }
+                    }
+                }
             }
         }); // central panel
 
@@ -502,7 +584,7 @@ impl NodeGui {
     pub fn new(winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>, availables: Availables) -> Self {
         NodeGui {
             dragged_pin: None,
-            graph_status: GraphStatus::new(14.0),
+            graph_status: GraphStatus::new(3),
             availables,
             drag_delta: egui::vec2(0.0, 0.0),
             current_tab: GuiTab::Graph,
@@ -537,7 +619,7 @@ impl NodeGui {
         inner.response.rect
     }
 
-    fn show_graph(&mut self, ctx: &egui::Context, avail_rect: egui::Rect, app_state: &mut AppState, user_state: &mut UserState) {
+    fn show_graph_tab(&mut self, ctx: &egui::Context, avail_rect: egui::Rect, app_state: &mut AppState, user_state: &mut UserState) {
         let inner = egui::Area::new("global vars area")
             .order(egui::Order::Foreground)
             .fixed_pos(avail_rect.min)
@@ -555,13 +637,11 @@ impl NodeGui {
                                     self.current_tab = GuiTab::Scene;
                                 }
                             }
-                            if ui.button("increase graph size").clicked() {
-                                let interact_height = self.graph_status.curr_interact_height + 1.0;
-                                self.graph_status.change_style_from_height(interact_height);
+                            if ui.button("increase zoom").clicked() {
+                                self.graph_status.increment_zoom(egui::pos2(0.0, 0.0));
                             }
-                            if ui.button("Decrease graph size").clicked() {
-                                let interact_height = 1.0_f32.max(self.graph_status.curr_interact_height - 1.0);
-                                self.graph_status.change_style_from_height(interact_height);
+                            if ui.button("Decrease graph").clicked() {
+                                self.graph_status.decrement_zoom(egui::pos2(0.0, 0.0));
                             }
                             ui.label("Global vars will go here");
                             ui.separator();
@@ -576,11 +656,16 @@ impl NodeGui {
                     });
             });
         let used_x = inner.response.rect.width();
+        let avail_rect = egui::Rect {
+            min: egui::pos2(used_x, avail_rect.top()),
+            max: ctx.available_rect().max
+            //max: egui::pos2(std::f32::INFINITY, std::f32::INFINITY),
+        };
 
-        self.graph_status.show_node_editor(ctx, &self.availables, &mut user_state.node_graph);
+        self.graph_status.show_node_editor(ctx, avail_rect, &self.availables, &mut user_state.node_graph);
     }
 
-    fn show_scene(&mut self, ctx: &egui::Context, app_state: &mut AppState, texture_id: TextureId) {
+    fn show_scene_tab(&mut self, ctx: &egui::Context, app_state: &mut AppState, texture_id: TextureId) {
         egui::SidePanel::left("globals live").show(ctx, |ui| {
             ui.label("here be variables with sliders");
         });
@@ -597,7 +682,7 @@ impl NodeGui {
         }); // central panel
     }
 
-    fn show_settings(&mut self, ctx: &egui::Context, app_state: &mut AppState) {
+    fn show_settings_tab(&mut self, ctx: &egui::Context, app_state: &mut AppState) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Scene settings shall go here");
         }); // central panel
@@ -611,11 +696,12 @@ impl super::Gui for NodeGui {
         let avail_rect = egui::Rect {
             min: egui::pos2(used_rect.min.x, used_rect.max.y),
             max: ctx.available_rect().max
+            //max: egui::pos2(std::f32::INFINITY, std::f32::INFINITY),
         };
         match self.current_tab {
-            GuiTab::Graph => self.show_graph(ctx, avail_rect, app_state, user_state),
-            GuiTab::Scene => self.show_scene(ctx, app_state, texture_id),
-            GuiTab::Settings => self.show_settings(ctx, app_state),
+            GuiTab::Graph => self.show_graph_tab(ctx, avail_rect, app_state, user_state),
+            GuiTab::Scene => self.show_scene_tab(ctx, app_state, texture_id),
+            GuiTab::Settings => self.show_settings_tab(ctx, app_state),
         }
     }
 
