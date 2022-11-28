@@ -18,14 +18,10 @@ mod state;
 mod device_manager;
 mod shader_processing;
 mod node_graph;
-//mod rust_gui;
 mod gui;
-//mod cpp_gui;
 mod file_io;
 mod parser;
 mod compute_graph;
-#[cfg(test)]
-mod tests;
 
 use std::{env, time::Instant, path::PathBuf};
 
@@ -56,46 +52,7 @@ pub enum CustomEvent {
 //        self.0.lock().unwrap().send_event(CustomEvent::RequestRedraw).ok();
 //    }
 //}
-//
-pub struct PhysicalRectangle {
-    position: winit::dpi::PhysicalPosition::<i32>,
-    size: winit::dpi::PhysicalSize::<u32>,
-}
 
-//impl PhysicalRectangle {
-//    fn from_imgui_rectangle(rectangle: &rust_gui::SceneRectangle, hidpi_factor: f64) -> Self {
-//        let logical_pos = winit::dpi::LogicalPosition::new(rectangle.position[0], rectangle.position[1]);
-//        let logical_size = winit::dpi::LogicalSize::new(rectangle.size[0], rectangle.size[1]);
-//
-//        PhysicalRectangle {
-//            position: logical_pos.to_physical(hidpi_factor),
-//            size: logical_size.to_physical(hidpi_factor),
-//        }
-//    }
-//}
-//
-//fn add_custom_font(imgui_context: &mut u32, font_size: f32) -> rust_gui::FontId {
-//    unimplemented!()
-//}
-//fn add_custom_font(imgui_context: &mut imgui::Context, font_size: f32) -> imgui::FontId {
-//    let glyph_range = FontGlyphRanges::from_slice(&[
-//        0x0020, 0x00FF, // Basic Latin + Latin Supplement
-//        0x2200, 0x22FF, // this range contains the miscellaneous symbols and arrows
-//        0x2600, 0x26FF, // miscelaneous symbols
-//        0]);
-//    imgui_context.fonts().add_font(&[FontSource::TtfData {
-//        data: include_bytes!("../compile_resources/DejaVuSansCustom.ttf"),
-//        size_pixels: font_size,
-//        config: Some(imgui::FontConfig {
-//            oversample_h: 2,
-//            oversample_v: 2,
-//            pixel_snap_h: false,
-//            glyph_ranges: glyph_range,
-//            size_pixels: font_size,
-//            ..Default::default()
-//        }),
-//    }])
-//}
 #[derive(ValueEnum, Clone, Debug)]
 enum GuiSelect {
     Ferre,
@@ -273,29 +230,10 @@ fn main() -> Result<(), String>{
     let mut old_instant = std::time::Instant::now();
     let mut modifiers_state = winit::event::ModifiersState::default();
 
-    // >>>>>>>>>>>>>>>>>>>>>>>>>>> UI CODE STARTS HERE
-
-    //let font_size = (12.0 * hidpi_factor) as f32;
-    //imgui.io_mut().font_global_scale = (1.0 / hidpi_factor) as f32;
-    //add_custom_font(&mut imgui, font_size);
-
-    //let graph_fonts: Vec<u32> = node_graph::ZOOM_LEVELS.iter()
-    //    .map(|scale| 12 * hidpi_factor as u32 * *scale as u32)
-    //    .collect();
-    //cpp_gui::imnodes::Initialize();
-    //cpp_gui::imnodes::EnableCtrlScroll(true, &imgui.io().key_ctrl);
-
-    //let renderer_config = imgui_wgpu::RendererConfig {
-    //    texture_format: rendering::SWAPCHAIN_FORMAT,
-    //    .. Default::default()
-    //};
-    //let mut renderer = imgui_wgpu::Renderer::new(&mut imgui, &device_manager.device, &device_manager.queue, renderer_config);
-
     let event_loop = EventLoopBuilder::<CustomEvent>::with_user_event().build();
     let event_loop_proxy = event_loop.create_proxy();
-
     let executor = util::Executor::new();
-    //let mut rust_gui = rust_gui::Gui::new(event_loop.create_proxy(), scene_texture_id, availables, graph_fonts);
+
     let window_size = if let Some(monitor) = event_loop.primary_monitor() {
         // web winit always reports a size of zero
         #[cfg(not(target_arch = "wasm32"))]
@@ -397,52 +335,6 @@ fn main() -> Result<(), String>{
             // into a single event, to help avoid duplicating rendering work.
             Event::RedrawRequested(_window_id) => {
                 state.render_frame(&window).expect("rendering of the main UI failed");
-                // actual imgui rendering
-                //let ui = imgui.frame();
-                //let size = window.inner_size().to_logical(hidpi_factor);
-                //let requested_logical_rectangle = rust_gui.render(&ui, [size.width, size.height], &mut state, &executor);
-                //// after calling the gui render function we know if we need to render the scene or not
-                //if let Some(logical_rectangle) = requested_logical_rectangle {
-                //    // the GUI told us that we have to create a scene in the given logical
-                //    // rectangle. Convert it to physical to make sure that we have the actual size
-                //    let physical_rectangle = PhysicalRectangle::from_imgui_rectangle(&logical_rectangle, hidpi_factor);
-                //    let texture_size = wgpu::Extent3d {
-                //        height: physical_rectangle.size.height,
-                //        width: physical_rectangle.size.width,
-                //        depth_or_array_layers: 1,
-                //    };
-                //    let scene_texture = renderer.textures.get(scene_texture_id).unwrap();
-                //    // first, check if the scene size has changed. If so, re-create the texture
-                //    // that is used by imgui to render the scene to.
-                //    if (physical_rectangle.size.width != scene_texture.width() || physical_rectangle.size.height != scene_texture.height())
-                //            && (physical_rectangle.size.width > 8 && physical_rectangle.size.height > 8) {
-                //        let new_scene_texture = rendering::texture::Texture::create_output_texture(&state.app.manager.device, texture_size, 1);
-                //        renderer.textures.replace(scene_texture_id, new_scene_texture.into()).unwrap();
-                //    }
-                //    // after that, load the texture that will be used as output
-                //    let scene_view = renderer.textures.get(scene_texture_id).unwrap().view();
-
-                //    let relative_pos = [
-                //        cursor_position.x - physical_rectangle.position.x,
-                //        cursor_position.y - physical_rectangle.position.y,
-                //    ];
-                //    state.app.renderer.update_mouse_pos(&relative_pos); // TODO: this should be done with actions as well
-                //    state.app.update_camera(&camera_inputs); // TODO: this should be done with actions as well
-                //    // and then ask the state to render the scene
-                //    let render_request = Action::RenderScene(texture_size, scene_view);
-                //    state.process(render_request);
-                //}
-
-                //platform.prepare_render(&ui, &window);
-                //renderer
-                //    .render(ui.render(), &state.app.manager.queue, &state.app.manager.device, &mut rpass)
-                //    .expect("Imgui rendering failed");
-
-                //drop(rpass); // dropping the render pass is required for the encoder.finish() command
-
-                //// submit the framebuffer rendering pass
-                //state.app.manager.queue.submit(Some(encoder.finish()));
-                //frame.present();
             }
             // Emitted after all RedrawRequested events have been processed and control flow is about to be taken away from the program.
             // If there are no RedrawRequested events, it is emitted immediately after MainEventsCleared.
@@ -578,103 +470,8 @@ fn main() -> Result<(), String>{
                 //}
             },
             Event::WindowEvent { event, .. } => {
-                let event_response = state.egui_state.on_event(&state.egui_ctx, &event);
-                if event_response.consumed {
-                    return;
-                }
-                //match event {
-                //    _ => {}
-                //};
-            //// if the window was resized, we need to resize the swapchain as well!
-                //if rust_gui.graph_edited {
-                //    file_io::async_confirm_load(event_loop_proxy.clone(), &executor, file_path);
-                //} else {
-                //    event_loop_proxy.send_event(CustomEvent::OpenFile(file_path)).unwrap();
-                //}
+                let _event_response = state.egui_state.on_event(&state.egui_ctx, &event);
             },
-            // catch-all for remaining events (WindowEvent and DeviceEvent). We do this because
-            // we want imgui to handle it first, and then do any kind of "post-processing"
-            // that we might be thinking of.
-            //other_event => {
-            //    // in here, imgui will process keyboard and mouse status!
-
-            //    // additional processing of input
-            //    match other_event {
-            //        Event::WindowEvent{ event: WindowEvent::CursorMoved { position, .. }, ..} => {
-            //            if !mouse_frozen {
-            //                cursor_position = position.cast();
-            //            }
-            //        }
-            //        Event::WindowEvent{ event: WindowEvent::ModifiersChanged(modifiers), ..} => {
-            //            modifiers_state = modifiers;
-            //        }
-            //        // shortcuts and other keyboard processing goes here
-            //        Event::WindowEvent{ event: WindowEvent::KeyboardInput { input, .. }, .. } => {
-            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Z) {
-            //                //if modifiers_state.ctrl() && modifiers_state.shift() {
-            //                //    rust_gui.issue_redo(&mut state);
-            //                //} else if modifiers_state.ctrl() {
-            //                //    rust_gui.issue_undo(&mut state, start_time.elapsed().as_secs_f64());
-            //                //}
-            //            }
-            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key1) {
-            //                camera_inputs.reset_to_xz = true;
-            //            }
-            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key2) {
-            //                camera_inputs.reset_to_yz = true;
-            //            }
-            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key3) {
-            //                camera_inputs.reset_to_xy = true;
-            //            }
-            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key4) {
-            //                camera_inputs.reset_to_xyz = true;
-            //            }
-            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key5) {
-            //                camera_inputs.reset_to_minus_xz = true;
-            //            }
-            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key6) {
-            //                camera_inputs.reset_to_minus_yz = true;
-            //            }
-            //            if input.state == ElementState::Pressed && input.virtual_keycode == Some(VirtualKeyCode::Key7) {
-            //                camera_inputs.reset_to_minus_xy = true;
-            //            }
-            //        }
-            //        Event::DeviceEvent{ event: DeviceEvent::MouseMotion { delta }, ..} => {
-            //            // Since we might receive many different mouse motion events in
-            //            // the same frame, the correct thing to do is to accumulate them
-            //            camera_inputs.mouse_motion.0 += delta.0;
-            //            camera_inputs.mouse_motion.1 += delta.1;
-            //        }
-            //        Event::WindowEvent{ event: WindowEvent::MouseWheel { delta, .. }, ..} => {
-            //            let sensitivity = &state.app.sensitivity;
-            //            camera_inputs.mouse_wheel = util::compute_scene_zoom(delta, sensitivity.scene_zoom);
-            //            //rust_gui.added_zoom = util::compute_graph_zoom(delta, sensitivity.graph_zoom);
-            //        }
-            //        Event::WindowEvent{ event: WindowEvent::MouseInput { state, button, .. }, ..} => {
-            //            // BEWARE: the `state` variable in this scope shadows the "application state" variable
-            //            match state {
-            //                ElementState::Pressed => match button {
-            //                    MouseButton::Left if modifiers_state.ctrl() => camera_inputs.mouse_middle_click = true,
-            //                    MouseButton::Left => camera_inputs.mouse_left_click = true,
-            //                    MouseButton::Middle => camera_inputs.mouse_middle_click = true,
-            //                    _ => {}
-            //                },
-            //                ElementState::Released => match button {
-            //                    // we don't know if we started with the ctrl button enabled,
-            //                    // which means we don't know if we are rotating or dragging.
-            //                    // therefore just disable both of them.
-            //                    MouseButton::Left => {
-            //                        camera_inputs.mouse_left_click = false;
-            //                        camera_inputs.mouse_middle_click = false;
-            //                    },
-            //                    MouseButton::Middle => camera_inputs.mouse_middle_click = false,
-            //                    _ => {}
-            //                }
-            //            }
-            //        }
-            //        _ => {}
-            //    }
-            //}
         }
     });
 }
