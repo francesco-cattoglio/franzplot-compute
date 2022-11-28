@@ -705,7 +705,7 @@ impl super::Gui for NodeGui {
         }
     }
 
-    fn load_ferre_data(&mut self, ferre_data: FerreData) {
+    fn load_ferre_data(&mut self, ctx: &egui::Context, ferre_data: FerreData) {
         self.ferre_data = Some(ferre_data);
     }
 

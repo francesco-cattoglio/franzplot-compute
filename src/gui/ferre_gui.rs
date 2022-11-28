@@ -33,6 +33,7 @@ impl Default for GlobalVarUsage {
 #[derive(Clone, Default)]
 pub struct Step {
     comment: String,
+    image_name: String,
     renderables_shown: Vec<NodeID>,
     global_vars_usage: HashMap<String, GlobalVarUsage>,
 }
@@ -48,6 +49,7 @@ pub struct FerreGui {
     step_edit: bool,
     new_usage_string: String,
     new_node_id: NodeID,
+    loaded_images: HashMap<String, egui::TextureHandle>,
     scene_extent: wgpu::Extent3d,
     winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>,
     ferre_data: FerreData,
@@ -61,6 +63,7 @@ impl FerreGui {
             new_usage_string: String::new(),
             new_node_id: 0,
             animating_step: None,
+            loaded_images: HashMap::new(),
             ferre_data: Default::default(),
             scene_extent: wgpu::Extent3d::default(),
             winit_proxy,
@@ -122,6 +125,19 @@ impl FerreGui {
                         step.global_vars_usage.clear();
                     }
                 });
+                ui.horizontal(|ui|{
+                    ui.label("Image path:");
+                    let response = ui.text_edit_singleline(&mut step.image_name);
+                    if response.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
+                        let path = std::path::Path::new(step.image_name.as_str());
+                        println!("Attempting to create a texture from {:?}", path);
+                        if let Some(texture_hnd) = util::load_texture_to_egui(ctx, path) {
+                            println!("Attempt succesful");
+                            self.loaded_images.insert(step.image_name.clone(), texture_hnd);
+                        };
+                    }
+                });
+                ui.separator();
                 for (name, usage) in step.global_vars_usage.iter_mut() {
                     let mut usage_type = match usage {
                         GlobalVarUsage::Still(_) => VarUsageType::Still,
@@ -179,7 +195,7 @@ impl FerreGui {
                 // Suggest adding a new global variable
                 ui.horizontal(|ui| {
                     let _response = ui.add_sized(egui::vec2(36.0, 18.0), egui::TextEdit::singleline(&mut self.new_usage_string));
-                    if ui.button("Add new global var usage").clicked() {
+                    if ui.button("Add new global var usage").clicked() && !self.new_usage_string.is_empty() {
                         step.global_vars_usage.insert(self.new_usage_string.clone(), GlobalVarUsage::Still(0.0));
                         self.new_usage_string.clear();
                     }
@@ -192,7 +208,7 @@ impl FerreGui {
                 });
                 // Suggest adding a new NodeID to show
                 ui.horizontal(|ui| {
-                    let _response = ui.add(egui::Slider::new(&mut self.new_node_id, 0..=20));
+                    let _response = ui.add(egui::Slider::new(&mut self.new_node_id, 0..=50));
                     if ui.button("Add node to list of shown").clicked() {
                         step.renderables_shown.push(self.new_node_id);
                     }
@@ -203,28 +219,27 @@ impl FerreGui {
             // - we want the animation of the variable to start when we click on the
             //   "run" botton
             // - we do not want the animation to play backward
-            ui.horizontal(|ui| {
-                if let Some(node_id) = step.renderables_shown.first() {
-                    let maybe_node_title = user_state.node_graph.get_node(*node_id);
-                    let title = if let Some(node) = maybe_node_title {
+            let title = if let Some(node_id) = step.renderables_shown.first() {
+                let maybe_node_title = user_state.node_graph.get_node(*node_id);
+                if let Some(node) = maybe_node_title {
                         node.title.clone()
                     } else {
                         "unknown node, check the frzp file".to_string()
-                    };
-                    ui.vertical(|ui| {
-                        let node_label = format!("Node {}: {}", *node_id, title);
-                        ui.label(node_label);
-                        ui.small(&step.comment);
-                    });
+                    }
+            } else {
+                "No renderable in list".to_string()
 
-                } else {
-                    ui.label("Nothing to show for this step yet");
-
+            };
+            ui.collapsing(title, |ui| {
+                ui.small(&step.comment);
+                if let Some(texture) = self.loaded_images.get(&step.image_name) {
+                    ui.image(texture.id(), texture.size_vec2() * 0.5);
                 }
+
                 // Unfortunately we are conflating two different concepts in here: showing objects
                 // and animating them. We need to change both the UI and the code
                 // to separate efficiently the two concepts.
-                if ui.button("show").clicked() {
+                if ui.button("Animate").clicked() {
                     // The button was clicked. No matter what, but we need to reset the
                     // animation of variables
                     ctx.clear_animations();
@@ -361,8 +376,18 @@ impl super::Gui for FerreGui {
     }
 
     /// handle loading of the ferre data
-    fn load_ferre_data(&mut self, ferre_data: FerreData) {
+    fn load_ferre_data(&mut self, ctx: &egui::Context, ferre_data: FerreData) {
         self.ferre_data = ferre_data;
+        for step in self.ferre_data.steps.iter() {
+            if !step.image_name.is_empty() {
+                let path = std::path::Path::new(step.image_name.as_str());
+                println!("Attempting to create a texture from {:?}", path);
+                if let Some(texture_hnd) = util::load_texture_to_egui(ctx, path) {
+                    println!("Attempt succesful");
+                    self.loaded_images.insert(step.image_name.clone(), texture_hnd);
+                };
+            }
+        }
     }
 
     fn export_ferre_data(&self) -> Option<FerreData> {

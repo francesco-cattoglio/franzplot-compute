@@ -6,6 +6,7 @@ use crate::state::AppState;
 use crate::state::UserState;
 
 use std::future::Future;
+use std::str::FromStr;
 
 pub struct Executor {
     #[cfg(not(target_arch = "wasm32"))]
@@ -38,6 +39,19 @@ pub fn create_storage_buffer(device: &wgpu::Device, buffer_size: usize) -> wgpu:
         // Beware:copy and map are only needed when debugging/inspecting
         usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_SRC | wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::MAP_READ,
     })
+}
+
+pub fn load_texture_to_egui(context: &egui::Context, file: &std::path::Path) -> Option<egui::TextureHandle> {
+    let image_file = image::io::Reader::open(file).ok()?;
+    let image_data = image_file.decode().ok()?;
+    let image = image_data.to_rgba8();
+    let size = [image.width() as _, image.height() as _];
+    let pixels = image.as_flat_samples();
+    let egui_image = egui::ColorImage::from_rgba_unmultiplied(
+        size,
+        pixels.as_slice(),
+    );
+    Some(context.load_texture(file.to_string_lossy(), egui_image, egui::TextureFilter::Linear))
 }
 
 pub fn load_textures_to_wgpu<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, files: &[P]) -> Vec<texture::Texture> {
