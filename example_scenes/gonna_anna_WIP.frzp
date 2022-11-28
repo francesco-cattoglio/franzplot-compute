@@ -10,7 +10,7 @@ V1(
       nodes: [
         Some((
           title: "Curve",
-          position: (585,80),
+          position: (586.5625,36.250004),
           error: None,
           contents: Curve(interval:0,fx:1,fy:2,fz:3,output:4),
         )),// [0]
@@ -22,19 +22,19 @@ V1(
         )),// [1]
         Some((
           title: "Rendering",
-          position: (1197,78),
+          position: (1151.6875,-106.37501),
           error: None,
           contents: Rendering(geometry:10,thickness:11,mask:12,material:13),
         )),// [2]
         Some((
           title: "Transform",
-          position: (861.00006,207.00003),
+          position: (1025.0626,24.187525),
           error: None,
           contents: Transform(geometry:14,matrix:15,output:16),
         )),// [3]
         Some((
           title: "Rendering",
-          position: (1206,224.75),
+          position: (1160.6875,5.999989),
           error: None,
           contents: Rendering(geometry:17,thickness:18,mask:19,material:20),
         )),// [4]
@@ -46,76 +46,124 @@ V1(
         )),// [5]
         Some((
           title: "Matrix",
-          position: (517.25,233.00002),
+          position: (581.3125,-123.249985),
           error: None,
           contents: Matrix(interval:29,row_1:28,row_2:27,row_3:26,output:30),
         )),// [6]
-        None,// [7]
+        Some((
+          title: "Rendering",
+          position: (1108.7454,184.98122),
+          error: None,
+          contents: Rendering(geometry:33,thickness:32,mask:31,material:77),
+        )),// [7]
         Some((
           title: "Matrix",
-          position: (537.75,373),
+          position: (528.375,229.25002),
           error: None,
           contents: Matrix(interval:34,row_1:35,row_2:36,row_3:37,output:38),
         )),// [8]
         Some((
           title: "Transform",
-          position: (926.1094,372.43747),
+          position: (874.5468,242.74995),
           error: None,
           contents: Transform(geometry:39,matrix:40,output:41),
         )),// [9]
         Some((
           title: "Matrix",
-          position: (513.24994,505.6718),
+          position: (575.74994,360.3593),
           error: None,
           contents: Matrix(interval:42,row_1:43,row_2:44,row_3:45,output:46),
         )),// [10]
         Some((
           title: "Rendering",
-          position: (1279.25,424.25),
+          position: (1196.4375,310.18753),
           error: None,
           contents: Rendering(geometry:47,thickness:48,mask:49,material:50),
         )),// [11]
         Some((
-          title: "Transform",
-          position: (1166.3064,900.7809),
-          error: Some((node_id:12,severity:Error,message:" This Transform node \n is missing its Geometry input ")),
-          contents: Transform(geometry:55,matrix:54,output:53),
+          title: "Matrix",
+          position: (483.99997,475.81244),
+          error: None,
+          contents: Matrix(interval:53,row_1:54,row_2:55,row_3:57,output:56),
         )),// [12]
         Some((
-          title: "Rendering",
-          position: (1447,716),
-          error: Some((node_id:13,severity:Warning,message:"Input data missing")),
-          contents: Rendering(geometry:52,thickness:51,mask:56,material:57),
+          title: "Transform",
+          position: (773.9218,506.50006),
+          error: None,
+          contents: Transform(geometry:51,matrix:52,output:62),
         )),// [13]
         Some((
-          title: "Matrix",
-          position: (501.00003,644.25),
-          error: Some((node_id:14,severity:Error,message:"Unknown variable or parameter used: \'a\'")),
-          contents: Matrix(interval:58,row_1:59,row_2:60,row_3:61,output:62),
+          title: "Transform",
+          position: (815.6516,663.5749),
+          error: None,
+          contents: Transform(geometry:87,matrix:86,output:63),
         )),// [14]
         Some((
-          title: "Transform",
-          position: (889,721.75),
-          error: Some((node_id:15,severity:Warning,message:"Input data missing")),
-          contents: Transform(geometry:67,matrix:66,output:63),
+          title: "Vector",
+          position: (448.4641,662.0124),
+          error: None,
+          contents: Vector(x:58,y:59,z:60,output:61),
         )),// [15]
         Some((
-          title: "Matrix",
-          position: (794.25,859.00006),
-          error: Some((node_id:16,severity:Error,message:"Unknown variable or parameter used: \'a\'")),
-          contents: Matrix(interval:64,row_1:65,row_2:68,row_3:69,output:70),
+          title: "Transform",
+          position: (816.6516,917.5749),
+          error: None,
+          contents: Transform(geometry:66,matrix:65,output:64),
         )),// [16]
         Some((
-          title: "Transform",
-          position: (1183.5,737.25006),
-          error: Some((node_id:17,severity:Warning,message:"Input data missing")),
-          contents: Transform(geometry:71,matrix:72,output:73),
+          title: "Vector",
+          position: (473.4641,914.0124),
+          error: None,
+          contents: Vector(x:68,y:69,z:70,output:67),
         )),// [17]
         Some((
           title: "Transform",
-          position: (1090.1671,451.26224),
+          position: (1087.0421,349.69974),
           error: None,
           contents: Transform(geometry:74,matrix:75,output:76),
+        )),// [18]
+        Some((
+          title: "Matrix",
+          position: (525.0578,792.3562),
+          error: None,
+          contents: Matrix(interval:78,row_1:79,row_2:80,row_3:81,output:82),
+        )),// [19]
+        Some((
+          title: "Transform",
+          position: (813.4329,803.7312),
+          error: None,
+          contents: Transform(geometry:83,matrix:84,output:85),
+        )),// [20]
+        Some((
+          title: "Translation Matrix",
+          position: (632.8391,649.5124),
+          error: None,
+          contents: TranslationMatrix(vector:89,output:88),
+        )),// [21]
+        Some((
+          title: "Matrix",
+          position: (517.1203,1031.7311),
+          error: None,
+          contents: Matrix(interval:90,row_1:91,row_2:92,row_3:93,output:94),
+        )),// [22]
+        Some((
+          title: "Transform",
+          position: (929.0579,970.9187),
+          error: None,
+          contents: Transform(geometry:95,matrix:96,output:97),
+        )),// [23]
+        None,// [24]
+        Some((
+          title: "Translation Matrix",
+          position: (654.8391,925.5124),
+          error: None,
+          contents: TranslationMatrix(vector:73,output:72),
+        )),// [25]
+        Some((
+          title: "Rendering",
+          position: (1134.8391,870.19995),
+          error: None,
+          contents: Rendering(geometry:71,thickness:102,mask:103,material:104),
         )),
       ],
       attributes: [
@@ -217,7 +265,7 @@ V1(
         )),// [23]
         Some((
           node_id: 5,
-          contents: IntSlider(label:"quality",value:4,mode:IntRange(1,16)),
+          contents: IntSlider(label:"quality",value:8,mode:IntRange(1,16)),
         )),// [24]
         Some((
           node_id: 5,
@@ -243,16 +291,25 @@ V1(
           node_id: 6,
           contents: OutputPin(label:"output",kind:Matrix),
         )),// [30]
-        None,// [31]
-        None,// [32]
-        None,// [33]
+        Some((
+          node_id: 7,
+          contents: Mask(selected:0),
+        )),// [31]
+        Some((
+          node_id: 7,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [32]
+        Some((
+          node_id: 7,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [33]
         Some((
           node_id: 8,
           contents: InputPin(label:"interval",kind:Interval),
         )),// [34]
         Some((
           node_id: 8,
-          contents: MatrixRow(col_1:"cos(pi/2-asin(b/k))",col_2:"0.0",col_3:"sin(pi/2-asin(b/k))",col_4:"0.0"),
+          contents: MatrixRow(col_1:"cos(pi/2-asin(b/(b+k*(2-b))))",col_2:"0.0",col_3:"sin(pi/2-asin(b/(b+k*(2-b))))",col_4:"0.0"),
         )),// [35]
         Some((
           node_id: 8,
@@ -260,7 +317,7 @@ V1(
         )),// [36]
         Some((
           node_id: 8,
-          contents: MatrixRow(col_1:"-sin(pi/2-asin(b/k))",col_2:"0.0",col_3:"cos(pi/2-asin(b/k))",col_4:"0.0"),
+          contents: MatrixRow(col_1:"-sin(pi/2-asin(b/(b+k*(2-b))))",col_2:"0.0",col_3:"cos(pi/2-asin(b/(b+k*(2-b))))",col_4:"0.0"),
         )),// [37]
         Some((
           node_id: 8,
@@ -284,15 +341,15 @@ V1(
         )),// [42]
         Some((
           node_id: 10,
-          contents: MatrixRow(col_1:"cos(v*k/b)",col_2:"-sin(v*k/b)",col_3:"0.0",col_4:"0.0"),
+          contents: MatrixRow(col_1:"cos(v*(b+k*(2-b))/b)",col_2:"-sin(v*(b+k*(2-b))/b)",col_3:"0.0",col_4:"0.0"),
         )),// [43]
         Some((
           node_id: 10,
-          contents: MatrixRow(col_1:"sin(v*k/b)",col_2:"cos(v*k/b)",col_3:"0.0",col_4:"0.0"),
+          contents: MatrixRow(col_1:"sin(v*(b+k*(2-b))/b)",col_2:"cos(v*(b+k*(2-b))/b)",col_3:"0.0",col_4:"0.0"),
         )),// [44]
         Some((
           node_id: 10,
-          contents: MatrixRow(col_1:"0.0",col_2:"0.0",col_3:"1.0",col_4:"0.0"),
+          contents: MatrixRow(col_1:"0.0",col_2:"0.0",col_3:"1.0",col_4:"0.0*cos(asin(b/(b+k*(2-b))))"),
         )),// [45]
         Some((
           node_id: 10,
@@ -316,95 +373,95 @@ V1(
         )),// [50]
         Some((
           node_id: 13,
-          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+          contents: InputPin(label:"geometry",kind:Geometry),
         )),// [51]
         Some((
           node_id: 13,
-          contents: InputPin(label:"geometry",kind:Geometry),
+          contents: InputPin(label:"matrix",kind:Matrix),
         )),// [52]
         Some((
           node_id: 12,
-          contents: OutputPin(label:"output",kind:Geometry),
+          contents: InputPin(label:"interval",kind:Interval),
         )),// [53]
         Some((
           node_id: 12,
-          contents: InputPin(label:"matrix",kind:Matrix),
+          contents: MatrixRow(col_1:"cos(pi/2-asin(0.866*b/(b+k*(2-b))))",col_2:"0.0",col_3:"sin(pi/2-asin(0.866*b/(b+k*(2-b))))",col_4:"0.0"),
         )),// [54]
         Some((
           node_id: 12,
-          contents: InputPin(label:"geometry",kind:Geometry),
+          contents: MatrixRow(col_1:"0.0",col_2:"1.0",col_3:"0.0",col_4:"0.0"),
         )),// [55]
         Some((
-          node_id: 13,
-          contents: Mask(selected:0),
+          node_id: 12,
+          contents: OutputPin(label:"output",kind:Matrix),
         )),// [56]
         Some((
-          node_id: 13,
-          contents: Material(selected:3),
+          node_id: 12,
+          contents: MatrixRow(col_1:"-sin(pi/2-asin(0.866*b/(b+k*(2-b))))",col_2:"0.0",col_3:"cos(pi/2-asin(0.866*b/(b+k*(2-b))))",col_4:"0.0"),
         )),// [57]
         Some((
-          node_id: 14,
-          contents: InputPin(label:"interval",kind:Interval),
+          node_id: 15,
+          contents: Text(label:"x",string:"-b/2*d"),
         )),// [58]
         Some((
-          node_id: 14,
-          contents: MatrixRow(col_1:"cos(pi/6+0.2*sin(8*v))",col_2:"0.0",col_3:"sin(pi/6+0.2*sin(8*v))",col_4:"sqrt(1-a*a)"),
+          node_id: 15,
+          contents: Text(label:"y",string:"0.0"),
         )),// [59]
         Some((
-          node_id: 14,
-          contents: MatrixRow(col_1:"0.0",col_2:"1",col_3:"0.0",col_4:"0.0"),
+          node_id: 15,
+          contents: Text(label:"z",string:"cos(asin(0.866*b/(b+k*(2-b))))"),
         )),// [60]
         Some((
-          node_id: 14,
-          contents: MatrixRow(col_1:"-sin(pi/6+0.2*sin(8*v))",col_2:"0.0",col_3:"cos(pi/6+0.2*sin(8*v))",col_4:"-a"),
+          node_id: 15,
+          contents: OutputPin(label:"vector",kind:Vector),
         )),// [61]
         Some((
-          node_id: 14,
-          contents: OutputPin(label:"output",kind:Matrix),
+          node_id: 13,
+          contents: OutputPin(label:"output",kind:Geometry),
         )),// [62]
         Some((
-          node_id: 15,
+          node_id: 14,
           contents: OutputPin(label:"output",kind:Geometry),
         )),// [63]
         Some((
           node_id: 16,
-          contents: InputPin(label:"interval",kind:Interval),
+          contents: OutputPin(label:"output",kind:Geometry),
         )),// [64]
         Some((
           node_id: 16,
-          contents: MatrixRow(col_1:"1.0",col_2:"0.0",col_3:"0.0",col_4:"-sqrt(1-a*a)"),
+          contents: InputPin(label:"matrix",kind:Matrix),
         )),// [65]
         Some((
-          node_id: 15,
-          contents: InputPin(label:"matrix",kind:Matrix),
+          node_id: 16,
+          contents: InputPin(label:"geometry",kind:Geometry),
         )),// [66]
         Some((
-          node_id: 15,
-          contents: InputPin(label:"geometry",kind:Geometry),
+          node_id: 17,
+          contents: OutputPin(label:"vector",kind:Vector),
         )),// [67]
         Some((
-          node_id: 16,
-          contents: MatrixRow(col_1:"0.0",col_2:"1.0",col_3:"0.0",col_4:"0.0"),
+          node_id: 17,
+          contents: Text(label:"x",string:"b/2*d"),
         )),// [68]
         Some((
-          node_id: 16,
-          contents: MatrixRow(col_1:"0.0",col_2:"0.0",col_3:"1.0",col_4:"a"),
+          node_id: 17,
+          contents: Text(label:"y",string:"0.0"),
         )),// [69]
         Some((
-          node_id: 16,
-          contents: OutputPin(label:"output",kind:Matrix),
+          node_id: 17,
+          contents: Text(label:"z",string:"-cos(asin(0.866*b/(b+k*(2-b))))"),
         )),// [70]
         Some((
-          node_id: 17,
+          node_id: 26,
           contents: InputPin(label:"geometry",kind:Geometry),
         )),// [71]
         Some((
-          node_id: 17,
-          contents: InputPin(label:"matrix",kind:Matrix),
+          node_id: 25,
+          contents: OutputPin(label:"output",kind:Matrix),
         )),// [72]
         Some((
-          node_id: 17,
-          contents: OutputPin(label:"output",kind:Geometry),
+          node_id: 25,
+          contents: InputPin(label:"vector",kind:Vector),
         )),// [73]
         Some((
           node_id: 18,
@@ -417,36 +474,146 @@ V1(
         Some((
           node_id: 18,
           contents: OutputPin(label:"output",kind:Geometry),
+        )),// [76]
+        Some((
+          node_id: 7,
+          contents: Material(selected:1),
+        )),// [77]
+        Some((
+          node_id: 19,
+          contents: InputPin(label:"interval",kind:Interval),
+        )),// [78]
+        Some((
+          node_id: 19,
+          contents: MatrixRow(col_1:"cos(pi/48*b*sin(6*2/b*v))",col_2:"0.0",col_3:"sin(pi/48*b*sin(6*2/b*v))",col_4:"0.0"),
+        )),// [79]
+        Some((
+          node_id: 19,
+          contents: MatrixRow(col_1:"0.0",col_2:"1.0",col_3:"0.0",col_4:"0.0"),
+        )),// [80]
+        Some((
+          node_id: 19,
+          contents: MatrixRow(col_1:"-sin(pi/48*b*sin(6*2/b*v))",col_2:"0.0",col_3:"cos(pi/48*b*sin(6*2/b*v))",col_4:"0.0"),
+        )),// [81]
+        Some((
+          node_id: 19,
+          contents: OutputPin(label:"output",kind:Matrix),
+        )),// [82]
+        Some((
+          node_id: 20,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [83]
+        Some((
+          node_id: 20,
+          contents: InputPin(label:"matrix",kind:Matrix),
+        )),// [84]
+        Some((
+          node_id: 20,
+          contents: OutputPin(label:"output",kind:Geometry),
+        )),// [85]
+        Some((
+          node_id: 14,
+          contents: InputPin(label:"matrix",kind:Matrix),
+        )),// [86]
+        Some((
+          node_id: 14,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [87]
+        Some((
+          node_id: 21,
+          contents: OutputPin(label:"output",kind:Matrix),
+        )),// [88]
+        Some((
+          node_id: 21,
+          contents: InputPin(label:"vector",kind:Vector),
+        )),// [89]
+        Some((
+          node_id: 22,
+          contents: InputPin(label:"interval",kind:Interval),
+        )),// [90]
+        Some((
+          node_id: 22,
+          contents: MatrixRow(col_1:"cos(v*2/b)",col_2:"-sin(v*2/b)",col_3:"0",col_4:"0"),
+        )),// [91]
+        Some((
+          node_id: 22,
+          contents: MatrixRow(col_1:"sin(v*2/b)",col_2:"cos(v*2/b)",col_3:"0.0",col_4:"0.0"),
+        )),// [92]
+        Some((
+          node_id: 22,
+          contents: MatrixRow(col_1:"0",col_2:"0.0",col_3:"1.0",col_4:"0"),
+        )),// [93]
+        Some((
+          node_id: 22,
+          contents: OutputPin(label:"output",kind:Matrix),
+        )),// [94]
+        Some((
+          node_id: 23,
+          contents: InputPin(label:"geometry",kind:Geometry),
+        )),// [95]
+        Some((
+          node_id: 23,
+          contents: InputPin(label:"matrix",kind:Matrix),
+        )),// [96]
+        Some((
+          node_id: 23,
+          contents: OutputPin(label:"output",kind:Geometry),
+        )),// [97]
+        None,// [98]
+        None,// [99]
+        None,// [100]
+        None,// [101]
+        Some((
+          node_id: 26,
+          contents: IntSlider(label:"thickness:",value:3,mode:SizeLabels),
+        )),// [102]
+        Some((
+          node_id: 26,
+          contents: Mask(selected:2),
+        )),// [103]
+        Some((
+          node_id: 26,
+          contents: Material(selected:3),
         )),
       ],
       links: {
-        71: 63,
-        29: 25,
-        67: 53,
-        47: 76,
-        52: 73,
+        95: 64,
+        96: 94,
+        17: 16,
+        89: 61,
         14: 4,
-        66: 62,
-        74: 41,
-        42: 25,
-        75: 46,
         10: 4,
         15: 30,
-        72: 46,
-        58: 25,
-        17: 16,
-        54: 70,
+        75: 46,
+        52: 56,
+        47: 76,
+        73: 67,
+        83: 63,
+        33: 41,
+        51: 4,
+        87: 62,
+        29: 25,
         40: 38,
+        66: 85,
         0: 9,
         39: 4,
+        74: 41,
+        84: 82,
+        90: 25,
+        71: 97,
+        65: 72,
+        78: 25,
+        86: 88,
+        42: 25,
       },
       free_nodes_list: [
-        7,
+        24,
       ],
       free_attributes_list: [
-        31,// [0]
-        32,// [1]
-        33,
+        98,// [0]
+        99,// [1]
+        100,// [2]
+        101,
       ],
     ),
     globals_names: [
@@ -461,12 +628,12 @@ V1(
       0.5,// [1]
       1,// [2]
       1,// [3]
-      2,
+      1,
     ],
   ),
   (
     fc: 1649771226,
-    fs: 1669388098,
+    fs: 1669395674,
     vn: 904199298,
     hs: 0,
   ),
