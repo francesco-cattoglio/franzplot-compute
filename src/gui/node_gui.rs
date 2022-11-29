@@ -31,6 +31,7 @@ struct GraphStatus {
     dragged_pin: Option<AttributeID>,
     drag_delta: egui::Vec2,
     editor_offset: egui::Vec2,
+    new_node_pos: egui::Pos2,
     zoom_level: usize,
     zoom_scrolling: f32,
     style: std::sync::Arc<egui::Style>,
@@ -50,6 +51,7 @@ impl GraphStatus {
             link_candidate: None,
             pin_positions: HashMap::new(),
             dragged_pin: None,
+            new_node_pos: egui::pos2(0.0, 0.0),
             drag_delta: egui::vec2(0.0, 0.0),
             editor_offset: egui::vec2(0.0, 0.0),
             style: std::sync::Arc::new(egui::Style::default()),
@@ -121,6 +123,7 @@ impl GraphStatus {
         new_style.spacing.item_spacing = egui::vec2(interact_height * 0.5, interact_height * 0.25);
         new_style.animation_time = 0.0;
         new_style.visuals.collapsing_header_frame = true;
+        new_style.wrap = Some(false); // this prevents wrapping inside menus
     }
 
     fn add_node_contents(&mut self, ui: &mut egui::Ui, max_width: f32, availables: &Availables, graph: &mut NodeGraph, attributes: &[AttributeID]) {
@@ -504,7 +507,7 @@ impl GraphStatus {
 
             let maybe_hover = ctx.input().pointer.hover_pos();
             if let Some(hover_pos) = maybe_hover {
-                if avail_rect.contains(hover_pos) {
+                if avail_rect.contains(hover_pos) && !ui.memory().any_popup_open() {
                     for event in ctx.input().events.iter() {
                         match event {
                             // We want to respond both to mouse wheel scrolling and pinch zoom
@@ -515,6 +518,89 @@ impl GraphStatus {
                     }
                 }
             }
+
+            // Detect right clicks to open popup menus
+            // BEWARE: work-around for a strange bug: using response.context_menu() magically
+            // makes response.secondary_clicked() never trigger.
+            if response.is_pointer_button_down_on() {
+                self.new_node_pos = self.rel_to_abs(response.interact_pointer_pos().unwrap_or_default());
+            }
+            response.context_menu(|ui| {
+                ui.set_max_width(self.def_h() * 10.0);
+
+                ui.menu_button("Geometries", |ui| {
+                    ui.set_max_width(self.def_h() * 5.0);
+                    if ui.button("Curve").clicked() {
+                        user_graph.add_curve_node(self.new_node_pos.into());
+                        ui.close_menu();
+                    };
+                    if ui.button("Bezier").clicked() {
+                        user_graph.add_bezier_node(self.new_node_pos.into());
+                        ui.close_menu();
+                    };
+                    if ui.button("Surface").clicked() {
+                        user_graph.add_surface_node(self.new_node_pos.into());
+                        ui.close_menu();
+                    };
+                    if ui.button("Plane").clicked() {
+                        user_graph.add_plane_node(self.new_node_pos.into());
+                        ui.close_menu();
+                    };
+                    if ui.button("Primitives").clicked() {
+                        user_graph.add_primitive_node(self.new_node_pos.into());
+                        ui.close_menu();
+                    };
+                });
+
+                ui.menu_button("Parameters", |ui| {
+                    ui.set_max_width(self.def_h() * 8.0);
+                    if ui.button("Interval").clicked() {
+                        user_graph.add_interval_node(self.new_node_pos.into());
+                        ui.close_menu();
+                    };
+                    if ui.button("Sample parameter").clicked() {
+                        user_graph.add_parameter_node(self.new_node_pos.into());
+                        ui.close_menu();
+                    };
+                });
+
+                ui.menu_button("Transformations", |ui| {
+                    ui.set_max_width(self.def_h() * 10.0);
+                    if ui.button("Transform").clicked() {
+                        user_graph.add_transform_node(self.new_node_pos.into());
+                        ui.close_menu();
+                    };
+                    if ui.button("Generic matrix").clicked() {
+                        user_graph.add_matrix_node(self.new_node_pos.into());
+                        ui.close_menu();
+                    };
+                    if ui.button("Rotation matrix").clicked() {
+                        user_graph.add_rotation_matrix_node(self.new_node_pos.into());
+                        ui.close_menu();
+                    };
+                    if ui.button("Translation matrix").clicked() {
+                        user_graph.add_translation_matrix_node(self.new_node_pos.into());
+                        ui.close_menu();
+                    };
+                });
+
+                if ui.button("Point").clicked() {
+                    user_graph.add_point_node(self.new_node_pos.into());
+                    ui.close_menu();
+                };
+                if ui.button("Vector").clicked() {
+                    user_graph.add_vector_node(self.new_node_pos.into());
+                    ui.close_menu();
+                };
+                if ui.button("Geometry rendering").clicked() {
+                    user_graph.add_rendering_node(self.new_node_pos.into());
+                    ui.close_menu();
+                };
+                if ui.button("Vector rendering").clicked() {
+                    user_graph.add_vector_rendering_node(self.new_node_pos.into());
+                    ui.close_menu();
+                };
+            });
         }); // central panel
 
         // Finally: reset the style to the standard one
