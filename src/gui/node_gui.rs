@@ -5,8 +5,10 @@ use egui::collapsing_header::CollapsingState;
 use pest::unicode::UPPERCASE_LETTER;
 
 use crate::CustomEvent;
+use crate::compute_graph::globals::Globals;
 use crate::node_graph::{Node, NodeContents, AttributeID, NodeGraph, Attribute, AttributeContents, DataKind, SliderMode, AVAILABLE_SIZES, Axis};
 use crate::node_graph::EguiId;
+use crate::state::user_state::UserGlobals;
 use crate::state::{UserState, AppState, user_to_app_state, user_state};
 
 use super::{FerreData, Availables};
@@ -34,6 +36,7 @@ struct GraphStatus {
     new_node_pos: egui::Pos2,
     zoom_level: usize,
     zoom_scrolling: f32,
+    force_node_pos: bool,
     style: std::sync::Arc<egui::Style>,
 }
 
@@ -46,6 +49,7 @@ impl GraphStatus {
         let mut ret = Self {
             zoom_level,
             zoom_scrolling: 0.0,
+            force_node_pos: true,
             prev_link_candidate: None,
             new_link: None,
             link_candidate: None,
@@ -81,6 +85,7 @@ impl GraphStatus {
             let z_ratio = ZOOM_SIZES[self.zoom_level] / ZOOM_SIZES[self.zoom_level + 1];
             self.editor_offset = self.editor_offset * z_ratio + point_coords.to_vec2() * (z_ratio - 1.0);
             self.zoom_level += 1;
+            self.force_node_pos = true;
             self.change_style_from_height(ZOOM_SIZES[self.zoom_level]);
         }
     }
@@ -91,6 +96,7 @@ impl GraphStatus {
             let z_ratio = ZOOM_SIZES[self.zoom_level] / ZOOM_SIZES[self.zoom_level - 1];
             self.editor_offset = self.editor_offset * z_ratio + point_coords.to_vec2() * (z_ratio - 1.0);
             self.zoom_level -= 1;
+            self.force_node_pos = true;
             self.change_style_from_height(ZOOM_SIZES[self.zoom_level]);
         }
     }
@@ -342,15 +348,13 @@ impl GraphStatus {
         // before looping over all nodes, reset a few variables
         self.link_candidate = None;
 
-        let mut graph_is_dragged = false;
-
         egui::CentralPanel::default().show(ctx, |ui| {
             let (id, rect) = ui.allocate_space(ui.available_size());
             let ctrl_down = ctx.input().modifiers.ctrl;
             let response = ui.interact(rect, id, egui::Sense::click_and_drag());
             if response.dragged_by(egui::PointerButton::Middle) || response.dragged_by(egui::PointerButton::Primary) && ctrl_down {
                 self.editor_offset += response.drag_delta() * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
-                graph_is_dragged = true;
+                self.force_node_pos = true;
             }
 
             let maybe_hover = ctx.input().pointer.hover_pos();
@@ -505,7 +509,7 @@ impl GraphStatus {
             // current_pos. We cannot keep it enabled all the time because egui will report the
             // forced current_pos as the window return rect, thus ignoring drag if current_pos was
             // set.
-            let prepared_window = if graph_is_dragged {
+            let prepared_window = if self.force_node_pos {
                 prepared_window.current_pos(position)
             } else {
                 prepared_window
@@ -608,7 +612,7 @@ impl GraphStatus {
                 _ => unreachable!(),
             };
             let real_distance = in_pos.distance(out_pos) * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
-            let delta = self.def_h() * (0.25 + 0.5 * real_distance.sqrt());
+            let delta = self.def_h() * (0.333 + 0.333 * real_distance.sqrt());
             let points = [out_pos, out_pos + (delta, 0.0).into(), in_pos + (-delta, 0.0).into(), in_pos];
             let shape = egui::epaint::CubicBezierShape::from_points_stroke(points, false, egui::Color32::default(), egui::Stroke::new(2.0f32, egui::Color32::RED));
             mid_painter.add(shape);
@@ -616,6 +620,8 @@ impl GraphStatus {
 
         // Finally: reset the style to the standard one
         ctx.set_style(prev_style);
+        // and reset the "zoom changed" flag
+        self.force_node_pos = false;
     }
 
     fn add_pin(&mut self, ui: &mut egui::Ui, layout: egui::Layout, id: AttributeID, label: &str, kind: DataKind) {
@@ -669,6 +675,8 @@ pub struct NodeGui {
     drag_delta: egui::Vec2,
     ferre_data: Option<FerreData>,
     current_tab: GuiTab,
+    new_variable_name: String,
+    new_variable_error: Option<String>,
     style: egui::style::Style,
     graph_status: GraphStatus,
     top_area_h: f32,
@@ -687,6 +695,8 @@ impl NodeGui {
             current_tab: GuiTab::Graph,
             top_area_h: 0.0,
             style: Default::default(),
+            new_variable_name: Default::default(),
+            new_variable_error: None,
             left_area_w: 0.0,
             ferre_data: None,
             scene_extent: wgpu::Extent3d::default(),
@@ -726,29 +736,66 @@ impl NodeGui {
                     .rounding(egui::Rounding::none())
                     .show(ui, |ui| {
                         ui.set_min_height(avail_rect.height());
-                        ui.set_max_width(128.0);
-                        ui.vertical(|ui| {
+                        ui.set_width(160.0);
+                        ui.vertical_centered(|ui| {
                             if ui.button("Render scene").clicked() {
                                 let result = user_to_app_state(app_state, user_state);
                                 if result.is_ok() {
                                     self.current_tab = GuiTab::Scene;
                                 }
                             }
-                            if ui.button("increase zoom").clicked() {
-                                self.graph_status.increment_zoom(egui::pos2(0.0, 0.0));
+                            ui.separator();
+                            ui.separator();
+
+                            let UserGlobals {
+                                names,
+                                init_values,
+                            } = &mut user_state.globals;
+                            let mut i = 0;
+                            while i != names.len() {
+                                ui.horizontal(|ui| {
+                                    // this is safe because there is no way that the user clicks two buttons in a single
+                                    // frame: therefore by not incrementing the i, we are sure we
+                                    // do not move to show a name that does not exist
+                                    let button = egui::Button::new("X");
+                                    let double_size = egui::vec2(0.0, ui.style().spacing.interact_size.y * 2.2);
+                                    if ui.add_sized(double_size, button).clicked() {
+                                        names.remove(i);
+                                        init_values.remove(i);
+                                    } else {
+                                        ui.vertical(|ui| {
+                                            ui.label(&names[i]);
+                                            let drag_value = egui::DragValue::new(&mut init_values[i])
+                                                .speed(0.01)
+                                                .min_decimals(2);
+                                            ui.add(drag_value);
+                                        });
+                                        i += 1;
+                                    }
+                                });
+                                ui.separator();
                             }
-                            if ui.button("Decrease graph").clicked() {
-                                self.graph_status.decrement_zoom(egui::pos2(0.0, 0.0));
+                            let accept_new_variable = ui.horizontal(|ui| {
+                                ui.label("new variable:");
+                                let response = ui.text_edit_singleline(&mut self.new_variable_name);
+                                if response.changed() {
+                                    self.new_variable_error = None;
+                                }
+                                response.lost_focus() && ui.input().key_pressed(egui::Key::Enter)
+                            }).inner;
+                            if ui.button("Add variable").clicked() || accept_new_variable {
+                                if let Ok(valid_name) = Globals::sanitize_variable_name(&self.new_variable_name.clone()) {
+                                    user_state.globals.names.push(valid_name);
+                                    user_state.globals.init_values.push(0.0);//  name_valu
+                                    self.new_variable_name.clear();
+                                    self.new_variable_error = None;
+                                } else {
+                                    self.new_variable_error = Some("Invalid name".into());
+                                }
                             }
-                            ui.label("Global vars will go here");
-                            ui.separator();
-                            ui.label("Global vars will go here");
-                            ui.separator();
-                            ui.label("Global vars will go here");
-                            ui.separator();
-                            ui.label("Global vars will go here");
-                            ui.separator();
-                            ui.label("Global vars will go here");
+                            if let Some(error) = &self.new_variable_error {
+                                ui.colored_label(egui::Color32::RED, error);
+                            }
                         });
                     });
             });
@@ -802,7 +849,11 @@ impl super::Gui for NodeGui {
         }
     }
 
-    fn load_ferre_data(&mut self, ctx: &egui::Context, ferre_data: FerreData) {
+    fn mark_new_file_open(&mut self) {
+        self.graph_status.force_node_pos = true;
+    }
+
+    fn load_ferre_data(&mut self, _ctx: &egui::Context, ferre_data: FerreData) {
         self.ferre_data = Some(ferre_data);
     }
 

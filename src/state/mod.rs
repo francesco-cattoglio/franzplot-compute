@@ -384,6 +384,7 @@ impl State {
             Action::OpenFile(path) => {
                 let VersionV2::V20 { user_state, ferre_data } = File::read_from_frzp(path)?.convert_to_v2()?;
                 self.user = user_state;
+                self.gui.mark_new_file_open();
                 if let Some(ferre) = ferre_data {
                     self.gui.load_ferre_data(&self.egui_ctx, ferre);
                     // Quick hack: by default, always process the scene when we open
