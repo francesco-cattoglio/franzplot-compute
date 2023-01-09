@@ -342,167 +342,15 @@ impl GraphStatus {
         // before looping over all nodes, reset a few variables
         self.link_candidate = None;
 
-        // This is how each node will be rendered:
-        // - we want a Window so that we have an area that can be easily moved around.
-        // - we put a Collapsing state inside the window, because we want a more complete control of
-        //   the header and the contents of the node.
-        // - All the node attributes get rendered one after the other, in the same order as they are
-        //   specified in the node_graph
-        // Some specific gymnastics is needed to make the borrow checked happy, like the destructuring
-        // and copying of the node contents into a helper structure.
-        for node_id in user_graph.get_node_ids() {
-            // get all the useful information for our node
-            struct Helper {
-                pos: egui::Pos2,
-                window_title: egui::RichText,
-                attributes: Vec<AttributeID>,
-            }
-            let Helper {
-                window_title,
-                pos,
-                attributes
-            } = {
-                let Node {
-                    title,
-                    position,
-                    error,
-                    contents
-                } = user_graph.get_node_mut(node_id).unwrap();
-                let window_title: egui::RichText = if let Some(_err) = error {
-                    title.clone() + " ⚠"
-                } else {
-                    title.clone()
-                }.into();
-                let attributes = contents.get_attribute_list();
-                Helper {
-                    pos: egui::Pos2::from(*position),
-                    window_title,
-                    attributes
-                }
-            };
-
-            // When you show the window, it might actually return None if the window itself was closed.
-            // In our case each window represents a Node, and should NOT be closed.
-            // We might want to change this in the future, if we create a way to group windows.
-            let position = self.abs_to_rel(pos);
-            let window_return = egui::Window::new("") // NO window title, since we set a unique ID
-                .id(node_id.new_egui_id())
-                .current_pos(position)
-                .auto_sized()
-                .title_bar(false)
-                .drag_bounds(egui::Rect::EVERYTHING)
-                .show(ctx, |ui| {
-                    let header_builder = CollapsingState::load_with_default_open(ctx, ui.make_persistent_id(node_id), true);
-                    let mut max_width = 0.0;
-                    let first_response = header_builder.show_header(ui, |ui| {
-                        ui.strong(window_title);
-                        max_width = ui.min_size().x
-                    });
-                    let body_return = first_response.body_unindented(|ui| {
-                        // TODO: is this little change of visuals worth it?
-                        //egui::Frame::none()
-                        //    .fill(self.style.visuals.faint_bg_color)
-                        //    .inner_margin(egui::style::Margin::from(2.0))
-                        //    .outer_margin(egui::style::Margin::from(-2.0))
-                        //    .rounding(self.style.visuals.window_rounding)
-                        //    .show(ui, |ui| {
-                                self.add_node_contents(ui, max_width, availables, user_graph, &attributes)
-                        //});
-                    });
-                    // We can now check if the header was collapsed. If it was, then no data was
-                    // writtend for the pin locations, and we need to manually set them
-                    let maybe_inner_response = body_return.2;
-
-                    if maybe_inner_response.is_none() {
-                        // We want the same Y position for all, but a different X for inputs and outputs.
-                        for id in attributes {
-                            if user_graph.is_attribute_input(id) {
-                                let resp_rect = body_return.0.rect; // Use the collapse button response
-                                let rect = egui::Rect {
-                                    min: resp_rect.min,
-                                    max: [resp_rect.left(), resp_rect.bottom()].into(),
-                                };
-                                self.pin_positions.insert(id, rect);
-                            }
-                            if user_graph.is_attribute_output(id) {
-                                let resp_rect = body_return.1.response.rect; // Use the header response
-                                let rect = egui::Rect {
-                                    min: [resp_rect.right(), resp_rect.top()].into(),
-                                    max: resp_rect.max,
-                                };
-                                self.pin_positions.insert(id, rect);
-                            }
-                        }
-
-                    }
-                }).expect("no egui::Window should ever be closed inside the node editor"); // Assume egui::Window is open
-
-            // After we have the window response, we can assume that the window was not collapsed
-            // (in fact, the user cannot collapse it because the window itself has no title bar)
-            // We can store its position!
-            let window_response = window_return.response;
-            let up_left = self.rel_to_abs(window_response.rect.min);
-            let Node { position: pos, .. } = user_graph.get_node_mut(node_id).unwrap();
-            (pos[0], pos[1]) = (up_left.x, up_left.y);
-        }
-        // After rendering all the nodes, decide if we need to display a floating Bezier curve
-        self.prev_link_candidate = self.link_candidate;
-        let top_painter = egui::Painter::new(ctx.clone(), egui::LayerId { order: egui::Order::Tooltip, id: egui::Id::new("painter") }, egui::Rect::EVERYTHING);
-        if let Some(start_id) = self.dragged_pin {
-            match self.prev_link_candidate {
-                // draw between the two!
-                Some(end_id) => {
-                top_painter.line_segment([self.pin_positions.get(&start_id).unwrap().center(),
-                                     self.pin_positions.get(&end_id).unwrap().center()], egui::Stroke::new(1.0f32, egui::Color32::RED));
-                },
-                // draw between the first and the last known mouse position!
-                None => {
-                let pos =
-                if let Some(pos) = ctx.input().pointer.hover_pos() {
-                    pos
-                } else {
-                    egui::pos2(0.0, 0.0)
-                };
-                top_painter.line_segment([self.pin_positions.get(&start_id).unwrap().center(),
-                                     pos], egui::Stroke::new(1.0f32, egui::Color32::RED));
-                }
-            }
-        }
-
-        match self.new_link {
-            Some(pair) if user_graph.is_attribute_input(pair.0) => user_graph.insert_link(pair.0, pair.1),
-            Some(pair) /*        the pair is reversed        */ => user_graph.insert_link(pair.1, pair.0),
-            _ => {}
-        }
-
-        let mid_painter = egui::Painter::new(ctx.clone(), egui::LayerId { order: egui::Order::PanelResizeLine, id: egui::Id::new("painter") }, egui::Rect::EVERYTHING);
-        // After the floating bezier, we need to show all the existing connections!
-        for link in user_graph.get_links() {
-            let in_pos = match self.pin_positions.get(link.0) {
-                Some(rect) => rect.center(),
-                _ => unreachable!(),
-            };
-            let out_pos = match self.pin_positions.get(link.1) {
-                Some(rect) => rect.center(),
-                _ => unreachable!(),
-            };
-            let real_distance = in_pos.distance(out_pos) * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
-            let delta = self.def_h() * (0.25 + 0.5 * real_distance.sqrt());
-            let points = [out_pos, out_pos + (delta, 0.0).into(), in_pos + (-delta, 0.0).into(), in_pos];
-            let shape = egui::epaint::CubicBezierShape::from_points_stroke(points, false, egui::Color32::default(), egui::Stroke::new(2.0f32, egui::Color32::RED));
-            mid_painter.add(shape);
-        }
+        let mut graph_is_dragged = false;
 
         egui::CentralPanel::default().show(ctx, |ui| {
             let (id, rect) = ui.allocate_space(ui.available_size());
-            let response = ui.interact(rect, id, egui::Sense::click_and_drag());
-            if response.dragged_by(egui::PointerButton::Middle) {
-                self.editor_offset += response.drag_delta() * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
-            }
-
             let ctrl_down = ctx.input().modifiers.ctrl;
-            if response.dragged_by(egui::PointerButton::Primary) && ctrl_down {
+            let response = ui.interact(rect, id, egui::Sense::click_and_drag());
+            if response.dragged_by(egui::PointerButton::Middle) || response.dragged_by(egui::PointerButton::Primary) && ctrl_down {
                 self.editor_offset += response.drag_delta() * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
+                graph_is_dragged = true;
             }
 
             let maybe_hover = ctx.input().pointer.hover_pos();
@@ -602,6 +450,169 @@ impl GraphStatus {
                 };
             });
         }); // central panel
+
+        // This is how each node will be rendered:
+        // - we want a Window so that we have an area that can be easily moved around.
+        // - we put a Collapsing state inside the window, because we want a more complete control of
+        //   the header and the contents of the node.
+        // - All the node attributes get rendered one after the other, in the same order as they are
+        //   specified in the node_graph
+        // Some specific gymnastics is needed to make the borrow checked happy, like the destructuring
+        // and copying of the node contents into a helper structure.
+        for node_id in user_graph.get_node_ids() {
+            // get all the useful information for our node
+            struct Helper {
+                pos: egui::Pos2,
+                window_title: egui::RichText,
+                attributes: Vec<AttributeID>,
+            }
+            let Helper {
+                window_title,
+                pos,
+                attributes
+            } = {
+                let Node {
+                    title,
+                    position,
+                    error,
+                    contents
+                } = user_graph.get_node_mut(node_id).unwrap();
+                let window_title: egui::RichText = if let Some(_err) = error {
+                    title.clone() + " ⚠"
+                } else {
+                    title.clone()
+                }.into();
+                let attributes = contents.get_attribute_list();
+                Helper {
+                    pos: egui::Pos2::from(*position),
+                    window_title,
+                    attributes
+                }
+            };
+
+            // When you show the window, it might actually return None if the window itself was closed.
+            // In our case each window represents a Node, and should NOT be closed.
+            // We might want to change this in the future, if we create a way to group windows.
+            let position = self.abs_to_rel(pos);
+            let prepared_window = egui::Window::new("") // NO window title, since we set a unique ID
+                .id(node_id.new_egui_id())
+                .default_pos(position)
+                .auto_sized()
+                .title_bar(false)
+                .drag_bounds(egui::Rect::EVERYTHING);
+
+            // if the graph area is being dragged around, make sure to force the update for the
+            // current_pos. We cannot keep it enabled all the time because egui will report the
+            // forced current_pos as the window return rect, thus ignoring drag if current_pos was
+            // set.
+            let prepared_window = if graph_is_dragged {
+                prepared_window.current_pos(position)
+            } else {
+                prepared_window
+            };
+
+            // Now we can finally show the window
+            let window_return = prepared_window.show(ctx, |ui| {
+                let header_builder = CollapsingState::load_with_default_open(ctx, ui.make_persistent_id(node_id), true);
+                let mut max_width = 0.0;
+                let first_response = header_builder.show_header(ui, |ui| {
+                    ui.strong(window_title);
+                    max_width = ui.min_size().x;
+                });
+                let body_return = first_response.body_unindented(|ui| {
+                    // TODO: is this little change of visuals worth it?
+                    //egui::Frame::none()
+                    //    .fill(self.style.visuals.faint_bg_color)
+                    //    .inner_margin(egui::style::Margin::from(2.0))
+                    //    .outer_margin(egui::style::Margin::from(-2.0))
+                    //    .rounding(self.style.visuals.window_rounding)
+                    //    .show(ui, |ui| {
+                            self.add_node_contents(ui, max_width, availables, user_graph, &attributes)
+                    //});
+                });
+                // We can now check if the header was collapsed. If it was, then no data was
+                // writtend for the pin locations, and we need to manually set them
+                let maybe_inner_response = body_return.2;
+
+                if maybe_inner_response.is_none() {
+                    // We want the same Y position for all, but a different X for inputs and outputs.
+                    for id in attributes {
+                        if user_graph.is_attribute_input(id) {
+                            let resp_rect = body_return.0.rect; // Use the collapse button response
+                            let rect = egui::Rect {
+                                min: resp_rect.min,
+                                max: [resp_rect.left(), resp_rect.bottom()].into(),
+                            };
+                            self.pin_positions.insert(id, rect);
+                        }
+                        if user_graph.is_attribute_output(id) {
+                            let resp_rect = body_return.1.response.rect; // Use the header response
+                            let rect = egui::Rect {
+                                min: [resp_rect.right(), resp_rect.top()].into(),
+                                max: resp_rect.max,
+                            };
+                            self.pin_positions.insert(id, rect);
+                        }
+                    }
+                }
+            }).expect("no egui::Window should ever be closed inside the node editor"); // Assume egui::Window is open
+
+            // After we have the window response, we can assume that the window was not collapsed
+            // (in fact, the user cannot collapse it because the window itself has no title bar)
+            // We can store its position!
+            let window_response = window_return.response;
+            let up_left = self.rel_to_abs(window_response.rect.min);
+            let Node { position: pos, .. } = user_graph.get_node_mut(node_id).unwrap();
+            //dbg!(&pos);
+            (pos[0], pos[1]) = (up_left.x, up_left.y);
+        }
+        // After rendering all the nodes, decide if we need to display a floating Bezier curve
+        self.prev_link_candidate = self.link_candidate;
+        let top_painter = egui::Painter::new(ctx.clone(), egui::LayerId { order: egui::Order::Tooltip, id: egui::Id::new("painter") }, egui::Rect::EVERYTHING);
+        if let Some(start_id) = self.dragged_pin {
+            match self.prev_link_candidate {
+                // draw between the two!
+                Some(end_id) => {
+                top_painter.line_segment([self.pin_positions.get(&start_id).unwrap().center(),
+                                     self.pin_positions.get(&end_id).unwrap().center()], egui::Stroke::new(1.0f32, egui::Color32::RED));
+                },
+                // draw between the first and the last known mouse position!
+                None => {
+                let pos =
+                if let Some(pos) = ctx.input().pointer.hover_pos() {
+                    pos
+                } else {
+                    egui::pos2(0.0, 0.0)
+                };
+                top_painter.line_segment([self.pin_positions.get(&start_id).unwrap().center(),
+                                     pos], egui::Stroke::new(1.0f32, egui::Color32::RED));
+                }
+            }
+        }
+
+        match self.new_link {
+            Some(pair) if user_graph.is_attribute_input(pair.0) => user_graph.insert_link(pair.0, pair.1),
+            Some(pair) /*        the pair is reversed        */ => user_graph.insert_link(pair.1, pair.0),
+            _ => {}
+        }
+
+        let mid_painter = egui::Painter::new(ctx.clone(), egui::LayerId { order: egui::Order::PanelResizeLine, id: egui::Id::new("painter") }, egui::Rect::EVERYTHING);
+        // After the floating bezier, we need to show all the existing connections!
+        for link in user_graph.get_links() {
+            let in_pos = match self.pin_positions.get(link.0) {
+                Some(rect) => rect.center(),
+                _ => unreachable!(),
+            };
+            let out_pos = match self.pin_positions.get(link.1) {
+                Some(rect) => rect.center(),
+                _ => unreachable!(),
+            };
+            let real_distance = in_pos.distance(out_pos) * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
+            let delta = self.def_h() * (0.25 + 0.5 * real_distance.sqrt());
+            let points = [out_pos, out_pos + (delta, 0.0).into(), in_pos + (-delta, 0.0).into(), in_pos];
+            let shape = egui::epaint::CubicBezierShape::from_points_stroke(points, false, egui::Color32::default(), egui::Stroke::new(2.0f32, egui::Color32::RED));
+            mid_painter.add(shape);
+        }
 
         // Finally: reset the style to the standard one
         ctx.set_style(prev_style);

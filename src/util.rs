@@ -51,7 +51,7 @@ pub fn load_texture_to_egui(context: &egui::Context, file: &std::path::Path) -> 
         size,
         pixels.as_slice(),
     );
-    Some(context.load_texture(file.to_string_lossy(), egui_image, egui::TextureFilter::Linear))
+    Some(context.load_texture(file.to_string_lossy(), egui_image, egui::TextureOptions::LINEAR))
 }
 
 pub fn load_textures_to_wgpu<P: AsRef<std::path::Path>>(manager: &device_manager::Manager, files: &[P]) -> Vec<texture::Texture> {

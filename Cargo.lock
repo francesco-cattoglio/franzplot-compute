@@ -43,12 +43,11 @@ dependencies = [
 
 [[package]]
 name = "ahash"
-version = "0.8.0"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57e6e951cfbb2db8de1828d49073a113a29fd7117b1596caa781a258c7e38d72"
+checksum = "bf6ccdb167abbf410dcb915cabd428929d7f6a04980b54a11f26a39f1c7f7107"
 dependencies = [
  "cfg-if",
- "getrandom",
  "once_cell",
  "version_check",
 ]
@@ -88,9 +87,9 @@ checksum = "94a45b455c14666b85fc40a019e8ab9eb75e3a124e05494f5397122bc9eb06e0"
 
 [[package]]
 name = "arboard"
-version = "3.1.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79e8af4eff708b72e371acd4625ad3d01a88c946b9e8d6868cb5bb6e4d0d923c"
+checksum = "d6041616acea41d67c4a984709ddab1587fd0b10efe5cc563fee954d2f011854"
 dependencies = [
  "clipboard-win",
  "log",
@@ -715,11 +714,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "egui"
-version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b#7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b"
+name = "ecolor"
+version = "0.20.0"
+source = "git+https://github.com/emilk/egui?rev=60b4f5e3fe00fe3f840374846dfd241817e6bf1e#60b4f5e3fe00fe3f840374846dfd241817e6bf1e"
 dependencies = [
- "ahash 0.8.0",
+ "bytemuck",
+]
+
+[[package]]
+name = "egui"
+version = "0.20.1"
+source = "git+https://github.com/emilk/egui?rev=60b4f5e3fe00fe3f840374846dfd241817e6bf1e#60b4f5e3fe00fe3f840374846dfd241817e6bf1e"
+dependencies = [
+ "ahash 0.8.2",
  "epaint",
  "nohash-hasher",
  "tracing",
@@ -727,12 +734,11 @@ dependencies = [
 
 [[package]]
 name = "egui-wgpu"
-version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b#7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b"
+version = "0.20.0"
+source = "git+https://github.com/emilk/egui?rev=60b4f5e3fe00fe3f840374846dfd241817e6bf1e#60b4f5e3fe00fe3f840374846dfd241817e6bf1e"
 dependencies = [
  "bytemuck",
- "egui",
- "pollster",
+ "epaint",
  "tracing",
  "type-map",
  "wgpu",
@@ -741,8 +747,8 @@ dependencies = [
 
 [[package]]
 name = "egui-winit"
-version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b#7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b"
+version = "0.20.1"
+source = "git+https://github.com/emilk/egui?rev=60b4f5e3fe00fe3f840374846dfd241817e6bf1e#60b4f5e3fe00fe3f840374846dfd241817e6bf1e"
 dependencies = [
  "arboard",
  "egui",
@@ -761,8 +767,8 @@ checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
 
 [[package]]
 name = "emath"
-version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b#7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b"
+version = "0.20.0"
+source = "git+https://github.com/emilk/egui?rev=60b4f5e3fe00fe3f840374846dfd241817e6bf1e#60b4f5e3fe00fe3f840374846dfd241817e6bf1e"
 dependencies = [
  "bytemuck",
 ]
@@ -782,13 +788,14 @@ dependencies = [
 
 [[package]]
 name = "epaint"
-version = "0.19.0"
-source = "git+https://github.com/emilk/egui?rev=7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b#7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b"
+version = "0.20.0"
+source = "git+https://github.com/emilk/egui?rev=60b4f5e3fe00fe3f840374846dfd241817e6bf1e#60b4f5e3fe00fe3f840374846dfd241817e6bf1e"
 dependencies = [
  "ab_glyph",
- "ahash 0.8.0",
+ "ahash 0.8.2",
  "atomic_refcell",
  "bytemuck",
+ "ecolor",
  "emath",
  "nohash-hasher",
  "parking_lot 0.12.1",

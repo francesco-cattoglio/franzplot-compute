@@ -260,7 +260,7 @@ fn main() -> Result<(), String>{
     let window = builder.build(&event_loop).unwrap();
 
     // We use the egui_wgpu_backend crate as the render backend.
-    let mut egui_rpass = egui_wgpu::Renderer::new(&device_manager.device, crate::rendering::SWAPCHAIN_FORMAT, 1, 0); // TODO: investigate more how to properly set this
+    let mut egui_rpass = egui_wgpu::Renderer::new(&device_manager.device, crate::rendering::SWAPCHAIN_FORMAT, None, 1); // TODO: investigate more how to properly set this
 
     // last, initialize the gui and the state with the available assets.
     let mask_ids: Vec<egui::TextureId> = assets.masks.iter()

@@ -19,9 +19,9 @@ wgpu = { version = "0.14", features = ["trace", "spirv"] }
 winit = { version="0.27.3", features = ["x11"] }
 chrono = { version = "0.4", features = ["serde"] }
 pollster = "0.2"
-egui = { git = "https://github.com/emilk/egui", version = "0.19", rev = "7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b" }
-egui-winit = { git = "https://github.com/emilk/egui", version = "0.19", rev = "7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b" }
-egui-wgpu = { git = "https://github.com/emilk/egui", version = "0.19", rev = "7803285221aa65cfdbcb2dc3d5efd2e318fa8f9b", features = ["winit"] }
+egui = { git = "https://github.com/emilk/egui", rev = "60b4f5e3fe00fe3f840374846dfd241817e6bf1e" }
+egui-winit = { git = "https://github.com/emilk/egui", rev = "60b4f5e3fe00fe3f840374846dfd241817e6bf1e" }
+egui-wgpu = { git = "https://github.com/emilk/egui", rev = "60b4f5e3fe00fe3f840374846dfd241817e6bf1e", features = ["winit"] }
 
 bytemuck = { version = "1.4", features = ["derive"] }
 num-iter = "0.1"

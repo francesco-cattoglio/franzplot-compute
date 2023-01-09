@@ -330,18 +330,36 @@ impl State {
         for (id, image_delta) in full_output.textures_delta.set {
             self.egui_rpass.update_texture(&manager.device, &manager.queue, id, &image_delta);
         }
-        self.egui_rpass.update_buffers(&manager.device, &manager.queue, &paint_jobs, &screen_descriptor);
+        self.egui_rpass.update_buffers(
+            &manager.device,
+            &manager.queue,
+            &mut encoder,
+            &paint_jobs,
+            &screen_descriptor
+        );
 
         // Record all render passes.
         let frame_view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
+        {
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &frame_view,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                    store: true,
+                },
+            })],
+            depth_stencil_attachment: None,
+            label: Some("egui_render"),
+        });
         self.egui_rpass
             .render(
-                &mut encoder,
-                &frame_view,
+                &mut render_pass,
                 &paint_jobs,
                 &screen_descriptor,
-                Some(wgpu::Color::BLACK),
             );
+        }
         // Submit the commands.
         manager.queue.submit(std::iter::once(encoder.finish()));
 
