@@ -283,7 +283,7 @@ fn main() -> Result<(), String>{
 
     let mut state = state::State::new(AppState::new(device_manager, assets), egui_rpass, gui, &window, &event_loop);
     if let Some(file) = opt_input_file {
-        let action = Action::OpenFile(file);
+        let action = Action::OpenFile(file.to_path_buf());
         state.process(action)?;
     } else {
         println!("FranzPlot starting, no file selected.");
@@ -394,7 +394,7 @@ fn main() -> Result<(), String>{
                         //rust_gui.graph_edited = false;
                     },
                     CustomEvent::OpenFile(path_buf) => {
-                        let action = Action::OpenFile(&path_buf);
+                        let action = Action::OpenFile(path_buf);
                         match state.process(action) {
                             Ok(()) => {
                                 //rust_gui.reset_undo_history(&state);

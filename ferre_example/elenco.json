@@ -1,0 +1,7 @@
+{
+    "parts_list" : [
+        { "File Bez2" : "bezier_2.frzp" },
+        { "File Bez3" : "bezier_3.frzp" },
+        { "Qualche funzione" : "math_functions.frzp" }
+    ]
+}

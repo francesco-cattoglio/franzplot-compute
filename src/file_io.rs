@@ -1,4 +1,5 @@
-use std::path::Path;
+use std::io::BufReader;
+use std::path::{Path, PathBuf};
 
 use winit::event_loop::EventLoopProxy;
 use serde::{Serialize, Deserialize};
@@ -133,6 +134,39 @@ impl File {
         file.write_all(contents.as_bytes()).unwrap(); // TODO: handle writing failures
         Ok(())
     }
+}
+
+pub fn load_file_part_list(path: &Path) -> Result<Option<Vec<(String, PathBuf)>>, String> {
+    let file = std::fs::File::open(path).map_err(|err| { err.to_string() })?;
+    let reader = BufReader::new(file);
+
+    // Read the JSON contents of the file as an instance of `User`.
+    let reader_result = serde_json::from_reader(reader);
+    let json_value: serde_json::Value = if let Ok(value) = reader_result {
+        value
+    } else {
+        return Ok(None); // could not parse as JSON, that means this was a frzp file
+    };
+
+    let parts_list = json_value.get("parts_list").ok_or_else(|| String::from("The JSON file does not contain the `parts_list` array"))?;
+    let parts_array = parts_list.as_array().ok_or_else(|| String::from("The `parts_list` field in the JSON file is not an array"))?;
+    let mut to_return = Vec::<(String, PathBuf)>::new();
+    for object in parts_array.iter() {
+        let map = object.as_object().ok_or_else(|| String::from("Error in JSON array: expected an object"))?;
+        if map.len() != 1 {
+            return Err(String::from("Error in JSON array: each entry should only have 1 field"));
+        }
+        for entry in map.iter() {
+            // we know for a fact that there is only one entry
+            let entry_name = entry.0.clone();
+            let file_name = entry.1.as_str().ok_or_else(|| String::from("Error in JSON: all values should be strings"))?;
+            let mut path_buf = path.to_path_buf();
+            path_buf.set_file_name(file_name);
+            to_return.push((entry_name, path_buf));
+        }
+    }
+
+    Ok(Some(to_return))
 }
 
 // TODO: Check if there is proper support for utf-8 under windows.

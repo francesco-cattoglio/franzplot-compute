@@ -9,7 +9,7 @@ use crate::compute_graph::globals::Globals;
 use crate::node_graph::{Node, NodeContents, AttributeID, NodeGraph, Attribute, AttributeContents, DataKind, SliderMode, AVAILABLE_SIZES, Axis};
 use crate::node_graph::EguiId;
 use crate::state::user_state::UserGlobals;
-use crate::state::{UserState, AppState, user_to_app_state, user_state};
+use crate::state::{UserState, AppState, user_to_app_state, user_state, Action};
 
 use super::{FerreData, Availables};
 
@@ -681,6 +681,7 @@ pub struct NodeGui {
     graph_status: GraphStatus,
     top_area_h: f32,
     left_area_w: f32,
+    open_part: String,
     scene_extent: wgpu::Extent3d,
     winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>,
 }
@@ -699,12 +700,14 @@ impl NodeGui {
             new_variable_error: None,
             left_area_w: 0.0,
             ferre_data: None,
+            open_part: String::new(),
             scene_extent: wgpu::Extent3d::default(),
             winit_proxy,
         }
     }
 
-    fn show_top_bar(&mut self, ctx: &egui::Context) -> egui::Rect {
+    fn show_top_bar(&mut self, ctx: &egui::Context, app_state: &AppState) -> (egui::Rect, Option<Action>) {
+        let mut action_to_return: Option<Action> = None;
         let inner = egui::Area::new("top menu area")
             .order(egui::Order::Foreground)
             .fixed_pos(egui::pos2(0.0, 0.0))
@@ -716,6 +719,22 @@ impl NodeGui {
                         ui.set_min_width(ui.max_rect().width());
                         ui.horizontal(|ui| {
                             ui.label("Menus will go here");
+                            if let Some(parts_list) = &app_state.parts_list {
+                                // this will trigger only once
+                                if self.open_part.is_empty() {
+                                    self.open_part = parts_list.first().unwrap().0.clone();
+                                }
+                                egui::ComboBox::from_id_source("Selected part")
+                                    .selected_text(&self.open_part)
+                                    .show_ui(ui, |ui| {
+                                        for part in parts_list {
+                                            if ui.selectable_value(&mut self.open_part, part.0.clone(), &part.0).clicked() {
+                                                action_to_return = Some(Action::OpenFile(part.1.to_path_buf()));
+                                            }
+                                        }
+                                    });
+                            }
+                            ui.separator();
                             ui.separator();
                             ui.selectable_value(&mut self.current_tab, GuiTab::Graph, "Graph");
                             ui.selectable_value(&mut self.current_tab, GuiTab::Scene, "Scene");
@@ -723,7 +742,7 @@ impl NodeGui {
                         });
                     });
             });
-        inner.response.rect
+        (inner.response.rect, action_to_return)
     }
 
     fn show_graph_tab(&mut self, ctx: &egui::Context, avail_rect: egui::Rect, app_state: &mut AppState, user_state: &mut UserState) {
@@ -835,10 +854,20 @@ impl NodeGui {
 }
 
 impl super::Gui for NodeGui {
-    fn show(&mut self, ctx: &egui::Context, app_state: &mut AppState, user_state: &mut UserState, texture_id: TextureId) {
-        let used_rect = self.show_top_bar(ctx);
+    fn show(&mut self, ctx: &egui::Context, app_state: &mut AppState, user_state: &mut UserState, texture_id: TextureId) -> Option<Action> {
+        // this is a bit of a strange workaround, but:
+        // 'Action' contains lifetime info, therefore
+        let mut action_to_ret: Option<Action> = None;
+        let rect: egui::Rect;
+        {
+            let (used_rect, maybe_action) = self.show_top_bar(ctx, app_state);
+            rect = used_rect;
+            if let Some(Action::OpenFile(path_buf)) = maybe_action {
+                action_to_ret = Some(Action::OpenFile(path_buf));
+            }
+        }
         let avail_rect = egui::Rect {
-            min: egui::pos2(used_rect.min.x, used_rect.max.y),
+            min: egui::pos2(rect.min.x, rect.max.y),
             max: ctx.available_rect().max
             //max: egui::pos2(std::f32::INFINITY, std::f32::INFINITY),
         };
@@ -847,10 +876,14 @@ impl super::Gui for NodeGui {
             GuiTab::Scene => self.show_scene_tab(ctx, app_state, texture_id),
             GuiTab::Settings => self.show_settings_tab(ctx, app_state),
         }
+        action_to_ret
     }
 
-    fn mark_new_file_open(&mut self) {
+    fn mark_new_file_open(&mut self, ctx: &egui::Context) {
         self.graph_status.force_node_pos = true;
+        ctx.memory().reset_areas();
+        ctx.memory().data.clear();
+        self.open_part.clear();
     }
 
     fn load_ferre_data(&mut self, _ctx: &egui::Context, ferre_data: FerreData) {

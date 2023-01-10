@@ -1,3 +1,6 @@
+use std::io::BufReader;
+use std::path::PathBuf;
+
 use crate::CustomEvent;
 use crate::compute_graph::ComputeGraph;
 use crate::compute_graph::globals::NameValuePair;
@@ -61,6 +64,7 @@ pub struct AppState {
     pub comp_graph: Option<ComputeGraph>,
     pub renderer: SceneRenderer,
     pub sensitivity: Sensitivity,
+    pub parts_list: Option<Vec<(String, PathBuf)>>,
 }
 
 impl AppState {
@@ -79,6 +83,7 @@ impl AppState {
             renderer: SceneRenderer::new_with_axes(&manager),
             manager,
             comp_graph: None,
+            parts_list: None,
             sensitivity: Sensitivity::default(),
         }
     }
@@ -255,7 +260,7 @@ impl State {
                     // This interesting thing happens when we just resized the window but due to a
                     // race condition the winit ResizeEvent has not fired just yet. We might resize
                     // the swapchain here, but doing so would leave the app in a borked state:
-                    // imgui needs to be notified about the resize as well, otherwise it will run
+                    // egui needs to be notified about the resize as well, otherwise it will run
                     // a scissor test on a framebuffer of a different physical size and the
                     // validation layer will panic. The best course of action is doing nothing at
                     // all, the problem will fix itself on the next frame, when the Resized event
@@ -278,6 +283,11 @@ impl State {
     }
 
     pub fn render_frame(&mut self, window: &winit::window::Window) -> Result<(), String> {
+        // handle any action requested by the GUI
+        // workaround for some messy ownership rules
+        let mut workaround_action: Option<Action> = None;
+
+
         let maybe_extent = self.gui.compute_scene_size();
         if let Some(extent) = maybe_extent {
             // on the previous frame, the UI asked us to show the scene.
@@ -295,7 +305,12 @@ impl State {
         // begin frame
         self.egui_ctx.begin_frame(raw_input);
         // internally this will show all the UI elements
-        self.gui.show(&self.egui_ctx, &mut self.app, &mut self.user, self.scene_texture_id);
+        {
+            let maybe_action = self.gui.show(&self.egui_ctx, &mut self.app, &mut self.user, self.scene_texture_id);
+            if let Some(Action::OpenFile(path_buf)) = maybe_action {
+                workaround_action = Some(Action::OpenFile(path_buf));
+            }
+        }
         // End the UI frame. Returning the output that will be used to draw the UI on the backend.
         let full_output = self.egui_ctx.end_frame();
 
@@ -366,6 +381,9 @@ impl State {
         // Redraw egui
         frame.present();
 
+        if let Some(action) = workaround_action {
+            self.process(action);
+        }
         Ok(())
     }
 
@@ -382,9 +400,20 @@ impl State {
                 }).write_to_frzp(path)
             } ,
             Action::OpenFile(path) => {
-                let VersionV2::V20 { user_state, ferre_data } = File::read_from_frzp(path)?.convert_to_v2()?;
+                // first attempt at reading the file as a json list of parts:
+                let maybe_vec_parts = crate::file_io::load_file_part_list(&path)?;
+                let frzp_file = if let Some(parts_list) = maybe_vec_parts {
+                    // we succesfully open a json list of parts.
+                    let path_buf = parts_list.first().ok_or_else(|| String::from("The JSON part list cannot be empty"))?.1.clone();
+                    self.app.parts_list = Some(parts_list);
+                    path_buf
+                } else {
+                    //self.app.parts_list = None;
+                    path
+                };
+                let VersionV2::V20 { user_state, ferre_data } = File::read_from_frzp(&frzp_file)?.convert_to_v2()?;
                 self.user = user_state;
-                self.gui.mark_new_file_open();
+                self.gui.mark_new_file_open(&self.egui_ctx);
                 if let Some(ferre) = ferre_data {
                     self.gui.load_ferre_data(&self.egui_ctx, ferre);
                     // Quick hack: by default, always process the scene when we open

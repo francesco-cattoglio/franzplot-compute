@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use crate::compute_graph::globals::NameValuePair;
 
 // TODO: is it really worth having BOTH a CustomEvent and an Action type?
@@ -8,7 +8,7 @@ pub enum Action<'a> {
     RenderScene(wgpu::Extent3d, &'a wgpu::TextureView),
     RenderUI(&'a winit::window::Window),
     WriteToFile(&'a Path),
-    OpenFile(&'a Path),
+    OpenFile(PathBuf),
     NewFile(),
     UpdateGlobals(Vec<NameValuePair>),
 }
