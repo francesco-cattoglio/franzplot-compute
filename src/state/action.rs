@@ -10,6 +10,7 @@ pub enum Action<'a> {
     WriteToFile(&'a Path),
     OpenFile(PathBuf),
     OpenPart(PathBuf),
+    CameraMovement(egui::Vec2),
     NewFile(),
     UpdateGlobals(Vec<NameValuePair>),
 }

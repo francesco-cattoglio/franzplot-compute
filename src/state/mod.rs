@@ -104,9 +104,7 @@ impl AppState {
     }
 
     pub fn update_camera(&mut self, camera_inputs: &camera::InputState) {
-        if self.camera_enabled {
-            self.camera_controller.update_camera(&mut self.camera, camera_inputs, &self.sensitivity, self.camera_lock_up);
-        }
+        self.camera_controller.update_camera(&mut self.camera, camera_inputs, &self.sensitivity, self.camera_lock_up);
     }
 
     pub fn update_globals(&mut self, pairs: Vec<NameValuePair>) {
@@ -314,6 +312,14 @@ impl State {
                 Some(Action::OpenPart(path_buf)) => {
                     workaround_action = Some(Action::OpenPart(path_buf));
                 }
+                Some(Action::CameraMovement(delta)) => {
+                    let camera_inputs = camera::InputState {
+                        mouse_left_click: true,
+                        mouse_motion: (delta[0] as f64, delta[1] as f64),
+                        ..Default::default()
+                    };
+                    self.app.update_camera(&camera_inputs);
+                }
                 _ => {}
             }
         }
@@ -467,6 +473,14 @@ impl State {
                     dbg!("tried to update globals, but there is no graph!"); // TODO: better handling
                     Ok(())
                 }
+            }
+            Action::CameraMovement(delta) => {
+                let camera_inputs = camera::InputState {
+                    mouse_motion: (delta[0] as f64, delta[1] as f64),
+                    ..Default::default()
+                };
+                self.app.update_camera(&camera_inputs);
+                Ok(())
             }
             Action::RenderUI(window) => {
                 self.render_frame(window)

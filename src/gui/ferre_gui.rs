@@ -380,10 +380,14 @@ impl super::Gui for FerreGui {
                 height: (avail.y * ctx.pixels_per_point()) as u32,
                 depth_or_array_layers: 1,
             };
-            ui.image(texture_id, avail);
-        }); // central panel
-        // do not return any action whatsoever
-        None
+            let response = ui.image(texture_id, avail).interact(egui::Sense::click_and_drag());
+            if response.dragged_by(egui::PointerButton::Primary) {
+                let delta = response.drag_delta();
+                Some(Action::CameraMovement(delta))
+            } else {
+                None
+            }
+        }).inner // central panel inner response
     }
 
     /// Ask the UI what size the 3D scene should be. This function gets called after show(), but

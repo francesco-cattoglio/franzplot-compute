@@ -841,7 +841,7 @@ impl NodeGui {
         self.graph_status.show_node_editor(ctx, avail_rect, &self.availables, &mut user_state.node_graph);
     }
 
-    fn show_scene_tab(&mut self, ctx: &egui::Context, app_state: &mut AppState, texture_id: TextureId) {
+    fn show_scene_tab(&mut self, ctx: &egui::Context, app_state: &mut AppState, texture_id: TextureId) -> Option<Action> {
         egui::SidePanel::left("globals live").show(ctx, |ui| {
             ui.label("here be variables with sliders");
         });
@@ -854,8 +854,14 @@ impl NodeGui {
                 height: (avail.y * ctx.pixels_per_point()) as u32,
                 depth_or_array_layers: 1,
             };
-            ui.image(texture_id, avail);
-        }); // central panel
+            let response = ui.image(texture_id, avail).interact(egui::Sense::click_and_drag());
+            if response.dragged_by(egui::PointerButton::Primary) {
+                let delta = response.drag_delta();
+                Some(Action::CameraMovement(delta))
+            } else {
+                None
+            }
+        }).inner
     }
 
     fn show_settings_tab(&mut self, ctx: &egui::Context, app_state: &mut AppState) {
@@ -892,7 +898,12 @@ impl super::Gui for NodeGui {
         };
         match self.current_tab {
             GuiTab::Graph => self.show_graph_tab(ctx, avail_rect, app_state, user_state),
-            GuiTab::Scene => self.show_scene_tab(ctx, app_state, texture_id),
+            GuiTab::Scene => {
+                let response = self.show_scene_tab(ctx, app_state, texture_id);
+                if let Some(Action::CameraMovement(delta)) = response {
+                    action_to_ret = Some(Action::CameraMovement(delta));
+                }
+            }
             GuiTab::Settings => self.show_settings_tab(ctx, app_state),
         }
         action_to_ret
