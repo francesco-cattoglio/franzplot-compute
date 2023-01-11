@@ -4,6 +4,8 @@ use egui::TextureId;
 use egui::collapsing_header::CollapsingState;
 use pest::unicode::UPPERCASE_LETTER;
 
+use crate::file_io;
+use crate::util;
 use crate::CustomEvent;
 use crate::compute_graph::globals::Globals;
 use crate::node_graph::{Node, NodeContents, AttributeID, NodeGraph, Attribute, AttributeContents, DataKind, SliderMode, AVAILABLE_SIZES, Axis};
@@ -684,6 +686,7 @@ pub struct NodeGui {
     open_part: String,
     scene_extent: wgpu::Extent3d,
     winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>,
+    executor: util::Executor,
 }
 
 impl NodeGui {
@@ -703,6 +706,7 @@ impl NodeGui {
             open_part: String::new(),
             scene_extent: wgpu::Extent3d::default(),
             winit_proxy,
+            executor: util::Executor::new(),
         }
     }
 
@@ -718,7 +722,16 @@ impl NodeGui {
                     .show(ui, |ui| {
                         ui.set_min_width(ui.max_rect().width());
                         ui.horizontal(|ui| {
-                            ui.label("Menus will go here");
+                            ui.menu_button("File", |ui| {
+                                if ui.button("Open").clicked() {
+                                    file_io::async_pick_open(self.winit_proxy.clone(), &self.executor);
+                                    ui.close_menu();
+                                }
+                                if ui.button("Save").clicked() {
+                                    file_io::async_pick_save(self.winit_proxy.clone(), &self.executor);
+                                    ui.close_menu();
+                                }
+                            });
                             if let Some(parts_list) = &app_state.parts_list {
                                 // this will trigger only once
                                 if self.open_part.is_empty() {
@@ -729,12 +742,12 @@ impl NodeGui {
                                     .show_ui(ui, |ui| {
                                         for part in parts_list {
                                             if ui.selectable_value(&mut self.open_part, part.0.clone(), &part.0).clicked() {
-                                                action_to_return = Some(Action::OpenFile(part.1.to_path_buf()));
+                                                action_to_return = Some(Action::OpenPart(part.1.to_path_buf()));
                                             }
                                         }
                                     });
+                                ui.separator();
                             }
-                            ui.separator();
                             ui.separator();
                             ui.selectable_value(&mut self.current_tab, GuiTab::Graph, "Graph");
                             ui.selectable_value(&mut self.current_tab, GuiTab::Scene, "Scene");
@@ -862,8 +875,14 @@ impl super::Gui for NodeGui {
         {
             let (used_rect, maybe_action) = self.show_top_bar(ctx, app_state);
             rect = used_rect;
-            if let Some(Action::OpenFile(path_buf)) = maybe_action {
-                action_to_ret = Some(Action::OpenFile(path_buf));
+            match maybe_action {
+                Some(Action::OpenFile(path_buf)) => {
+                    action_to_ret = Some(Action::OpenFile(path_buf));
+                }
+                Some(Action::OpenPart(path_buf)) => {
+                    action_to_ret = Some(Action::OpenPart(path_buf));
+                }
+                _ => {}
             }
         }
         let avail_rect = egui::Rect {
@@ -880,10 +899,18 @@ impl super::Gui for NodeGui {
     }
 
     fn mark_new_file_open(&mut self, ctx: &egui::Context) {
+        self.ferre_data = None;
         self.graph_status.force_node_pos = true;
         ctx.memory().reset_areas();
         ctx.memory().data.clear();
         self.open_part.clear();
+    }
+
+    fn mark_new_part_open(&mut self, ctx: &egui::Context) {
+        self.ferre_data = None;
+        self.graph_status.force_node_pos = true;
+        ctx.memory().reset_areas();
+        ctx.memory().data.clear();
     }
 
     fn load_ferre_data(&mut self, _ctx: &egui::Context, ferre_data: FerreData) {

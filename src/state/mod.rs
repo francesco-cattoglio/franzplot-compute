@@ -307,8 +307,14 @@ impl State {
         // internally this will show all the UI elements
         {
             let maybe_action = self.gui.show(&self.egui_ctx, &mut self.app, &mut self.user, self.scene_texture_id);
-            if let Some(Action::OpenFile(path_buf)) = maybe_action {
-                workaround_action = Some(Action::OpenFile(path_buf));
+            match maybe_action {
+                Some(Action::OpenFile(path_buf)) => {
+                    workaround_action = Some(Action::OpenFile(path_buf));
+                }
+                Some(Action::OpenPart(path_buf)) => {
+                    workaround_action = Some(Action::OpenPart(path_buf));
+                }
+                _ => {}
             }
         }
         // End the UI frame. Returning the output that will be used to draw the UI on the backend.
@@ -399,6 +405,7 @@ impl State {
                     ferre_data: self.gui.export_ferre_data(),
                 }).write_to_frzp(path)
             } ,
+            //TODO: DRY, some code is copy-pasted for the OpenPart branch
             Action::OpenFile(path) => {
                 // first attempt at reading the file as a json list of parts:
                 let maybe_vec_parts = crate::file_io::load_file_part_list(&path)?;
@@ -414,6 +421,19 @@ impl State {
                 let VersionV2::V20 { user_state, ferre_data } = File::read_from_frzp(&frzp_file)?.convert_to_v2()?;
                 self.user = user_state;
                 self.gui.mark_new_file_open(&self.egui_ctx);
+                if let Some(ferre) = ferre_data {
+                    self.gui.load_ferre_data(&self.egui_ctx, ferre);
+                    // Quick hack: by default, always process the scene when we open
+                    // something that could be used by the Ferre GUI
+                    user_to_app_state(&mut self.app, &mut self.user);
+                }
+                Ok(())
+            },
+            Action::OpenPart(path) => {
+                // Since we know this is a part, we can just load it as frzp file.
+                let VersionV2::V20 { user_state, ferre_data } = File::read_from_frzp(&path)?.convert_to_v2()?;
+                self.user = user_state;
+                self.gui.mark_new_part_open(&self.egui_ctx);
                 if let Some(ferre) = ferre_data {
                     self.gui.load_ferre_data(&self.egui_ctx, ferre);
                     // Quick hack: by default, always process the scene when we open

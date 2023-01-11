@@ -274,6 +274,7 @@ pub fn async_confirm_open(event_loop_proxy: EventLoopProxy<CustomEvent>, executo
 pub fn async_pick_open(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor) {
     let dialog = rfd::AsyncFileDialog::new()
         .add_filter("Franzplot", &["frzp"])
+        .add_filter("Franzplot part list", &["json"])
         .pick_file();
 
     executor.execut(async move {

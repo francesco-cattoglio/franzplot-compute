@@ -33,6 +33,7 @@ pub enum CustomEvent {
     NewFile,
     ShowOpenDialog,
     OpenFile(std::path::PathBuf),
+    OpenPart(std::path::PathBuf),
     SaveFile(std::path::PathBuf),
     ExportGraphPng(std::path::PathBuf),
     ExportScenePng(std::path::PathBuf),
@@ -395,6 +396,19 @@ fn main() -> Result<(), String>{
                     },
                     CustomEvent::OpenFile(path_buf) => {
                         let action = Action::OpenFile(path_buf);
+                        match state.process(action) {
+                            Ok(()) => {
+                                //rust_gui.reset_undo_history(&state);
+                                //rust_gui.reset_nongraph_data();
+                                //rust_gui.opened_tab[0] = true;
+                            },
+                            Err(error) => {
+                                file_io::async_dialog_failure(&executor, error);
+                            }
+                        }
+                    },
+                    CustomEvent::OpenPart(path_buf) => {
+                        let action = Action::OpenPart(path_buf);
                         match state.process(action) {
                             Ok(()) => {
                                 //rust_gui.reset_undo_history(&state);

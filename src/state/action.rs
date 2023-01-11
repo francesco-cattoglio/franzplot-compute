@@ -9,6 +9,7 @@ pub enum Action<'a> {
     RenderUI(&'a winit::window::Window),
     WriteToFile(&'a Path),
     OpenFile(PathBuf),
+    OpenPart(PathBuf),
     NewFile(),
     UpdateGlobals(Vec<NameValuePair>),
 }

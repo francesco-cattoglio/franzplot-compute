@@ -4,7 +4,7 @@ use egui::epaint::{Color32, text::{LayoutJob, TextFormat}, FontFamily, FontId};
 use egui::TextureId;
 use serde::{Serialize, Deserialize};
 
-use crate::CustomEvent;
+use crate::{CustomEvent, state::Action};
 use crate::compute_graph::globals::NameValuePair;
 use crate::node_graph::NodeID;
 use crate::{util, file_io};
@@ -35,7 +35,7 @@ pub struct Step {
     comment: String,
     image_name: String,
     renderables_shown: Vec<NodeID>,
-    global_vars_usage: HashMap<String, GlobalVarUsage>,
+    global_vars_usage: HashMap<String, (GlobalVarUsage, [f32; 2])>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -53,6 +53,7 @@ pub struct FerreGui {
     scene_extent: wgpu::Extent3d,
     winit_proxy: winit::event_loop::EventLoopProxy<CustomEvent>,
     ferre_data: FerreData,
+    open_part: String,
     executor: util::Executor,
 }
 
@@ -68,27 +69,18 @@ impl FerreGui {
             scene_extent: wgpu::Extent3d::default(),
             winit_proxy,
             executor: util::Executor::new(),
+            open_part: String::new(),
         }
     }
 
-    fn show_test_formula(&self, ui: &mut egui::Ui, height: f32) {
+    fn show_test_formula(&self, ui: &mut egui::Ui, var: f32) {
         let mut job = LayoutJob::default();
         job.append(
-            "f",
+            "length",
             0.0,
             TextFormat {
                 font_id: FontId::new(14.0, FontFamily::Proportional),
                 color: Color32::WHITE,
-                ..Default::default()
-            },
-        );
-        job.append(
-            "z",
-            0.0,
-            TextFormat {
-                font_id: FontId::new(10.0, FontFamily::Proportional),
-                color: Color32::WHITE,
-                valign: egui::Align::BOTTOM,
                 ..Default::default()
             },
         );
@@ -102,7 +94,7 @@ impl FerreGui {
             },
         );
         job.append(
-            &format!("{height}"),
+            &format!("{var}"),
             0.0,
             TextFormat {
                 font_id: FontId::new(14.0, FontFamily::Proportional),
@@ -138,7 +130,7 @@ impl FerreGui {
                     }
                 });
                 ui.separator();
-                for (name, usage) in step.global_vars_usage.iter_mut() {
+                for (name, (usage, range)) in step.global_vars_usage.iter_mut() {
                     let mut usage_type = match usage {
                         GlobalVarUsage::Still(_) => VarUsageType::Still,
                         GlobalVarUsage::Animated(_,_) => VarUsageType::Animated,
@@ -191,12 +183,17 @@ impl FerreGui {
                         }
                     };
                     *usage = selection_result;
+                    ui.horizontal(|ui|{
+                        ui.label("Range for user interaction:");
+                        ui.add(egui::DragValue::new(&mut range[0]).speed(0.01).min_decimals(2));
+                        ui.add(egui::DragValue::new(&mut range[1]).speed(0.01).min_decimals(2));
+                    });
                 }
                 // Suggest adding a new global variable
                 ui.horizontal(|ui| {
                     let _response = ui.add_sized(egui::vec2(36.0, 18.0), egui::TextEdit::singleline(&mut self.new_usage_string));
                     if ui.button("Add new global var usage").clicked() && !self.new_usage_string.is_empty() {
-                        step.global_vars_usage.insert(self.new_usage_string.clone(), GlobalVarUsage::Still(0.0));
+                        step.global_vars_usage.insert(self.new_usage_string.clone(), (GlobalVarUsage::Still(0.0), [0.0, 0.0]));
                         self.new_usage_string.clear();
                     }
                 });
@@ -230,7 +227,7 @@ impl FerreGui {
                 "No renderable in list".to_string()
 
             };
-            ui.collapsing(title, |ui| {
+            ui.collapsing(title.clone(), |ui| {
                 ui.small(&step.comment);
                 if let Some(texture) = self.loaded_images.get(&step.image_name) {
                     ui.image(texture.id(), texture.size_vec2() * 0.5);
@@ -247,7 +244,7 @@ impl FerreGui {
                     // BEWARE: this will also reset the initial value for the animations!
                     let name_value_pairs: Vec<NameValuePair> = step.global_vars_usage
                         .iter()
-                        .map(|(name, usage)| {
+                        .map(|(name, (usage, _range))| {
                             match usage {
                                 GlobalVarUsage::Still(value) => NameValuePair { name: name.clone(), value: *value },
                                 GlobalVarUsage::Animated(start_val, _) => {
@@ -287,7 +284,7 @@ impl FerreGui {
             let step = &self.ferre_data.steps[idx];
             let name_value_pairs: Vec<NameValuePair> = step.global_vars_usage
                 .iter()
-                .map(|(name, usage)| {
+                .map(|(name, (usage, _range))| {
                     match usage {
                         GlobalVarUsage::Still(value) => {
                             NameValuePair { name: name.clone(), value: *value } // Doing nothing is
@@ -319,7 +316,7 @@ impl FerreGui {
 }
 
 impl super::Gui for FerreGui {
-    fn show(&mut self, ctx: &egui::Context, app_state: &mut AppState, user_state: &mut UserState, texture_id: TextureId) {
+    fn show(&mut self, ctx: &egui::Context, app_state: &mut AppState, user_state: &mut UserState, texture_id: TextureId) -> Option<Action> {
         egui::SidePanel::left("procedure panel").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 if ui.button("Open file").clicked() {
@@ -328,11 +325,24 @@ impl super::Gui for FerreGui {
                 if ui.button("Save file").clicked() {
                     file_io::async_pick_save(self.winit_proxy.clone(), &self.executor);
                 }
-                if ui.button("Add test entry").clicked() {
-                    self.ferre_data.steps.insert(2, Default::default());
-                }
             });
             ui.separator();
+            if let Some(parts_list) = &app_state.parts_list {
+                // this will trigger only once
+                if self.open_part.is_empty() {
+                    self.open_part = parts_list.first().unwrap().0.clone();
+                }
+                egui::ComboBox::from_id_source("Selected part")
+                    .selected_text(&self.open_part)
+                    .show_ui(ui, |ui| {
+                        for part in parts_list {
+                            if ui.selectable_value(&mut self.open_part, part.0.clone(), &part.0).clicked() {
+                                self.winit_proxy.send_event(CustomEvent::OpenPart(part.1.to_path_buf()));
+                            }
+                        }
+                    });
+                ui.separator();
+            }
             ui.checkbox(&mut self.step_edit, "Enable step editing");
             ui.separator();
             egui::ScrollArea::vertical()
@@ -343,18 +353,23 @@ impl super::Gui for FerreGui {
         egui::TopBottomPanel::bottom("variables panel").show(ctx, |ui| {
             let mut name_value_pairs = app_state.read_globals();
 
-            let mut formula_height: f32 = 0.0;
             for pair in name_value_pairs.iter_mut() {
-                ui.horizontal(|ui| {
-                    ui.label(&pair.name);
-                    ui.add(egui::Slider::new(&mut pair.value, -5.0..=5.0));
-                });
-                if pair.name.contains('b') {
-                    formula_height = pair.value;
+                // check if this variable exists in the usage table,
+                // and see if the user is authorized to read that.
+                if let Some(step_idx) = self.animating_step {
+                    let curr_step = &self.ferre_data.steps[step_idx];
+                    if let Some((_usage, range)) = curr_step.global_vars_usage.get(&pair.name) {
+
+                        if range[0] != range[1] {
+                            ui.horizontal(|ui| {
+                                ui.label(&pair.name);
+                                ui.add(egui::Slider::new(&mut pair.value, range[0].min(range[1]) ..= range[0].max(range[1])));
+                            });
+                        }
+                    }
                 }
             }
             app_state.update_globals(name_value_pairs);
-            self.show_test_formula(ui, formula_height);
         }); // bottom panel
         egui::CentralPanel::default().show(ctx, |ui| {
             // compute avail size
@@ -367,6 +382,8 @@ impl super::Gui for FerreGui {
             };
             ui.image(texture_id, avail);
         }); // central panel
+        // do not return any action whatsoever
+        None
     }
 
     /// Ask the UI what size the 3D scene should be. This function gets called after show(), but
@@ -392,5 +409,18 @@ impl super::Gui for FerreGui {
 
     fn export_ferre_data(&self) -> Option<FerreData> {
         Some(self.ferre_data.clone())
+    }
+
+    fn mark_new_part_open(&mut self, ctx: &egui::Context) {
+        self.ferre_data = FerreData::default();
+        ctx.memory().reset_areas();
+        ctx.memory().data.clear();
+    }
+
+    fn mark_new_file_open(&mut self, ctx: &egui::Context) {
+        self.ferre_data = FerreData::default();
+        ctx.memory().reset_areas();
+        ctx.memory().data.clear();
+        self.open_part.clear();
     }
 }
