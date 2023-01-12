@@ -1275,7 +1275,7 @@ impl NodeGraph {
         }
     }
 
-    fn remove_node(&mut self, node_id: NodeID) {
+    pub fn remove_node(&mut self, node_id: NodeID) {
         // try to remove this node_id from the map
         if let Some(slot) = self.nodes.get_mut(node_id as usize) {
             // slot is a reference to the option! By taking() it, we effectively

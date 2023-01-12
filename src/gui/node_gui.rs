@@ -5,6 +5,7 @@ use egui::collapsing_header::CollapsingState;
 use pest::unicode::UPPERCASE_LETTER;
 
 use crate::file_io;
+use crate::node_graph::GraphError;
 use crate::util;
 use crate::CustomEvent;
 use crate::compute_graph::globals::Globals;
@@ -380,6 +381,9 @@ impl GraphStatus {
                 self.new_node_pos = self.rel_to_abs(response.interact_pointer_pos().unwrap_or_default());
             }
             response.context_menu(|ui| {
+                // if the menu is being shown, then we want to keep resetting the node positions:
+                // the moment a new node is created, we want it to read the position from the graph
+                self.force_node_pos = true;
                 ui.set_max_width(self.def_h() * 10.0);
 
                 ui.menu_button("Geometries", |ui| {
@@ -471,11 +475,13 @@ impl GraphStatus {
                 pos: egui::Pos2,
                 window_title: egui::RichText,
                 attributes: Vec<AttributeID>,
+                error: Option<GraphError>,
             }
             let Helper {
                 window_title,
                 pos,
-                attributes
+                attributes,
+                error
             } = {
                 let Node {
                     title,
@@ -483,7 +489,7 @@ impl GraphStatus {
                     error,
                     contents
                 } = user_graph.get_node_mut(node_id).unwrap();
-                let window_title: egui::RichText = if let Some(_err) = error {
+                let window_title: egui::RichText = if error.is_some() {
                     title.clone() + " ⚠"
                 } else {
                     title.clone()
@@ -492,7 +498,8 @@ impl GraphStatus {
                 Helper {
                     pos: egui::Pos2::from(*position),
                     window_title,
-                    attributes
+                    attributes,
+                    error: error.clone(),
                 }
             };
 
@@ -500,8 +507,9 @@ impl GraphStatus {
             // In our case each window represents a Node, and should NOT be closed.
             // We might want to change this in the future, if we create a way to group windows.
             let position = self.abs_to_rel(pos);
+            let window_id = node_id.new_egui_id();
             let prepared_window = egui::Window::new("") // NO window title, since we set a unique ID
-                .id(node_id.new_egui_id())
+                .id(window_id)
                 .default_pos(position)
                 .auto_sized()
                 .title_bar(false)
@@ -522,7 +530,10 @@ impl GraphStatus {
                 let header_builder = CollapsingState::load_with_default_open(ctx, ui.make_persistent_id(node_id), true);
                 let mut max_width = 0.0;
                 let first_response = header_builder.show_header(ui, |ui| {
-                    ui.strong(window_title);
+                    let response = ui.strong(window_title);
+                    if let Some(err) = error {
+                        response.on_hover_text(egui::RichText::new(err.message).color(egui::Color32::RED));
+                    }
                     max_width = ui.min_size().x;
                 });
                 let body_return = first_response.body_unindented(|ui| {
@@ -561,6 +572,18 @@ impl GraphStatus {
                         }
                     }
                 }
+                let arrow_rect = body_return.0.rect;
+                let interact_rect = egui::Rect::from_x_y_ranges(arrow_rect.right()..=f32::INFINITY, arrow_rect.y_range());
+                ui.interact(interact_rect, window_id.with(0x42), egui::Sense::click()).context_menu(|ui| {
+                    if ui.button("Delete node").clicked() {
+                        user_graph.remove_node(node_id);
+                        ui.close_menu();
+                    }
+                    if ui.button("Clone node").clicked() {
+                        user_graph.clone_node(node_id);
+                        ui.close_menu();
+                    }
+                });
             }).expect("no egui::Window should ever be closed inside the node editor"); // Assume egui::Window is open
 
             // After we have the window response, we can assume that the window was not collapsed
@@ -568,9 +591,11 @@ impl GraphStatus {
             // We can store its position!
             let window_response = window_return.response;
             let up_left = self.rel_to_abs(window_response.rect.min);
-            let Node { position: pos, .. } = user_graph.get_node_mut(node_id).unwrap();
-            //dbg!(&pos);
-            (pos[0], pos[1]) = (up_left.x, up_left.y);
+            //we need to check if the node exists, because it might have been deleted just now
+            if let Some(node) = user_graph.get_node_mut(node_id) {
+                let Node { position: pos, .. } = node;
+                (pos[0], pos[1]) = (up_left.x, up_left.y);
+            }
         }
         // After rendering all the nodes, decide if we need to display a floating Bezier curve
         self.prev_link_candidate = self.link_candidate;
@@ -723,8 +748,12 @@ impl NodeGui {
                         ui.set_min_width(ui.max_rect().width());
                         ui.horizontal(|ui| {
                             ui.menu_button("File", |ui| {
+                                if ui.button("New").clicked() {
+                                    file_io::async_confirm_new(self.winit_proxy.clone(), &self.executor);
+                                    ui.close_menu();
+                                }
                                 if ui.button("Open").clicked() {
-                                    file_io::async_pick_open(self.winit_proxy.clone(), &self.executor);
+                                    file_io::async_confirm_open(self.winit_proxy.clone(), &self.executor);
                                     ui.close_menu();
                                 }
                                 if ui.button("Save").clicked() {

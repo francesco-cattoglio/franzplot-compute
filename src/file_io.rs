@@ -199,6 +199,21 @@ pub fn async_pick_png(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &
     });
 }
 
+pub fn async_confirm_open(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor) {
+    let confirm_open = rfd::AsyncMessageDialog::new()
+        .set_level(rfd::MessageLevel::Warning)
+        .set_description("The current file has unsaved changes. Are you sure you want to discard changes and open a file?")
+        .set_buttons(rfd::MessageButtons::YesNo)
+        .show();
+
+    executor.execut(async move {
+        let confirmed = confirm_open.await;
+        if confirmed {
+            event_loop_proxy.send_event(CustomEvent::ShowOpenDialog).unwrap();
+        }
+    });
+}
+
 pub fn async_confirm_load(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor, file_path: std::path::PathBuf) {
     let confirm_load = rfd::AsyncMessageDialog::new()
         .set_level(rfd::MessageLevel::Warning)
@@ -252,21 +267,6 @@ pub fn async_confirm_new(event_loop_proxy: EventLoopProxy<CustomEvent>, executor
         let confirmed = confirm_new.await;
         if confirmed {
             event_loop_proxy.send_event(CustomEvent::NewFile).unwrap();
-        }
-    });
-}
-
-pub fn async_confirm_open(event_loop_proxy: EventLoopProxy<CustomEvent>, executor: &Executor) {
-    let confirm_open = rfd::AsyncMessageDialog::new()
-        .set_level(rfd::MessageLevel::Warning)
-        .set_description("The current file has unsaved changes. Are you sure you want to discard changes and open a file?")
-        .set_buttons(rfd::MessageButtons::YesNo)
-        .show();
-
-    executor.execut(async move {
-        let confirmed = confirm_open.await;
-        if confirmed {
-            event_loop_proxy.send_event(CustomEvent::ShowOpenDialog).unwrap();
         }
     });
 }

@@ -454,6 +454,7 @@ impl State {
                 // clear all the created renderables and the entire compute graph
                 self.app.renderer.clear_matcaps();
                 self.app.comp_graph = None;
+                self.gui.mark_new_file_open(&self.egui_ctx);
                 // new timestamp for the new file
                 Ok(())
             },
