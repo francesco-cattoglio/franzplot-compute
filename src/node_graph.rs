@@ -1102,7 +1102,7 @@ impl NodeGraph {
         self.links.insert(input_id, output_id);
     }
 
-    pub fn get_links(&self) -> impl Iterator<Item = (&AttributeID, &AttributeID)> {
+    pub fn get_links(&self) -> impl ExactSizeIterator<Item = (&AttributeID, &AttributeID)> {
         self.links.iter()
     }
 
@@ -1202,7 +1202,7 @@ impl NodeGraph {
 
     // "clone" a node means "get all the data that we might need to insert a copy
     // of this node into the graph". We do NOT insert it in the graph.
-    pub fn clone_node(&self, node_id: NodeID) -> Option<(String, [f32; 2], NodeContents, Vec<AttributeContents>)> {
+    fn clone_node(&self, node_id: NodeID) -> Option<(String, [f32; 2], NodeContents, Vec<AttributeContents>)> {
         let node = self.get_node(node_id)?;
         let attributes_list = node.get_owned_attributes();
 
@@ -1223,13 +1223,13 @@ impl NodeGraph {
         Some((title, position, cloned_contents, cloned_attributes))
     }
 
-    fn duplicate_node_no_links(&mut self, node_id: NodeID) -> NodeID {
+    pub fn duplicate_node_no_links(&mut self, node_id: NodeID) -> NodeID {
         let (title, orig_pos, cloned_contents, cloned_attributes) = self.clone_node(node_id).unwrap();
         let position = [orig_pos[0] + 40.0, orig_pos[1] + 40.0];
         self.insert_node(title, position, cloned_contents, cloned_attributes)
     }
 
-    fn duplicate_nodes(&mut self, nodes_ids: &[NodeID]) {
+    pub fn duplicate_nodes(&mut self, nodes_ids: &[NodeID]) {
         let mut original_to_cloned_id = std::collections::BTreeMap::<AttributeID, AttributeID>::new();
         let mut linked_inputs_list = Vec::<AttributeID>::new();
         for original_node_id in nodes_ids.iter() {

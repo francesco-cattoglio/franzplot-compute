@@ -19,7 +19,6 @@ pub fn create_from_rotation(
     // we need to write down a different matrix depending on what rotation axis we have
     let (row_1, row_2, row_3);
 
-    dbg!(&angle);
     // Sanitize all input expressions to get any error, but do not save the result
     // (otherwise we would be renaming all global vars, e.g: `pi`->`globals.pi`)
     let _ = globals.sanitize_expression(&[], &angle)?;

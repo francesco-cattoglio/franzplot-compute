@@ -39,7 +39,6 @@ struct GraphStatus {
     new_node_pos: egui::Pos2,
     zoom_level: usize,
     zoom_scrolling: f32,
-    force_node_pos: bool,
     style: std::sync::Arc<egui::Style>,
 }
 
@@ -52,7 +51,6 @@ impl GraphStatus {
         let mut ret = Self {
             zoom_level,
             zoom_scrolling: 0.0,
-            force_node_pos: true,
             prev_link_candidate: None,
             new_link: None,
             link_candidate: None,
@@ -88,7 +86,6 @@ impl GraphStatus {
             let z_ratio = ZOOM_SIZES[self.zoom_level] / ZOOM_SIZES[self.zoom_level + 1];
             self.editor_offset = self.editor_offset * z_ratio + point_coords.to_vec2() * (z_ratio - 1.0);
             self.zoom_level += 1;
-            self.force_node_pos = true;
             self.change_style_from_height(ZOOM_SIZES[self.zoom_level]);
         }
     }
@@ -99,7 +96,6 @@ impl GraphStatus {
             let z_ratio = ZOOM_SIZES[self.zoom_level] / ZOOM_SIZES[self.zoom_level - 1];
             self.editor_offset = self.editor_offset * z_ratio + point_coords.to_vec2() * (z_ratio - 1.0);
             self.zoom_level -= 1;
-            self.force_node_pos = true;
             self.change_style_from_height(ZOOM_SIZES[self.zoom_level]);
         }
     }
@@ -357,7 +353,6 @@ impl GraphStatus {
             let response = ui.interact(rect, id, egui::Sense::click_and_drag());
             if response.dragged_by(egui::PointerButton::Middle) || response.dragged_by(egui::PointerButton::Primary) && ctrl_down {
                 self.editor_offset += response.drag_delta() * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
-                self.force_node_pos = true;
             }
 
             let maybe_hover = ctx.input().pointer.hover_pos();
@@ -383,7 +378,6 @@ impl GraphStatus {
             response.context_menu(|ui| {
                 // if the menu is being shown, then we want to keep resetting the node positions:
                 // the moment a new node is created, we want it to read the position from the graph
-                self.force_node_pos = true;
                 ui.set_max_width(self.def_h() * 10.0);
 
                 ui.menu_button("Geometries", |ui| {
@@ -503,94 +497,105 @@ impl GraphStatus {
                 }
             };
 
-            // When you show the window, it might actually return None if the window itself was closed.
-            // In our case each window represents a Node, and should NOT be closed.
-            // We might want to change this in the future, if we create a way to group windows.
+            // We have to use an Area to workaround a newly introduced behavior introduced in egui
+            // 0.20: the only way to correctly move something around using "current_pos()" and
+            // dragging is to read the drag deltas and sum them by hand. A window does not report
+            // dragging in the same way, so we cannot use it.
             let position = self.abs_to_rel(pos);
             let window_id = node_id.new_egui_id();
-            let prepared_window = egui::Window::new("") // NO window title, since we set a unique ID
+            let prepared_window = egui::Area::new("") // NO window title, since we set a unique ID
                 .id(window_id)
-                .default_pos(position)
-                .auto_sized()
-                .title_bar(false)
+                .current_pos(position)
                 .drag_bounds(egui::Rect::EVERYTHING);
 
-            // if the graph area is being dragged around, make sure to force the update for the
-            // current_pos. We cannot keep it enabled all the time because egui will report the
-            // forced current_pos as the window return rect, thus ignoring drag if current_pos was
-            // set.
-            let prepared_window = if self.force_node_pos {
-                prepared_window.current_pos(position)
-            } else {
-                prepared_window
-            };
-
-            // Now we can finally show the window
             let window_return = prepared_window.show(ctx, |ui| {
-                let header_builder = CollapsingState::load_with_default_open(ctx, ui.make_persistent_id(node_id), true);
-                let mut max_width = 0.0;
-                let first_response = header_builder.show_header(ui, |ui| {
-                    let response = ui.strong(window_title);
-                    if let Some(err) = error {
-                        response.on_hover_text(egui::RichText::new(err.message).color(egui::Color32::RED));
-                    }
-                    max_width = ui.min_size().x;
-                });
-                let body_return = first_response.body_unindented(|ui| {
-                    // TODO: is this little change of visuals worth it?
-                    //egui::Frame::none()
-                    //    .fill(self.style.visuals.faint_bg_color)
-                    //    .inner_margin(egui::style::Margin::from(2.0))
-                    //    .outer_margin(egui::style::Margin::from(-2.0))
-                    //    .rounding(self.style.visuals.window_rounding)
-                    //    .show(ui, |ui| {
-                            self.add_node_contents(ui, max_width, availables, user_graph, &attributes)
-                    //});
-                });
-                // We can now check if the header was collapsed. If it was, then no data was
-                // writtend for the pin locations, and we need to manually set them
-                let maybe_inner_response = body_return.2;
-
-                if maybe_inner_response.is_none() {
-                    // We want the same Y position for all, but a different X for inputs and outputs.
-                    for id in attributes {
-                        if user_graph.is_attribute_input(id) {
-                            let resp_rect = body_return.0.rect; // Use the collapse button response
-                            let rect = egui::Rect {
-                                min: resp_rect.min,
-                                max: [resp_rect.left(), resp_rect.bottom()].into(),
-                            };
-                            self.pin_positions.insert(id, rect);
+                let frame = egui::Frame::window(&self.style);
+                frame.show(ui, |ui| {
+                    let header_builder = CollapsingState::load_with_default_open(ctx, ui.make_persistent_id(node_id), true);
+                    let mut max_width = 0.0;
+                    let first_response = header_builder.show_header(ui, |ui| {
+                        let response = ui.strong(window_title);
+                        if let Some(err) = error {
+                            response.on_hover_text(egui::RichText::new(err.message).color(egui::Color32::RED));
                         }
-                        if user_graph.is_attribute_output(id) {
-                            let resp_rect = body_return.1.response.rect; // Use the header response
-                            let rect = egui::Rect {
-                                min: [resp_rect.right(), resp_rect.top()].into(),
-                                max: resp_rect.max,
-                            };
-                            self.pin_positions.insert(id, rect);
+                        max_width = ui.min_size().x;
+                    });
+                    let body_return = first_response.body_unindented(|ui| {
+                        // TODO: is this little change of visuals worth it?
+                        //egui::Frame::none()
+                        //    .fill(self.style.visuals.faint_bg_color)
+                        //    .inner_margin(egui::style::Margin::from(2.0))
+                        //    .outer_margin(egui::style::Margin::from(-2.0))
+                        //    .rounding(self.style.visuals.window_rounding)
+                        //    .show(ui, |ui| {
+                                self.add_node_contents(ui, max_width, availables, user_graph, &attributes)
+                        //});
+                    });
+                    // We can now check if the header was collapsed. If it was, then no data was
+                    // writtend for the pin locations, and we need to manually set them
+                    let maybe_inner_response = body_return.2;
+
+                    // This block is taken if the header is collapsed and no window contents can be
+                    // shown
+                    if maybe_inner_response.is_none() {
+                        // We want the same Y position for all, but a different X for inputs and outputs.
+                        for id in attributes {
+                            if user_graph.is_attribute_input(id) {
+                                let resp_rect = body_return.0.rect; // Use the collapse button response
+                                let rect = egui::Rect {
+                                    min: resp_rect.min,
+                                    max: [resp_rect.left(), resp_rect.bottom()].into(),
+                                };
+                                self.pin_positions.insert(id, rect);
+                            }
+                            if user_graph.is_attribute_output(id) {
+                                let resp_rect = body_return.1.response.rect; // Use the header response
+                                let rect = egui::Rect {
+                                    min: [resp_rect.right(), resp_rect.top()].into(),
+                                    max: resp_rect.max,
+                                };
+                                self.pin_positions.insert(id, rect);
+                            }
                         }
                     }
-                }
-                let arrow_rect = body_return.0.rect;
-                let interact_rect = egui::Rect::from_x_y_ranges(arrow_rect.right()..=f32::INFINITY, arrow_rect.y_range());
-                ui.interact(interact_rect, window_id.with(0x42), egui::Sense::click()).context_menu(|ui| {
-                    if ui.button("Delete node").clicked() {
-                        user_graph.remove_node(node_id);
-                        ui.close_menu();
-                    }
-                    if ui.button("Clone node").clicked() {
-                        user_graph.clone_node(node_id);
-                        ui.close_menu();
-                    }
-                });
-            }).expect("no egui::Window should ever be closed inside the node editor"); // Assume egui::Window is open
 
-            // After we have the window response, we can assume that the window was not collapsed
-            // (in fact, the user cannot collapse it because the window itself has no title bar)
-            // We can store its position!
+                    // Sense interaction with the header. In order to sense the entire lenght of
+                    // the header instead of the label text only, we need to write a bit of code.
+                    let arrow_rect = body_return.0.rect;
+                    let interact_rect = egui::Rect::from_x_y_ranges(arrow_rect.right()..=f32::INFINITY, arrow_rect.y_range());
+                    let response = ui.interact(interact_rect, window_id.with(0x42), egui::Sense::click_and_drag());
+                    // compute drag delta for header drag
+                    let mut drag_delta = egui::Vec2::ZERO;
+                    if response.dragged_by(egui::PointerButton::Primary) {
+                        drag_delta = response.drag_delta();
+                    }
+                    // add a contextual menu
+                    response.context_menu(|ui| {
+                        if ui.button("Delete node").clicked() {
+                            user_graph.remove_node(node_id);
+                            ui.close_menu();
+                        }
+                        if ui.button("Clone node").clicked() {
+                            user_graph.duplicate_node_no_links(node_id);
+                            ui.close_menu();
+                        }
+                        if ui.button("Clone node and links").clicked() {
+                            user_graph.duplicate_nodes(&[node_id]);
+                            ui.close_menu();
+                        }
+                    });
+                    // return the drag delta from dragging onto the titlebar
+                    drag_delta
+                // and "bubble up" the result, so we can use it from outside
+                }).inner
+            });
+
+            // We now store the new position. The response contains a drag which is the one
+            // generated by dragging the area from the contents frame. We sum it up to the delta
+            // that we might have by header drag, and we have the final correct result.
             let window_response = window_return.response;
-            let up_left = self.rel_to_abs(window_response.rect.min);
+            let actual_delta = window_response.drag_delta() + window_return.inner;
+            let up_left = self.rel_to_abs(window_response.rect.min + actual_delta);
             //we need to check if the node exists, because it might have been deleted just now
             if let Some(node) = user_graph.get_node_mut(node_id) {
                 let Node { position: pos, .. } = node;
@@ -621,7 +626,7 @@ impl GraphStatus {
             }
         }
 
-        match self.new_link {
+        match self.new_link.take() {
             Some(pair) if user_graph.is_attribute_input(pair.0) => user_graph.insert_link(pair.0, pair.1),
             Some(pair) /*        the pair is reversed        */ => user_graph.insert_link(pair.1, pair.0),
             _ => {}
@@ -632,11 +637,11 @@ impl GraphStatus {
         for link in user_graph.get_links() {
             let in_pos = match self.pin_positions.get(link.0) {
                 Some(rect) => rect.center(),
-                _ => unreachable!(),
+                _ => continue, // if the node has just been cloned, skip this link rendering
             };
             let out_pos = match self.pin_positions.get(link.1) {
                 Some(rect) => rect.center(),
-                _ => unreachable!(),
+                _ => continue, // if the node has just been cloned, skip this link rendering
             };
             let real_distance = in_pos.distance(out_pos) * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
             let delta = self.def_h() * (0.333 + 0.333 * real_distance.sqrt());
@@ -647,8 +652,6 @@ impl GraphStatus {
 
         // Finally: reset the style to the standard one
         ctx.set_style(prev_style);
-        // and reset the "zoom changed" flag
-        self.force_node_pos = false;
     }
 
     fn add_pin(&mut self, ui: &mut egui::Ui, layout: egui::Layout, id: AttributeID, label: &str, kind: DataKind) {
@@ -682,7 +685,6 @@ impl GraphStatus {
                 if let Some(link_id) = self.prev_link_candidate {
                     println!("linked to {}", link_id);
                     self.new_link = Some((id, link_id));
-                    dbg!(link_id);
                 } else {
                     println!("did not create a link!");
                 }
@@ -940,17 +942,19 @@ impl super::Gui for NodeGui {
 
     fn mark_new_file_open(&mut self, ctx: &egui::Context) {
         self.ferre_data = None;
-        self.graph_status.force_node_pos = true;
-        ctx.memory().reset_areas();
-        ctx.memory().data.clear();
         self.open_part.clear();
+        // I needed to reset all areas and all data due to the old workaround for
+        // behavior of windows with current_pos(). They should not be needed anymore.
+        //ctx.memory().reset_areas();
+        //ctx.memory().data.clear();
     }
 
     fn mark_new_part_open(&mut self, ctx: &egui::Context) {
         self.ferre_data = None;
-        self.graph_status.force_node_pos = true;
-        ctx.memory().reset_areas();
-        ctx.memory().data.clear();
+        // I needed to reset all areas and all data due to the old workaround for
+        // behavior of windows with current_pos(). They should not be needed anymore.
+        //ctx.memory().reset_areas();
+        //ctx.memory().data.clear();
     }
 
     fn load_ferre_data(&mut self, _ctx: &egui::Context, ferre_data: FerreData) {
