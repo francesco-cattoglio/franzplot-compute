@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use egui::TextureId;
 use egui::collapsing_header::CollapsingState;
-use pest::unicode::UPPERCASE_LETTER;
 
 use crate::file_io;
 use crate::node_graph::GraphError;
@@ -510,8 +509,9 @@ impl GraphStatus {
 
             let window_return = prepared_window.show(ctx, |ui| {
                 let frame = egui::Frame::window(&self.style);
+                let header_id = ui.make_persistent_id(node_id);
                 frame.show(ui, |ui| {
-                    let header_builder = CollapsingState::load_with_default_open(ctx, ui.make_persistent_id(node_id), true);
+                    let header_builder = CollapsingState::load_with_default_open(ctx, header_id, true);
                     let mut max_width = 0.0;
                     let first_response = header_builder.show_header(ui, |ui| {
                         let response = ui.strong(window_title);
@@ -573,6 +573,12 @@ impl GraphStatus {
                     response.context_menu(|ui| {
                         if ui.button("Delete node").clicked() {
                             user_graph.remove_node(node_id);
+                            // we also need to "reset" the boolean containing the information
+                            // about the header of this node being open or closed.
+                            ctx.animate_bool_with_time(header_id, true, 0.0);
+                            let mut header = CollapsingState::load_with_default_open(ctx, header_id, true);
+                            header.set_open(true);
+                            header.store(ctx);
                             ui.close_menu();
                         }
                         if ui.button("Clone node").clicked() {
