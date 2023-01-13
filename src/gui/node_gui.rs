@@ -650,7 +650,8 @@ impl GraphStatus {
                 _ => continue, // if the node has just been cloned, skip this link rendering
             };
             let real_distance = in_pos.distance(out_pos) * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
-            let delta = self.def_h() * (0.333 + 0.333 * real_distance.sqrt());
+            let x_gap = out_pos.x - in_pos.x;
+            let delta = self.def_h() * (0.5 + 0.25 * x_gap.max(0.0).sqrt() + 0.333 * real_distance.sqrt());
             let points = [out_pos, out_pos + (delta, 0.0).into(), in_pos + (-delta, 0.0).into(), in_pos];
             let shape = egui::epaint::CubicBezierShape::from_points_stroke(points, false, egui::Color32::default(), egui::Stroke::new(2.0f32, egui::Color32::RED));
             mid_painter.add(shape);

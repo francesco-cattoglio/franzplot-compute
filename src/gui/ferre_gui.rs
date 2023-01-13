@@ -1,27 +1,32 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use egui::epaint::{Color32, text::{LayoutJob, TextFormat}, FontFamily, FontId};
 
 use egui::TextureId;
 use serde::{Serialize, Deserialize};
+use winit::event::ElementState;
 
 use crate::{CustomEvent, state::Action};
 use crate::compute_graph::globals::NameValuePair;
 use crate::node_graph::NodeID;
 use crate::{util, file_io};
-use crate::state::{UserState, AppState, user_to_app_state};
+use crate::state::{UserState, AppState};
 
 #[derive(Deserialize, Serialize)]
 #[derive(Clone)]
 pub enum GlobalVarUsage {
+    User,
     Still(f32),
     Animated(f32, f32),
 }
 
 #[derive(Clone, Debug, PartialEq)]
 enum VarUsageType {
+    User,
     Still,
     Animated,
 }
+
+const ANIM_TIME: f32 = 2.5;
 
 impl Default for GlobalVarUsage {
     fn default() -> Self {
@@ -44,8 +49,17 @@ pub struct FerreData {
     steps: Vec<Step>,
 }
 
+
+#[derive(Clone, Default, PartialEq)]
+pub struct AnimationStatus {
+    step_idx: usize,
+    running: bool,
+    percent_remaining: f32,
+    percent_paused: f32,
+}
+
 pub struct FerreGui {
-    animating_step: Option<usize>,
+    animating_step: Option<AnimationStatus>,
     step_edit: bool,
     new_usage_string: String,
     new_node_id: NodeID,
@@ -134,6 +148,7 @@ impl FerreGui {
                     let mut usage_type = match usage {
                         GlobalVarUsage::Still(_) => VarUsageType::Still,
                         GlobalVarUsage::Animated(_,_) => VarUsageType::Animated,
+                        GlobalVarUsage::User => VarUsageType::User,
                     };
                     let formatted = format!("variable '{}' has", name);
                     ui.horizontal(|ui| {
@@ -144,41 +159,82 @@ impl FerreGui {
                             .show_ui(ui, |ui| {
                                 ui.selectable_value(&mut usage_type, VarUsageType::Still, "Still");
                                 ui.selectable_value(&mut usage_type, VarUsageType::Animated, "Animated");
+                                ui.selectable_value(&mut usage_type, VarUsageType::User, "User controlled");
                             }
                         );
                     });
+                    // match the OLD usage type, and so something different depending on latest selection
                     let selection_result = match usage {
+                        // We previously had a "User controlled" usage
+                        GlobalVarUsage::User => {
+                            match usage_type {
+                                // and the user wants to swap to Still: reset it to zero
+                                VarUsageType::Still => {
+                                    GlobalVarUsage::Still(0.0)
+                                },
+                                // the user wants to swap to Animated: set it to (0.0, 1.0)
+                                VarUsageType::Animated => {
+                                    GlobalVarUsage::Animated(0.0, 1.0)
+                                }
+                                // the selection did not change
+                                VarUsageType::User => {
+                                    GlobalVarUsage::User
+                                }
+                            }
+                        }
                         GlobalVarUsage::Still(mut still_value) => {
                             // we are currently in "still" usage mode
                             match usage_type {
                                 // and the user did not change his mind
                                 VarUsageType::Still => {
-                                    ui.add(egui::Slider::new(&mut still_value, -5.0..=5.0).text("Value"));
-                                    GlobalVarUsage::Still(still_value)
+                                    ui.horizontal(|ui| {
+                                        ui.label("Value:");
+                                        ui.add(egui::DragValue::new(&mut still_value)
+                                               .speed(0.01)
+                                               .min_decimals(2)
+                                               .max_decimals(6));
+                                        GlobalVarUsage::Still(still_value)
+                                    }).inner
                                 },
                                 // the user changed his mind: the old fixed value is now animated
                                 // Do not display any UI, the next frame will fix this anyway
                                 VarUsageType::Animated => {
                                     GlobalVarUsage::Animated(still_value, still_value)
                                 }
+                                // the user selected user controlled
+                                VarUsageType::User => {
+                                    GlobalVarUsage::User
+                                }
                             }
                         }
                         GlobalVarUsage::Animated(start_value, end_value) => {
                             // we are currently in "animated" usage mode
                             match usage_type {
-                                // and the user did not change his mind
-                                VarUsageType::Animated => {
-                                    ui.horizontal(|ui| {
-                                        ui.add(egui::Slider::new(start_value, -5.0..=5.0).text("Start"));
-                                        ui.add(egui::Slider::new(end_value, -5.0..=5.0).text("End"));
-                                    });
-                                    GlobalVarUsage::Animated(*start_value, *end_value)
-                                }
                                 // the user changed his mind: the old animated value is now fixed
                                 // Do not display any UI, the next frame will fix this anyway
                                 VarUsageType::Still => {
                                     GlobalVarUsage::Still(*start_value)
                                 },
+                                // the selection stays the same: show the ui
+                                VarUsageType::Animated => {
+                                    ui.horizontal(|ui| {
+                                        ui.label("Value at start:");
+                                        ui.add(egui::DragValue::new(start_value)
+                                               .speed(0.01)
+                                               .min_decimals(2)
+                                               .max_decimals(6));
+                                        ui.label("end:");
+                                        ui.add(egui::DragValue::new(end_value)
+                                               .speed(0.01)
+                                               .min_decimals(2)
+                                               .max_decimals(6));
+                                    });
+                                    GlobalVarUsage::Animated(*start_value, *end_value)
+                                }
+                                // the user selected user controlled
+                                VarUsageType::User => {
+                                    GlobalVarUsage::User
+                                }
                             }
                         }
                     };
@@ -225,80 +281,107 @@ impl FerreGui {
                     }
             } else {
                 "No renderable in list".to_string()
-
             };
+
             ui.collapsing(title.clone(), |ui| {
                 ui.small(&step.comment);
                 if let Some(texture) = self.loaded_images.get(&step.image_name) {
                     ui.image(texture.id(), texture.size_vec2() * 0.5);
                 }
 
-                // Unfortunately we are conflating two different concepts in here: showing objects
-                // and animating them. We need to change both the UI and the code
-                // to separate efficiently the two concepts.
-                if ui.button("Animate").clicked() {
-                    // The button was clicked. No matter what, but we need to reset the
-                    // animation of variables
-                    ctx.clear_animations();
-                    // iterate over global vars usage to reset everything.
-                    // BEWARE: this will also reset the initial value for the animations!
-                    let name_value_pairs: Vec<NameValuePair> = step.global_vars_usage
-                        .iter()
-                        .map(|(name, (usage, _range))| {
-                            match usage {
-                                GlobalVarUsage::Still(value) => NameValuePair { name: name.clone(), value: *value },
-                                GlobalVarUsage::Animated(start_val, _) => {
-                                    let animation_id = egui::Id::new(name);
-                                    // first call after clear animations will set the start val
-                                    ctx.animate_value_with_time(animation_id, *start_val, 0.0);
-                                    NameValuePair { name: name.clone(), value: *start_val }
+                ui.horizontal(|ui| {
+                    if ui.button("Show").clicked() {
+                        // The button was clicked. No matter what, but we need to reset the
+                        // animation of variables
+                        ctx.clear_animations();
+                        // iterate over global vars usage to reset everything.
+                        // BEWARE: this will also reset the initial value for the animations!
+                        let name_value_pairs: Vec<NameValuePair> = step.global_vars_usage
+                            .iter()
+                            // create a name_value pair only for Still and Animated globals, the User
+                            // ones get filtered away because we do not want to change them
+                            .filter_map(|(name, (usage, _range))| {
+                                match usage {
+                                    GlobalVarUsage::User => None,
+                                    GlobalVarUsage::Still(value) => Some(NameValuePair { name: name.clone(), value: *value }),
+                                    GlobalVarUsage::Animated(start_val, _) => {
+                                        let animation_id = egui::Id::new(name);
+                                        // first call after clear animations will set the start val
+                                        ctx.animate_value_with_time(animation_id, *start_val, 0.0);
+                                        Some(NameValuePair { name: name.clone(), value: *start_val })
+                                    }
+                                }
+                            })
+                            .collect();
+                        app_state.update_globals(name_value_pairs);
+
+                        ctx.animate_value_with_time(egui::Id::new("animation_percent"), 1.0, 0.0);
+                        self.animating_step = Some(AnimationStatus{ step_idx: idx, running: false, percent_remaining: 1.0, percent_paused: 1.0 });
+                    }
+
+                    if let Some(AnimationStatus { step_idx, running, percent_remaining, percent_paused }) = &mut self.animating_step {
+                        if *step_idx == idx {
+                            let play_pause = if *running {
+                                // animation is running!
+                                if *percent_remaining > f32::EPSILON {
+                                    let remaining_time = *percent_paused * ANIM_TIME;
+                                    *percent_remaining = ctx.animate_value_with_time(egui::Id::new("animation_percent"), 0.0, remaining_time);
+                                } else {
+                                    *percent_remaining = ctx.animate_value_with_time(egui::Id::new("animation_percent"), 1.0, 0.0);
+                                    *running = false;
+                                }
+                                "⏸ pause"
+                            } else {
+                                "▶ play"
+                            };
+
+                            if ui.button(play_pause).clicked() {
+                                // If the button was clicked in this frame. Toggle the animation status;
+                                if *running {
+                                    // we need to stop the animation! Store the value
+                                    *percent_paused = *percent_remaining;
+                                    ctx.animate_value_with_time(egui::Id::new("animation_percent"), *percent_remaining, 0.0);
+                                    *running = false;
+                                } else {
+                                    // we need to restore the animation!
+                                    if *percent_remaining < f32::EPSILON {
+                                        *percent_remaining = ctx.animate_value_with_time(egui::Id::new("animation_percent"), 1.0, 0.0);
+                                    }
+                                    *percent_paused = *percent_remaining;
+                                    *running = true;
                                 }
                             }
-                        })
-                        .collect();
-                    app_state.update_globals(name_value_pairs);
-
-                    // If the button was clicked in this frame. This means either:
-                    // - the toggle was on, and we need to toggle it off,
-                    // - the toggle was off OR unselected, and we need to toggle it on,
-                    self.animating_step = match self.animating_step {
-                        // we clicked the same thing that was already being animated. Set animation
-                        // to None, so that animation stops
-                        Some(prev_idx) if prev_idx == idx => {
-                            None
                         }
-                        // we clicked a NEW step (either because nothing was being animated, or
-                        // because we selected one that is different from the previous
-                        Some(_) | None => {
-                            app_state.renderer.set_renderable_filter(Some(step.renderables_shown.clone()));
-                            Some(idx)
-                        }
-                    };
-                }
+                    }
+                })
 
             }); // horizontal
             ui.separator();
         }
         // OUTSIDE OF THE LOOPING OVER STEPS: if there is a request for animation, animate!
-        if let Some(idx) = self.animating_step {
-            let step = &self.ferre_data.steps[idx];
-            let name_value_pairs: Vec<NameValuePair> = step.global_vars_usage
-                .iter()
-                .map(|(name, (usage, _range))| {
-                    match usage {
-                        GlobalVarUsage::Still(value) => {
-                            NameValuePair { name: name.clone(), value: *value } // Doing nothing is
-                                                                                // probably also fine
+        if let Some(animation) = &self.animating_step {
+            let remaining_percent = animation.percent_remaining;
+            let step = &self.ferre_data.steps[animation.step_idx];
+            // IF YOU WANT TO LET THE USER MODIFY THE VALUES DURING A PAUSE, ENABLE THIS IF BLOCK
+            //if animation.running {
+                let name_value_pairs: Vec<NameValuePair> = step.global_vars_usage
+                    .iter()
+                    .filter_map(|(name, (usage, _range))| {
+                        match usage {
+                            GlobalVarUsage::User => { None }
+                            GlobalVarUsage::Still(value) => {
+                                Some(NameValuePair { name: name.clone(), value: *value }) // Doing nothing is
+                                                                                    // probably also fine
+                            }
+                            GlobalVarUsage::Animated(start_val, end_val) => {
+                                let animated_value = *end_val * (1.0 - remaining_percent) + *start_val * remaining_percent;
+                                Some(NameValuePair { name: name.clone(), value: animated_value })
+                            }
                         }
-                        GlobalVarUsage::Animated(_start_val, end_val) => {
-                            let animation_id = egui::Id::new(name);
-                            let animated_value = ctx.animate_value_with_time(animation_id, *end_val, 2.5);
-                            NameValuePair { name: name.clone(), value: animated_value }
-                        }
-                    }
-                })
-                .collect();
-            app_state.update_globals(name_value_pairs);
+                    })
+                    .collect();
+                app_state.update_globals(name_value_pairs);
+            //}
         }
 
         // At the end of the steps, add the button to add new steps
@@ -356,10 +439,9 @@ impl super::Gui for FerreGui {
             for pair in name_value_pairs.iter_mut() {
                 // check if this variable exists in the usage table,
                 // and see if the user is authorized to read that.
-                if let Some(step_idx) = self.animating_step {
-                    let curr_step = &self.ferre_data.steps[step_idx];
+                if let Some(animation) = &self.animating_step {
+                    let curr_step = &self.ferre_data.steps[animation.step_idx];
                     if let Some((_usage, range)) = curr_step.global_vars_usage.get(&pair.name) {
-
                         if range[0] != range[1] {
                             ui.horizontal(|ui| {
                                 ui.label(&pair.name);

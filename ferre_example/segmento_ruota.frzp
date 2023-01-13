@@ -1,0 +1,234 @@
+//// FRANZPLOT DATA FILE V2.0 \\\\
+
+//   This file should not be edited by hand,
+//   as doing so might easily corrupt the data.
+//   To edit this file, open it in Franzplot, version 22.10 or higher
+
+V20(
+  ferre_data: Some((
+    steps: [
+      /*[0]*/ (
+        comment: "",
+        image_name: "",
+        renderables_shown: [
+          /*[0]*/ 2,
+        ],
+        global_vars_usage: {
+          "length": (Animated(0.0, 1.0), (0.0, 1.0)),
+          "k": (Still(0.0), (0.0, 0.0)),
+        },
+      ),
+      /*[1]*/ (
+        comment: "",
+        image_name: "",
+        renderables_shown: [
+          /*[0]*/ 6,
+        ],
+        global_vars_usage: {
+          "k": (Animated(0.0, 2.0), (0.0, 2.0)),
+          "length": (User, (0.0, 2.0)),
+        },
+      ),
+    ],
+  )),
+  user_state: (
+    graph: (
+      nodes: [
+        /*[0]*/ Some((
+          title: "Curve",
+          position: (396.74722, 87.961395),
+          error: None,
+          contents: Curve(interval: 0, fx: 1, fy: 2, fz: 3, output: 4),
+        )),
+        /*[1]*/ Some((
+          title: "Interval",
+          position: (223.95866, 92.84184),
+          error: None,
+          contents: Interval(variable: 5, begin: 6, end: 7, quality: 8, output: 9),
+        )),
+        /*[2]*/ Some((
+          title: "Linea",
+          position: (556.719, 95.70495),
+          error: None,
+          contents: Rendering(geometry: 10, thickness: 11, mask: 12, material: 13),
+        )),
+        /*[3]*/ Some((
+          title: "Matrix",
+          position: (305.6045, 299.30637),
+          error: None,
+          contents: Matrix(interval: 14, row_1: 15, row_2: 16, row_3: 17, output: 18),
+        )),
+        /*[4]*/ Some((
+          title: "Interval",
+          position: (160.81126, 225.90204),
+          error: None,
+          contents: Interval(variable: 19, begin: 20, end: 21, quality: 22, output: 23),
+        )),
+        /*[5]*/ Some((
+          title: "Transform",
+          position: (542.42395, 217.18231),
+          error: None,
+          contents: Transform(geometry: 24, matrix: 25, output: 26),
+        )),
+        /*[6]*/ Some((
+          title: "Cerchio",
+          position: (656.0429, 241.60158),
+          error: None,
+          contents: Rendering(geometry: 27, thickness: 28, mask: 29, material: 30),
+        )),
+      ],
+      attributes: [
+        /*[0]*/ Some((
+          node_id: 0,
+          contents: InputPin(label: "interval", kind: Interval),
+        )),
+        /*[1]*/ Some((
+          node_id: 0,
+          contents: Text(label: "fx", string: "t"),
+        )),
+        /*[2]*/ Some((
+          node_id: 0,
+          contents: Text(label: "fy", string: "0"),
+        )),
+        /*[3]*/ Some((
+          node_id: 0,
+          contents: Text(label: "fz", string: "0"),
+        )),
+        /*[4]*/ Some((
+          node_id: 0,
+          contents: OutputPin(label: "geometry", kind: Geometry),
+        )),
+        /*[5]*/ Some((
+          node_id: 1,
+          contents: Text(label: " name", string: "t"),
+        )),
+        /*[6]*/ Some((
+          node_id: 1,
+          contents: Text(label: "begin", string: "0"),
+        )),
+        /*[7]*/ Some((
+          node_id: 1,
+          contents: Text(label: "  end", string: "length"),
+        )),
+        /*[8]*/ Some((
+          node_id: 1,
+          contents: IntSlider(label: "quality", value: 4, mode: IntRange(1, 16)),
+        )),
+        /*[9]*/ Some((
+          node_id: 1,
+          contents: OutputPin(label: "interval", kind: Interval),
+        )),
+        /*[10]*/ Some((
+          node_id: 2,
+          contents: InputPin(label: "geometry", kind: Geometry),
+        )),
+        /*[11]*/ Some((
+          node_id: 2,
+          contents: IntSlider(label: "thickness:", value: 3, mode: SizeLabels),
+        )),
+        /*[12]*/ Some((
+          node_id: 2,
+          contents: Mask(selected: 3),
+        )),
+        /*[13]*/ Some((
+          node_id: 2,
+          contents: Material(selected: 0),
+        )),
+        /*[14]*/ Some((
+          node_id: 3,
+          contents: InputPin(label: "interval", kind: Interval),
+        )),
+        /*[15]*/ Some((
+          node_id: 3,
+          contents: MatrixRow(col_1: "cos(s)", col_2: "-sin(s)", col_3: "0.0", col_4: "0.0"),
+        )),
+        /*[16]*/ Some((
+          node_id: 3,
+          contents: MatrixRow(col_1: "sin(s)", col_2: "cos(s)", col_3: "0.0", col_4: "0.0"),
+        )),
+        /*[17]*/ Some((
+          node_id: 3,
+          contents: MatrixRow(col_1: "0.0", col_2: "0.0", col_3: "1.0", col_4: "0.0"),
+        )),
+        /*[18]*/ Some((
+          node_id: 3,
+          contents: OutputPin(label: "output", kind: Matrix),
+        )),
+        /*[19]*/ Some((
+          node_id: 4,
+          contents: Text(label: " name", string: "s"),
+        )),
+        /*[20]*/ Some((
+          node_id: 4,
+          contents: Text(label: "begin", string: "0"),
+        )),
+        /*[21]*/ Some((
+          node_id: 4,
+          contents: Text(label: "  end", string: "k*pi"),
+        )),
+        /*[22]*/ Some((
+          node_id: 4,
+          contents: IntSlider(label: "quality", value: 4, mode: IntRange(1, 16)),
+        )),
+        /*[23]*/ Some((
+          node_id: 4,
+          contents: OutputPin(label: "interval", kind: Interval),
+        )),
+        /*[24]*/ Some((
+          node_id: 5,
+          contents: InputPin(label: "geometry", kind: Geometry),
+        )),
+        /*[25]*/ Some((
+          node_id: 5,
+          contents: InputPin(label: "matrix", kind: Matrix),
+        )),
+        /*[26]*/ Some((
+          node_id: 5,
+          contents: OutputPin(label: "output", kind: Geometry),
+        )),
+        /*[27]*/ Some((
+          node_id: 6,
+          contents: InputPin(label: "geometry", kind: Geometry),
+        )),
+        /*[28]*/ Some((
+          node_id: 6,
+          contents: IntSlider(label: "thickness:", value: 3, mode: SizeLabels),
+        )),
+        /*[29]*/ Some((
+          node_id: 6,
+          contents: Mask(selected: 0),
+        )),
+        /*[30]*/ Some((
+          node_id: 6,
+          contents: Material(selected: 6),
+        )),
+      ],
+      links: {
+        0: 9,
+        25: 18,
+        27: 26,
+        24: 4,
+        10: 4,
+        14: 23,
+      },
+      free_nodes_list: [],
+      free_attributes_list: [],
+    ),
+    globals: (
+      names: [
+        /*[0]*/ "length",
+        /*[1]*/ "k",
+      ],
+      init_values: [
+        /*[0]*/ 1.0,
+        /*[1]*/ 2.0,
+      ],
+    ),
+    tss: (
+      fc: 1673622929,
+      fs: 1673622929,
+      vn: 2787968369,
+      hs: 0,
+    ),
+  ),
+)

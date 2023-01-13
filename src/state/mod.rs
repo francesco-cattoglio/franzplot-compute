@@ -147,6 +147,7 @@ pub fn user_to_app_state(app: &mut AppState, user: &mut UserState) -> Result<(),
     // - try to create a new compute graph
     // - if successful, update the scene rendering and report recoverable errors
     // - if unsuccessful, report the unrecoverable error to the user
+    user.node_graph.clear_all_errors();
     let process_result = crate::compute_graph::create_compute_graph(&app.manager.device, &app.assets, user);
     match process_result {
         Ok((compute_graph, recoverable_errors)) => {
@@ -429,10 +430,9 @@ impl State {
                 self.gui.mark_new_file_open(&self.egui_ctx);
                 if let Some(ferre) = ferre_data {
                     self.gui.load_ferre_data(&self.egui_ctx, ferre);
-                    // Quick hack: by default, always process the scene when we open
-                    // something that could be used by the Ferre GUI
-                    user_to_app_state(&mut self.app, &mut self.user);
                 }
+                // Quick hack for FerreGui interactivity: always process the scene when we open one
+                user_to_app_state(&mut self.app, &mut self.user);
                 Ok(())
             },
             Action::OpenPart(path) => {
