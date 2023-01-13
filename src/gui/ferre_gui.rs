@@ -14,7 +14,7 @@ use crate::state::{UserState, AppState};
 #[derive(Deserialize, Serialize)]
 #[derive(Clone)]
 pub enum GlobalVarUsage {
-    User,
+    User(f32),
     Still(f32),
     Animated(f32, f32),
 }
@@ -148,7 +148,7 @@ impl FerreGui {
                     let mut usage_type = match usage {
                         GlobalVarUsage::Still(_) => VarUsageType::Still,
                         GlobalVarUsage::Animated(_,_) => VarUsageType::Animated,
-                        GlobalVarUsage::User => VarUsageType::User,
+                        GlobalVarUsage::User(_) => VarUsageType::User,
                     };
                     let formatted = format!("variable '{}' has", name);
                     ui.horizontal(|ui| {
@@ -166,20 +166,27 @@ impl FerreGui {
                     // match the OLD usage type, and so something different depending on latest selection
                     let selection_result = match usage {
                         // We previously had a "User controlled" usage
-                        GlobalVarUsage::User => {
+                        GlobalVarUsage::User(mut user_value) => {
                             match usage_type {
-                                // and the user wants to swap to Still: reset it to zero
+                                // and the user wants to swap to Still: reset it as such
                                 VarUsageType::Still => {
-                                    GlobalVarUsage::Still(0.0)
+                                    GlobalVarUsage::Still(user_value)
                                 },
-                                // the user wants to swap to Animated: set it to (0.0, 1.0)
+                                // the user wants to swap to Animated
                                 VarUsageType::Animated => {
-                                    GlobalVarUsage::Animated(0.0, 1.0)
+                                    GlobalVarUsage::Animated(user_value, user_value)
                                 }
                                 // the selection did not change
                                 VarUsageType::User => {
-                                    GlobalVarUsage::User
-                                }
+                                    ui.horizontal(|ui| {
+                                        ui.label("Value:");
+                                        ui.add(egui::DragValue::new(&mut user_value)
+                                               .speed(0.01)
+                                               .min_decimals(2)
+                                               .max_decimals(6));
+                                        GlobalVarUsage::User(user_value)
+                                    }).inner
+                                },
                             }
                         }
                         GlobalVarUsage::Still(mut still_value) => {
@@ -203,37 +210,37 @@ impl FerreGui {
                                 }
                                 // the user selected user controlled
                                 VarUsageType::User => {
-                                    GlobalVarUsage::User
+                                    GlobalVarUsage::User(still_value)
                                 }
                             }
                         }
-                        GlobalVarUsage::Animated(start_value, end_value) => {
+                        GlobalVarUsage::Animated(mut start_value, mut end_value) => {
                             // we are currently in "animated" usage mode
                             match usage_type {
                                 // the user changed his mind: the old animated value is now fixed
                                 // Do not display any UI, the next frame will fix this anyway
                                 VarUsageType::Still => {
-                                    GlobalVarUsage::Still(*start_value)
+                                    GlobalVarUsage::Still(start_value)
                                 },
                                 // the selection stays the same: show the ui
                                 VarUsageType::Animated => {
                                     ui.horizontal(|ui| {
                                         ui.label("Value at start:");
-                                        ui.add(egui::DragValue::new(start_value)
+                                        ui.add(egui::DragValue::new(&mut start_value)
                                                .speed(0.01)
                                                .min_decimals(2)
                                                .max_decimals(6));
                                         ui.label("end:");
-                                        ui.add(egui::DragValue::new(end_value)
+                                        ui.add(egui::DragValue::new(&mut end_value)
                                                .speed(0.01)
                                                .min_decimals(2)
                                                .max_decimals(6));
                                     });
-                                    GlobalVarUsage::Animated(*start_value, *end_value)
+                                    GlobalVarUsage::Animated(start_value, end_value)
                                 }
                                 // the user selected user controlled
                                 VarUsageType::User => {
-                                    GlobalVarUsage::User
+                                    GlobalVarUsage::User(start_value)
                                 }
                             }
                         }
@@ -300,15 +307,14 @@ impl FerreGui {
                             .iter()
                             // create a name_value pair only for Still and Animated globals, the User
                             // ones get filtered away because we do not want to change them
-                            .filter_map(|(name, (usage, _range))| {
+                            .map(|(name, (usage, _range))| {
                                 match usage {
-                                    GlobalVarUsage::User => None,
-                                    GlobalVarUsage::Still(value) => Some(NameValuePair { name: name.clone(), value: *value }),
+                                    GlobalVarUsage::User(value) | GlobalVarUsage::Still(value) => NameValuePair { name: name.clone(), value: *value },
                                     GlobalVarUsage::Animated(start_val, _) => {
                                         let animation_id = egui::Id::new(name);
                                         // first call after clear animations will set the start val
                                         ctx.animate_value_with_time(animation_id, *start_val, 0.0);
-                                        Some(NameValuePair { name: name.clone(), value: *start_val })
+                                        NameValuePair { name: name.clone(), value: *start_val }
                                     }
                                 }
                             })
@@ -368,7 +374,7 @@ impl FerreGui {
                     .iter()
                     .filter_map(|(name, (usage, _range))| {
                         match usage {
-                            GlobalVarUsage::User => { None }
+                            GlobalVarUsage::User(_) => { None }
                             GlobalVarUsage::Still(value) => {
                                 Some(NameValuePair { name: name.clone(), value: *value }) // Doing nothing is
                                                                                     // probably also fine
