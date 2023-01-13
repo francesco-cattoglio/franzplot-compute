@@ -1,9 +1,10 @@
 [package]
 name = "franzplot-compute"
-version = "22.10.0"
-authors = ["francesco.cattoglio <francesco.cattoglio@gmail.com>"]
+version = "23.01.0"
+authors = ["franzplot developers"]
 about = ["Curve e Superfici"]
 edition = "2021"
+license = "MIT OR Apache-2.0"
 
 [[bin]]
 name = "franzplot"
@@ -70,12 +71,3 @@ opt-level = 2
 #wgpu-hal = { path = "../wgpu/wgpu-hal" }
 #wgpu-types = { path = "../wgpu/wgpu-types" }
 #wgpu-info = { path = "../wgpu/wgpu-info" }
-
-#[patch."https://github.com/gfx-rs/gfx"]
-#gfx-hal = { path = "../gfx/src/hal" }
-#gfx-backend-empty = { path = "../gfx/src/backend/empty" }
-#gfx-backend-vulkan = { path = "../gfx/src/backend/vulkan" }
-#gfx-backend-gl = { path = "../gfx/src/backend/gl" }
-#gfx-backend-dx12 = { path = "../gfx/src/backend/dx12" }
-#gfx-backend-dx11 = { path = "../gfx/src/backend/dx11" }
-#gfx-backend-metal = { path = "../gfx/src/backend/metal" }
