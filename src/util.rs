@@ -537,7 +537,7 @@ pub fn create_scene_png<P: AsRef<std::path::Path>>(app: &mut AppState, user: &mu
                 buffer: &png_buffer,
                 layout: wgpu::ImageDataLayout {
                     offset: 0,
-                    bytes_per_row: Some(NonZeroU32::new(buffer_dimensions.padded_bytes_per_row as u32).unwrap()),
+                    bytes_per_row: Some(buffer_dimensions.padded_bytes_per_row as u32),
                     rows_per_image: None,
                 },
             },

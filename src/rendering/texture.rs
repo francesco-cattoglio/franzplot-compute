@@ -43,7 +43,7 @@ impl Texture {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
-            anisotropy_clamp: None,
+            anisotropy_clamp: 1,
             label: None,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
@@ -119,7 +119,7 @@ impl Texture {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
-            anisotropy_clamp: None,
+            anisotropy_clamp: 1,
             label: None,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
@@ -195,7 +195,7 @@ impl Texture {
             address_mode_u: wgpu::AddressMode::ClampToEdge,
             address_mode_v: wgpu::AddressMode::ClampToEdge,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
-            anisotropy_clamp: None,
+            anisotropy_clamp: 1,
             label: None,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
@@ -310,8 +310,8 @@ impl Texture {
                     // The layout of the texture
                     wgpu::ImageDataLayout {
                         offset: 0,
-                        bytes_per_row: Some(NonZeroU32::new(std::mem::size_of::<u8>() as u32 * image_size.0).unwrap()),
-                        rows_per_image: Some(NonZeroU32::new(image_size.1).unwrap()),
+                        bytes_per_row: Some(std::mem::size_of::<u8>() as u32 * image_size.0),
+                        rows_per_image: Some(image_size.1),
                     },
                     size,
                 );
@@ -351,8 +351,8 @@ impl Texture {
                     // The layout of the texture
                     wgpu::ImageDataLayout {
                         offset: 0,
-                        bytes_per_row: Some(NonZeroU32::new(std::mem::size_of::<u32>() as u32 * image_size.0).unwrap()),
-                        rows_per_image: Some(NonZeroU32::new(image_size.1).unwrap()),
+                        bytes_per_row: Some(std::mem::size_of::<u32>() as u32 * image_size.0),
+                        rows_per_image: Some(image_size.1),
                     },
                     size,
                 );
@@ -366,7 +366,7 @@ impl Texture {
             address_mode_u: wgpu::AddressMode::Repeat,
             address_mode_v: wgpu::AddressMode::Repeat,
             address_mode_w: wgpu::AddressMode::Repeat,
-            anisotropy_clamp: None,
+            anisotropy_clamp: 1,
             label: None,
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
