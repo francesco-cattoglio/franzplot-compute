@@ -26,7 +26,7 @@ impl Manager {
             Some(wgpu::Backends::GL) => 1,
             _ => 4,
         };
-        let instance = wgpu::Instance::new(backend_override.unwrap_or(DEFAULT_BACKEND));
+        let instance = wgpu::Instance::default();//new(backend_override.unwrap_or(DEFAULT_BACKEND));
 
         let adapter_future = instance.request_adapter(
             &wgpu::RequestAdapterOptions {

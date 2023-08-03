@@ -116,7 +116,7 @@ impl FerreGui {
                 ..Default::default()
             },
         );
-        let galley = ui.fonts().layout_job(job);
+        let galley = ui.fonts(|fonts| fonts.layout_job(job));
         ui.label(galley);
     }
 
@@ -134,7 +134,7 @@ impl FerreGui {
                 ui.horizontal(|ui|{
                     ui.label("Image path:");
                     let response = ui.text_edit_singleline(&mut step.image_name);
-                    if response.lost_focus() && ui.input().key_pressed(egui::Key::Enter) {
+                    if response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter)) {
                         let path = std::path::Path::new(step.image_name.as_str());
                         println!("Attempting to create a texture from {:?}", path);
                         if let Some(texture_hnd) = util::load_texture_to_egui(ctx, path) {
@@ -505,14 +505,18 @@ impl super::Gui for FerreGui {
 
     fn mark_new_part_open(&mut self, ctx: &egui::Context) {
         self.ferre_data = FerreData::default();
-        ctx.memory().reset_areas();
-        ctx.memory().data.clear();
+        ctx.memory_mut(|mem| {
+            mem.reset_areas();
+            mem.data.clear();
+        });
     }
 
     fn mark_new_file_open(&mut self, ctx: &egui::Context) {
         self.ferre_data = FerreData::default();
-        ctx.memory().reset_areas();
-        ctx.memory().data.clear();
+        ctx.memory_mut(|mem| {
+            mem.reset_areas();
+            mem.data.clear();
+        });
         self.open_part.clear();
     }
 }

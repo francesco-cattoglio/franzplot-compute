@@ -1,6 +1,6 @@
 [package]
 name = "franzplot-compute"
-version = "23.01.0"
+version = "23.1.0"
 authors = ["franzplot developers"]
 about = ["Curve e Superfici"]
 edition = "2021"
@@ -16,13 +16,16 @@ dev-tools = []
 all = ["teachers-edition", "dev-tools"]
 
 [dependencies]
-wgpu = { version = "0.14", features = ["trace", "spirv"] }
-winit = { version="0.27.3", features = ["x11"] }
+wgpu = { version = "0.15", features = ["trace", "spirv"] }
+winit = { version="0.28", features = ["x11"] }
 chrono = { version = "0.4", features = ["serde"] }
 pollster = "0.2"
-egui = { git = "https://github.com/emilk/egui", rev = "60b4f5e3fe00fe3f840374846dfd241817e6bf1e" }
-egui-winit = { git = "https://github.com/emilk/egui", rev = "60b4f5e3fe00fe3f840374846dfd241817e6bf1e" }
-egui-wgpu = { git = "https://github.com/emilk/egui", rev = "60b4f5e3fe00fe3f840374846dfd241817e6bf1e", features = ["winit"] }
+egui = "0.21"
+egui-winit = "0.21"
+egui-wgpu = "0.21"
+#egui = { git = "https://github.com/emilk/egui", rev = "60b4f5e3fe00fe3f840374846dfd241817e6bf1e" }
+#egui-winit = { git = "https://github.com/emilk/egui", rev = "60b4f5e3fe00fe3f840374846dfd241817e6bf1e" }
+#egui-wgpu = { git = "https://github.com/emilk/egui", rev = "60b4f5e3fe00fe3f840374846dfd241817e6bf1e", features = ["winit"] }
 
 bytemuck = { version = "1.4", features = ["derive"] }
 num-iter = "0.1"

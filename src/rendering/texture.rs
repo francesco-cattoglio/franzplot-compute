@@ -32,7 +32,8 @@ impl Texture {
             label: Some("Depth texture"),
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
             };
 
         let texture = device.create_texture(&descriptor);
@@ -47,7 +48,7 @@ impl Texture {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::FilterMode::Linear,
-            lod_min_clamp: -100.0,
+            lod_min_clamp: 0.0,
             lod_max_clamp: 100.0,
             compare: Some(wgpu::CompareFunction::LessEqual), // 5.
             border_color: None,
@@ -107,7 +108,8 @@ impl Texture {
             label: Some("Scene output texture"),
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
             };
 
         let texture = device.create_texture(&descriptor);
@@ -122,7 +124,7 @@ impl Texture {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::FilterMode::Linear,
-            lod_min_clamp: -100.0,
+            lod_min_clamp: 0.0,
             lod_max_clamp: 100.0,
             compare: None,
             border_color: None,
@@ -182,7 +184,8 @@ impl Texture {
             label: Some("Scene output texture"),
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::COPY_SRC,
+            view_formats: &[],
             };
 
         let texture = device.create_texture(&descriptor);
@@ -197,7 +200,7 @@ impl Texture {
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Linear,
             mipmap_filter: wgpu::FilterMode::Linear,
-            lod_min_clamp: -100.0,
+            lod_min_clamp: 0.0,
             lod_max_clamp: 100.0,
             compare: None,
             border_color: None,
@@ -291,6 +294,7 @@ impl Texture {
                     format: wgpu::TextureFormat::R8Unorm,
                     usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                     label: tex_label,
+                    view_formats: &[],
                 });
 
                 queue.write_texture(
@@ -331,6 +335,7 @@ impl Texture {
                     format: wgpu::TextureFormat::Rgba8UnormSrgb,
                     usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
                     label: tex_label,
+                    view_formats: &[],
                 });
 
                 queue.write_texture(
@@ -366,7 +371,7 @@ impl Texture {
             mag_filter: wgpu::FilterMode::Nearest,
             min_filter: wgpu::FilterMode::Nearest,
             mipmap_filter: wgpu::FilterMode::Nearest,
-            lod_min_clamp: -100.0,
+            lod_min_clamp: 0.0,
             lod_max_clamp: 100.0,
             compare: None,
             border_color: None,

@@ -212,7 +212,7 @@ impl GraphStatus {
                 .frame(false);
             let response = ui.add(img_button);
             if response.clicked() {
-                ui.memory().open_popup(popup_id);
+                ui.memory_mut(|mem| mem.open_popup(popup_id));
             }
             egui::popup::popup_below_widget(ui, popup_id, &response, |ui| {
                 egui::Grid::new(popup_id.with(popup_id))
@@ -348,23 +348,25 @@ impl GraphStatus {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             let (id, rect) = ui.allocate_space(ui.available_size());
-            let ctrl_down = ctx.input().modifiers.ctrl;
+            let ctrl_down = ctx.input(|input| input.modifiers.ctrl);
             let response = ui.interact(rect, id, egui::Sense::click_and_drag());
             if response.dragged_by(egui::PointerButton::Middle) || response.dragged_by(egui::PointerButton::Primary) && ctrl_down {
                 self.editor_offset += response.drag_delta() * DEFAULT_ZOOM / ZOOM_SIZES[self.zoom_level];
             }
 
-            let maybe_hover = ctx.input().pointer.hover_pos();
+            let maybe_hover = ctx.input(|input| input.pointer.hover_pos());
             if let Some(hover_pos) = maybe_hover {
-                if avail_rect.contains(hover_pos) && !ui.memory().any_popup_open() {
-                    for event in ctx.input().events.iter() {
-                        match event {
-                            // We want to respond both to mouse wheel scrolling and pinch zoom
-                            egui::Event::Scroll(v) => self.add_scrolling(v.y, hover_pos),
-                            egui::Event::Zoom(z) => self.add_scrolling((*z - 1.0) * 20.0, hover_pos),
-                            _ => {},
+                if avail_rect.contains(hover_pos) && !ui.memory(|mem| mem.any_popup_open()) {
+                    ctx.input(|input|
+                        for event in input.events.iter() {
+                            match event {
+                                // We want to respond both to mouse wheel scrolling and pinch zoom
+                                egui::Event::Scroll(v) => self.add_scrolling(v.y, hover_pos),
+                                egui::Event::Zoom(z) => self.add_scrolling((*z - 1.0) * 20.0, hover_pos),
+                                _ => {},
+                            }
                         }
-                    }
+                    );
                 }
             }
 
@@ -621,7 +623,7 @@ impl GraphStatus {
                 // draw between the first and the last known mouse position!
                 None => {
                 let pos =
-                if let Some(pos) = ctx.input().pointer.hover_pos() {
+                if let Some(pos) = ctx.input(|input| input.pointer.hover_pos()) {
                     pos
                 } else {
                     egui::pos2(0.0, 0.0)
@@ -851,7 +853,7 @@ impl NodeGui {
                                 if response.changed() {
                                     self.new_variable_error = None;
                                 }
-                                response.lost_focus() && ui.input().key_pressed(egui::Key::Enter)
+                                response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter))
                             }).inner;
                             if ui.button("Add variable").clicked() || accept_new_variable {
                                 if let Ok(valid_name) = Globals::sanitize_variable_name(&self.new_variable_name.clone()) {

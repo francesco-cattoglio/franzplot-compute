@@ -209,7 +209,9 @@ impl State {
             height: size.height,
             present_mode: wgpu::PresentMode::AutoNoVsync,
             alpha_mode: wgpu::CompositeAlphaMode::Auto,
+            view_formats: vec![],
         };
+        let screen_surface = screen_surface.expect("failed to get a working screen surface");
         screen_surface.configure(&app.manager.device, &surface_config);
 
         // first, create a texture that will be used to render the scene and display it inside of imgui
